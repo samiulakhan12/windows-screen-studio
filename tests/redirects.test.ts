@@ -92,8 +92,8 @@ describe('no redirects (test 85)', () => {
 
   it('a request whose origin is not the stored one is refused before sending', async () => {
     const send = noRedirectFetch(redirecting.origin())
-    await expect(send(`${other.origin()}/v1/models`)).rejects.toThrow(OTHER_ORIGIN_MESSAGE)
-    await expect(send(`${redirecting.origin().replace('http:', 'https:')}/v1/models`)).rejects.toThrow(OTHER_ORIGIN_MESSAGE)
+    await expect(send(`${other.origin()}/v1/models`)).rejects.toThrow(OTHER_ORIGIN_MESSAGE())
+    await expect(send(`${redirecting.origin().replace('http:', 'https:')}/v1/models`)).rejects.toThrow(OTHER_ORIGIN_MESSAGE())
     expect(other.seen).toHaveLength(0)
     // The stored origin itself goes through, with redirect: 'error'.
     const seen: RequestInit[] = []

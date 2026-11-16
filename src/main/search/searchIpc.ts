@@ -12,6 +12,7 @@ import { legacyProjectRoots, projectDir, projectsRoot } from '../projects'
 import { isAppUrl } from '../security'
 import { getMainWindow } from '../windows'
 import { SearchService, type SearchDisk } from './searchService'
+import { t } from '../../shared/i18n/t'
 
 /** How long after start-up the index is loaded (§4): the window and the library come first. */
 export const START_DELAY_MS = 4000
@@ -114,7 +115,7 @@ export function registerSearchIpc(): void {
 
   ipcMain.handle(SEARCH_CHANNELS.query, (e, query: unknown) => {
     if (!fromMainWindow(e)) throw new Error('Not allowed')
-    if (typeof query !== 'string') throw new Error('Not a search')
+    if (typeof query !== 'string') throw new Error(t('errors.searchIpc.notASearch'))
     return s.query(query)
   })
   ipcMain.handle(SEARCH_CHANNELS.refresh, async (e) => {

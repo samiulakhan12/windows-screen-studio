@@ -22,6 +22,7 @@ import type { AiClient, TextEffort } from '../ai/types'
 import { beginJob } from '../longJobs'
 import { LlmEngine, llmHelperPath, type LlmAnswer } from './engine'
 import { localModels } from './models'
+import { t } from '../../shared/i18n/t'
 
 /** A request expected to take longer than this is a long job (§9.2). */
 export const LONG_JOB_S = 10
@@ -167,8 +168,8 @@ export function makeLocalClient(deps: {
       const script = prompt.name === SCRIPT_SCHEMA_NAME
       const task: AiTextTask | 'script' = script ? 'script' : TASK_OF[prompt.name]
       if (!task) throw new Error(LOCAL_MESSAGES.crashed)
-      if (task !== 'script' && NEVER_HERE.includes(task)) throw new Error('Not available on this PC: choose an AI service for this.')
-      if (prompt.images?.length) throw new Error('AI on this PC does not read pictures.')
+      if (task !== 'script' && NEVER_HERE.includes(task)) throw new Error(t('errors.localTextClient.notAvailableOnThis'))
+      if (prompt.images?.length) throw new Error(t('errors.localTextClient.aiOnThisPc'))
       let room: number
       if (task === 'script') {
         // Draft script: the notes within 4,500 prompt tokens, else they are too long for this PC (§9.6).

@@ -13,19 +13,24 @@ import { EditorContext } from '../editor/context'
 import { lookName } from '../editor/panels/captionTiles'
 import { BRAND_KIT_CHANGED_EVENT } from './brandKitEvents'
 import './brandKit.css'
+import { t, type MessageKey } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
-const POSITIONS: { value: BrandLogo['position']; label: string }[] = [
-  { value: 'top-left', label: 'Top left' },
-  { value: 'top-right', label: 'Top right' },
-  { value: 'center', label: 'Centre' },
-  { value: 'bottom-left', label: 'Bottom left' },
-  { value: 'bottom-right', label: 'Bottom right' }
+const POSITIONS: { value: BrandLogo['position']; label: MessageKey }[] = [
+  { value: 'top-left', label: 'settings.brand.position.topLeft' },
+  { value: 'top-right', label: 'settings.brand.position.topRight' },
+  { value: 'center', label: 'settings.brand.position.centre' },
+  { value: 'bottom-left', label: 'settings.brand.position.bottomLeft' },
+  { value: 'bottom-right', label: 'settings.brand.position.bottomRight' }
 ]
 
-const NEW_CARD: Record<'intro' | 'outro', BrandCard> = {
-  intro: { title: 'Your title', style: 'centered', background: 'solid', length: BRAND_CARD_LENGTH.default },
-  outro: { title: 'Thanks for watching', style: 'centered', background: 'solid', length: BRAND_CARD_LENGTH.default }
-}
+/** A new intro or outro card: its title is the user's text from then on, so it is made in the UI language when the card is turned on. */
+const newCard = (which: 'intro' | 'outro'): BrandCard => ({
+  title: which === 'intro' ? t('settings.brand.newIntroTitle') : t('settings.brand.newOutroTitle'),
+  style: 'centered',
+  background: 'solid',
+  length: BRAND_CARD_LENGTH.default
+})
 
 const ipcMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 const pct = (v: number): string => `${Math.round(v * 100)}%`
@@ -167,14 +172,14 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
     return (
       <section className="settings-section brand-kit" aria-labelledby="settings-brand-title" ref={ref}>
         <h3 id="settings-brand-title" ref={headingRef} tabIndex={-1}>
-          Brand kit
+          {t('settings.brand.title')}
         </h3>
         {error ? (
           <p className="callout" role="alert">
             {error}
           </p>
         ) : (
-          <p className="settings-empty">Loading…</p>
+          <p className="settings-empty">{t('common.state.loading')}</p>
         )}
       </section>
     )
@@ -183,19 +188,19 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
   const setLogo = (patch: Partial<BrandLogo>, typing = false): void => kit.logo && update({ logo: { ...kit.logo, ...patch } }, typing)
   const setCard = (which: 'intro' | 'outro', patch: Partial<BrandCard> | null, typing = false): void => {
     if (patch === null) return update({ [which]: undefined })
-    update({ [which]: { ...(kit[which] ?? NEW_CARD[which]), ...patch } }, typing)
+    update({ [which]: { ...(kit[which] ?? newCard(which)), ...patch } }, typing)
   }
   const allPresets = [...BUILT_IN_PRESETS, ...presets]
 
   return (
     <section className="settings-section brand-kit" aria-labelledby="settings-brand-title" ref={ref} data-testid="brand-kit-section">
       <h3 id="settings-brand-title" ref={headingRef} tabIndex={-1}>
-        Brand kit
+        {t('settings.brand.title')}
         <span className="brand-saved" role="status">
-          {saved === 'saving' ? 'Saving…' : saved === 'saved' ? 'Saved' : ''}
+          {saved === 'saving' ? t('common.state.saving') : saved === 'saved' ? t('common.state.saved') : ''}
         </span>
       </h3>
-      <p className="settings-empty">Your logo, colours, fonts, intro and outro, saved once. Apply them to a video from the editor's Style tab.</p>
+      <p className="settings-empty">{t('settings.brand.about')}</p>
       {error && (
         <p className="callout" role="alert" data-testid="brand-kit-error">
           {error}
@@ -203,30 +208,30 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
       )}
 
       <div className="brand-block">
-        <h4>Logo</h4>
+        <h4>{t('settings.brand.logo')}</h4>
         <LogoRow kit={kit} onPick={() => void pick('logo')} onRemove={() => update({ logo: undefined })} />
         {kit.logo && (
           <div className="brand-grid">
             <label className="brand-field">
-              <span className="settings-label">Position</span>
+              <span className="settings-label">{t('common.label.position')}</span>
               <select value={kit.logo.position} onChange={(e) => setLogo({ position: e.target.value as BrandLogo['position'] })}>
                 {POSITIONS.map((p) => (
                   <option key={p.value} value={p.value}>
-                    {p.label}
+                    {t(p.label)}
                   </option>
                 ))}
               </select>
             </label>
-            <RangeField label="Size" value={kit.logo.size} {...WATERMARK_LIMITS.size} step={0.005} format={pct} onChange={(size) => setLogo({ size }, true)} />
-            <RangeField label="Opacity" value={kit.logo.opacity} {...WATERMARK_LIMITS.opacity} step={0.05} format={pct} onChange={(opacity) => setLogo({ opacity }, true)} />
-            <RangeField label="Distance from edge" value={kit.logo.margin} {...WATERMARK_LIMITS.margin} step={0.005} format={pct} onChange={(margin) => setLogo({ margin }, true)} />
+            <RangeField label={t('common.label.size')} value={kit.logo.size} {...WATERMARK_LIMITS.size} step={0.005} format={pct} onChange={(size) => setLogo({ size }, true)} />
+            <RangeField label={t('common.label.opacity')} value={kit.logo.opacity} {...WATERMARK_LIMITS.opacity} step={0.05} format={pct} onChange={(opacity) => setLogo({ opacity }, true)} />
+            <RangeField label={t('settings.brand.margin')} value={kit.logo.margin} {...WATERMARK_LIMITS.margin} step={0.005} format={pct} onChange={(margin) => setLogo({ margin }, true)} />
           </div>
         )}
       </div>
 
       <div className="brand-block">
-        <h4>Colours</h4>
-        <div className="brand-colors" role="list" aria-label="Brand colours">
+        <h4>{t('common.label.colours')}</h4>
+        <div className="brand-colors" role="list" aria-label={t('settings.brand.colours')}>
           {kit.colors.map((c) => (
             <span key={c} className="brand-color" role="listitem">
               <span className="brand-swatch" style={{ background: c }} aria-hidden="true" />
@@ -234,8 +239,8 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
               <button
                 type="button"
                 className="btn ghost icon-btn settings-small"
-                aria-label={`Remove colour ${c}`}
-                title="Remove"
+                aria-label={t('settings.brand.removeColour', { colour: c })}
+                title={t('common.action.remove')}
                 onClick={() => update({ colors: kit.colors.filter((x) => x !== c) })}
               >
                 ×
@@ -244,19 +249,19 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
           ))}
           {kit.colors.length < MAX_BRAND_COLORS && (
             <span className="brand-add-color">
-              <input type="color" aria-label="New colour" value={color} onChange={(e) => setColor(e.target.value.toLowerCase())} />
+              <input type="color" aria-label={t('settings.brand.newColour')} value={color} onChange={(e) => setColor(e.target.value.toLowerCase())} />
               <button type="button" className="btn settings-small" onClick={() => !kit.colors.includes(color) && update({ colors: [...kit.colors, color] })}>
-                Add colour
+                {t('settings.brand.addColour')}
               </button>
             </span>
           )}
         </div>
-        <p className="settings-empty small">The first colour fills the intro and outro cards; all of them show first in a title card's colour pickers.</p>
+        <p className="settings-empty small">{t('settings.brand.coloursHint')}</p>
       </div>
 
       <div className="brand-block">
-        <h4>Fonts</h4>
-        {kit.fonts.length === 0 && <p className="settings-empty">No fonts yet. Add a TTF, OTF or WOFF2 file (15 MB at most).</p>}
+        <h4>{t('settings.brand.fonts')}</h4>
+        {kit.fonts.length === 0 && <p className="settings-empty">{t('settings.brand.noFonts')}</p>}
         <ul className="brand-fonts">
           {kit.fonts.map((f) => (
             <FontRow
@@ -275,13 +280,13 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
         </ul>
         {kit.fonts.length < MAX_BRAND_FONTS && (
           <button type="button" className="btn settings-small" onClick={() => void pick('font')}>
-            Add font…
+            {t('settings.brand.addFont')}
           </button>
         )}
         {kit.fonts.length > 0 && (
           <div className="brand-grid">
-            <FontSelect label="Headings (title cards)" fonts={kit.fonts} value={kit.headingFont} onChange={(headingFont) => update({ headingFont })} />
-            <FontSelect label="Text (captions and text)" fonts={kit.fonts} value={kit.bodyFont} onChange={(bodyFont) => update({ bodyFont })} />
+            <FontSelect label={t('settings.brand.headingFont')} fonts={kit.fonts} value={kit.headingFont} onChange={(headingFont) => update({ headingFont })} />
+            <FontSelect label={t('settings.brand.bodyFont')} fonts={kit.fonts} value={kit.bodyFont} onChange={(bodyFont) => update({ bodyFont })} />
           </div>
         )}
       </div>
@@ -291,9 +296,9 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
       ))}
 
       <div className="brand-block">
-        <h4>Style preset</h4>
+        <h4>{t('settings.brand.preset')}</h4>
         <label className="brand-field">
-          <span className="settings-label">Look applied with the kit</span>
+          <span className="settings-label">{t('settings.brand.presetLabel')}</span>
           <select
             value={kit.preset ? (allPresets.find((p) => p.name === kit.preset!.name)?.id ?? '__kept__') : ''}
             onChange={(e) => {
@@ -301,7 +306,7 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
               update({ preset: p ? { name: p.name, look: p.look } : undefined })
             }}
           >
-            <option value="">None (keep the video's look)</option>
+            <option value="">{t('settings.brand.presetNone')}</option>
             {kit.preset && !allPresets.some((p) => p.name === kit.preset!.name) && <option value="__kept__">{kit.preset.name}</option>}
             {allPresets.map((p) => (
               <option key={p.id} value={p.id}>
@@ -315,10 +320,10 @@ export function BrandKitSection({ reveal = false }: { reveal?: boolean }): JSX.E
       <CaptionStyleBlock value={kit.captionStyle} onChange={(captionStyle) => update({ captionStyle })} />
 
       <label className="toggle brand-auto">
-        <span>Apply to new recordings</span>
-        <input type="checkbox" aria-label="Apply to new recordings" checked={kit.autoApply} onChange={(e) => update({ autoApply: e.target.checked })} />
+        <span>{t('settings.brand.autoApply')}</span>
+        <input type="checkbox" aria-label={t('settings.brand.autoApply')} checked={kit.autoApply} onChange={(e) => update({ autoApply: e.target.checked })} />
       </label>
-      <p className="settings-empty small">{kit.autoApply ? 'New recordings start with your brand kit.' : 'New recordings start without it; apply it from the editor.'}</p>
+      <p className="settings-empty small">{kit.autoApply ? t('settings.brand.autoOn') : t('settings.brand.autoOff')}</p>
     </section>
   )
 }
@@ -339,9 +344,9 @@ function CaptionStyleBlock({ value, onChange }: { value: BrandKit['captionStyle'
   }
   return (
     <div className="brand-block" data-testid="brand-caption-style">
-      <h4>Caption style</h4>
+      <h4>{t('settings.brand.captionStyle')}</h4>
       <label className="brand-field">
-        <span className="settings-label">Captions get this look with the kit</span>
+        <span className="settings-label">{t('settings.brand.captionLabel')}</span>
         <select
           value={value ? (match?.id ?? '__kept__') : ''}
           onChange={(e) => {
@@ -350,7 +355,7 @@ function CaptionStyleBlock({ value, onChange }: { value: BrandKit['captionStyle'
             onChange(s ? { name: s.name, look: { ...s.look, from: 'brand' } } : undefined)
           }}
         >
-          <option value="">None (keep the video's caption style)</option>
+          <option value="">{t('settings.brand.captionNone')}</option>
           {value && !match && <option value="__kept__">{value.name}</option>}
           {looks.map((s) => (
             <option key={s.id} value={s.id}>
@@ -361,10 +366,10 @@ function CaptionStyleBlock({ value, onChange }: { value: BrandKit['captionStyle'
       </label>
       {editor && (
         <button type="button" className="btn settings-small" data-testid="brand-caption-style-use" onClick={useProject}>
-          Use the current project's caption style
+          {t('settings.brand.captionUse')}
         </button>
       )}
-      <p className="settings-empty small">Save a caption style in the editor's Captions tab to pick it here.</p>
+      <p className="settings-empty small">{t('settings.brand.captionHint')}</p>
     </div>
   )
 }
@@ -374,14 +379,14 @@ function LogoRow({ kit, onPick, onRemove }: { kit: BrandKit; onPick: () => void;
   return (
     <div className="brand-logo-row">
       <div className="brand-logo-preview" aria-hidden={!url}>
-        {url ? <img src={url} alt="Your logo" /> : <span className="settings-empty small">No logo</span>}
+        {url ? <img src={url} alt={t('settings.brand.logoAlt')} /> : <span className="settings-empty small">{t('settings.brand.noLogo')}</span>}
       </div>
       <button type="button" className="btn settings-small" onClick={onPick}>
-        {kit.logo ? 'Change logo…' : 'Choose logo…'}
+        {kit.logo ? t('settings.brand.changeLogo') : t('settings.brand.chooseLogo')}
       </button>
       {kit.logo && (
         <button type="button" className="btn ghost settings-small" onClick={onRemove}>
-          Remove
+          {t('common.action.remove')}
         </button>
       )}
     </div>
@@ -395,7 +400,7 @@ function FontRow({ font, onRename, onRemove }: { font: ProjectFont; onRename: (n
     <li className="brand-font">
       <input
         className="settings-input"
-        aria-label={`Name of font ${font.name}`}
+        aria-label={t('settings.brand.fontName', { name: font.name })}
         value={name}
         onChange={(e) => {
           setName(e.target.value)
@@ -404,10 +409,10 @@ function FontRow({ font, onRename, onRemove }: { font: ProjectFont; onRename: (n
         }}
       />
       <span className="brand-font-sample" style={state === 'ready' ? { fontFamily: `"${fontFamily(font.id)}-kit"` } : undefined}>
-        {state === 'missing' ? 'This font could not be read.' : 'The quick brown fox'}
+        {state === 'missing' ? t('settings.brand.fontUnreadable') : t('settings.brand.fontSample')}
       </span>
-      <button type="button" className="btn ghost settings-small" aria-label={`Remove font ${font.name}`} onClick={onRemove}>
-        Remove
+      <button type="button" className="btn ghost settings-small" aria-label={t('settings.brand.removeFont', { name: font.name })} onClick={onRemove}>
+        {t('common.action.remove')}
       </button>
     </li>
   )
@@ -418,7 +423,7 @@ function FontSelect({ label, fonts, value, onChange }: { label: string; fonts: P
     <label className="brand-field">
       <span className="settings-label">{label}</span>
       <select value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)}>
-        <option value="">Default (Segoe UI)</option>
+        <option value="">{t('settings.brand.defaultFont')}</option>
         {fonts.map((f) => (
           <option key={f.id} value={f.id}>
             {f.name}
@@ -430,32 +435,32 @@ function FontSelect({ label, fonts, value, onChange }: { label: string; fonts: P
 }
 
 function CardBlock({ which, card, onChange }: { which: 'intro' | 'outro'; card: BrandCard | undefined; onChange: (patch: Partial<BrandCard> | null, typing?: boolean) => void }): JSX.Element {
-  const name = which === 'intro' ? 'Intro' : 'Outro'
+  const name = which === 'intro' ? t('settings.brand.introName') : t('settings.brand.outroName')
   return (
     <div className="brand-block">
       <label className="toggle">
-        <span>{name} title card</span>
-        <input type="checkbox" aria-label={`${name} title card`} checked={!!card} onChange={(e) => onChange(e.target.checked ? {} : null)} />
+        <span>{richText('settings.brand.card', { name })}</span>
+        <input type="checkbox" aria-label={t('settings.brand.card', { name })} checked={!!card} onChange={(e) => onChange(e.target.checked ? {} : null)} />
       </label>
       {card && (
         <div className="brand-grid">
           <label className="brand-field">
-            <span className="settings-label">Title</span>
-            <input className="settings-input" aria-label={`${name} title`} value={card.title} maxLength={200} onChange={(e) => onChange({ title: e.target.value }, true)} />
+            <span className="settings-label">{t('common.label.title')}</span>
+            <input className="settings-input" aria-label={t('settings.brand.cardTitle', { name })} value={card.title} maxLength={200} onChange={(e) => onChange({ title: e.target.value }, true)} />
           </label>
           <label className="brand-field">
-            <span className="settings-label">Subtitle</span>
+            <span className="settings-label">{t('settings.brand.subtitle')}</span>
             <input
               className="settings-input"
-              aria-label={`${name} subtitle`}
+              aria-label={t('settings.brand.cardSubtitle', { name })}
               value={card.subtitle ?? ''}
               maxLength={200}
-              placeholder="Optional"
+              placeholder={t('settings.brand.optional')}
               onChange={(e) => onChange({ subtitle: e.target.value }, true)}
             />
           </label>
           <label className="brand-field">
-            <span className="settings-label">Style</span>
+            <span className="settings-label">{t('settings.brand.style')}</span>
             <select value={card.style} onChange={(e) => onChange({ style: e.target.value as BrandCard['style'] })}>
               {TITLE_STYLES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -465,7 +470,7 @@ function CardBlock({ which, card, onChange }: { which: 'intro' | 'outro'; card: 
             </select>
           </label>
           <label className="brand-field">
-            <span className="settings-label">Background</span>
+            <span className="settings-label">{t('common.label.background')}</span>
             <select value={card.background} onChange={(e) => onChange({ background: e.target.value as BrandCard['background'] })}>
               {TITLE_BACKGROUNDS.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -475,7 +480,7 @@ function CardBlock({ which, card, onChange }: { which: 'intro' | 'outro'; card: 
             </select>
           </label>
           <RangeField
-            label="Length"
+            label={t('common.label.length')}
             value={card.length}
             min={BRAND_CARD_LENGTH.min}
             max={BRAND_CARD_LENGTH.max}

@@ -12,6 +12,7 @@ import { promisify } from 'node:util'
 import { normalizeFolderPath, SHARE_SUBFOLDER } from '../../shared/share/cloudFolders'
 import { removeWithRetries } from '../exportCleanup'
 import { batchFileOk, freeBatchPath } from '../exportJob'
+import { t } from '../../shared/i18n/t'
 
 /** Room kept free on the target's drive beyond the file itself. */
 export const SPARE_BYTES = 64 * 1024 * 1024
@@ -52,7 +53,8 @@ const walk = promisify(realpathWalk)
  */
 const realPath = (p: string): Promise<string> => fs.realpath(p).catch(() => walk(p))
 
-export const CANCELLED = 'The share was cancelled.'
+/** A stopped share's message (made when thrown, in the UI language). */
+export const CANCELLED = (): string => t('errors.share.cancelled')
 
 let counter = 0
 /**
@@ -97,7 +99,7 @@ export async function claimName(temp: string, dir: string, name: string, exists:
     await removeWithRetries(temp)
     return dest
   }
-  throw new Error('No free file name was found.')
+  throw new Error(t('errors.copyToFolder.noFreeFileName'))
 }
 
 /**
@@ -150,35 +152,35 @@ const gb = (n: number): string => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${
 export async function copyIntoFolder(file: string, root: string, label: string, opts: CopyOptions): Promise<CopyResult> {
   const { signal } = opts
   const name = path.basename(file)
-  if (!path.isAbsolute(file) || !batchFileOk(name)) throw new Error('This file cannot be shared: its name is not one Flown exports.')
+  if (!path.isAbsolute(file) || !batchFileOk(name)) throw new Error(t('errors.copyToFolder.thisFileCannotBe'))
   const st = await fs.stat(file).catch(() => null)
-  if (!st?.isFile()) throw new Error('The exported file is not there any more.')
+  if (!st?.isFile()) throw new Error(t('errors.copyToFolder.theExportedFileIs'))
   const rootSt = await fs.stat(root).catch(() => null)
-  if (!path.isAbsolute(root) || !rootSt?.isDirectory()) throw new Error(`The ${label} folder is not there any more.`)
+  if (!path.isAbsolute(root) || !rootSt?.isDirectory()) throw new Error(t('errors.copyToFolder.theFolderIsNot', { label: String(label) }))
 
   const sub = path.join(root, SHARE_SUBFOLDER)
   try {
     await fs.mkdir(sub, { recursive: true })
   } catch {
-    throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
+    throw new Error(t('errors.copyToFolder.couldNotMakeThe', { SHARE_SUBFOLDER: String(SHARE_SUBFOLDER), label: String(label) }))
   }
   // A link or junction named Flown must not lead out of the folder.
   const reals = await Promise.all([realPath(root), realPath(sub)]).catch(() => null)
-  if (!reals) throw new Error(`The ${label} folder could not be opened.`)
+  if (!reals) throw new Error(t('errors.copyToFolder.theFolderCouldNot', { label: String(label) }))
   const [realRoot, realSub] = reals
-  if (!sameDir(realSub, path.join(realRoot, SHARE_SUBFOLDER))) throw new Error(`The ${SHARE_SUBFOLDER} folder in ${label} leads somewhere else, so nothing was copied.`)
+  if (!sameDir(realSub, path.join(realRoot, SHARE_SUBFOLDER))) throw new Error(t('errors.copyToFolder.theFolderInLeads', { SHARE_SUBFOLDER: String(SHARE_SUBFOLDER), label: String(label) }))
   const subSt = await fs.stat(realSub).catch(() => null)
-  if (!subSt?.isDirectory()) throw new Error(`Could not make the ${SHARE_SUBFOLDER} folder in ${label}.`)
+  if (!subSt?.isDirectory()) throw new Error(t('errors.copyToFolder.couldNotMakeThe', { SHARE_SUBFOLDER: String(SHARE_SUBFOLDER), label: String(label) }))
 
   const realFile = await realPath(file).catch(() => null)
-  if (!realFile) throw new Error('The exported file is not there any more.')
+  if (!realFile) throw new Error(t('errors.copyToFolder.theExportedFileIs'))
   if (sameDir(path.dirname(realFile), realSub)) return { dest: realFile, bytes: st.size, already: true }
 
   signal.throwIfAborted()
   await sweepStale(realSub, Date.now())
   const drive = subSt.dev
   const free = await (opts.freeBytes ?? realFree)(realSub)
-  if (free !== null && free - (pending.get(drive) ?? 0) < st.size + SPARE_BYTES) throw new Error(`There is not enough space on the drive of ${label} (needs ${gb(st.size + SPARE_BYTES)}).`)
+  if (free !== null && free - (pending.get(drive) ?? 0) < st.size + SPARE_BYTES) throw new Error(t('errors.copyToFolder.thereIsNotEnough', { label: String(label), value: String(gb(st.size + SPARE_BYTES)) }))
   // Counted before anything else is awaited, so a copy that checks meanwhile sees these bytes.
   let left = st.size
   reserve(drive, left)
@@ -213,12 +215,12 @@ export async function copyIntoFolder(file: string, root: string, label: string, 
   } catch (e) {
     // A partial file the cloud app holds open stays listed, so quitting tries again.
     if (await removeWithRetries(temp)) writing.delete(temp)
-    if (signal.aborted) throw new Error(CANCELLED)
+    if (signal.aborted) throw new Error(CANCELLED())
     const code = (e as NodeJS.ErrnoException).code
-    if (code === 'ENOSPC') throw new Error(`The drive of ${label} is full.`)
+    if (code === 'ENOSPC') throw new Error(t('errors.copyToFolder.theDriveOfIs', { label: String(label) }))
     // The done view and the notification name the destination themselves ("Could not copy to OneDrive: …").
-    if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') throw new Error('the folder is read-only or a file there is in use.')
-    throw new Error((e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim() || 'something went wrong.')
+    if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') throw new Error(t('errors.copyToFolder.theFolderIsRead'))
+    throw new Error((e as Error).message.split('\n')[0].replace(/'[^']*'/g, '').trim() || t('errors.share.somethingWrong'))
   } finally {
     reserve(drive, -left)
   }

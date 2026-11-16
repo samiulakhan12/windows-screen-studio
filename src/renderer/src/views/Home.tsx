@@ -14,7 +14,7 @@ import { CameraPreview, Keys, RecordingOptions } from '../recorder/RecordingOpti
 import { BrandLogo } from '../components/BrandLogo'
 import { RecordingPresets } from '../recorder/RecordingPresets'
 import { LanguageOffer } from '../home/LanguageOffer'
-import { uiLanguage } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
 import { NotesCard } from '../notes/NotesCard'
 import { friendlyError, PROCESSING_DEFERRED, SOURCE_GONE, type RecorderError } from '../../../shared/recording/errors'
 import { hotkeyLabel, type HotkeyAction } from '../../../shared/recording/hotkeys'
@@ -40,6 +40,8 @@ import { ImportDialog } from '../import/ImportDialog'
 import { ImportDropZone } from '../import/ImportDropZone'
 import { useVideoImport } from '../import/useVideoImport'
 import { LibrarySearch } from '../search/LibrarySearch'
+import { richText } from '../i18n/richText'
+import { askConfirm } from '../i18n/askConfirm'
 
 const PREFS_KEY = 'recorder-prefs'
 
@@ -86,12 +88,9 @@ const toErrorState = (err: unknown): ErrorState => {
   return { message: e.message, privacy: e.privacy }
 }
 
-const PHASE_LABEL: Record<RecordingPhase, string> = {
-  preparing: 'Preparing…',
-  countdown: 'Starting…',
-  recording: 'Recording…',
-  saving: 'Saving…'
-}
+/** The Start button's label while a recording runs (made where it is shown). */
+const phaseLabel = (phase: RecordingPhase): string =>
+  phase === 'preparing' ? t('home.phase.preparing') : phase === 'countdown' ? t('home.phase.countdown') : phase === 'recording' ? t('home.phase.recording') : t('common.state.saving')
 
 /** The recording options (app settings, kept by the main process), from the last visit to Home. */
 let settingsCache: RecordingSettings | null = null
@@ -144,20 +143,20 @@ function WindowHint({ support, onArea }: { support: WindowCaptureSupport | null;
   if (support.effects) {
     return (
       <p className="hint window-hint" data-support={support.smoothCursor ? 'full' : 'effects'}>
-        {support.smoothCursor
-          ? 'Window recordings get auto zoom, click highlights and the smooth cursor.'
-          : 'Window recordings get auto zoom and click highlights. The Windows cursor stays in the video, so there is no smooth cursor: native window capture is not available on this PC.'}{' '}
-        Moving the window is fine; a resized window is fitted into its starting size.
+        {support.smoothCursor ? t('home.windowHint.full') : t('home.windowHint.effects')}{' '}
+        {t('home.windowHint.moving')}
       </p>
     )
   }
   return (
     <p className="hint window-hint" data-support="none">
-      Window recordings keep the Windows cursor in the video and have no auto zoom, click highlights or smooth cursor here.{' '}
-      <button type="button" className="link-btn" onClick={onArea}>
-        Record an area instead
-      </button>{' '}
-      to get them.
+      {richText('home.windowHint.none', {}, {
+        link: (chunks) => (
+          <button type="button" className="link-btn" onClick={onArea}>
+            {chunks}
+          </button>
+        )
+      })}
     </p>
   )
 }
@@ -299,8 +298,8 @@ function projectDate(iso: string): string {
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
   const time = fmt.time(d.getTime())
-  if (d.getTime() >= startOfToday.getTime()) return `Today, ${time}`
-  if (d.getTime() >= startOfToday.getTime() - DAY_MS) return `Yesterday, ${time}`
+  if (d.getTime() >= startOfToday.getTime()) return t('home.date.today', { time })
+  if (d.getTime() >= startOfToday.getTime() - DAY_MS) return t('home.date.yesterday', { time })
   return fmt.date(d.getTime(), 'dayYear')
 }
 
@@ -330,10 +329,10 @@ function ProjectCard({
         </span>
       </button>
       <div className="project-actions">
-        <button className="btn ghost" title="Show in Explorer" aria-label={`Show ${project.name} in Explorer`} onClick={() => void window.api.revealProject(project.id)}>
+        <button className="btn ghost" title={t('home.showInExplorer')} aria-label={t('home.showNameInExplorer', { name: project.name })} onClick={() => void window.api.revealProject(project.id)}>
           <Icon name="folder" size={15} />
         </button>
-        <button className="btn ghost danger" title="Delete" aria-label={`Delete ${project.name}`} onClick={() => void onDelete()}>
+        <button className="btn ghost danger" title={t('common.action.delete')} aria-label={t('common.action.deleteName', { name: project.name })} onClick={() => void onDelete()}>
           <Icon name="trash" size={15} />
         </button>
       </div>
@@ -356,10 +355,11 @@ function usePageVisible(): boolean {
 function DeviceProblem({ problem, isWindows }: { problem: RecorderError; isWindows: boolean }): JSX.Element {
   return (
     <span className="device-warning device-problem" role="status">
-      {problem.message}
+      {/* The recording side's text stays English (§9.5): marked so in a translated UI only. */}
+      {uiLanguage() === 'en' ? problem.message : <span lang="en">{problem.message}</span>}
       {problem.privacy && isWindows && (
         <button type="button" className="link-btn" onClick={() => void window.api.openPrivacySettings(problem.privacy!)}>
-          Open privacy settings
+          {t('home.privacySettings')}
         </button>
       )}
     </span>
@@ -641,8 +641,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       // Shown on the processing overlay too, e.g. why a recording stopped by itself.
       setNotices([...new Set(warnings)])
     }
-    if (micMissing) warn('The selected microphone is not connected, so the recording has no microphone.')
-    if (camMissing) warn('The selected camera is not connected, so the recording has no camera.')
+    if (micMissing) warn(t('home.warn.micMissing'))
+    if (camMissing) warn(t('home.warn.cameraMissing'))
     let opened = false
     try {
       const id = await runRecording(
@@ -682,7 +682,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     running.current = true
     setError(null)
     setNotices([])
-    setBusy({ message: 'Recovering recording…', progress: null })
+    setBusy({ message: t('home.recovering'), progress: null })
     try {
       onOpenProject(await window.api.recoverRecording(item.id))
     } catch (err) {
@@ -697,7 +697,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   }
 
   const removeUnfinished = async (item: UnfinishedRecording): Promise<void> => {
-    if (!confirm(`Delete this unfinished recording (${fmt.bytes(item.bytes, 'coarse')})? This cannot be undone.`)) return
+    if (!(await askConfirm(t('home.unfinished.deleteQuestion', { size: fmt.bytes(item.bytes, 'coarse') }), 'common.action.delete'))) return
     await window.api.deleteProject(item.id)
     void refreshLibrary()
   }
@@ -707,7 +707,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
     setError(null)
   }
 
-  const overlay = busy ?? (phase === 'saving' ? { message: 'Saving recording…', progress: null } : null)
+  const overlay = busy ?? (phase === 'saving' ? { message: t('home.savingRecording'), progress: null } : null)
   // Restart now (the update notice, Settings › About) waits until a recording has been saved and
   // processed: main cannot see every step of it, and quitting then asks first.
   const recordingBusy = overlay ? BUSY_COPY.processing : phase ? BUSY_COPY.recording : null
@@ -726,9 +726,11 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
   const target =
     tab === 'region'
       ? region
-        ? `Area ${region.width} × ${region.height}${sourceName ? ` on ${sourceName}` : ''}`
-        : 'Pick a screen, then drag out an area'
-      : (sourceName ?? (tab === 'window' ? 'Pick a window to record' : 'No screen found'))
+        ? sourceName
+          ? t('home.target.areaOn', { width: fmt.count(region.width), height: fmt.count(region.height), source: sourceName })
+          : t('home.target.area', { width: fmt.count(region.width), height: fmt.count(region.height) })
+        : t('home.target.pickArea')
+      : (sourceName ?? (tab === 'window' ? t('home.target.pickWindow') : t('home.target.noScreen')))
   // In a translated UI the recording side's panels are marked English (§9.5); English adds no attribute.
   const recordingLang = uiLanguage() === 'en' ? undefined : 'en'
 
@@ -746,27 +748,27 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
       <main className="home">
         <LanguageOffer />
         <div className="home-main">
-          <section className="panel sources" aria-label="What to record">
+          <section className="panel sources" aria-label={t('home.sources.title')}>
             <div className="home-section-head">
               <div>
-                <h2 className="home-section-title">What to record</h2>
+                <h2 className="home-section-title">{t('home.sources.title')}</h2>
                 <p className="home-subtitle">
-                  {tab === 'region' ? 'Click a screen, then drag over the part you want to record.' : tab === 'window' ? 'Pick the window to record.' : 'Pick the screen to record.'}
+                  {tab === 'region' ? t('home.sources.areaHint') : tab === 'window' ? t('home.sources.windowHint') : t('home.sources.screenHint')}
                 </p>
               </div>
               <div className="source-tools">
                 <div className="segmented">
                   <button className={tab === 'screen' ? 'active' : ''} onClick={() => setTab('screen')}>
-                    <Icon name="monitor" size={16} /> Screens
+                    <Icon name="monitor" size={16} /> {t('home.tab.screens')}
                   </button>
                   <button className={tab === 'window' ? 'active' : ''} onClick={() => setTab('window')}>
-                    <Icon name="window" size={16} /> Windows
+                    <Icon name="window" size={16} /> {t('home.tab.windows')}
                   </button>
                   <button className={tab === 'region' ? 'active' : ''} onClick={() => setTab('region')}>
-                    <RegionIcon /> Area
+                    <RegionIcon /> {t('home.tab.area')}
                   </button>
                 </div>
-                <button className="btn ghost icon-btn" onClick={() => void refreshSources(sourceKind)} title="Refresh" aria-label="Refresh sources">
+                <button className="btn ghost icon-btn" onClick={() => void refreshSources(sourceKind)} title={t('common.action.refresh')} aria-label={t('home.sources.refresh')}>
                   <Icon name="refresh" size={16} />
                 </button>
               </div>
@@ -788,8 +790,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                   <span className="empty-state-icon">
                     <Icon name={tab === 'window' ? 'window' : 'monitor'} size={20} />
                   </span>
-                  <strong>No {tab === 'window' ? 'windows' : 'screens'} found.</strong>
-                  <p>{tab === 'window' ? 'Open the app you want to record, then refresh.' : 'Refresh to look again.'}</p>
+                  <strong>{tab === 'window' ? t('home.sources.noWindows') : t('home.sources.noScreens')}</strong>
+                  <p>{tab === 'window' ? t('home.sources.noWindowsHint') : t('home.sources.noScreensHint')}</p>
                 </div>
               )}
             </div>
@@ -797,10 +799,10 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               <div className="region-summary">
                 <RegionIcon />
                 <span className="region-dims">
-                  Area {region.width} × {region.height}
+                  {richText('home.region.size', { width: fmt.count(region.width), height: fmt.count(region.height) })}
                 </span>
                 <button className="btn" onClick={() => void pickRegion(current)} disabled={!idle}>
-                  Change area
+                  {t('home.region.change')}
                 </button>
               </div>
             )}
@@ -808,13 +810,13 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           </section>
 
           {unfinished.length > 0 && (
-            <section className="unfinished-section" aria-label="Unfinished recordings">
+            <section className="unfinished-section" aria-label={t('home.unfinished.title')}>
               <div className="home-section-head">
                 <h2 className="home-section-title">
-                  Unfinished recordings <span className="count">{unfinished.length}</span>
+                  {t('home.unfinished.title')} <span className="count">{fmt.count(unfinished.length)}</span>
                 </h2>
               </div>
-              <p className="home-subtitle unfinished-intro">Footage that was kept when a recording did not finish. Recover it to edit it like any other recording.</p>
+              <p className="home-subtitle unfinished-intro">{t('home.unfinished.intro')}</p>
               <ul className="unfinished-list">
                 {unfinished.map((u) => (
                   <li key={u.id} className="unfinished">
@@ -824,17 +826,17 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                     <div className="unfinished-info" title={u.error ?? undefined}>
                       <span className="project-name">{fmt.date(new Date(u.createdAt).getTime(), 'dayTime')}</span>
                       <span className="muted">
-                        {u.status === 'interrupted' ? 'Interrupted' : 'Processing failed'} · {fmt.bytes(u.bytes, 'coarse')}
+                        {u.status === 'interrupted' ? t('home.unfinished.interrupted') : t('home.unfinished.failed')} · {fmt.bytes(u.bytes, 'coarse')}
                         {u.error ? ` · ${u.error}` : ''}
                       </span>
                     </div>
-                    <button className="btn" disabled={!idle} onClick={() => void recover(u)} title="Turn the saved footage into a project">
-                      {u.status === 'interrupted' ? 'Recover' : 'Retry'}
+                    <button className="btn" disabled={!idle} onClick={() => void recover(u)} title={t('home.unfinished.recoverTitle')}>
+                      {u.status === 'interrupted' ? t('home.unfinished.recover') : t('home.unfinished.retry')}
                     </button>
-                    <button className="btn ghost icon-btn" title="Show in Explorer" onClick={() => void window.api.revealProject(u.id)}>
+                    <button className="btn ghost icon-btn" title={t('home.showInExplorer')} onClick={() => void window.api.revealProject(u.id)}>
                       <Icon name="folder" size={16} />
                     </button>
-                    <button className="btn ghost icon-btn danger" title="Delete" disabled={!idle} onClick={() => void removeUnfinished(u)}>
+                    <button className="btn ghost icon-btn danger" title={t('common.action.delete')} disabled={!idle} onClick={() => void removeUnfinished(u)}>
                       <Icon name="trash" size={16} />
                     </button>
                   </li>
@@ -843,10 +845,10 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             </section>
           )}
 
-          <section className="library" aria-label="Recent recordings">
+          <section className="library" aria-label={t('home.library.title')}>
             <div className="home-section-head">
               <h2 className="home-section-title">
-                Recent recordings {projects.length > 0 && <span className="count">{projects.length}</span>}
+                {t('home.library.title')} {projects.length > 0 && <span className="count">{fmt.count(projects.length)}</span>}
               </h2>
               <ImportButton importer={importer} disabled={!idle} />
             </div>
@@ -857,8 +859,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                 <span className="empty-state-icon">
                   <Icon name="film" size={20} />
                 </span>
-                <strong>Your recordings will show up here.</strong>
-                <p>Pick what to record and press Start recording. Every recording opens in the editor and is saved automatically.</p>
+                <strong>{t('home.library.empty')}</strong>
+                <p>{t('home.library.emptyHint')}</p>
               </div>
             ) : (
               <ul className="project-grid">
@@ -870,7 +872,7 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                     disabled={!idle}
                     onOpen={() => onOpenProject(p.id)}
                     onDelete={async () => {
-                      if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
+                      if (!(await askConfirm(t('home.library.deleteQuestion', { name: p.name }), 'common.action.delete'))) return
                       await releaseThumbnail(p.id)
                       await window.api.deleteProject(p.id)
                       void refreshLibrary()
@@ -885,54 +887,54 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
 
         <aside className="panel record-panel">
           <div className="record-head">
-            <h2>New recording</h2>
+            <h2>{t('home.record.title')}</h2>
             <div className="record-target">
               {tab === 'region' ? <RegionIcon /> : <Icon name={tab === 'window' ? 'window' : 'monitor'} size={14} />}
               <span>{target}</span>
             </div>
           </div>
           <div className="record-body">
-            <div className="rec-group" role="group" aria-label="Audio and camera">
+            <div className="rec-group" role="group" aria-label={t('home.record.audioCamera')}>
               <label className="field">
                 <span>
-                  <Icon name="mic" size={16} /> Microphone
+                  <Icon name="mic" size={16} /> {t('home.record.microphone')}
                 </span>
                 <select value={micMissing ? '' : (prefs.micId ?? '')} onChange={(e) => update({ micId: e.target.value || null })}>
-                  <option value="">No microphone</option>
+                  <option value="">{t('home.record.noMicrophone')}</option>
                   {mics.map((m) => (
                     <option key={m.deviceId} value={m.deviceId}>
-                      {m.label || 'Microphone'}
+                      {m.label || t('home.record.microphone')}
                     </option>
                   ))}
                 </select>
                 {prefs.micId && !micMissing && (
-                  <div className={`mic-meter ${micProblem ? 'unavailable' : ''}`} title="Microphone level" aria-hidden="true">
+                  <div className={`mic-meter ${micProblem ? 'unavailable' : ''}`} title={t('home.record.micLevel')} aria-hidden="true">
                     <div className="mic-meter-fill" ref={meterBar} />
                   </div>
                 )}
-                {micMissing && <span className="device-warning">Your microphone is disconnected.</span>}
+                {micMissing && <span className="device-warning">{t('home.record.micDisconnected')}</span>}
                 {micHint && <DeviceProblem problem={micHint} isWindows={isWindows} />}
               </label>
               <label className="field">
                 <span>
-                  <Icon name="camera" size={16} /> Camera
+                  <Icon name="camera" size={16} /> {t('common.label.camera')}
                 </span>
                 <select value={camMissing ? '' : (prefs.cameraId ?? '')} onChange={(e) => update({ cameraId: e.target.value || null })}>
-                  <option value="">No camera</option>
+                  <option value="">{t('home.record.noCamera')}</option>
                   {cams.map((c) => (
                     <option key={c.deviceId} value={c.deviceId}>
-                      {c.label || 'Camera'}
+                      {c.label || t('common.label.camera')}
                     </option>
                   ))}
                 </select>
-                {camMissing && <span className="device-warning">Your camera is disconnected.</span>}
+                {camMissing && <span className="device-warning">{t('home.record.cameraDisconnected')}</span>}
                 {camBlocked && <DeviceProblem problem={camBlocked} isWindows={isWindows} />}
               </label>
               {previewedCam && <CameraPreview deviceId={previewedCam} release={releaseCamera} onProblem={setCamProblem} />}
               <div className="rec-divider" />
-              <label className={`toggle ${!isWindows ? 'disabled' : ''}`} title={isWindows ? undefined : 'Windows only'}>
+              <label className={`toggle ${!isWindows ? 'disabled' : ''}`} title={isWindows ? undefined : t('home.record.windowsOnly')}>
                 <span>
-                  <Icon name="volume" size={16} /> System audio
+                  <Icon name="volume" size={16} /> {t('home.record.systemAudio')}
                 </span>
                 <input
                   type="checkbox"
@@ -943,20 +945,20 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
               </label>
               <label
                 className="toggle"
-                title="Records shortcuts such as Ctrl + C for the keystroke overlay, and when you type so auto zoom can follow your typing. Which keys you type is never recorded."
+                title={t('home.record.keysTitle')}
               >
                 <span>
-                  <KeyboardIcon /> Record keyboard activity
+                  <KeyboardIcon /> {t('home.record.keys')}
                 </span>
-                <input type="checkbox" aria-label="Record keyboard activity" checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
+                <input type="checkbox" aria-label={t('home.record.keys')} checked={prefs.captureKeys} onChange={(e) => update({ captureKeys: e.target.checked })} />
               </label>
-              <p className="hint toggle-hint">Shortcuts and when you type, never which keys.</p>
+              <p className="hint toggle-hint">{t('home.record.keysHint')}</p>
               <div className="rec-divider" />
               <div className="fps-row">
                 <span>
-                  <FrameRateIcon /> Frame rate
+                  <FrameRateIcon /> {t('home.record.frameRate')}
                 </span>
-                <div className="chips fps-picker" role="group" aria-label="Frame rate">
+                <div className="chips fps-picker" role="group" aria-label={t('home.record.frameRate')}>
                   {([30, 60] as const).map((fps) => (
                     <button
                       key={fps}
@@ -964,10 +966,10 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
                       className={`chip ${settings.fps === fps ? 'active' : ''}`}
                       aria-pressed={settings.fps === fps}
                       disabled={!idle}
-                      title={fps === 30 ? 'Lighter: half the frames to capture, encode and edit' : 'Smoothest motion'}
+                      title={fps === 30 ? t('home.record.fps30') : t('home.record.fps60')}
                       onClick={() => void updateSettings({ fps })}
                     >
-                      {fps} fps
+                      {richText('home.record.fps', { fps: fmt.count(fps) })}
                     </button>
                   ))}
                 </div>
@@ -1006,10 +1008,11 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             )}
             {error && (
               <div className="home-error" role="alert">
-                <span>{error.message}</span>
+                {/* The recording side's errors stay English (§9.5): marked so in a translated UI only. */}
+                <span lang={recordingLang}>{error.message}</span>
                 {error.privacy && isWindows && (
                   <button className="btn" onClick={() => void window.api.openPrivacySettings(error.privacy!)}>
-                    Open privacy settings
+                    {t('home.privacySettings')}
                   </button>
                 )}
               </div>
@@ -1017,16 +1020,10 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
           </div>
           <div className="record-footer">
             <button className="btn record" disabled={!canStart} onClick={() => void record()}>
-              <span className="rec-dot" /> {phase ? PHASE_LABEL[phase] : tab === 'region' && !region ? 'Select an area first' : 'Start recording'}
+              <span className="rec-dot" /> {phase ? phaseLabel(phase) : tab === 'region' && !region ? t('home.record.selectArea') : t('home.record.start')}
             </button>
             <p className="hint">
-              Stop with the floating bar{stopKey ? (
-                <>
-                  {' '}
-                  or <Keys label={stopKey} />
-                </>
-              ) : null}
-              .
+              {stopKey ? richText('home.record.stopHintKeys', { keys: stopKey }, { kbd: () => <Keys label={stopKey} /> }) : richText('home.record.stopHint', {})}
             </p>
           </div>
         </aside>
@@ -1052,8 +1049,8 @@ export function Home({ onOpenProject }: { onOpenProject: (id: string) => void })
             </div>
           )}
           {busy && (
-            <button className="btn" onClick={() => void window.api.finishProcessingLater()} title="Keep the recording and convert it later from Unfinished recordings">
-              Finish later
+            <button className="btn" onClick={() => void window.api.finishProcessingLater()} title={t('home.finishLaterTitle')}>
+              {t('home.finishLater')}
             </button>
           )}
         </div>

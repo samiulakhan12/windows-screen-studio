@@ -20,6 +20,7 @@ import { copyIntoFolder, removePartialCopies } from './copyToFolder'
 import { ShareService } from './shareService'
 import { ShareStore } from './shareStore'
 import { postToWebhook, type FetchLike } from './webhookPost'
+import { t } from '../../shared/i18n/t'
 
 /** Test hooks, read only by an unpackaged app (as ai/endpoints.ts). */
 const testEnv = (name: string): string | undefined => (app.isPackaged ? undefined : process.env[name] || undefined)
@@ -159,7 +160,7 @@ export function registerShareIpc(): void {
       s.removeFolder(id)
     } else if (typeof on === 'boolean') {
       const folder = (await folderInfos()).find((f) => f.id === id)
-      if (!folder) throw new Error('This folder is not there any more.')
+      if (!folder) throw new Error(t('errors.shareIpc.thisFolderIsNot'))
       // A found folder's switch sits in their list, shown as it will be once seen: changing it is seeing them.
       if (folder.source !== 'picked') s.markReviewed()
       s.setOff(id, !on)
@@ -169,11 +170,11 @@ export function registerShareIpc(): void {
   handle('share:pickFolder', async () => {
     const win = getMainWindow()
     if (!win) return null
-    const result = await dialog.showOpenDialog(win, { title: 'Add a folder to share to', buttonLabel: 'Add folder', properties: ['openDirectory', 'createDirectory'] })
+    const result = await dialog.showOpenDialog(win, { title: t('main.shareIpc.addAFolderTo'), buttonLabel: t('main.shareIpc.addFolder'), properties: ['openDirectory', 'createDirectory'] })
     const dir = result.canceled ? undefined : result.filePaths[0]
     if (!dir || !path.isAbsolute(dir)) return null
     const st = await fs.stat(dir).catch(() => null)
-    if (!st?.isDirectory()) throw new Error('Choose a folder.')
+    if (!st?.isDirectory()) throw new Error(t('errors.shareIpc.chooseAFolder'))
     const known = (await folderInfos()).find((f) => f.id === folderId(dir))
     if (known) shareStore().setOff(known.id, false)
     else shareStore().addFolder(dir, path.basename(dir) || dir)

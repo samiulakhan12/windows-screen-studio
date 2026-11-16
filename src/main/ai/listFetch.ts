@@ -8,6 +8,7 @@ import { describeFailure } from '../../shared/captions/transcriptErrors'
 import type { ListedModel } from '../../shared/api/ai'
 import { AiError, certificateFailure } from './request'
 import { scrubSecrets } from './secrets'
+import { t } from '../../shared/i18n/t'
 
 export const MODEL_LIST_TIMEOUT_MS = 20_000
 export const MODEL_LIST_MAX_BYTES = 4 * 1024 * 1024
@@ -108,8 +109,8 @@ export function readListedIds(entries: readonly unknown[], extra: (entry: unknow
   return out
 }
 
-/** Refused before sending: a request to an address the key was not entered for. */
-export const OTHER_ORIGIN_MESSAGE = 'Flown refused to send this request to another address than the service’s.'
+/** Refused before sending: a request to an address the key was not entered for (made when refused, in the UI language). */
+export const OTHER_ORIGIN_MESSAGE = (): string => t('errors.listFetch.otherOrigin')
 
 /**
  * A fetch for one service: every request must go to `origin` (scheme, host and port) and may not be
@@ -121,9 +122,9 @@ export function noRedirectFetch(origin: string, base: typeof fetch = globalThis.
     try {
       url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
     } catch {
-      return Promise.reject(new Error(OTHER_ORIGIN_MESSAGE))
+      return Promise.reject(new Error(OTHER_ORIGIN_MESSAGE()))
     }
-    if (url.origin !== origin) return Promise.reject(new RefusedRequest(OTHER_ORIGIN_MESSAGE))
+    if (url.origin !== origin) return Promise.reject(new RefusedRequest(OTHER_ORIGIN_MESSAGE()))
     return base(input, { ...init, redirect: 'error' }).catch((err: unknown) => {
       throw isRedirectError(err) ? new RefusedRequest(REDIRECT_MESSAGE) : err
     })

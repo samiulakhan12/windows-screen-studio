@@ -21,6 +21,7 @@ import { MUSIC_BEDS, SOUND_LIBRARY_SOURCE, type MusicBed, type SoundLibrarySourc
 import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from '../speech/download'
 import { bundledSoundDir, downloadedSoundDir } from './paths'
+import { t } from '../../shared/i18n/t'
 
 /** The record of verified downloads. */
 const RECORDS = 'library.json'
@@ -29,15 +30,32 @@ const RECORDS_MAX = 64 * 1024
 /** Most bytes the downloaded beds may take together (§10.3: 7.1 MB today). */
 export const LIBRARY_DOWNLOAD_CAP = 12_000_000
 
+/** The music library's messages, made when read (in the UI language). */
 export const LIBRARY_COPY = {
-  notOffered: 'This music is not one Flown offers.',
-  notYet: 'This music cannot be downloaded yet.',
-  mismatch: 'The download did not match the expected file, so it was deleted.',
-  cancelled: 'The download was cancelled.',
-  changed: 'The music file in the library has changed, so it was deleted. Download it again.',
-  missing: 'The music file is missing from the library. Download it again.',
-  bundledMissing: 'The music file is missing from this installation. Reinstall Flown to bring it back.',
-  cap: 'The music library is larger than expected, so this download was stopped.'
+  get notOffered(): string {
+    return t('errors.music.notOffered')
+  },
+  get notYet(): string {
+    return t('errors.music.notYet')
+  },
+  get mismatch(): string {
+    return t('errors.music.mismatch')
+  },
+  get cancelled(): string {
+    return t('errors.music.cancelled')
+  },
+  get changed(): string {
+    return t('errors.music.changed')
+  },
+  get missing(): string {
+    return t('errors.music.missing')
+  },
+  get bundledMissing(): string {
+    return t('errors.music.bundledMissing')
+  },
+  get cap(): string {
+    return t('errors.music.cap')
+  }
 }
 
 /* ---------- which addresses ---------- */
@@ -250,7 +268,7 @@ export async function downloadBed(id: string, opts: { signal: AbortSignal; onPro
       return { id: bed.id, state: 'downloaded', bytes: stat.size }
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code
-      throw new Error(`The music downloaded, but Flown could not save it${code ? ` (${code})` : ''}. Try again.`)
+      throw new Error(code ? t('errors.download.musicNotSavedCode', { code }) : t('errors.download.musicNotSaved'))
     }
   })()
   active.set(bed.id, entry)

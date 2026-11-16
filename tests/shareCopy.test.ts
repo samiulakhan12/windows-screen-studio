@@ -51,7 +51,7 @@ describe('copyIntoFolder', () => {
   it('deletes the partial file when cancelled', async () => {
     const controller = new AbortController()
     const run = copyIntoFolder(video, root, 'OneDrive', { signal: controller.signal, freeBytes: plenty, onProgress: (f) => f > 0 && controller.abort() , now: () => Date.now() + Math.random() * 1e6 })
-    await expect(run).rejects.toThrow(CANCELLED)
+    await expect(run).rejects.toThrow(CANCELLED())
     expect(readdirSync(path.join(root, 'Flown'))).toEqual([])
   })
 
@@ -99,7 +99,7 @@ describe('copyIntoFolder', () => {
     // Finished and cancelled copies count no more.
     const controller = new AbortController()
     const cancelled = copyIntoFolder(video, root, 'OneDrive', { signal: controller.signal, freeBytes: async () => free, onProgress: (f) => f > 0 && controller.abort(), now: () => Date.now() + Math.random() * 1e6 })
-    await expect(cancelled).rejects.toThrow(CANCELLED)
+    await expect(cancelled).rejects.toThrow(CANCELLED())
     const exact = async (): Promise<number> => size + SPARE_BYTES
     expect((await copyIntoFolder(video, dropbox, 'Dropbox', { signal: signal(), freeBytes: exact })).dest).toBe(path.join(dropbox, 'Flown', 'Demo.mp4'))
   })

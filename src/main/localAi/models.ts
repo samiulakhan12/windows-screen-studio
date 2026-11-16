@@ -20,6 +20,7 @@ import { blockReason, diskMessage, LOCAL_MESSAGES } from '../../shared/localAi/m
 import { writeFileAtomicSync } from '../atomicWrite'
 import { allowDownloadUrl, DownloadFailure, downloadPinned, electronGet, type HttpGet } from '../speech/download'
 import { STALE_PART_MS } from '../speech/models'
+import { t } from '../../shared/i18n/t'
 
 /** userData/text-models (§4.7). */
 export const TEXT_MODELS_DIR = 'text-models'
@@ -280,13 +281,13 @@ export class LocalModelStore {
    */
   async download(id: unknown, opts: { signal?: AbortSignal; onProgress?: (s: LocalAiState) => void } = {}): Promise<LocalAiState> {
     const spec = this.spec(id)
-    if (!spec) throw new Error('Unknown model.')
+    if (!spec) throw new Error(t('errors.localAi.unknownModel'))
     const pc = { ...this.deps.pc(), avx2: await this.deps.processor().catch(() => null) }
     const block = localModelBlock(spec, pc)
     if (block) throw new Error(`${blockReason(spec, block, pc)}${block === 'memory' ? '.' : ''}`)
     if (this.active) {
       if (this.active.id === spec.id) return this.active.promise
-      throw new Error('Another model is downloading.')
+      throw new Error(t('errors.localAi.busy'))
     }
     if ((await this.check(spec)) === 'ready') return this.state()
     const controller = new AbortController()
@@ -323,7 +324,7 @@ export class LocalModelStore {
         })
       } catch (err) {
         const failure = err instanceof DownloadFailure ? err : new DownloadFailure('other', err instanceof Error ? err.message : String(err))
-        if (failure.kind === 'cancelled') throw new Error('Cancelled.')
+        if (failure.kind === 'cancelled') throw new Error(t('errors.cancelled'))
         if (failure.kind === 'disk') throw new Error(diskMessage(spec))
         throw new Error(failure.message)
       } finally {
@@ -346,7 +347,7 @@ export class LocalModelStore {
   /** Stops the download of `id` (its .part stays: Download continues it). */
   async cancel(id: unknown): Promise<void> {
     const spec = this.spec(id)
-    if (!spec) throw new Error('Unknown model.')
+    if (!spec) throw new Error(t('errors.localAi.unknownModel'))
     const active = this.active
     if (active?.id !== spec.id) return
     active.controller.abort()
@@ -356,7 +357,7 @@ export class LocalModelStore {
   /** Deletes the model's file and any part, stopping the helper first when it has the file loaded. */
   async remove(id: unknown): Promise<LocalAiState> {
     const spec = this.spec(id)
-    if (!spec) throw new Error('Unknown model.')
+    if (!spec) throw new Error(t('errors.localAi.unknownModel'))
     if (this.active?.id === spec.id) await this.cancel(spec.id)
     const file = this.fileOf(spec)
     await this.deps.unload?.(file)
@@ -371,10 +372,10 @@ export class LocalModelStore {
 
   /** Automatic, or a downloaded model pinned. */
   async setUse(use: unknown): Promise<LocalAiState> {
-    if (!isLocalModelUse(use)) throw new Error('Unknown choice.')
+    if (!isLocalModelUse(use)) throw new Error(t('errors.localAi.unknownChoice'))
     if (use !== 'auto') {
       const spec = this.spec(use)
-      if (!spec || (await this.check(spec)) !== 'ready') throw new Error('Only a downloaded model can be chosen.')
+      if (!spec || (await this.check(spec)) !== 'ready') throw new Error(t('errors.localAi.notDownloaded'))
     }
     this.save((s) => (s.use = use))
     this.deps.onChange?.()

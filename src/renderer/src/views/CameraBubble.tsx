@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import type { RecordingApi } from '../../../shared/api/recording'
 import { BUBBLE_SIZES, type BubbleSize } from '../../../shared/recording/cameraBubble'
 import { RecIcon } from './recordingIcons'
+import { t } from '../../../shared/i18n/t'
 
 export interface CameraBubbleProps {
   api: Pick<RecordingApi, 'dragCameraBubble' | 'resizeCameraBubble' | 'toggleCameraBubble'>
@@ -90,25 +91,25 @@ export function CameraBubble({ api, token, stream, shape, mirror, size: initialS
     <div
       className={`cam-bubble shape-${shape} ${live ? 'live' : ''} ${dragging ? 'dragging' : ''}`}
       onPointerDown={onPointerDown}
-      title="Drag to move the camera to another corner"
+      title={t('home.cameraBubble.drag')}
       data-testid="camera-bubble"
     >
-      <video ref={video} className={mirror ? 'mirrored' : ''} muted playsInline autoPlay aria-label="Live camera" />
-      {!live && <span className="cam-bubble-wait">Camera…</span>}
-      <div className="cam-bubble-controls" role="toolbar" aria-label="Camera bubble">
+      <video ref={video} className={mirror ? 'mirrored' : ''} muted playsInline autoPlay aria-label={t('home.cameraBubble.live')} />
+      {!live && <span className="cam-bubble-wait">{t('home.cameraBubble.waiting')}</span>}
+      <div className="cam-bubble-controls" role="toolbar" aria-label={t('home.cameraBubble.toolbar')}>
         {BUBBLE_SIZES.map((s) => (
           <button
             key={s}
             className={`cam-bubble-btn size ${size === s ? 'active' : ''}`}
             aria-pressed={size === s}
-            aria-label={`Camera bubble size ${s === 'S' ? 'small' : s === 'M' ? 'medium' : 'large'}`}
-            title={s === 'S' ? 'Small' : s === 'M' ? 'Medium' : 'Large'}
+            aria-label={s === 'S' ? t('home.cameraBubble.sizeSmall') : s === 'M' ? t('home.cameraBubble.sizeMedium') : t('home.cameraBubble.sizeLarge')}
+            title={s === 'S' ? t('home.cameraBubble.small') : s === 'M' ? t('home.cameraBubble.medium') : t('home.cameraBubble.large')}
             onClick={() => resize(s)}
           >
             {s}
           </button>
         ))}
-        <button className="cam-bubble-btn hide" aria-label="Hide camera bubble" title="Hide the camera bubble (show it again from the recording bar). The camera keeps recording." onClick={() => void api.toggleCameraBubble()}>
+        <button className="cam-bubble-btn hide" aria-label={t('home.cameraBubble.hide')} title={t('home.cameraBubble.hideTitle')} onClick={() => void api.toggleCameraBubble()}>
           <RecIcon name="eye-off" size={14} />
         </button>
       </div>

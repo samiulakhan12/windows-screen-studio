@@ -17,6 +17,7 @@ import { ffmpegPath } from '../ffmpeg'
 import { ProjectProcesses } from '../projectProcesses'
 import { projectDir } from '../projects'
 import { isAppUrl } from '../security'
+import { t } from '../../shared/i18n/t'
 
 /** Most streams a window may have open at once (one per source, with room for a retry). */
 export const MAX_STREAMS = 4
@@ -80,7 +81,7 @@ export class SoundStreams {
 
   async open(owner: number, projectId: unknown, source: unknown): Promise<SoundStreamInfo> {
     const { file } = this.fileOf(projectId, source)
-    if (this.openCount(owner) >= MAX_STREAMS) throw new Error('Too many sounds are being read at once')
+    if (this.openCount(owner) >= MAX_STREAMS) throw new Error(t('errors.soundsIpc.tooManySoundsAre'))
     // The slot is taken before the first await, so calls at once cannot pass the limit together.
     this.opening.set(owner, (this.opening.get(owner) ?? 0) + 1)
     try {
@@ -95,7 +96,7 @@ export class SoundStreams {
   private async start(owner: number, projectId: string, source: AudioSource, file: string): Promise<SoundStreamInfo> {
     const generation = this.processes.generation(projectId)
     const stat = await fs.stat(file).catch(() => null)
-    if (!stat?.isFile()) throw new Error(`The recording's ${source === 'mic' ? 'microphone' : source === 'system' ? 'system sound' : 'sound'} file is missing`)
+    if (!stat?.isFile()) throw new Error(t(source === 'mic' ? 'errors.soundsIpc.micMissing' : source === 'system' ? 'errors.soundsIpc.systemMissing' : 'errors.soundsIpc.soundMissing'))
     // Stopped meanwhile (the editor closed): nothing new starts.
     if (this.processes.generation(projectId as string) !== generation) throw new Error(SOUNDS_STOPPED)
     const proc = (this.deps.spawn ?? nodeSpawn)(this.deps.ffmpeg(), soundDecodeArgs(file), { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -129,8 +130,8 @@ export class SoundStreams {
   /** The next chunk (whole samples), null at the end; rejects on a failure, a stop, or a stream of another window. */
   read(owner: number, stream: unknown): Promise<ArrayBuffer | null> {
     const s = typeof stream === 'number' ? this.streams.get(stream) : undefined
-    if (!s || s.owner !== owner) return Promise.reject(new Error('No such sound stream'))
-    if (s.waiting) return Promise.reject(new Error('A read of this sound stream is already waiting'))
+    if (!s || s.owner !== owner) return Promise.reject(new Error(t('errors.soundsIpc.noSuchSoundStream')))
+    if (s.waiting) return Promise.reject(new Error(t('errors.soundsIpc.aReadOfThis')))
     this.touch(s)
     return new Promise((resolve, reject) => {
       s.waiting = { resolve, reject }
@@ -239,13 +240,13 @@ export class SoundStreams {
     const entry = readCacheEntry(raw)
     if (!entry) throw new Error('Invalid sound scores')
     const st = await fs.stat(file).catch(() => null)
-    if (!st?.isFile() || st.size !== entry.size || st.mtimeMs !== entry.mtimeMs) throw new Error('The recording changed while it was listened to')
+    if (!st?.isFile() || st.size !== entry.size || st.mtimeMs !== entry.mtimeMs) throw new Error(t('errors.soundsIpc.theRecordingChangedWhile'))
     const prev = this.writes.get(id) ?? Promise.resolve()
     const next = prev.then(async () => {
       if (this.processes.generation(id) !== generation) return
       const entries = { ...(await this.readCache(dir)), [source as string]: entry }
       const text = JSON.stringify({ version: 1, entries })
-      if (Buffer.byteLength(text) > SOUNDS_CACHE_MAX) throw new Error('The sound scores are too large to keep')
+      if (Buffer.byteLength(text) > SOUNDS_CACHE_MAX) throw new Error(t('errors.soundsIpc.theSoundScoresAre'))
       await fs.mkdir(path.join(dir, '.cache'), { recursive: true })
       writeFileAtomicSync(path.join(dir, '.cache', SOUNDS_CACHE_FILE), text)
     })

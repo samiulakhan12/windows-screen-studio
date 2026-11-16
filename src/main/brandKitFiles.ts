@@ -13,6 +13,7 @@ import type { ProjectFont } from '../shared/types'
 import { checkAssetFile, importAsset } from './assetIpc'
 import { brandKitDir, brandKitFile, FONT_PICKS, isBrandFile, loadBrandKit, LOGO_PICKS } from './brandKit'
 import { projectDir } from './projects'
+import { t } from '../shared/i18n/t'
 
 /**
  * Copies `src` into the kit's folder as a new logo or font file, checked as a logo (PNG, JPG,
@@ -24,9 +25,9 @@ export async function addBrandFile(kind: 'logo' | 'font', src: string, file = br
   const dir = brandKitDir(file)
   await fs.mkdir(dir, { recursive: true })
   const existing = await fs.readdir(dir).catch(() => [] as string[])
-  if (kind === 'font' && existing.filter((n) => FONT_FILE_RE.test(n)).length >= MAX_BRAND_FONTS * 4) throw new Error('Remove a font from the brand kit first.')
+  if (kind === 'font' && existing.filter((n) => FONT_FILE_RE.test(n)).length >= MAX_BRAND_FONTS * 4) throw new Error(t('errors.brandKitFiles.removeAFontFrom'))
   const name = nextPickFile(kind === 'logo' ? LOGO_PICKS : FONT_PICKS, existing, ext)
-  if (!isBrandFile(name)) throw new Error('This file cannot be added.')
+  if (!isBrandFile(name)) throw new Error(t('errors.brandKitFiles.thisFileCannotBe'))
   const tmp = path.join(dir, `.${name}.part`)
   try {
     await fs.copyFile(src, tmp)

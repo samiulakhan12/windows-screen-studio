@@ -2,6 +2,7 @@ import type { AiProviderInfo } from '../../shared/api/ai'
 import { modelDefaults } from './modelList'
 import type { ServiceStore } from './serviceStore'
 import type { AiClient } from './types'
+import { t } from '../../shared/i18n/t'
 
 /**
  * A client for provider `info` with its key. Each provider's SDK is loaded the first time it is
@@ -11,7 +12,7 @@ import type { AiClient } from './types'
  */
 export async function clientFor(info: AiProviderInfo, apiKey: string | null, services?: Pick<ServiceStore, 'setJsonMode'>): Promise<AiClient> {
   if (info.service) return (await import('./compatible')).compatibleClient(info, apiKey, services ?? { setJsonMode: () => undefined })
-  if (apiKey === null) throw new Error('This provider has no key: add it again in Settings.')
+  if (apiKey === null) throw new Error(t('errors.providers.thisProviderHasNo'))
   const transcriptionModel = info.transcriptionModel ?? modelDefaults(info.kind).transcriptionModel ?? ''
   switch (info.kind) {
     case 'openai':

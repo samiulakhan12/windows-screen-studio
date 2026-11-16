@@ -14,20 +14,22 @@ import path from 'node:path'
 import { nextPickFile, stalePickFiles, type PickedFiles } from '../shared/engine/picks'
 import { CubeError, CUBE_LIMITS, parseCube } from '../shared/render/cubeLut'
 import { cleanLutTitle, readProjectGrade } from '../shared/render/gradeData'
+import { t } from '../shared/i18n/t'
 
 /** LUT imports: lut-<n>.cube, the three newest kept (besides the ones the saved project uses). */
 export const LUT_PICKS: PickedFiles = { base: 'lut', re: /^lut(-[1-9][0-9]{0,8})\.cube$/, keep: 3 }
 
-const CHOOSE = 'Choose a .cube LUT.'
+/** The answer to a file that is not a .cube LUT (made when thrown, in the UI language). */
+const choose = (): string => t('errors.lutImport.choose')
 
 /** The file's bytes, its size checked first and never more than the limit read. */
 async function readCapped(source: string): Promise<Buffer> {
   const handle = await fs.open(source, 'r')
   try {
     const st = await handle.stat()
-    if (!st.isFile()) throw new Error(CHOOSE)
-    if (st.size === 0) throw new Error('This file is empty.')
-    const tooLarge = (size: number): Error => new Error(`The file is too large (${Math.ceil(size / 2 ** 20)} MB; ${CUBE_LIMITS.maxBytes / 2 ** 20} MB at most).`)
+    if (!st.isFile()) throw new Error(choose())
+    if (st.size === 0) throw new Error(t('errors.lutImport.thisFileIsEmpty'))
+    const tooLarge = (size: number): Error => new Error(t('errors.lutImport.theFileIsToo', { value: String(Math.ceil(size / 2 ** 20)), value2: String(CUBE_LIMITS.maxBytes / 2 ** 20) }))
     if (st.size > CUBE_LIMITS.maxBytes) throw tooLarge(st.size)
     // One byte more than allowed is asked for, so a file that grew since is noticed.
     const buf = Buffer.alloc(Math.min(st.size, CUBE_LIMITS.maxBytes) + 1)
@@ -63,15 +65,15 @@ async function savedLuts(projectDir: string): Promise<string[]> {
  * the line); nothing is written then.
  */
 export async function importLut(projectDir: string, source: string): Promise<{ file: string; sha256: string; title: string; size: number }> {
-  if (typeof source !== 'string' || source.includes('\0') || !path.isAbsolute(source)) throw new Error(CHOOSE)
+  if (typeof source !== 'string' || source.includes('\0') || !path.isAbsolute(source)) throw new Error(choose())
   const ext = path.extname(source)
-  if (ext.toLowerCase() !== '.cube') throw new Error(CHOOSE)
+  if (ext.toLowerCase() !== '.cube') throw new Error(choose())
   const data = await readCapped(source)
   let lut
   try {
     lut = parseCube(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
   } catch (err) {
-    throw new Error(err instanceof CubeError ? err.message : 'This LUT could not be used.')
+    throw new Error(err instanceof CubeError ? err.message : t('main.lutImport.thisLutCouldNot'))
   }
   const sha256 = createHash('sha256').update(data).digest('hex')
   const title = lut.title || cleanLutTitle(path.basename(source, ext)) || 'LUT'

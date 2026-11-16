@@ -30,6 +30,7 @@ import {
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
 import { removeSyncWithRetries } from './exportCleanup'
+import { t } from '../shared/i18n/t'
 
 export const VERSIONS_DIR = 'versions'
 const INDEX = 'index.json'
@@ -201,9 +202,9 @@ export function listVersions(dir: string): VersionMeta[] {
   let stale = false
   try {
     const st = fs.lstatSync(path.join(folder, INDEX))
-    if (!st.isFile() || st.size > INDEX_MAX) throw new Error('not an index')
+    if (!st.isFile() || st.size > INDEX_MAX) throw new Error(t('errors.versions.notAnIndex'))
     const raw = JSON.parse(fs.readFileSync(path.join(folder, INDEX), 'utf8')) as { v?: unknown; items?: unknown }
-    if (raw?.v !== 1 || !Array.isArray(raw.items)) throw new Error('not an index')
+    if (raw?.v !== 1 || !Array.isArray(raw.items)) throw new Error(t('errors.versions.notAnIndex'))
     indexed = raw.items.slice(0, VERSION_LIMITS.index).map(sanitizeMeta).filter((m): m is VersionMeta => m !== null)
     if (indexed.length !== raw.items.length) stale = true
   } catch {
@@ -372,7 +373,7 @@ export async function readVersion(dir: string, projectId: string, id: string): P
   try {
     const raw = JSON.parse(await fs.promises.readFile(file, 'utf8')) as { format?: unknown; meta?: unknown; project?: unknown; files?: unknown }
     const meta = raw?.format === FORMAT ? sanitizeMeta(raw.meta) : null
-    if (!meta || meta.id !== id) throw new Error('not a version')
+    if (!meta || meta.id !== id) throw new Error(t('errors.versions.notAVersion'))
     const project = { ...migrateProject(raw.project), id: projectId }
     return { meta: { ...meta, bytes: st.size }, project, files: keptHashes(project, raw.files) }
   } catch {

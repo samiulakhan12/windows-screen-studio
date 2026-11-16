@@ -14,6 +14,7 @@ import { freeBatchPath, isPng, moveIntoPlace, partialPath } from './exportJob'
 import { isExportedFile, replacedExport } from './exportIpc'
 import { removeWithRetries } from './exportCleanup'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 /** Largest thumbnail accepted (as export:saveThumbnail). */
 const MAX_PNG_BYTES = 200 * 1024 * 1024
@@ -35,7 +36,7 @@ const realDeps: SidecarDeps = { isExported: isExportedFile, replaced: replacedEx
  * replace an existing file.
  */
 export function sidecarTarget(anchor: unknown, kind: unknown, deps: SidecarDeps = realDeps, language?: unknown): string {
-  if (typeof anchor !== 'string' || !path.isAbsolute(anchor) || !deps.isExported(anchor)) throw new Error('Only files exported in this session get extra files')
+  if (typeof anchor !== 'string' || !path.isAbsolute(anchor) || !deps.isExported(anchor)) throw new Error(t('errors.exportBundle.onlyFilesExportedIn'))
   if (!SIDECAR_KINDS.includes(kind as SidecarKind)) throw new Error('Invalid extra file')
   if (language !== undefined && language !== null && (typeof language !== 'string' || !SUBTITLE_LANGUAGE_RE.test(language) || (kind !== 'srt' && kind !== 'vtt'))) throw new Error('Invalid extra file')
   const lang = typeof language === 'string' ? language : undefined
@@ -52,7 +53,7 @@ export function sidecarBytes(kind: SidecarKind, content: unknown): Uint8Array {
     return content
   }
   if (kind === 'srt' || kind === 'vtt') {
-    if (!validSubtitle(kind, content)) throw new Error('These captions cannot be saved as a subtitle file')
+    if (!validSubtitle(kind, content)) throw new Error(t('errors.captionsIpc.theseCaptionsCannotBe'))
     // A byte order mark helps older Windows players read accents and non-Latin scripts in SRT files (as captionsIpc.ts).
     return Buffer.from((kind === 'srt' ? '﻿' : '') + content, 'utf8')
   }
@@ -70,7 +71,7 @@ export async function writeSidecar(anchor: unknown, kind: unknown, content: unkn
     await moveIntoPlace(temp, file)
   } catch (e) {
     await removeWithRetries(temp)
-    throw (e as NodeJS.ErrnoException).code === 'ENOSPC' ? new Error('The disk is full.') : e
+    throw (e as NodeJS.ErrnoException).code === 'ENOSPC' ? new Error(t('errors.diskFull')) : e
   }
   return file
 }

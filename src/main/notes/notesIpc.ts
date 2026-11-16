@@ -39,6 +39,7 @@ import {
   setNotesReport,
   toggleNotesShown
 } from './notesWindow'
+import { t } from '../../shared/i18n/t'
 
 /** Whether a message comes from Home: the main window's own page. */
 export function fromHome(e: IpcMainEvent | IpcMainInvokeEvent): boolean {
@@ -138,7 +139,7 @@ export function registerNotesIpc(): void {
   ipcMain.handle(NOTES_CHANNELS.rehearse, (e, open: unknown): NotesState => {
     requireHome(e)
     if (open === true) {
-      if (!openRehearsal()) throw new Error('Finish the recording first.')
+      if (!openRehearsal()) throw new Error(t('errors.notesIpc.finishTheRecordingFirst'))
     } else {
       closeRehearsal()
     }

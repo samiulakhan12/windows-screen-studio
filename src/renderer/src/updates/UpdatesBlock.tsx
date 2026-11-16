@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { spokenStatus, statusLine, type UpdateState } from '../../../shared/updates/updates'
 import { checkedAt, installUpdate, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
+import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 type Action = { label: string; run?: () => Promise<unknown> }
 
@@ -11,17 +13,17 @@ function actionOf(s: UpdateState, restart: () => Promise<unknown>): Action | nul
     case 'disabled':
       return null
     case 'checking':
-      return { label: 'Check for updates' }
+      return { label: t('settings.updates.check') }
     case 'available':
-      return { label: `Download Flown ${s.version}`, run: () => window.api.updatesDownload() }
+      return { label: t('settings.updates.download', { version: s.version ?? '' }), run: () => window.api.updatesDownload() }
     case 'downloading':
-      return { label: 'Downloading…' }
+      return { label: t('settings.updates.downloading') }
     case 'ready':
-      return { label: 'Restart now', run: restart }
+      return { label: t('settings.updates.restart'), run: restart }
     case 'error':
-      return s.version ? { label: `Download Flown ${s.version}`, run: () => window.api.updatesDownload() } : { label: 'Check for updates', run: () => window.api.updatesCheck() }
+      return s.version ? { label: t('settings.updates.download', { version: s.version }), run: () => window.api.updatesDownload() } : { label: t('settings.updates.check'), run: () => window.api.updatesCheck() }
     case 'idle':
-      return { label: 'Check for updates', run: () => window.api.updatesCheck() }
+      return { label: t('settings.updates.check'), run: () => window.api.updatesCheck() }
   }
 }
 
@@ -46,19 +48,19 @@ export function UpdatesBlock(): JSX.Element {
 
   return (
     <div className="updates-block" data-testid="updates" data-phase={s.phase}>
-      <h4 className="updates-title">Updates</h4>
+      <h4 className="updates-title">{t('settings.updates.title')}</h4>
       {/* Hidden from screen readers: the live region below says the same, so it is not read twice. */}
       <p className="updates-status" data-testid="updates-status" aria-hidden="true">
         {statusLine(s)}
-        {last && <span className="muted"> Last checked {last}.</span>}
+        {last && <span className="muted"> {richText('settings.updates.lastChecked', { when: last })}</span>}
       </p>
       {/* The live region: the same status without the download's percent, so a download is not
           announced at every percent (the progress bar gives the value when asked). */}
       <span className="sr-only" role="status">
         {spokenStatus(s)}
-        {last && ` Last checked ${last}.`}
+        {last && ` ${t('settings.updates.lastChecked', { when: last })}`}
       </span>
-      {s.phase === 'downloading' && <progress className="updates-progress" max={100} value={s.percent ?? 0} aria-label={`Downloading Flown ${s.version}`} />}
+      {s.phase === 'downloading' && <progress className="updates-progress" max={100} value={s.percent ?? 0} aria-label={t('settings.updates.downloadingLabel', { version: s.version ?? '' })} />}
       {action && (
         <div className="updates-actions">
           <button
@@ -96,15 +98,14 @@ export function UpdatesBlock(): JSX.Element {
               .finally(() => setPendingAuto(null))
           }}
         />
-        Update Flown automatically
+        {t('settings.updates.auto')}
       </label>
       <p className="hint">
-        Flown looks for a new version on GitHub every few hours, downloads it in the background and installs it when you close Flown. The same check refreshes the
-        list of suggested AI models.
+        {t('settings.updates.hint')}
       </p>
       {s.notes && s.version && (
         <details className="updates-notes">
-          <summary>What&apos;s new in {s.version}</summary>
+          <summary>{t('settings.updates.notes', { version: s.version })}</summary>
           <div className="updates-notes-text" data-testid="updates-notes">
             {s.notes}
           </div>

@@ -10,6 +10,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { guidePayloadProblem, imageKind, type GuideSavePayload } from '../../shared/api/guide'
 import { batchFileOk, moveIntoPlace, partialPath } from '../exportJob'
+import { t } from '../../shared/i18n/t'
 
 /** The name used when the one sent cannot be a file name. */
 export const DEFAULT_GUIDE_NAME = 'Guide'
@@ -34,7 +35,7 @@ export function checkGuidePayload(raw: unknown): GuideSavePayload {
   const problem = guidePayloadProblem(raw)
   if (problem) throw new Error(problem)
   const p = raw as GuideSavePayload
-  if (p.format === 'markdown' ? typeof p.markdown !== 'string' : typeof p.html !== 'string') throw new Error('Nothing to save.')
+  if (p.format === 'markdown' ? typeof p.markdown !== 'string' : typeof p.html !== 'string') throw new Error(t('errors.writeGuide.nothingToSave'))
   const images = p.format === 'markdown' && p.images ? p.images.map((b) => new Uint8Array(b)) : undefined
   return {
     format: p.format,
@@ -69,7 +70,7 @@ async function newFolder(parent: string, name: string): Promise<string> {
       if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e
     }
   }
-  throw new Error('Could not make a folder for the guide.')
+  throw new Error(t('errors.writeGuide.couldNotMakeA'))
 }
 
 /**
@@ -78,17 +79,17 @@ async function newFolder(parent: string, name: string): Promise<string> {
  * where it went and how many bytes were written.
  */
 export async function writeGuideFiles(target: string, payload: GuideSavePayload, pdf?: Buffer): Promise<{ path: string; bytes: number }> {
-  if (!path.isAbsolute(target)) throw new Error('The guide cannot be saved there.')
+  if (!path.isAbsolute(target)) throw new Error(t('errors.writeGuide.theGuideCannotBe'))
   if (payload.format === 'pdf') {
-    if (!pdf || pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new Error('The PDF could not be made.')
+    if (!pdf || pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new Error(t('errors.writeGuide.thePdfCouldNot'))
     return { path: target, bytes: await writeInPlace(target, pdf) }
   }
   if (payload.format === 'html' || payload.format === 'demo') return { path: target, bytes: await writeInPlace(target, payload.html ?? '') }
   const markdown = payload.markdown ?? ''
   const names = [...markdown.matchAll(IMAGE_REF)].map((m) => m[1])
   const images = payload.images ?? []
-  if (names.length !== images.length || new Set(names).size !== names.length) throw new Error('The guide’s pictures do not match its text.')
-  if (images.some((b) => imageKind(b) !== 'png')) throw new Error('A screenshot of this guide cannot be saved.')
+  if (names.length !== images.length || new Set(names).size !== names.length) throw new Error(t('errors.writeGuide.theGuidesPicturesDo'))
+  if (images.some((b) => imageKind(b) !== 'png')) throw new Error(t('errors.writeGuide.aScreenshotOfThis'))
   const dir = await newFolder(target, guideNameOk(payload.name) ? payload.name : DEFAULT_GUIDE_NAME)
   try {
     let bytes = 0

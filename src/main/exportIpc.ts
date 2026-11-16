@@ -9,7 +9,7 @@ import { describeGifFit, ffmpegPlan, gifEncodeArgs, gifPaletteArgs, nextGifFit, 
 import { copyFileToClipboard } from './exportClipboard'
 import { LeftoverLog, removeSyncWithRetries, removeWithRetries, settledWithin, sweepTempDir } from './exportCleanup'
 import { rememberExportJob } from './exportedJobs'
-import { batchFileOk, freeBatchPath, isPng, moveIntoPlace, partialPath, resolveSoundInputs, tempStem, toIpcError, validateJob } from './exportJob'
+import { batchFileOk, errorCodeOf, ExportFailure, freeBatchPath, isPng, moveIntoPlace, partialPath, resolveSoundInputs, tempStem, toIpcError, validateJob } from './exportJob'
 import { FrameEncoder, startFfmpeg, type FfmpegRun } from './ffmpeg'
 import { detectH264Encoders } from './hwEncoders'
 import * as projects from './projects'
@@ -96,7 +96,8 @@ export function rememberExported(file: string): void {
 /** Whether `kind` next to `file` may be replaced: its export replaced a file the user chose to replace. Each kind once. */
 export const replacedExport = (file: string, kind: string): boolean => replacedFiles.get(file)?.delete(kind) === true
 
-const CANCELLED = 'The export was cancelled.'
+/** What a cancelled export's calls answer (made when thrown, in the UI language). */
+const cancelled = (): Error => new ExportFailure(t('errors.export.cancelled'), 'cancelled')
 /** Longest wait for a killed ffmpeg to exit before deleting its files anyway. */
 const EXIT_WAIT_MS = 5000
 /** Longest a quit waits for a cancelled export's clean-up. */
@@ -109,13 +110,13 @@ const MAX_THUMBNAIL_BYTES = 200 * 1024 * 1024
 /** The save dialog's filter per format, made when the dialog opens (text is never made at module scope, output-and-languages §9.1). */
 export function saveFilters(): Record<ExportFormat | 'png', Electron.FileFilter> {
   return {
-    mp4: { name: 'MP4 video', extensions: ['mp4'] },
+    mp4: { name: t('main.saveFilter.mp4'), extensions: ['mp4'] },
     gif: { name: 'GIF', extensions: ['gif'] },
-    webm: { name: 'WebM video', extensions: ['webm'] },
-    mov: { name: 'QuickTime movie', extensions: ['mov'] },
-    m4a: { name: 'M4A audio', extensions: ['m4a'] },
+    webm: { name: t('main.saveFilter.webm'), extensions: ['webm'] },
+    mov: { name: t('main.saveFilter.mov'), extensions: ['mov'] },
+    m4a: { name: t('main.saveFilter.m4a'), extensions: ['m4a'] },
     wav: { name: t('main.saveFilter.wav'), extensions: ['wav'] },
-    png: { name: 'PNG image', extensions: ['png'] }
+    png: { name: t('main.saveFilter.png'), extensions: ['png'] }
   }
 }
 
@@ -190,7 +191,7 @@ function watchOwner(owner: WebContents, isCurrent: () => boolean): () => void {
 
 /** Runs one ffmpeg pass of `job`, stoppable by a cancel. */
 async function runPass(job: ActiveExport, args: string[]): Promise<void> {
-  if (job.cancelled) throw new Error(CANCELLED)
+  if (job.cancelled) throw cancelled()
   job.pass = startFfmpeg(args)
   await job.pass.done
 }
@@ -231,7 +232,7 @@ export function registerExportIpc(): void {
     const filter = saveFilters()[format]
     if (!filter) throw new Error('Invalid export format')
     const result = await dialog.showSaveDialog(main, {
-      title: format === 'png' ? 'Save thumbnail' : 'Export recording',
+      title: format === 'png' ? t('main.export.thumbnailTitle') : t('main.export.saveTitle'),
       defaultPath: path.join(app.getPath('videos'), `${defaultName}.${filter.extensions[0]}`),
       filters: [filter]
     })
@@ -245,9 +246,9 @@ export function registerExportIpc(): void {
     const main = getMainWindow()
     if (!main) return null
     const result = await dialog.showOpenDialog(main, {
-      title: 'Export to folder',
+      title: t('main.exportIpc.exportToFolder'),
       defaultPath: app.getPath('videos'),
-      buttonLabel: 'Export here',
+      buttonLabel: t('main.exportIpc.exportHere'),
       properties: ['openDirectory', 'createDirectory', 'promptToCreate']
     })
     approvedFolder = result.canceled || !result.filePaths[0] ? null : result.filePaths[0]
@@ -256,7 +257,7 @@ export function registerExportIpc(): void {
   })
 
   ipcMain.handle('export:batchPath', (_e, folder: string, fileName: string) => {
-    if (!approvedFolder || folder !== approvedFolder) throw new Error('Export folder was not chosen through the folder dialog')
+    if (!approvedFolder || folder !== approvedFolder) throw new Error(t('errors.exportIpc.exportFolderWasNot'))
     if (!batchFileOk(fileName)) throw new Error('Invalid export file name')
     const file = freeBatchPath(approvedFolder, fileName, (f) => existsSync(f) || batchPaths.has(f))
     batchPaths.add(file)
@@ -289,24 +290,31 @@ export function registerExportIpc(): void {
   ipcMain.handle('export:start', async (e, projectId: string, requested: ExportJob) => {
     // A code is of this export's failure only (output-and-languages §9.6).
     setExportErrorCode(null)
+    try {
+      await startExport(e, projectId, requested)
+    } catch (err) {
+      setExportErrorCode(errorCodeOf(err))
+      throw err
+    }
+  })
+
+  /** export:start's work; a failure's code is recorded by the handler. */
+  async function startExport(e: Electron.IpcMainInvokeEvent, projectId: string, requested: ExportJob): Promise<void> {
     const approved = !!requested?.outputPath && (requested.outputPath === approvedExportPath || batchPaths.has(requested.outputPath))
-    if (!approved) throw new Error('Export path was not chosen through the save dialog')
+    if (!approved) throw new ExportFailure(t('errors.exportIpc.exportPathWasNot'), 'not-chosen')
     validateJob(requested)
     // Stems work with one file only (output-and-languages §7.6): never in a batch.
-    if (requested.stems && batchPaths.has(requested.outputPath)) throw new Error('Invalid export settings')
+    if (requested.stems && batchPaths.has(requested.outputPath)) throw new ExportFailure('Invalid export settings', 'invalid-job')
     void cancelActive()
     const finalPath = requested.outputPath
     if (finalPath === approvedExportPath && (await fileExists(finalPath))) replacedFiles.set(finalPath, new Set(SIDECAR_KINDS))
     else replacedFiles.delete(finalPath)
     await fs.access(path.dirname(finalPath), fsConstants.W_OK).catch(() => {
-      throw new Error(`Could not write to the folder "${path.dirname(finalPath)}". Choose another folder.`)
+      throw new ExportFailure(t('errors.exportIpc.couldNotWriteTo', { value: String(path.dirname(finalPath)) }), 'permission')
     })
     // An editing format, WAV or stems need room: refused below 1.2 × the estimate (output-and-languages §5.10).
     const space = await spaceProblem(requested, path.dirname(finalPath))
-    if (space) {
-      setExportErrorCode('disk-full')
-      throw new Error(space)
-    }
+    if (space) throw new ExportFailure(space, 'disk-full')
     const tempPath = partialPath(finalPath)
     // The stems the recording kept: a missing one may only fall back to the mixed sound when that sounds the same.
     const recorded = await projects.readProject(projectId).then(stemsOf, () => [])
@@ -324,7 +332,7 @@ export function registerExportIpc(): void {
     const sound = await cleanVoiceInputs(await resolveSoundInputs(requested, dir, fileExists, recorded, library), projectId, requested).finally(() => {
       if (starting === prep) starting = null
     })
-    if (prep.signal.aborted) throw new Error(CANCELLED)
+    if (prep.signal.aborted) throw cancelled()
     const { job } = sound
     const plan = ffmpegPlan(job, { audioInput: sound.audioInput, stems: sound.stems, music: sound.music, bed: sound.bed, effects: sound.effects, output: tempPath, tempStem: tempStem(app.getPath('temp')) })
     // Logged before ffmpeg creates them, so a crash from here on is cleaned up at the next start.
@@ -333,23 +341,25 @@ export function registerExportIpc(): void {
     const started: ActiveExport = { projectId, job, encoder: new FrameEncoder(plan.capture), tempPath, finalPath, plan, pass: null, cancelled: false, stemsAbort: new AbortController(), unwatch: () => undefined }
     started.unwatch = watchOwner(e.sender, () => active === started)
     active = started
-  })
+  }
 
   ipcMain.handle('export:frame', (_e, data: Uint8Array) => {
-    if (!active) throw new Error(CANCELLED)
+    // Without a job the code stays as it was: the export ended or was cancelled before this frame.
+    if (!active) throw new Error(t('errors.export.cancelled'))
     return active.encoder.write(data).catch((e: unknown) => {
+      setExportErrorCode(errorCodeOf(e))
       throw toIpcError(e)
     })
   })
 
   ipcMain.handle('export:finish', async (): Promise<ExportFinish> => {
     const job = active
-    if (!job) throw new Error(CANCELLED)
+    if (!job) throw new Error(t('errors.export.cancelled'))
     try {
       await job.encoder.finish()
       for (const args of job.plan.passes) await runPass(job, args)
       const fit = await fitGif(job)
-      if (job.cancelled) throw new Error(CANCELLED)
+      if (job.cancelled) throw cancelled()
       await moveIntoPlace(job.tempPath, job.finalPath)
       log?.remove([job.tempPath])
       exportedFiles.add(job.finalPath)
@@ -366,7 +376,8 @@ export function registerExportIpc(): void {
     } catch (e) {
       // Every ffmpeg of this job has exited by now (each was awaited), so the files can go.
       await removeFiles([job.tempPath])
-      throw job.cancelled ? new Error(CANCELLED) : toIpcError(e)
+      setExportErrorCode(job.cancelled ? 'cancelled' : errorCodeOf(e))
+      throw job.cancelled ? cancelled() : toIpcError(e)
     } finally {
       await removeFiles(job.plan.temps)
       if (active === job) {
@@ -384,10 +395,10 @@ export function registerExportIpc(): void {
   })
 
   ipcMain.handle('export:saveThumbnail', async (_e, file: string, png: Uint8Array) => {
-    if (!approvedThumbnailPath || file !== approvedThumbnailPath) throw new Error('Thumbnail path was not chosen through the save dialog')
+    if (!approvedThumbnailPath || file !== approvedThumbnailPath) throw new Error(t('errors.exportIpc.thumbnailPathWasNot'))
     if (!(png instanceof Uint8Array) || png.byteLength > MAX_THUMBNAIL_BYTES || !isPng(png)) throw new Error('Invalid thumbnail image')
     await fs.access(path.dirname(file), fsConstants.W_OK).catch(() => {
-      throw new Error(`Could not write to the folder "${path.dirname(file)}". Choose another folder.`)
+      throw new Error(t('errors.exportIpc.couldNotWriteTo', { value: String(path.dirname(file)) }))
     })
     const temp = partialPath(file)
     try {
@@ -395,7 +406,7 @@ export function registerExportIpc(): void {
       await moveIntoPlace(temp, file)
     } catch (e) {
       await removeWithRetries(temp)
-      throw toIpcError((e as NodeJS.ErrnoException).code === 'ENOSPC' ? new Error('The disk is full.') : e)
+      throw toIpcError((e as NodeJS.ErrnoException).code === 'ENOSPC' ? new Error(t('errors.diskFull')) : e)
     }
     approvedThumbnailPath = null
     exportedFiles.add(file)

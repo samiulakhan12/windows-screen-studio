@@ -11,6 +11,8 @@ import {
   type Handle
 } from '../../../shared/recording/regionGeometry'
 import './RegionPicker.css'
+import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 type Drag = { mode: 'new' | 'move' | Handle; from: { x: number; y: number }; start: Box | null }
 
@@ -72,9 +74,9 @@ export function RegionPicker(): JSX.Element {
     <div className={`region-root ${box ? 'has-box' : ''}`} onPointerDown={begin('new')} onPointerMove={onMove} onPointerUp={onUp}>
       {!box && (
         <div className="region-help">
-          <strong>Drag to select the area to record</strong>
+          <strong>{t('home.regionPicker.drag')}</strong>
           <span>
-            <kbd>Enter</kbd> to confirm · <kbd>Esc</kbd> to cancel
+            {richText('home.regionPicker.keys', {}, { kbd: (chunks) => <kbd>{chunks}</kbd> })}
           </span>
         </div>
       )}
@@ -99,10 +101,10 @@ export function RegionPicker(): JSX.Element {
           onPointerDown={(e) => e.stopPropagation()}
         >
           <button className="region-btn" onClick={() => finish(null)}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
           <button className="region-btn primary" onClick={() => finish(box)}>
-            Record this area
+            {t('home.regionPicker.record')}
           </button>
         </div>
       )}

@@ -8,6 +8,7 @@ import { ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { ASSETS_CHANNELS, type AssetProgress } from '../shared/api/assets'
 import { cancelAssetDownload, downloadAsset, listAssets, removeAsset } from './assets/assetStore'
 import { isAppUrl } from './security'
+import { t } from '../shared/i18n/t'
 
 /** Fewest milliseconds between two progress messages of one download (a busy notice always goes). */
 export const PROGRESS_EVERY_MS = 250
@@ -19,7 +20,7 @@ export function fromApp(e: Pick<IpcMainInvokeEvent, 'senderFrame'>): void {
 
 /** A catalogue id from the renderer: a short lower-case name, never a path or a URL. */
 export function assetId(v: unknown): string {
-  if (typeof v !== 'string' || !/^[a-z0-9-]{1,40}$/.test(v)) throw new Error('This download is not one Flown offers.')
+  if (typeof v !== 'string' || !/^[a-z0-9-]{1,40}$/.test(v)) throw new Error(t('errors.assetStore.thisDownloadIsNot'))
   return v
 }
 

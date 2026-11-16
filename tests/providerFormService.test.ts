@@ -42,7 +42,7 @@ mockReact()
 const FORM = '../src/renderer/src/settings/ProviderForm'
 const SECTION = '../src/renderer/src/settings/AiProvidersSection'
 const USE_COST = '../src/renderer/src/ai/useCost'
-const { ProviderForm, MORE_SERVICES_HINT } = (await import(/* @vite-ignore */ FORM)) as { ProviderForm: (p: unknown) => unknown; MORE_SERVICES_HINT: string }
+const { ProviderForm, moreServicesHint } = (await import(/* @vite-ignore */ FORM)) as { ProviderForm: (p: unknown) => unknown; moreServicesHint: () => string }
 
 let done: { saved: AiProviderInfo; check?: { ok: boolean; message: string } }[] = []
 const form = (editing: AiProviderInfo | null = null): unknown => ({ type: ProviderForm, props: { editing, existing: [], onCancel: () => undefined, onSaved: (saved: AiProviderInfo, check?: { ok: boolean; message: string }) => done.push({ saved, check }) } })
@@ -76,8 +76,8 @@ describe('Add a provider › More services (test 95)', () => {
     expect(goesTo(els)).toBe('Your key and the text you send go to api.openai.com.')
     ;(radio(els, 'More services').props.onClick as () => void)()
     els = await settle(form())
-    expect(text(els)).toContain(MORE_SERVICES_HINT)
-    expect(MORE_SERVICES_HINT).toBe('OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address')
+    expect(text(els)).toContain(moreServicesHint())
+    expect(moreServicesHint()).toBe('OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address')
     const preset = inputBy(els, (p) => p['data-testid'] === 'service-preset')!
     expect(els.filter((e) => e.type === 'option').map((o) => textOf(o))).toEqual(['OpenRouter', 'Groq', 'Together AI', 'Azure OpenAI', 'Ollama on this PC', 'LM Studio on this PC', 'Other address'])
     expect(inputBy(els, (p) => p.id === ':r1:-url')?.props.value ?? inputBy(els, (p) => String(p.id).endsWith('-url'))!.props.value).toBe('https://openrouter.ai/api/v1')

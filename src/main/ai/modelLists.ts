@@ -18,6 +18,7 @@ import { clientFor } from './providers'
 import { SERVICE_ID_RE, SERVICE_MESSAGES, validateServiceInput, type ServiceStore } from './serviceStore'
 import { scrubSecrets } from './secrets'
 import type { AiClient } from './types'
+import { t } from '../../shared/i18n/t'
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
@@ -75,7 +76,7 @@ async function clientOf(target: unknown, deps: { providers(): AiProviderStore; s
 export async function listModels(target: unknown, deps: { providers(): AiProviderStore; services(): ServiceStore }): Promise<ListedModel[]> {
   try {
     const client = await clientOf(target, deps)
-    if (!client.models) throw new Error('This provider cannot list its models.')
+    if (!client.models) throw new Error(t('errors.modelLists.thisProviderCannotList'))
     return await client.models(AbortSignal.timeout(20_000))
   } catch (err) {
     throw new Error(scrubSecrets(err instanceof Error ? err.message : String(err)))

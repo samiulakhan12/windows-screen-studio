@@ -23,6 +23,7 @@ import { encodeWithFallback } from './recording/finalize'
 import { FfmpegError, isCancelled, READ_ERROR_RE } from './recording/proxyRunner'
 import { isAppUrl } from './security'
 import { applyStyleDefaults, loadStyleDefaults } from './styleDefaults'
+import { t } from '../shared/i18n/t'
 
 /** Marks a folder whose import has not finished (§4.6). */
 export const IMPORT_MARKER = 'import.json'
@@ -478,11 +479,11 @@ export function registerImportIpc(): void {
     if (active) return { ok: false, fileName: null, error: IMPORT_COPY.busy }
     const win = BrowserWindow.fromWebContents(e.sender)
     const options: Electron.OpenDialogOptions = {
-      title: 'Import a video',
+      title: t('main.import.title'),
       properties: ['openFile'],
       filters: [
-        { name: 'Videos', extensions: [...IMPORT_EXTENSIONS] },
-        { name: 'All files', extensions: ['*'] }
+        { name: t('main.import.videos'), extensions: [...IMPORT_EXTENSIONS] },
+        { name: t('main.import.allFiles'), extensions: ['*'] }
       ]
     }
     const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)

@@ -12,38 +12,24 @@ import { blockReason, pcLine, sizeGb, speedLine } from '../../../shared/localAi/
 import { loadLocalAiState, modelInUse, setLocalAiState, useLocalAi } from '../ai/localAiState'
 import { ipcMessage } from './providerText'
 import '../ai/localAi.css'
-
-export const LOCAL_AI_COPY = {
-  title: 'AI on this PC',
-  lead: 'Writes titles, chapter names, summaries, clean-ups, translations and posts with no key, and sends nothing anywhere. Good for drafts: check what it writes. Slower than an AI service.',
-  checking: 'Checking this PC…',
-  failed: 'AI on this PC could not be checked.',
-  download: 'Download',
-  downloadAgain: 'Download again',
-  cancel: 'Cancel',
-  remove: 'Remove',
-  downloaded: 'Downloaded',
-  suggested: 'Suggested for this PC',
-  use: 'Model for AI on this PC',
-  automatic: 'Automatic',
-  damaged: 'The model file is missing or damaged.'
-} as const
+import { t } from '../../../shared/i18n/t'
+import { fmt } from '../../../shared/i18n/fmt'
 
 const specOf = (id: LocalModelId): LocalModelSpec | undefined => LOCAL_MODELS.find((m) => m.id === id)
 
 /** "Download Recommended, 3.1 gigabytes": what the Download button says to a screen reader. */
 export function downloadName(spec: LocalModelSpec, bytes: number): string {
-  return `Download ${spec.title}, ${(bytes / 1e9).toFixed(1)} gigabytes`
+  return t('settings.localAi.downloadName', { title: spec.title, size: fmt.number(bytes / 1e9, { min: 1, max: 1 }) })
 }
 
 /** "1.2 of 3.1 GB". */
 export function progressText(done: number, bytes: number): string {
-  return `${(Math.max(0, done) / 1e9).toFixed(1)} of ${sizeGb(bytes)}`
+  return t('settings.localAi.progress', { done: fmt.number(Math.max(0, done) / 1e9, { min: 1, max: 1 }), total: sizeGb(bytes) })
 }
 
 /** What the download's progress bar says to a screen reader (§14): "1.2 of 3.1 gigabytes". */
 export function progressValueText(done: number, bytes: number): string {
-  return `${(Math.max(0, done) / 1e9).toFixed(1)} of ${(Math.max(0, bytes) / 1e9).toFixed(1)} gigabytes`
+  return t('settings.localAi.progressValue', { done: fmt.number(Math.max(0, done) / 1e9, { min: 1, max: 1 }), total: fmt.number(Math.max(0, bytes) / 1e9, { min: 1, max: 1 }) })
 }
 
 export function LocalAiSection(props: { reveal: boolean }): JSX.Element {
@@ -67,7 +53,7 @@ export function LocalAiSection(props: { reveal: boolean }): JSX.Element {
       },
       (err: unknown) => {
         const message = ipcMessage(err)
-        if (message !== 'Cancelled.') setError(message)
+        if (message !== t('errors.cancelled')) setError(message)
         loadLocalAiState()
       }
     )
@@ -76,11 +62,11 @@ export function LocalAiSection(props: { reveal: boolean }): JSX.Element {
   return (
     <section className="settings-section local-ai-section" aria-labelledby="settings-local-ai-title" ref={ref} data-testid="local-ai">
       <h3 id="settings-local-ai-title" ref={headingRef} tabIndex={-1}>
-        {LOCAL_AI_COPY.title}
+        {t('settings.localAi.title')}
       </h3>
-      <p className="hint">{LOCAL_AI_COPY.lead}</p>
-      {local.status === 'loading' && <p className="settings-empty">{LOCAL_AI_COPY.checking}</p>}
-      {local.status === 'failed' && <p className="local-ai-line">{LOCAL_AI_COPY.failed}</p>}
+      <p className="hint">{t('settings.localAi.lead')}</p>
+      {local.status === 'loading' && <p className="settings-empty">{t('settings.localAi.checking')}</p>}
+      {local.status === 'failed' && <p className="local-ai-line">{t('settings.localAi.failed')}</p>}
       {local.status === 'ready' && <Models state={local.state} act={act} />}
       {error && (
         <p className="error" role="alert">
@@ -98,7 +84,7 @@ export function LocalAiSection(props: { reveal: boolean }): JSX.Element {
 export function readyAnnouncement(before: LocalAiState | null, after: LocalAiState): string {
   if (!before) return ''
   const done = after.models.filter((m) => m.state === 'ready' && before.models.find((b) => b.id === m.id)?.state === 'downloading')
-  return done.map((m) => `${specOf(m.id)?.title ?? m.id} is ready`).join('. ')
+  return done.map((m) => t('settings.localAi.ready', { title: specOf(m.id)?.title ?? m.id })).join('. ')
 }
 
 function Models({ state, act }: { state: LocalAiState; act: (what: Promise<LocalAiState | void>) => void }): JSX.Element {
@@ -127,11 +113,11 @@ function Models({ state, act }: { state: LocalAiState; act: (what: Promise<Local
         ))}
       </div>
       {ready.length > 0 && (
-        <fieldset className="local-ai-use" role="radiogroup" aria-label={LOCAL_AI_COPY.use}>
-          <legend>{LOCAL_AI_COPY.use}</legend>
+        <fieldset className="local-ai-use" role="radiogroup" aria-label={t('settings.localAi.use')}>
+          <legend>{t('settings.localAi.use')}</legend>
           <label>
             <input type="radio" name="local-ai-use" value="auto" checked={state.use === 'auto'} onChange={() => setUse('auto')} />
-            {LOCAL_AI_COPY.automatic}
+            {t('settings.localAi.automatic')}
           </label>
           {ready.map((m) => (
             <label key={m.id}>
@@ -175,8 +161,8 @@ function Row({ m, state, suggested, act }: { m: LocalModelState; state: LocalAiS
     <div className="local-ai-model" data-model={m.id} data-state={m.state}>
       <p className="local-ai-head">
         <strong>{spec.title}</strong> · {spec.name} · {sizeGb(m.bytes)}
-        {suggested && !why && <span className="local-ai-badge">{LOCAL_AI_COPY.suggested}</span>}
-        {m.state === 'ready' && <span className="local-ai-badge ok">{LOCAL_AI_COPY.downloaded}</span>}
+        {suggested && !why && <span className="local-ai-badge">{t('settings.localAi.suggested')}</span>}
+        {m.state === 'ready' && <span className="local-ai-badge ok">{t('settings.localAi.downloaded')}</span>}
       </p>
       <p className="local-ai-hint">{spec.hint}</p>
       <p className="local-ai-licence">
@@ -187,10 +173,10 @@ function Row({ m, state, suggested, act }: { m: LocalModelState; state: LocalAiS
           {why}
         </p>
       )}
-      {m.state === 'damaged' && <p className="local-ai-status error">{LOCAL_AI_COPY.damaged}</p>}
+      {m.state === 'damaged' && <p className="local-ai-status error">{t('settings.localAi.damaged')}</p>}
       {m.state === 'downloading' && (
         <div className="local-ai-progress">
-          <progress max={m.bytes} value={m.done ?? 0} aria-label={`Downloading ${spec.title}`} aria-valuetext={progressValueText(m.done ?? 0, m.bytes)} />
+          <progress max={m.bytes} value={m.done ?? 0} aria-label={t('settings.localAi.downloading', { title: spec.title })} aria-valuetext={progressValueText(m.done ?? 0, m.bytes)} />
           <span>{progressText(m.done ?? 0, m.bytes)}</span>
         </div>
       )}
@@ -204,7 +190,7 @@ function Row({ m, state, suggested, act }: { m: LocalModelState; state: LocalAiS
             setAsking(false)
           }}
         >
-          <span>{`Remove the ${spec.title} model (${sizeGb(m.bytes)})? AI on this PC cannot use it until it is downloaded again.`}</span>
+          <span>{t('settings.localAi.removeQuestion', { title: spec.title, size: sizeGb(m.bytes) })}</span>
           <button
             type="button"
             className="btn danger settings-small"
@@ -213,27 +199,27 @@ function Row({ m, state, suggested, act }: { m: LocalModelState; state: LocalAiS
               act(window.api.removeLocalModel(m.id))
             }}
           >
-            {LOCAL_AI_COPY.remove}
+            {t('common.action.remove')}
           </button>
           <button type="button" className="btn ghost settings-small" autoFocus onClick={() => setAsking(false)}>
-            {LOCAL_AI_COPY.cancel}
+            {t('common.action.cancel')}
           </button>
         </div>
       ) : (
         <div className="local-ai-actions">
           {(m.state === 'missing' || m.state === 'damaged') && !why && (
             <button ref={actionRef} type="button" className="btn settings-small" aria-label={downloadName(spec, m.bytes)} onClick={download}>
-              {m.state === 'damaged' ? LOCAL_AI_COPY.downloadAgain : LOCAL_AI_COPY.download}
+              {m.state === 'damaged' ? t('settings.localAi.downloadAgain') : t('settings.localAi.download')}
             </button>
           )}
           {m.state === 'downloading' && (
-            <button ref={actionRef} type="button" className="btn ghost settings-small" aria-label={`Cancel the download of ${spec.title}`} onClick={() => act(window.api.cancelLocalDownload(m.id))}>
-              {LOCAL_AI_COPY.cancel}
+            <button ref={actionRef} type="button" className="btn ghost settings-small" aria-label={t('settings.localAi.cancelDownload', { title: spec.title })} onClick={() => act(window.api.cancelLocalDownload(m.id))}>
+              {t('common.action.cancel')}
             </button>
           )}
           {m.state === 'ready' && (
-            <button ref={actionRef} type="button" className="btn ghost danger settings-small" aria-label={`Remove ${spec.title}`} onClick={() => setAsking(true)}>
-              {LOCAL_AI_COPY.remove}
+            <button ref={actionRef} type="button" className="btn ghost danger settings-small" aria-label={t('common.action.removeName', { name: spec.title })} onClick={() => setAsking(true)}>
+              {t('common.action.remove')}
             </button>
           )}
         </div>
@@ -254,15 +240,15 @@ export function LocalAiRow(props: { onOpen(): void }): JSX.Element {
     <div className="ai-provider local-ai-row" data-testid="local-ai-row">
       <div className="ai-provider-main">
         <div className="ai-provider-title">
-          <strong className="ai-provider-name">On this PC</strong>
-          <span className="ai-provider-meta">no key · good for drafts</span>
+          <strong className="ai-provider-name">{t('settings.localAi.rowName')}</strong>
+          <span className="ai-provider-meta">{t('settings.localAi.rowMeta')}</span>
         </div>
       </div>
       {spec ? (
-        <span className="local-ai-using">{`Using ${spec.title}`}</span>
+        <span className="local-ai-using">{t('settings.localAi.using', { title: spec.title })}</span>
       ) : (
-        <button type="button" className="btn settings-small" onClick={props.onOpen} aria-label={`Set up ${LOCAL_AI_COPY.title}`}>
-          Set up
+        <button type="button" className="btn settings-small" onClick={props.onOpen} aria-label={t('settings.localAi.setUpLabel')}>
+          {t('settings.localAi.setUp')}
         </button>
       )}
     </div>

@@ -17,6 +17,7 @@ import { migrateProject } from '../shared/engine/project'
 import { writeFileAtomicSync } from './atomicWrite'
 import { MEDIA_FILE_RE } from './mediaProtocol'
 import * as projects from './projects'
+import { t } from '../shared/i18n/t'
 
 /** The recording's media, never rewritten once the project exists: linked when allowed. */
 export const LINKED_MEDIA = ['screen.mp4', 'webcam.mp4', 'mic.m4a', 'system.m4a'] as const
@@ -90,7 +91,7 @@ const spaceReason = (needs: number, free: number): string => `there is not enoug
 class CopyError extends Error {}
 
 function abortError(): Error {
-  const err = new Error('The copy was cancelled.')
+  const err = new Error(t('errors.projectCopy.theCopyWasCancelled'))
   err.name = 'AbortError'
   return err
 }
@@ -165,7 +166,7 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
   const copy = migrateProject(raw)
   // The editor may only copy the project it has open.
   if (copy.id !== sourceId) throw new Error('Not allowed')
-  if (JSON.stringify(copy).length > PROJECT_MAX) throw new Error('This project is too large to copy.')
+  if (JSON.stringify(copy).length > PROJECT_MAX) throw new Error(t('errors.projectCopy.thisProjectIsToo'))
   let sourceName: string
   let files: Planned[]
   try {

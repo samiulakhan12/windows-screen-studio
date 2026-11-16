@@ -3,12 +3,26 @@
  * the notifications show for the jobs running now. Pure; src/main/longJobs.ts applies it.
  */
 import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** 'ai': a request to AI on this PC expected to take more than 10 s (docs/design/smart-tools.md §9.2). */
 export type JobKind = 'export' | 'captions' | 'analysis' | 'ai'
 
 /** What each kind of job is doing, in words. */
-export const JOB_WORDS: Readonly<Record<JobKind, string>> = { export: 'Exporting', captions: 'Making captions', analysis: 'Reading the recording', ai: 'Writing with AI on this PC' }
+export const JOB_WORDS: Readonly<Record<JobKind, string>> = {
+  get export() {
+    return t('main.jobs.exporting')
+  },
+  get captions() {
+    return t('main.jobs.makingCaptions')
+  },
+  get analysis() {
+    return t('main.jobs.reading')
+  },
+  get ai() {
+    return t('main.jobs.writingAi')
+  }
+}
 
 /** What a running job looks like to the taskbar. */
 export interface JobView {
@@ -85,9 +99,9 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
   if (!lead) return []
   const out: ThumbButton[] = []
   if (lead.kind === 'export') {
-    out.push(lead.paused ? { action: 'resume', tooltip: 'Resume export', enabled: true } : { action: 'pause', tooltip: 'Pause export', enabled: lead.pausable })
+    out.push(lead.paused ? { action: 'resume', tooltip: t('main.jobs.resumeExport'), enabled: true } : { action: 'pause', tooltip: t('main.jobs.pauseExport'), enabled: lead.pausable })
   }
-  if (lead.stoppable) out.push({ action: 'stop', tooltip: lead.kind === 'export' ? 'Stop export' : lead.kind === 'ai' ? 'Stop writing with AI on this PC' : 'Stop making captions', enabled: true })
+  if (lead.stoppable) out.push({ action: 'stop', tooltip: t(lead.kind === 'export' ? 'main.jobs.stopExport' : lead.kind === 'ai' ? 'main.jobs.stopAi' : 'main.jobs.stopCaptions'), enabled: true })
   return out
 }
 
@@ -122,15 +136,15 @@ export function notificationFor(kind: JobKind, outcome: JobOutcome, files: reado
   if (outcome.kind === 'cancelled' || kind === 'analysis' || kind === 'ai') return null
   if (outcome.kind === 'failed') {
     const reason = outcome.message.split(/\n/)[0].trim().slice(0, 200)
-    return { title: kind === 'export' ? 'Export failed' : 'Captions failed', body: reason || 'Something went wrong.', actions: [] }
+    return { title: t(kind === 'export' ? 'main.jobs.exportFailed' : 'main.jobs.captionsFailed'), body: reason || t('main.jobs.somethingWrong'), actions: [] }
   }
-  if (kind === 'captions') return { title: 'Captions are ready', body: name || 'Your recording has captions now.', actions: [] }
+  if (kind === 'captions') return { title: t('main.jobs.captionsReady'), body: name || t('main.jobs.captionsBody'), actions: [] }
   if (!files.length) return null
   // A batch that stopped early or lost files says so.
   const failed = outcome.failed ?? 0
-  const more = `${failed > 0 ? ` · ${failed} failed` : ''}${outcome.stopped ? ' · stopped early' : ''}`
-  if (files.length === 1) return { title: 'Export finished', body: `${fileName(files[0].path)} · ${fmt.bytes(files[0].bytes)}${more}`, actions: ['open', 'show'] }
-  return { title: `${files.length} files exported`, body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
+  const more = `${failed > 0 ? t('main.jobs.moreFailed', { count: failed, n: fmt.count(failed) }) : ''}${outcome.stopped ? t('main.jobs.moreStopped') : ''}`
+  if (files.length === 1) return { title: t('main.jobs.exportFinished'), body: t('main.jobs.fileBody', { file: fileName(files[0].path), size: fmt.bytes(files[0].bytes) }) + more, actions: ['open', 'show'] }
+  return { title: t('main.jobs.filesExported', { count: files.length, n: fmt.count(files.length) }), body: `${folderName(files[0].path)}${more}`, actions: ['show'] }
 }
 
 /** The taskbar share of an export's progress: frames while rendering, unknown while finalizing. */

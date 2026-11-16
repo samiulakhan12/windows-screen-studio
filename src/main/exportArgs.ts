@@ -8,6 +8,8 @@ import { encoderPixelFormat, gpuEncoderOptions } from './hwEncoders'
 import { CODEC_POLICY, DEFAULT_CODEC, rateFps } from '../shared/render/proFormats'
 import { proPlan } from './proArgs'
 import { wavPlan } from './stemsArgs'
+import { t } from '../shared/i18n/t'
+import { ExportFailure } from '../shared/render/exportPlan'
 
 export { AUDIO_RATE, audioFilterGraph, clickPositions, clickTrackGraph, soundtrackGraph } from '../shared/render/audioPlan'
 
@@ -242,7 +244,7 @@ export function exportArgs(job: ExportJob, io: ExportIo): string[] {
   if (v.kind === 'raw') args.push('-map', '[vout]', ...encoderArgs(v.encoder, job), ...encodedColorArgs(v.encoder))
   else if (hasVideo) args.push('-map', '0:v:0', ...copyVideoArgs(job))
   if (sound.graph) args.push('-map', '[aout]', ...audioCodecArgs(job))
-  if (!hasVideo && !sound.graph) throw new Error('This recording has no sound to export.')
+  if (!hasVideo && !sound.graph) throw new ExportFailure(t('errors.exportArgs.thisRecordingHasNo'), 'no-sound')
   args.push(...subtitles, ...chapters.map, ...containerArgs(job, io.output))
   return args
 }

@@ -21,6 +21,7 @@ import { commonArgs, markIllegalInstruction, runHelper, selectHelper, spawnFailu
 import type { SpeechModelStore } from './models'
 import { detectorModelOk } from './vad'
 import { glossaryLine } from '../../shared/captions/cleanup'
+import { t } from '../../shared/i18n/t'
 
 export interface LocalClientDeps {
   /** The project's folder (its .cache holds finished parts). */
@@ -265,7 +266,7 @@ export async function localSpeechClient(modelId: string | undefined, deps: Local
   return {
     test: async () => 'On this PC',
     json: async () => {
-      throw new Error('Text tasks need an AI provider.')
+      throw new Error(t('errors.localClient.textTasksNeedAn'))
     },
     transcribe,
     partLimits: { maxSeconds: spec.partSeconds, maxBytes: Infinity },

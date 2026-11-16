@@ -19,6 +19,7 @@ import { presetAt, SERVICE_PRESETS } from '../../shared/ai/presets'
 import { writeFileAtomicSync } from '../atomicWrite'
 import type { SecretBox } from './keyStore'
 import { registerSecret } from './secrets'
+import { t } from '../../shared/i18n/t'
 
 const FILE_VERSION = 1
 
@@ -65,7 +66,7 @@ const newId = (): string => `svc${Date.now().toString(36)}${(idCounter++).toStri
 function modelName(v: unknown): string {
   if (typeof v !== 'string' || !v.trim()) throw new Error(SERVICE_MESSAGES.model)
   const s = v.trim()
-  if (s.length > AI_LIMITS.modelLength || !MODEL_RE.test(s)) throw new Error(`“${s.slice(0, 40)}” is not a model name (letters, digits and . _ - : / @ only).`)
+  if (s.length > AI_LIMITS.modelLength || !MODEL_RE.test(s)) throw new Error(t('errors.keyStore.isNotAModel', { value: String(s.slice(0, 40)) }))
   return s
 }
 
@@ -75,18 +76,18 @@ export function validateServiceInput(input: unknown): AiProviderInput & { servic
   if (input.kind !== 'openai') throw new Error('Invalid provider.')
   if (input.id !== undefined && (typeof input.id !== 'string' || !SERVICE_ID_RE.test(input.id))) throw new Error('Invalid provider.')
   const service = input.service
-  if (!isObject(service) || !isPreset(service.preset) || typeof service.baseUrl !== 'string') throw new Error('Choose a service.')
+  if (!isObject(service) || !isPreset(service.preset) || typeof service.baseUrl !== 'string') throw new Error(t('errors.serviceStore.chooseAService'))
   const url = readBaseUrl(service.baseUrl)
   if (!url.ok) throw new Error(url.message)
-  if (typeof input.label !== 'string') throw new Error('Give the provider a name.')
+  if (typeof input.label !== 'string') throw new Error(t('errors.keyStore.giveTheProviderA'))
   const label = input.label.replace(/\s+/g, ' ').trim()
-  if (!label) throw new Error('Give the provider a name.')
-  if (label.length > AI_LIMITS.labelLength) throw new Error(`The name is too long (at most ${AI_LIMITS.labelLength} characters).`)
+  if (!label) throw new Error(t('errors.keyStore.giveTheProviderA'))
+  if (label.length > AI_LIMITS.labelLength) throw new Error(t('errors.keyStore.theNameIsToo', { labelLength: String(AI_LIMITS.labelLength) }))
   let apiKey: string | undefined
   if (input.apiKey !== undefined && input.apiKey !== null && input.apiKey !== '') {
-    if (typeof input.apiKey !== 'string') throw new Error('The API key must be text.')
+    if (typeof input.apiKey !== 'string') throw new Error(t('errors.keyStore.theApiKeyMust'))
     apiKey = input.apiKey.trim()
-    if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error('That does not look like an API key (copy the whole key, without spaces).')
+    if (apiKey.length < 8 || apiKey.length > AI_LIMITS.keyLength || !KEY_RE.test(apiKey)) throw new Error(t('errors.keyStore.thatDoesNotLook'))
   }
   if (service.keepNoData !== undefined && typeof service.keepNoData !== 'boolean') throw new Error('Invalid provider.')
   // OpenRouter keeps no prompts unless the user unticks it (§0 decision 5), picked as its preset or
@@ -180,10 +181,10 @@ export class ServiceStore {
   private encrypt(apiKey: string): string {
     if (!this.box.isEncryptionAvailable()) {
       const what = process.platform === 'win32' ? 'Windows data protection' : process.platform === 'darwin' ? 'the Keychain' : 'the system keyring'
-      throw new Error(`API keys cannot be stored safely on this PC: ${what} is not available, so the key was not saved.`)
+      throw new Error(t('errors.keyStore.apiKeysCannotBe', { what: String(what) }))
     }
     const weak = this.box.weakness?.()
-    if (weak) throw new Error(`API keys cannot be stored safely on this PC (${weak}), so the key was not saved.`)
+    if (weak) throw new Error(t('errors.keyStore.apiKeysCannotBe2', { weak: String(weak) }))
     registerSecret(apiKey)
     return this.box.encryptString(apiKey).toString('base64')
   }
@@ -220,7 +221,7 @@ export class ServiceStore {
     if (!entry) throw new Error(SERVICE_MESSAGES.gone)
     const apiKey = this.decrypt(entry)
     if (entry.key !== undefined && !apiKey) {
-      throw new Error(`The API key of “${entry.label}” can no longer be read on this PC (it was saved by another Windows user or PC). Edit the provider and enter the key again.`)
+      throw new Error(t('errors.keyStore.theApiKeyOf', { label: String(entry.label) }))
     }
     return { info: this.info(entry), apiKey }
   }

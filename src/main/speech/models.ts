@@ -13,6 +13,7 @@ import { localErrorMessage, modelBlockReason } from '../../shared/speech/errors'
 import { writeFileAtomicSync } from '../atomicWrite'
 import { DownloadFailure, downloadPinned, electronGet, type HttpGet } from './download'
 import type { HelperBuild } from './helper'
+import { t } from '../../shared/i18n/t'
 
 /** speech.json, as stored. */
 export interface SpeechSettingsFile {
@@ -276,10 +277,10 @@ export class SpeechModelStore {
    */
   async download(id: unknown): Promise<void> {
     const spec = speechModel(id)
-    if (!spec) throw new Error('Unknown speech model.')
+    if (!spec) throw new Error(t('errors.speech.unknownModel'))
     const { allowed, reason } = this.block(spec)
     if (!allowed) throw new Error(reason)
-    if (this.active) throw new Error(this.active.id === spec.id ? 'This speech model is already downloading.' : 'Another speech model is downloading.')
+    if (this.active) throw new Error(this.active.id === spec.id ? t('errors.speech.alreadyDownloading') : t('errors.speech.anotherDownloading'))
     if ((await this.check(spec)) === 'installed') return
     const controller = new AbortController()
     const active: ActiveDownload = { id: spec.id, controller, discard: false, done: Promise.resolve() }
@@ -336,7 +337,7 @@ export class SpeechModelStore {
       if (failure.kind === 'cancelled') {
         this.live.delete(spec.id)
         if (active.discard) await this.deletePart(spec)
-        throw new Error('Cancelled.')
+        throw new Error(t('errors.cancelled'))
       }
       const received = (await fs.stat(`${dest}.part`).catch(() => null))?.size ?? 0
       this.live.set(spec.id, { state: 'failed', received, total: spec.bytes, error: failure.kind, ...(failure.status ? { status: failure.status } : {}), message: failure.message })
@@ -355,7 +356,7 @@ export class SpeechModelStore {
   /** Stops the download of `id`; `discard` also deletes the part already downloaded. */
   async cancelDownload(id: unknown, discard: boolean): Promise<void> {
     const spec = speechModel(id)
-    if (!spec) throw new Error('Unknown speech model.')
+    if (!spec) throw new Error(t('errors.speech.unknownModel'))
     const active = this.active
     if (active?.id === spec.id) {
       active.discard = discard
@@ -371,8 +372,8 @@ export class SpeechModelStore {
   /** Deletes the model's file and any part. Refused while a transcription holds it. */
   async remove(id: unknown): Promise<void> {
     const spec = speechModel(id)
-    if (!spec) throw new Error('Unknown speech model.')
-    if ((this.holds.get(spec.id) ?? 0) > 0) throw new Error('Captions are being made with this model. Cancel them first.')
+    if (!spec) throw new Error(t('errors.speech.unknownModel'))
+    if ((this.holds.get(spec.id) ?? 0) > 0) throw new Error(t('errors.models.captionsAreBeingMade'))
     if (this.active?.id === spec.id) await this.cancelDownload(spec.id, true)
     await fs.rm(this.fileOf(spec), { force: true })
     await this.deletePart(spec)
@@ -398,9 +399,9 @@ export class SpeechModelStore {
   /** The model used for new captions: only an installed one, never a model made for one language. */
   async setDefault(id: unknown): Promise<void> {
     const spec = speechModel(id)
-    if (!spec) throw new Error('Unknown speech model.')
-    if (isLanguageModel(spec)) throw new Error(`${spec.name} makes captions in one language only, so it cannot be the model for new captions.`)
-    if ((await this.check(spec)) !== 'installed') throw new Error('Only a downloaded speech model can be the default.')
+    if (!spec) throw new Error(t('errors.speech.unknownModel'))
+    if (isLanguageModel(spec)) throw new Error(t('errors.models.makesCaptionsInOne', { name: String(spec.name) }))
+    if ((await this.check(spec)) !== 'installed') throw new Error(t('errors.models.onlyADownloadedSpeech'))
     this.save((s) => (s.defaultModel = spec.id))
     this.changed()
   }

@@ -7,6 +7,7 @@ import { loadBrandKit, readBrandFile, saveBrandKit } from './brandKit'
 import { addBrandFile, copyKitIntoProject } from './brandKitFiles'
 import { isAppUrl } from './security'
 import { getMainWindow } from './windows'
+import { t } from '../shared/i18n/t'
 
 const fromApp = (e: IpcMainInvokeEvent): void => {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
@@ -31,16 +32,16 @@ export function registerBrandKitIpc(): void {
     const main = getMainWindow()
     if (!main) return null
     const result = await dialog.showOpenDialog(main, {
-      title: kind === 'logo' ? 'Choose your logo' : 'Add a font',
+      title: kind === 'logo' ? t('main.brandKit.logoTitle') : t('main.brandKit.fontTitle'),
       properties: ['openFile'],
-      filters: kind === 'logo' ? [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'] }] : [{ name: 'Fonts', extensions: ['ttf', 'otf', 'woff2'] }]
+      filters: kind === 'logo' ? [{ name: t('main.asset.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'svg'] }] : [{ name: t('main.asset.filter.fonts'), extensions: ['ttf', 'otf', 'woff2'] }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     return addBrandFile(kind, result.filePaths[0])
   })
   ipcMain.handle('brandKit:copyInto', (e, projectId: unknown) => {
     fromApp(e)
-    if (typeof projectId !== 'string') throw new Error('Unknown project')
+    if (typeof projectId !== 'string') throw new Error(t('errors.brandKitIpc.unknownProject'))
     return copyKitIntoProject(projectId)
   })
 }

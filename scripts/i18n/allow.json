@@ -4,6 +4,14 @@
     {
       "path": "src/renderer/src/i18n/reviewOverlay.tsx",
       "reason": "The development-only review overlay (section 15.4): it shows message keys and states, and never runs in a packaged build."
+    },
+    {
+      "path": "src/shared/render/mp4.ts",
+      "reason": "The MP4 index reader's failures name boxes of a damaged file (moov, avcC, stsc): the export and the timeline catch and log them and fall back to seeking the video element; never shown."
+    },
+    {
+      "path": "src/shared/render/rangeReader.ts",
+      "reason": "The media range reader's failures (an HTTP status): caught and logged with the MP4 index reader's, never shown."
     }
   ],
   "texts": [
@@ -116,6 +124,87 @@
       "kind": "sink",
       "text": "proxyArgs no longer sets -vf",
       "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/main/nativeCapture.ts",
+      "kind": "sink",
+      "reason": "Imported by the recording side (docs/design/output-and-languages.md section 9.5): its messages reach the other account's English UI, so they keep their exact English until that account joins the catalogues."
+    },
+    {
+      "file": "src/main/projects.ts",
+      "kind": "sink",
+      "reason": "Imported by the recording side (docs/design/output-and-languages.md section 9.5): its messages reach the other account's English UI, so they keep their exact English until that account joins the catalogues."
+    },
+    {
+      "file": "src/main/ffmpeg.ts",
+      "kind": "sink",
+      "text": "ffmpeg exited with code ${…}\n${…}",
+      "reason": "ffmpeg's own log kept as an export failure's technical detail (shown under \"Details\", after the translated sentence); ffmpeg.ts's sentences stay English for the recording side and an export shows them through exportJob.ts's ffmpegText (section 9.6)."
+    },
+    {
+      "file": "src/main/ffmpeg.ts",
+      "kind": "sink",
+      "text": "ffmpeg is not running",
+      "reason": "A technical detail of an encoder failure (the details view and the log); the sentence shown is the failure's own message."
+    },
+    {
+      "file": "src/main/ffmpeg.ts",
+      "kind": "sink",
+      "text": "ffmpeg exited",
+      "reason": "A technical detail of an encoder failure (the details view and the log); the sentence shown is the failure's own message."
+    },
+    {
+      "file": "src/main/diagnostics.ts",
+      "kind": "sink",
+      "text": "timed out",
+      "reason": "A part of the diagnostics report, which stays English (section 9.7: logs and diagnostics)."
+    },
+    {
+      "file": "src/main/exportArgs.ts",
+      "kind": "sink",
+      "text": "exportArgs builds video and audio exports; GIFs use gifCaptureArgs/gifEncodeArgs",
+      "reason": "A programming error (a GIF job given to the video builder): for developers and tests, never shown in a working build."
+    },
+    {
+      "file": "src/main/speech/download.ts",
+      "kind": "sink",
+      "text": "aborted",
+      "reason": "A cancelled request's internal reason: the callers check the signal and say \"cancelled\" in their own words; never shown."
+    },
+    {
+      "file": "src/renderer/src/render/frameSource.ts",
+      "kind": "sink",
+      "text": "closed",
+      "reason": "A closed decoder's internal reason: the frame source is being torn down and nothing shows it."
+    },
+    {
+      "file": "src/renderer/src/render/segmentation/segmentation.worker.ts",
+      "kind": "sink",
+      "reason": "The camera segmentation worker's failures: the export and preview log them and draw the camera without background blur; never shown."
+    },
+    {
+      "file": "src/renderer/src/editor/exportIcons.tsx",
+      "kind": "jsx",
+      "text": "GIF",
+      "reason": "The GIF format's name drawn inside its icon: a format name, never translated (section 9.7)."
+    },
+    {
+      "file": "src/renderer/src/settings/ProviderForm.tsx",
+      "kind": "attr",
+      "text": "https://",
+      "reason": "The address field's placeholder: the start of a web address, the same in every language."
+    },
+    {
+      "file": "src/preload/guide.ts",
+      "kind": "sink",
+      "text": "This screenshot cannot be copied.",
+      "reason": "The preload's size check on a screenshot the app's own page never sends too large (GUIDE_SAVE_LIMITS); the preload has no catalogue and main gives the same refusal through errors.guideIpc."
+    },
+    {
+      "file": "src/renderer/src/settings/BrandKitSection.tsx",
+      "kind": "sink",
+      "text": "missing",
+      "reason": "A kit font that could not be fetched: the internal reason only moves the row to its \"could not be read\" state, which shows a message of its own."
     }
   ]
 }

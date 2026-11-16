@@ -7,6 +7,7 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { t } from '../src/shared/i18n/t'
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { projectCopy } from '../src/shared/editor/duplicate'
 import type { Project } from '../src/shared/types'
@@ -426,9 +427,12 @@ describe('entry points (test 127)', () => {
     const publish = src('publish/PublishDialog.tsx')
     expect(publish).toMatch(/data-testid="publish-short-clips" onClick=\{onShortClips\}>\s*Make short clips for Shorts and Reels…/)
     const exporter = src('editor/ExportDialog.tsx')
-    expect(exporter).toMatch(/data-testid="export-short-clips" onClick=\{props\.onShortClips\}>\s*Make short clips for Shorts and Reels…/)
+    // The Export dialog shows its text through the export namespace (output-and-languages §10): the link's message, in English the same words.
+    expect(exporter).toMatch(/data-testid="export-short-clips" onClick=\{props\.onShortClips\}>\s*\{t\('export\.done\.shortClips'\)\}/)
+    expect(t('export.done.shortClips')).toBe('Make short clips for Shorts and Reels…')
     // The done view holds it (after "Export finished").
-    expect(exporter.indexOf('export-short-clips')).toBeGreaterThan(exporter.indexOf('Export finished'))
+    expect(t('export.done.title')).toBe('Export finished')
+    expect(exporter.indexOf('export-short-clips')).toBeGreaterThan(exporter.indexOf("t('export.done.title')"))
     const editor = src('views/Editor.tsx')
     expect(editor).toMatch(/onShortClips=\{\(\) => \{\s*setPublishRequest\(null\)\s*setDialog\(null\)\s*openClips\(\)/)
     expect(editor).toMatch(/onShortClips=\{\(\) => \{\s*setExporting\(false\)\s*openClips\(\)/)

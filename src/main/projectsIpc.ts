@@ -16,6 +16,7 @@ import { isAppUrl } from './security'
 import { loadStyleDefaults, saveStyleDefaults, type StyleDefaults } from './styleDefaults'
 import { getMainWindow } from './windows'
 import { noteProjectSaved } from './search/searchIpc'
+import { t } from '../shared/i18n/t'
 
 /** Newest save written per project, so a save that arrives late cannot overwrite a newer one. */
 const lastSaved = new Map<string, SaveMeta>()
@@ -26,13 +27,13 @@ const lastSaved = new Map<string, SaveMeta>()
  * after a newer one is dropped.
  */
 export function saveProjectNow(project: Project, meta?: SaveMeta): void {
-  if (!project || typeof project.id !== 'string') throw new Error('Not a project')
+  if (!project || typeof project.id !== 'string') throw new Error(t('errors.projectsIpc.notAProject'))
   const dir = projects.projectDir(project.id)
   if (meta) {
     const last = lastSaved.get(project.id)
     if (last && last.session === meta.session && meta.seq <= last.seq) return
   }
-  if (!existsSync(dir)) throw new Error('The recording folder no longer exists, so changes cannot be saved.')
+  if (!existsSync(dir)) throw new Error(t('errors.projectsIpc.theRecordingFolderNo'))
   writeFileAtomicSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
   if (meta) lastSaved.set(project.id, meta)
   noteProjectSaved(project)
@@ -110,9 +111,9 @@ export function registerProjectsIpc(): void {
     const main = getMainWindow()
     if (!main) return null
     const result = await dialog.showOpenDialog(main, {
-      title: 'Choose background image',
+      title: t('main.projectsIpc.chooseBackgroundImage'),
       properties: ['openFile'],
-      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
+      filters: [{ name: t('main.projectsIpc.images'), extensions: ['png', 'jpg', 'jpeg', 'webp'] }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     return importBackgroundImage(id, result.filePaths[0])
@@ -122,9 +123,9 @@ export function registerProjectsIpc(): void {
     const main = getMainWindow()
     if (!main) return null
     const result = await dialog.showOpenDialog(main, {
-      title: 'Choose cursor image',
+      title: t('main.projectsIpc.chooseCursorImage'),
       properties: ['openFile'],
-      filters: [{ name: 'Cursor images', extensions: CURSOR_IMAGE_EXTENSIONS }]
+      filters: [{ name: t('main.projectsIpc.cursorImages'), extensions: CURSOR_IMAGE_EXTENSIONS }]
     })
     if (result.canceled || !result.filePaths[0]) return null
     return importCursorImage(id, result.filePaths[0])
@@ -140,7 +141,7 @@ export function registerProjectsIpc(): void {
   ipcMain.handle('projects:duplicate', async (e, sourceId: unknown, copy: unknown): Promise<DuplicateResult> => {
     if (!fromMainWindow(e)) throw new Error('Not allowed')
     if (typeof sourceId !== 'string') throw new Error('Invalid project id')
-    if (copying) throw new Error('a copy is already being made.')
+    if (copying) throw new Error(t('errors.projectsIpc.aCopyIsAlready'))
     const abort = new AbortController()
     copying = abort
     const sender = e.sender
@@ -213,11 +214,11 @@ async function copyIntoProject(id: string, src: string, name: string): Promise<v
 export async function importBackgroundImage(id: string, src: string): Promise<{ url: string; path: string }> {
   const ext = path.extname(src).slice(1).toLowerCase().replace('jpeg', 'jpg')
   const name = `background.${ext}`
-  if (!BACKGROUND_RE.test(name)) throw new Error('Choose a PNG, JPG or WebP image.')
+  if (!BACKGROUND_RE.test(name)) throw new Error(t('errors.projectsIpc.chooseAPngJpg'))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error('Choose a PNG, JPG or WebP image.')
-  if (st.size > MAX_BACKGROUND_IMAGE_BYTES) throw new Error('This image is too large for a background (100 MB at most).')
-  if (imageType(await readHead(src)) !== ext) throw new Error(`This file could not be read as a .${ext} image.`)
+  if (!st.isFile()) throw new Error(t('errors.projectsIpc.chooseAPngJpg'))
+  if (st.size > MAX_BACKGROUND_IMAGE_BYTES) throw new Error(t('errors.projectsIpc.thisImageIsToo'))
+  if (imageType(await readHead(src)) !== ext) throw new Error(t('errors.projectsIpc.thisFileCouldNot', { ext: String(ext) }))
   await copyIntoProject(id, src, name)
   return { url: mediaUrl(id, name), path: name }
 }
@@ -243,13 +244,13 @@ export function looksLikeCursorImage(head: Buffer): boolean {
  */
 export async function importCursorImage(id: string, src: string): Promise<{ url: string; path: string }> {
   const ext = path.extname(src).toLowerCase().replace('.jpeg', '.jpg')
-  if (!CURSOR_IMAGE_EXTENSIONS.includes(ext.slice(1))) throw new Error('Choose a PNG, JPG, WebP, SVG, ICO or CUR image.')
+  if (!CURSOR_IMAGE_EXTENSIONS.includes(ext.slice(1))) throw new Error(t('errors.projectsIpc.chooseAPngJpg2'))
   const st = await fs.stat(src)
-  if (!st.isFile()) throw new Error('Choose a PNG, JPG, WebP, SVG, ICO or CUR image.')
-  if (st.size > MAX_CURSOR_IMAGE_BYTES) throw new Error('This image is too large for a cursor (10 MB at most).')
-  if (!looksLikeCursorImage(await readHead(src))) throw new Error('This file could not be read as an image.')
+  if (!st.isFile()) throw new Error(t('errors.projectsIpc.chooseAPngJpg2'))
+  if (st.size > MAX_CURSOR_IMAGE_BYTES) throw new Error(t('errors.projectsIpc.thisImageIsToo2'))
+  if (!looksLikeCursorImage(await readHead(src))) throw new Error(t('errors.projectsIpc.thisFileCouldNot2'))
   const name = `cursor${ext}`
-  if (!MEDIA_FILE_RE.test(name)) throw new Error('Unsupported cursor image')
+  if (!MEDIA_FILE_RE.test(name)) throw new Error(t('errors.projectsIpc.unsupportedCursorImage'))
   await copyIntoProject(id, src, name)
   return { url: mediaUrl(id, name), path: name }
 }

@@ -19,6 +19,7 @@ import type { Graphic, Project, ProjectFont, TitleCard } from '../../../shared/t
 import { editingFontIds } from '../../../shared/render/editingFonts'
 import { BUNDLED_FONT_URLS } from './catalogFonts'
 import { notifyStyleAssetsChanged } from './watermarkLayer'
+import { t } from '../../../shared/i18n/t'
 
 export type FontState = 'loading' | 'ready' | 'missing'
 
@@ -55,7 +56,7 @@ function switchProject(projectId: string): void {
 
 async function loadFace(url: string, family: string): Promise<FontFace> {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`The font file is missing (${res.status})`)
+  if (!res.ok) throw new Error(t('export.font.missing', { status: String(res.status) }))
   const face = new FontFace(family, await res.arrayBuffer())
   await face.load()
   return face
@@ -122,7 +123,7 @@ export async function preloadProjectFont(projectId: string, font: ProjectFont, u
   const entry = entryOf(projectId, font, url)
   if (!entry) return
   await entry.done
-  if (entry.state !== 'ready') throw new Error('This font could not be read.')
+  if (entry.state !== 'ready') throw new Error(t('export.font.unreadable'))
 }
 
 /**
@@ -195,12 +196,12 @@ async function catalogFaces(font: CatalogFont): Promise<FontFace[]> {
     if (font.bundled) {
       // Same origin (a Vite asset): the CSP's default-src 'self' covers the font fetch.
       const url = file.woff2 ? BUNDLED_FONT_URLS[file.woff2.file] : undefined
-      if (!url) throw new Error(`The bundled font file ${file.woff2?.file ?? font.id} is missing from this build`)
+      if (!url) throw new Error(t('export.font.bundledMissing', { file: file.woff2?.file ?? font.id }))
       face = new FontFace(family, `url("${url}")`, catalogDescriptors(font, file))
     } else {
       // A download: its bytes, read through studio-media://assets/ (checked by SHA-256 when it was saved).
       const res = await fetch(assetUrl(font.id))
-      if (!res.ok) throw new Error(`not downloaded (${res.status})`)
+      if (!res.ok) throw new Error(t('export.font.notDownloaded', { status: String(res.status) }))
       face = new FontFace(family, await res.arrayBuffer(), catalogDescriptors(font, file))
     }
     await face.load()
@@ -444,7 +445,7 @@ const studioKeyOf = (projectId: string, font: ProjectFont): string => `${project
 /** A brand font registered a second time as FlownFontW-<id> with the font's own weights, so a variable font draws its heavier weights. */
 async function loadStudioFace(url: string, family: string): Promise<FontFace> {
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`The font file is missing (${res.status})`)
+  if (!res.ok) throw new Error(t('export.font.missing', { status: String(res.status) }))
   const bytes = await res.arrayBuffer()
   let face: FontFace
   try {

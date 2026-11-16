@@ -346,6 +346,50 @@ describe('export:analyzeAudio', () => {
   })
 })
 
+describe('test 72: a failed export records why, by code (output-and-languages §9.6)', () => {
+  const appEvent = { senderFrame: { url: require('node:url').pathToFileURL(path.join(__dirname, '../src/renderer/index.html')).href } }
+  const code = (): Promise<unknown> => invoke('export:errorCode', appEvent)
+  /** exporter.ts's rule before §9.6, kept only to compare its decisions with the codes'. */
+  const OLD_RULE = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
+  const stopsByCode = (c: unknown): boolean => c !== null && c !== 'encoder' && c !== 'unknown'
+  const refusal = async (run: Promise<unknown>): Promise<{ message: string; code: unknown }> => {
+    const message = await run.then(
+      () => '',
+      (e: unknown) => (e as Error).message
+    )
+    return { message, code: await code() }
+  }
+
+  it('codes export:start refusals as the words decided, and clears the code on a good start', async () => {
+    const unchosen = await refusal(invoke('export:start', { sender: renderer() }, 'p1', jobFor(path.join(out, 'Unchosen.mp4'))))
+    expect(unchosen.code).toBe('not-chosen')
+    const gone = path.join(out, 'no such folder', 'Gone.mp4')
+    h.saveTo = gone
+    await invoke('export:choosePath', {}, 'x', 'mp4')
+    const folder = await refusal(invoke('export:start', { sender: renderer() }, 'p1', jobFor(gone)))
+    expect(folder.code).toBe('permission')
+    h.saveTo = path.join(out, 'Odd.mp4')
+    await invoke('export:choosePath', {}, 'x', 'mp4')
+    const odd = await refusal(invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(h.saveTo), width: 1281 }))
+    expect(odd.code).toBe('invalid-job')
+    const bad = await refusal(invoke('export:start', { sender: renderer() }, 'p1', { ...jobFor(h.saveTo), quality: 'best' }))
+    expect(bad.code).toBe('invalid-job')
+    for (const r of [unchosen, folder, odd, bad]) expect({ ...r, stops: stopsByCode(r.code) }).toEqual({ ...r, stops: OLD_RULE.test(r.message) })
+    await start(path.join(out, 'Fine.mp4'))
+    expect(await code()).toBeNull()
+    await invoke('export:finish')
+    expect(await code()).toBeNull()
+  })
+
+  it('codes a failed finish as the encoder’s, so the next encoder is tried as before', async () => {
+    await start(path.join(out, 'Broken.mp4'))
+    lastEncoder().exit(false)
+    const failed = await refusal(invoke('export:finish'))
+    expect(failed.code).toBe('encoder')
+    expect(stopsByCode(failed.code)).toBe(OLD_RULE.test(failed.message))
+  })
+})
+
 describe('batch exports, size targets and thumbnails in the main process', () => {
   const finishAll = async (): Promise<ExportFinish> => {
     h.autoExit = true

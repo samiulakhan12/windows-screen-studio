@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { ipcMessage } from './providerText'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * Settings › Diagnostics (X-03, docs/design/hands-off.md §2.6): the report is made by main and
@@ -32,17 +33,16 @@ export function DiagnosticsSection(): JSX.Element {
 
   return (
     <section className="settings-section health-section" aria-labelledby="settings-diagnostics-title" data-testid="diagnostics">
-      <h3 id="settings-diagnostics-title">Diagnostics</h3>
+      <h3 id="settings-diagnostics-title">{t('settings.diagnostics.title')}</h3>
       <p className="hint">
-        If something goes wrong, copy this report and send it to us. It lists your Windows version, graphics card, encoders and recent app messages. Keys, file contents and your
-        own folders are left out.
+        {t('settings.diagnostics.hint')}
       </p>
       <div className="health-actions">
         <button type="button" className="btn settings-small" onClick={() => void show()} disabled={state === 'busy'}>
-          {state === 'busy' ? 'Collecting…' : report ? 'Refresh' : 'Show diagnostics'}
+          {state === 'busy' ? t('settings.diagnostics.collecting') : report ? t('common.action.refresh') : t('settings.diagnostics.show')}
         </button>
         <button type="button" className="btn ghost settings-small" onClick={() => void window.api.openLogFolder().catch(() => undefined)}>
-          Open log folder
+          {t('settings.diagnostics.openLogs')}
         </button>
       </div>
       {error && (
@@ -52,13 +52,13 @@ export function DiagnosticsSection(): JSX.Element {
       )}
       {report && (
         <>
-          <textarea ref={boxRef} className="health-report" readOnly value={report.text} aria-label="Diagnostics report" rows={12} spellCheck={false} data-testid="diagnostics-text" />
+          <textarea ref={boxRef} className="health-report" readOnly value={report.text} aria-label={t('settings.diagnostics.report')} rows={12} spellCheck={false} data-testid="diagnostics-text" />
           <div className="health-actions">
             <button type="button" className="btn primary settings-small" onClick={() => void copy()}>
-              {state === 'copied' ? 'Copied' : 'Copy diagnostics'}
+              {state === 'copied' ? t('common.state.copied') : t('settings.diagnostics.copy')}
             </button>
             <span className="hint" role="status">
-              {state === 'copied' ? 'The report is on the clipboard.' : state === 'stale' ? 'This report is out of date: refresh it first.' : ''}
+              {state === 'copied' ? t('settings.diagnostics.copied') : state === 'stale' ? t('settings.diagnostics.stale') : ''}
             </span>
           </div>
         </>

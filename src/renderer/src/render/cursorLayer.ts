@@ -18,6 +18,7 @@ import { cursorOverVideoAt } from '../../../shared/render/shapes'
 import type { ClickStyle, CursorShape, Project } from '../../../shared/types'
 import { drawCursorImage, drawCursorSprite, type SpriteTheme } from './cursorSprites'
 import { inVideo, type FrameContext } from './frameContext'
+import { t } from '../../../shared/i18n/t'
 
 /** Seconds (at 1x) a click effect plays. */
 export const CLICK_EFFECT_SECONDS = 0.45
@@ -242,12 +243,12 @@ function decode(url: string, svg: boolean): Promise<LoadedImage> {
       const w = img.naturalWidth
       const h = img.naturalHeight
       // An SVG without a size has no natural size: draw it square.
-      if (!(w > 0 && h > 0)) return svg ? resolve({ source: img, aspect: 1 }) : reject(new Error('Empty image'))
+      if (!(w > 0 && h > 0)) return svg ? resolve({ source: img, aspect: 1 }) : reject(new Error(t('export.image.empty')))
       // Vector images stay vectors (crisp at any size); big raster images are reduced once.
       if (svg || h <= MAX_IMAGE_HEIGHT) return resolve({ source: img, aspect: w / h })
       resolve({ source: downscale(img, w, h), aspect: w / h })
     }
-    img.onerror = () => reject(new Error('Could not load the cursor image'))
+    img.onerror = () => reject(new Error(t('export.cursor.unloaded')))
     img.src = url
   })
 }
@@ -314,7 +315,7 @@ function cursorImage(projectId: string, file: string): LoadedImage | null {
 export async function reloadCursorImage(projectId: string, file: string, url?: string): Promise<void> {
   const entry = load(projectId, file, url ?? projectMediaUrl(projectId)(file))
   await entry.done
-  if (entry.failed) throw new Error('This image could not be read')
+  if (entry.failed) throw new Error(t('export.image.unreadable'))
 }
 
 /**

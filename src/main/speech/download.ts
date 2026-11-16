@@ -8,6 +8,7 @@ import { app, net } from 'electron'
 import { createHash, type Hash } from 'node:crypto'
 import { createReadStream, createWriteStream, promises as fs } from 'node:fs'
 import type { SpeechDownloadError } from '../../shared/api/speech'
+import { t } from '../../shared/i18n/t'
 
 /** Response of one GET: status, lower-case headers and the body. */
 export interface HttpResponse {
@@ -150,7 +151,7 @@ export function electronGet(): HttpGet {
             poke()
           })
           response.on('aborted', () => {
-            failed = new Error('The connection was closed.')
+            failed = new Error(t('errors.download.theConnectionWasClosed'))
             poke()
           })
           // After request.abort() (cancel or stall) the response emits none of the above: the signal ends the body.

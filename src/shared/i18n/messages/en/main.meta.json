@@ -28,5 +28,275 @@
   "confirm.cancel": {
     "description": "Cancel button of a confirmation in a translated UI.",
     "screen": "main-dialogs"
+  },
+  "updates.disabled": {
+    "description": "Settings › About › Updates: this build of Flown does not update itself (a build made without the update feed)."
+  },
+  "updates.never": {
+    "description": "Settings › About › Updates: no check has run since Flown was installed."
+  },
+  "updates.upToDate": {
+    "description": "Settings › About › Updates: the last check found nothing newer."
+  },
+  "updates.checking": {
+    "description": "Settings › About › Updates: a check is running."
+  },
+  "updates.checkFailed": {
+    "description": "Settings › About › Updates: the check failed."
+  },
+  "updates.downloadFailed": {
+    "description": "Settings › About › Updates: the download failed and automatic updates will try again. Main sets it; the page tells it apart from the manual form below by its text, so both come from this catalogue."
+  },
+  "updates.downloadFailedManual": {
+    "description": "Settings › About › Updates: the download failed and automatic updates are off."
+  },
+  "updates.notReady": {
+    "description": "Restart now was asked for, but no update is downloaded."
+  },
+  "updates.available": {
+    "description": "Settings › About › Updates: a newer version exists; {version} is its number (\"0.7.2\")."
+  },
+  "updates.downloadingPercent": {
+    "description": "Settings › About › Updates: the download’s progress in percent."
+  },
+  "updates.ready": {
+    "description": "Settings › About › Updates and Home’s title bar: an update is downloaded."
+  },
+  "updates.downloading": {
+    "description": "Settings › About › Updates: what screen readers hear while the update downloads (without the percent); also the progress bar’s name."
+  },
+  "busy.recording": {
+    "description": "Why Flown cannot restart now (to install an update or change language): a recording is running."
+  },
+  "busy.processing": {
+    "description": "Why Flown cannot restart now: a finished recording is still being saved or processed."
+  },
+  "busy.export": {
+    "description": "Why Flown cannot restart now: an export is running."
+  },
+  "busy.captions": {
+    "description": "Why Flown cannot restart now: captions are being made."
+  },
+  "busy.analysis": {
+    "description": "Why Flown cannot restart now: the sound is being analysed."
+  },
+  "busy.import": {
+    "description": "Why Flown cannot restart now: a video is being imported."
+  },
+  "busy.voice": {
+    "description": "Why Flown cannot restart now: Clean voice is working. \"Clean voice\" is the feature’s name."
+  },
+  "busy.copy": {
+    "description": "Why Flown cannot restart now: a project is being copied."
+  },
+  "busy.share": {
+    "description": "Why Flown cannot restart now: a video is being shared."
+  },
+  "captionsIpc.exportCaptions": {
+    "description": "Main process: a dialog or notification text (main/captionsIpc.ts)."
+  },
+  "exportIpc.exportToFolder": {
+    "description": "Main process: a dialog or notification text (main/exportIpc.ts)."
+  },
+  "exportIpc.exportHere": {
+    "description": "Main process: a dialog or notification text (main/exportIpc.ts)."
+  },
+  "guideIpc.saveTheGuideAs": {
+    "description": "Main process: a dialog or notification text (main/guide/guideIpc.ts)."
+  },
+  "guideIpc.saveTheGuideIn": {
+    "description": "Main process: a dialog or notification text (main/guide/guideIpc.ts)."
+  },
+  "lutImport.thisLutCouldNot": {
+    "description": "Main process: a dialog or notification text (main/lutImport.ts)."
+  },
+  "projectsIpc.chooseBackgroundImage": {
+    "description": "Main process: a dialog or notification text (main/projectsIpc.ts)."
+  },
+  "projectsIpc.chooseCursorImage": {
+    "description": "Main process: a dialog or notification text (main/projectsIpc.ts)."
+  },
+  "shareIpc.addAFolderTo": {
+    "description": "Main process: a dialog or notification text (main/share/shareIpc.ts)."
+  },
+  "shareIpc.addFolder": {
+    "description": "Main process: a dialog or notification text (main/share/shareIpc.ts)."
+  },
+  "brandKit.logoTitle": {
+    "description": "Settings › Brand kit: the title of the file dialog that picks a logo."
+  },
+  "brandKit.fontTitle": {
+    "description": "Settings › Brand kit: the title of the file dialog that adds a font."
+  },
+  "export.thumbnailTitle": {
+    "description": "The title of the save dialog for a thumbnail image."
+  },
+  "export.saveTitle": {
+    "description": "The title of the save dialog for an export."
+  },
+  "guide.pdfTitle": {
+    "description": "The title of the save dialog for a step-by-step guide as PDF.",
+    "dnt": [
+      "PDF"
+    ]
+  },
+  "guide.demoTitle": {
+    "description": "The title of the save dialog for a click-through demo."
+  },
+  "guide.htmlTitle": {
+    "description": "The title of the save dialog for a guide as a web page."
+  },
+  "jobs.exporting": {
+    "description": "Windows taskbar: what a running export is doing."
+  },
+  "jobs.makingCaptions": {
+    "description": "Windows taskbar: what a running captions job is doing."
+  },
+  "jobs.reading": {
+    "description": "Windows taskbar: what a running sound or screen analysis is doing."
+  },
+  "jobs.writingAi": {
+    "description": "Windows taskbar: what a long request to AI on this PC is doing."
+  },
+  "jobs.resumeExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.pauseExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopExport": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopAi": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.stopCaptions": {
+    "description": "Windows taskbar thumbnail button tooltip."
+  },
+  "jobs.exportFailed": {
+    "description": "Windows notification title when an export fails; the body says why."
+  },
+  "jobs.captionsFailed": {
+    "description": "Windows notification title when making captions fails."
+  },
+  "jobs.somethingWrong": {
+    "description": "Windows notification body when a job failed without a reason."
+  },
+  "jobs.captionsReady": {
+    "description": "Windows notification title when captions are made."
+  },
+  "jobs.captionsBody": {
+    "description": "Windows notification body when captions are made and the recording has no name."
+  },
+  "jobs.exportFinished": {
+    "description": "Windows notification title when one file was exported."
+  },
+  "jobs.fileBody": {
+    "description": "Windows notification body: the exported file name and its size (e.g. \"Demo.mp4 · 2.8 MB\").",
+    "user": [
+      "file"
+    ]
+  },
+  "jobs.moreFailed": {
+    "description": "Added after a batch export notification body when some files failed (starts with the \" · \" separator)."
+  },
+  "jobs.moreStopped": {
+    "description": "Added after a batch export notification body when the batch was stopped (starts with the \" · \" separator)."
+  },
+  "jobs.filesExported": {
+    "description": "Windows notification title when a batch exported several files."
+  },
+  "import.title": {
+    "description": "Title of the Windows open dialog for importing a video file."
+  },
+  "import.videos": {
+    "description": "File type filter in the Windows open dialog: video files."
+  },
+  "import.allFiles": {
+    "description": "File type filter in the Windows open dialog: any file."
+  },
+  "projectsIpc.images": {
+    "description": "File type filter in the Windows open dialog for a background image."
+  },
+  "projectsIpc.cursorImages": {
+    "description": "File type filter in the Windows open dialog for a cursor image."
+  },
+  "asset.title.watermark": {
+    "description": "Title of the Windows open dialog: picking a watermark or logo image."
+  },
+  "asset.title.overlay": {
+    "description": "Title of the Windows open dialog: adding an image overlay."
+  },
+  "asset.title.font": {
+    "description": "Title of the Windows open dialog: adding a font file."
+  },
+  "asset.title.music": {
+    "description": "Title of the Windows open dialog: picking a background music file."
+  },
+  "asset.title.lut": {
+    "description": "Title of the Windows open dialog: importing a .cube colour LUT.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "asset.filter.images": {
+    "description": "File type filter in a Windows open or save dialog: image files."
+  },
+  "asset.filter.fonts": {
+    "description": "File type filter in a Windows open or save dialog: font files."
+  },
+  "asset.filter.audio": {
+    "description": "File type filter in a Windows open or save dialog: audio files."
+  },
+  "asset.filter.luts": {
+    "description": "File type filter in a Windows open or save dialog: .cube LUT files.",
+    "dnt": [
+      "LUT"
+    ]
+  },
+  "captions.filter.srt": {
+    "description": "File type filter in a Windows open or save dialog: SRT subtitle files.",
+    "dnt": [
+      "SRT"
+    ]
+  },
+  "captions.filter.vtt": {
+    "description": "File type filter in a Windows open or save dialog: WebVTT subtitle files.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "captions.filter.txt": {
+    "description": "File type filter in a Windows open or save dialog: plain text files."
+  },
+  "saveFilter.mp4": {
+    "description": "File type filter in a Windows open or save dialog: MP4 video files.",
+    "dnt": [
+      "MP4"
+    ]
+  },
+  "saveFilter.webm": {
+    "description": "File type filter in a Windows open or save dialog: WebM video files.",
+    "dnt": [
+      "WebM"
+    ]
+  },
+  "saveFilter.mov": {
+    "description": "File type filter in a Windows open or save dialog: QuickTime .mov files.",
+    "dnt": [
+      "QuickTime"
+    ]
+  },
+  "saveFilter.m4a": {
+    "description": "File type filter in a Windows open or save dialog: M4A audio files.",
+    "dnt": [
+      "M4A"
+    ]
+  },
+  "saveFilter.png": {
+    "description": "File type filter in a Windows open or save dialog: PNG image files (a thumbnail).",
+    "dnt": [
+      "PNG"
+    ]
   }
 }

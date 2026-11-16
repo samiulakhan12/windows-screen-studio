@@ -20,6 +20,7 @@ import { sanitizeSmartPref } from '../shared/smart/smartPrefs'
 import { readUiPrefs } from '../shared/i18n/locale'
 import { readUserPresets } from '../shared/render/userPresets'
 import { writeFileAtomicSync } from './atomicWrite'
+import { t } from '../shared/i18n/t'
 
 /** Wave 12's keys (output-and-languages §4.4): anything malformed reads as absent. Other keys pass through. */
 function sanitizeOutputPref(key: PrefKey, value: unknown): unknown {
@@ -62,7 +63,7 @@ export function readPrefSync(key: PrefKey): unknown {
 export function writePrefSync(key: PrefKey, raw: unknown): void {
   const value = sanitize(key, raw)
   const json = JSON.stringify(value ?? null)
-  if (json.length > MAX_VALUE_BYTES) throw new Error('This preference is too large to save')
+  if (json.length > MAX_VALUE_BYTES) throw new Error(t('errors.prefsIpc.thisPreferenceIsToo'))
   const next = { ...load() }
   if (value === null || value === undefined) delete next[key]
   else next[key] = JSON.parse(json) as unknown
@@ -73,7 +74,7 @@ export function writePrefSync(key: PrefKey, raw: unknown): void {
 export function registerPrefsIpc(): void {
   ipcMain.handle('prefs:get', (_e, key: unknown) => (isKey(key) ? sanitize(key, load()[key] ?? null) : null))
   ipcMain.handle('prefs:set', (_e, key: unknown, raw: unknown) => {
-    if (!isKey(key)) throw new Error('Unknown preference')
+    if (!isKey(key)) throw new Error(t('errors.prefsIpc.unknownPreference'))
     writePrefSync(key, raw)
   })
 }

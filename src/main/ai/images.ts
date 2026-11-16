@@ -23,6 +23,7 @@ import type { FailureInfo } from '../../shared/captions/transcriptErrors'
 import type { TextPrompt } from '../../shared/captions/transcriptText'
 import { AiError } from './request'
 import { NO_PICTURES_MESSAGE } from './types'
+import { t } from '../../shared/i18n/t'
 
 /** One picture of a prompt. */
 export type PromptImage = NonNullable<TextPrompt['images']>[number]
@@ -38,10 +39,10 @@ export const isJpeg = (b: Uint8Array): boolean => b instanceof Uint8Array && b.l
  * message to show otherwise; nothing is sent then.
  */
 export function checkImages(images: readonly Uint8Array[]): void {
-  if (images.length > IMAGE_LIMITS.perRequest) throw new Error('There are too many pictures to send at once.')
+  if (images.length > IMAGE_LIMITS.perRequest) throw new Error(t('errors.images.thereAreTooMany'))
   for (const b of images) {
-    if (!isJpeg(b)) throw new Error('A picture to send is not a JPEG image.')
-    if (b.byteLength > IMAGE_LIMITS.bytes) throw new Error('A picture to send is too large.')
+    if (!isJpeg(b)) throw new Error(t('errors.images.aPictureToSend'))
+    if (b.byteLength > IMAGE_LIMITS.bytes) throw new Error(t('errors.images.aPictureToSend2'))
   }
 }
 
@@ -49,7 +50,7 @@ export function checkImages(images: readonly Uint8Array[]): void {
 export function promptImages(prompt: Pick<TextPrompt, 'images'>): PromptImage[] {
   const images = prompt.images ?? []
   checkImages(images.map((i) => i.data))
-  for (const i of images) if (i.mime !== 'image/jpeg' || typeof i.id !== 'string' || !i.id || i.id.length > 64) throw new Error('A picture to send is not a JPEG image.')
+  for (const i of images) if (i.mime !== 'image/jpeg' || typeof i.id !== 'string' || !i.id || i.id.length > 64) throw new Error(t('errors.images.aPictureToSend'))
   return images
 }
 

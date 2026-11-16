@@ -9,11 +9,28 @@ import { ModelCombobox } from '../ai/ModelCombobox'
 import { refreshCostData, useCostData, type CostData } from '../ai/useCost'
 import { canDo, ipcMessage } from './providerText'
 import { suggestedModels, useModelList } from './useModelList'
+import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 /** The kinds of the picker: the three providers, and More services (§2.6). */
 type FormKind = AiProviderKind | 'service'
-const KINDS: { kind: FormKind; label: string }[] = [...Object.values(AI_PROVIDER_KINDS).map((k) => ({ kind: k.kind as FormKind, label: k.label })), { kind: 'service', label: 'More services' }]
-export const MORE_SERVICES_HINT = 'OpenRouter, Groq, Together AI, Azure OpenAI, Ollama, LM Studio or any OpenAI-compatible address'
+const formKinds = (): { kind: FormKind; label: string }[] => [
+  ...Object.values(AI_PROVIDER_KINDS).map((k) => ({ kind: k.kind as FormKind, label: k.label })),
+  { kind: 'service', label: t('settings.provider.moreServices') }
+]
+/** The services More services covers, named under the picker. */
+export const moreServicesHint = (): string => t('settings.provider.moreServicesHint')
+
+/**
+ * A service preset's name in the UI language: the ones on this PC and Other address are words, the
+ * rest are brand names (SERVICE_PRESETS stays the English table main and the default names use).
+ */
+export function presetLabel(p: ServicePreset): string {
+  if (p === 'ollama') return t('settings.provider.preset.ollama')
+  if (p === 'lmstudio') return t('settings.provider.preset.lmstudio')
+  if (p === 'other') return t('settings.provider.preset.other')
+  return SERVICE_PRESETS[p].label
+}
 
 /** Where each provider's requests go (the key and the text), as the line under the form names it. */
 const KIND_HOSTS: Record<AiProviderKind, string> = { openai: 'api.openai.com', gemini: 'generativelanguage.googleapis.com', anthropic: 'api.anthropic.com' }
@@ -193,12 +210,12 @@ export function ProviderForm({
     e.preventDefault()
     if (saving) return
     setError(null)
-    if (!label.trim()) return setError('Give the provider a name.')
-    if (isService && !url?.ok) return setError(url && !url.ok ? url.message : 'Enter the address of the service.')
+    if (!label.trim()) return setError(t('settings.provider.needName'))
+    if (isService && !url?.ok) return setError(url && !url.ok ? url.message : t('settings.provider.needAddress'))
     if (isService && !model.trim()) return setError("Enter the model's name.")
-    if (keyNeeded && !apiKey.trim()) return setError(editing?.service && !sameOrigin ? 'Enter the API key for the new address.' : 'Enter the API key.')
+    if (keyNeeded && !apiKey.trim()) return setError(editing?.service && !sameOrigin ? t('settings.provider.needNewKey') : t('settings.provider.needKey'))
     if (prices && (prices.input.trim() || prices.output.trim()) && (priceOk(prices.input) === null || priceOk(prices.output) === null)) {
-      return setError('Prices are US$ per million tokens, from 0 to 1,000, for both input and output.')
+      return setError(t('settings.provider.badPrices'))
     }
     const body = input(true)
     if (!body) return
@@ -222,17 +239,18 @@ export function ProviderForm({
     }
   }
 
-  const keyHint = !keyNeeded && editing && keepsKey ? `Leave empty to keep the current key (${editing.maskedKey}).` : null
-  const title = editing ? `Edit “${editing.label}”` : 'Add a provider'
+  const keyHint = !keyNeeded && editing && keepsKey ? t('settings.provider.keepKey', { key: editing.maskedKey }) : null
+  const title = editing ? t('settings.provider.editTitle', { name: editing.label }) : t('settings.provider.addTitle')
+  const kinds = formKinds()
 
   return (
     <form className="ai-form" onSubmit={(e) => void submit(e)} aria-labelledby={`${id}-title`} noValidate>
       <h4 id={`${id}-title`}>{title}</h4>
 
       <div className="field">
-        <span id={`${id}-kind`}>Provider</span>
+        <span id={`${id}-kind`}>{t('common.label.provider')}</span>
         <div className="segmented ai-kind-picker" role="radiogroup" aria-labelledby={`${id}-kind`}>
-          {KINDS.map((k) => (
+          {kinds.map((k) => (
             <button
               key={k.kind}
               type="button"
@@ -246,7 +264,7 @@ export function ProviderForm({
                 const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
                 if (!step) return
                 e.preventDefault()
-                const next = KINDS[(KINDS.findIndex((x) => x.kind === kind) + step + KINDS.length) % KINDS.length]
+                const next = kinds[(kinds.findIndex((x) => x.kind === kind) + step + kinds.length) % kinds.length]
                 pickKind(next.kind)
                 const group = e.currentTarget.parentElement
                 window.setTimeout(() => group?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus(), 0)
@@ -257,11 +275,11 @@ export function ProviderForm({
           ))}
         </div>
         {isService ? (
-          <p className="hint ai-can">{MORE_SERVICES_HINT}. Can do: clean-up, translation, chapters, titles and summaries; transcription is not offered through a service yet.</p>
+          <p className="hint ai-can">{t('settings.provider.serviceCanDo', { services: moreServicesHint() })}</p>
         ) : (
           <p className="hint ai-can">
-            Can do: {canDo(apiKind).toLowerCase()}.
-            {!info.canTranscribe && ' It cannot transcribe: the Claude API does not accept sound, so add OpenAI or Google Gemini for auto captions.'}
+            {t('settings.provider.canDo', { list: canDo(apiKind).toLowerCase() })}
+            {!info.canTranscribe && ` ${t('settings.provider.noTranscribe')}`}
           </p>
         )}
       </div>
@@ -269,11 +287,11 @@ export function ProviderForm({
       {isService && (
         <>
           <label className="field">
-            <span>Service</span>
+            <span>{t('settings.provider.service')}</span>
             <select className="settings-input" value={preset} onChange={(e) => pickPreset(e.target.value as ServicePreset)} data-testid="service-preset">
               {PRESET_ORDER.map((p) => (
                 <option key={p} value={p}>
-                  {SERVICE_PRESETS[p].label}
+                  {presetLabel(p)}
                 </option>
               ))}
             </select>
@@ -281,7 +299,7 @@ export function ProviderForm({
           {preset === 'azure' ? (
             <div className="field">
               <label htmlFor={`${id}-resource`}>
-                <span className="settings-label">Your resource name</span>
+                <span className="settings-label">{t('settings.provider.resource')}</span>
               </label>
               <input
                 id={`${id}-resource`}
@@ -295,13 +313,13 @@ export function ProviderForm({
                 onChange={(e) => setResource(e.target.value)}
               />
               <p className={resource && url && !url.ok ? 'hint error' : 'hint'} id={`${id}-url-hint`}>
-                {resource && url && !url.ok ? url.message : url?.ok ? url.baseUrl : 'The name of your Azure OpenAI resource: Flown builds its address.'}
+                {resource && url && !url.ok ? url.message : url?.ok ? url.baseUrl : t('settings.provider.resourceHint')}
               </p>
             </div>
           ) : (
             <div className="field">
               <label htmlFor={`${id}-url`}>
-                <span className="settings-label">Base URL</span>
+                <span className="settings-label">{t('settings.provider.baseUrl')}</span>
               </label>
               <input
                 id={`${id}-url`}
@@ -316,7 +334,7 @@ export function ProviderForm({
                 onChange={(e) => setBaseUrl(e.target.value)}
               />
               <p className={baseUrl.trim() && url && !url.ok ? 'hint error' : 'hint'} id={`${id}-url-hint`}>
-                {baseUrl.trim() && url && !url.ok ? url.message : 'An address that speaks OpenAI’s chat API. Plain http:// only for a service on this PC.'}
+                {baseUrl.trim() && url && !url.ok ? url.message : t('settings.provider.baseUrlHint')}
               </p>
             </div>
           )}
@@ -324,7 +342,7 @@ export function ProviderForm({
       )}
 
       <label className="field">
-        <span>Name</span>
+        <span>{t('common.label.name')}</span>
         <input
           className="settings-input"
           value={label}
@@ -339,7 +357,7 @@ export function ProviderForm({
 
       <div className="field">
         <label htmlFor={`${id}-key`}>
-          <span className="settings-label">API key</span>
+          <span className="settings-label">{t('settings.provider.apiKey')}</span>
         </label>
         <div className="ai-key-row">
           <input
@@ -347,39 +365,45 @@ export function ProviderForm({
             className="settings-input"
             type={showKey ? 'text' : 'password'}
             value={apiKey}
-            placeholder={keepsKey && editing ? `Unchanged (${editing.maskedKey})` : isService ? (loopback ? 'Not needed' : '') : info.keyPlaceholder}
+            placeholder={keepsKey && editing ? t('settings.provider.unchanged', { key: editing.maskedKey }) : isService ? (loopback ? t('settings.provider.notNeeded') : '') : info.keyPlaceholder}
             autoComplete="off"
             spellCheck={false}
             maxLength={AI_LIMITS.keyLength}
             aria-describedby={`${id}-key-hint`}
             onChange={(e) => setApiKey(e.target.value)}
           />
-          <button type="button" className="btn ghost settings-small" aria-pressed={showKey} aria-label={showKey ? 'Hide the key' : 'Show the key'} onClick={() => setShowKey((v) => !v)}>
-            {showKey ? 'Hide' : 'Show'}
+          <button type="button" className="btn ghost settings-small" aria-pressed={showKey} aria-label={showKey ? t('settings.provider.hideKey') : t('settings.provider.showKey')} onClick={() => setShowKey((v) => !v)}>
+            {showKey ? t('common.action.hide') : t('common.action.show')}
           </button>
         </div>
         <p className="hint" id={`${id}-key-hint`}>
           {isService ? (
             <>
               {editing?.service && origin && !sameOrigin
-                ? 'Enter the API key for the new address.'
+                ? t('settings.provider.needNewKey')
                 : loopback
-                  ? 'No key needed for Ollama and LM Studio on this PC.'
-                  : (keyHint ?? 'The key the service gave you.')}{' '}
-              It is encrypted on this PC and only sent to this address.
+                  ? t('settings.provider.noKeyLocal')
+                  : (keyHint ?? t('settings.provider.serviceKey'))}{' '}
+              {t('settings.provider.sentToAddress')}
             </>
           ) : (
             <>
               {keyHint ?? (
                 <>
-                  Create a key at{' '}
-                  <a href={info.keyPage} target="_blank" rel="noreferrer">
-                    {new URL(info.keyPage).host}
-                  </a>
-                  .
+                  {richText(
+                    'settings.provider.createKey',
+                    { host: new URL(info.keyPage).host },
+                    {
+                      link: (chunks) => (
+                        <a href={info.keyPage} target="_blank" rel="noreferrer">
+                          {chunks}
+                        </a>
+                      )
+                    }
+                  )}
                 </>
               )}{' '}
-              It is encrypted on this PC and only sent to {info.label}.
+              {t('settings.provider.sentTo', { name: info.label })}
             </>
           )}
         </p>
@@ -387,7 +411,7 @@ export function ProviderForm({
 
       <ModelCombobox
         id={`${id}-model`}
-        label={isService ? (preset === 'azure' ? 'Model (the deployment’s name)' : 'Model') : 'Model for text tasks'}
+        label={isService ? (preset === 'azure' ? t('settings.provider.modelAzure') : t('settings.provider.model')) : t('settings.provider.modelText')}
         value={model}
         target={target}
         field="text"
@@ -402,7 +426,7 @@ export function ProviderForm({
         <>
           <ModelCombobox
             id={`${id}-tm`}
-            label="Transcription model"
+            label={t('settings.provider.modelTranscription')}
             value={transcriptionModel}
             target={target}
             field="transcription"
@@ -414,20 +438,20 @@ export function ProviderForm({
           />
           <p className="hint" id={`${id}-tm-hint`}>
             {kind === 'openai'
-              ? 'gpt-transcribe gives text only: Flown estimates word times from the sound. whisper-1 gives exact word times until OpenAI retires it on 26 February 2027.'
-              : 'Gemini listens to the sound and returns sentences with their times.'}
+              ? t('settings.provider.openaiTranscription')
+              : t('settings.provider.geminiTranscription')}
           </p>
         </>
       )}
 
       <div className="field">
         <button type="button" className="link" aria-expanded={pricesOpen} aria-controls={`${id}-prices`} onClick={() => setPricesOpen((v) => !v)}>
-          Prices (US$ per million tokens)
+          {t('settings.provider.prices')}
         </button>
         {pricesOpen && (
           <div id={`${id}-prices`} className="ai-prices">
             <label className="field">
-              <span>Input</span>
+              <span>{t('settings.provider.input')}</span>
               <input
                 className="settings-input"
                 type="number"
@@ -439,7 +463,7 @@ export function ProviderForm({
               />
             </label>
             <label className="field">
-              <span>Output</span>
+              <span>{t('settings.provider.output')}</span>
               <input
                 className="settings-input"
                 type="number"
@@ -450,7 +474,7 @@ export function ProviderForm({
                 onChange={(e) => setPrices({ ...priceFields, output: e.target.value })}
               />
             </label>
-            {!known && <p className="hint">Not in Flown&apos;s price list: add them to see costs.</p>}
+            {!known && <p className="hint">{t('settings.provider.unknownPrices')}</p>}
           </div>
         )}
       </div>
@@ -458,12 +482,12 @@ export function ProviderForm({
       {openRouter && (
         <label className="ai-check-row">
           <input type="checkbox" checked={keepNoData} onChange={(e) => setKeepNoData(e.target.checked)} />
-          <span>Only use hosts that do not keep my prompts</span>
+          <span>{t('settings.provider.noData')}</span>
         </label>
       )}
 
       <p className="hint" data-testid="ai-goes-to">
-        Your key and the text you send go to <strong>{host || 'the address above'}</strong>.
+        {richText('settings.provider.goesTo', { host: host || t('settings.provider.addressAbove') }, { b: (chunks) => <strong>{chunks}</strong> })}
       </p>
 
       {error && (
@@ -473,10 +497,10 @@ export function ProviderForm({
       )}
       <div className="ai-form-actions">
         <button type="button" className="btn ghost" onClick={onCancel}>
-          Cancel
+          {t('common.action.cancel')}
         </button>
         <button type="submit" className="btn primary" disabled={!!saving}>
-          {saving === 'checking' ? 'Checking…' : saving ? 'Saving…' : isService ? 'Save and check' : editing ? 'Save' : 'Add provider'}
+          {saving === 'checking' ? t('settings.provider.checking') : saving ? t('common.state.saving') : isService ? t('settings.provider.saveAndCheck') : editing ? t('common.action.save') : t('settings.provider.addButton')}
         </button>
       </div>
     </form>

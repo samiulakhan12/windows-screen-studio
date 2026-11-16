@@ -15,6 +15,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { BUNDLED_PRICE_LIST, confirmList, newerList, parsePriceList, PRICE_LIST_MAX_BYTES, PRICE_LIST_URL, type PriceList } from '../../shared/ai/prices'
 import { writeFileAtomicSync } from '../atomicWrite'
+import { t } from '../../shared/i18n/t'
 
 export const PRICE_CACHE_FILE = 'ai-prices.json'
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -138,12 +139,12 @@ export async function refreshPriceList(opts: { fetch?: typeof fetch; now?: numbe
   inFlight = (async (): Promise<PriceList> => {
     try {
       const res = await fetcher(priceListUrl(), { redirect: 'error', signal: AbortSignal.timeout(15_000), headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' } })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) throw new Error(t('errors.modelList.http', { status: String(res.status) }))
       const text = await readCapped(res, PRICE_LIST_MAX_BYTES)
-      if (text === null) throw new Error('too large or not UTF-8')
+      if (text === null) throw new Error(t('errors.modelList.tooLargeOrNot'))
       const raw = JSON.parse(text) as unknown
       const list = parsePriceList(raw, dayOf(now))
-      if (!list) throw new Error('not a list Flown can use')
+      if (!list) throw new Error(t('errors.modelList.notAListFlown'))
       downloaded = list
       fetchedAt = now
       if (cacheFile) {

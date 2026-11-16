@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import ffmpegStatic from 'ffmpeg-static'
+import type { ExportErrorCode } from '../shared/api/export'
 
 /** Path to the bundled ffmpeg (unpacked from the asar archive in packaged builds). */
 export function ffmpegPath(): string {
@@ -12,21 +13,34 @@ export function ffmpegPath(): string {
 export class FfmpegFailure extends Error {
   constructor(
     message: string,
-    readonly detail: string
+    readonly detail: string,
+    /** Why it failed, for the export's choice of the next encoder and its message (output-and-languages §9.6). */
+    readonly code: ExportErrorCode = 'encoder'
   ) {
     super(message)
     this.name = 'FfmpegFailure'
   }
 }
 
-const KNOWN_ERRORS: [RegExp, string][] = [
-  [/No space left on device|ENOSPC/i, 'The disk is full.'],
-  [/Permission denied|EACCES|EPERM/i, 'Could not write to that folder (permission denied).'],
-  [/Device or resource busy|EBUSY|being used by another process/i, 'The file is in use by another app.'],
-  [/No such file or directory/i, 'A file the export needs is missing.'],
-  [/Cannot allocate memory|out of memory/i, 'The computer ran out of memory.'],
-  [/Invalid data found when processing input/i, 'The recording could not be read (it may be damaged).']
+/**
+ * ffmpeg's failures Flown recognises: the English text the recording side and other callers show, and
+ * the code an export goes by (output-and-languages §9.6), which also picks the export's message in
+ * the UI language (exportJob.ts, toIpcError). The texts stay English here.
+ */
+const KNOWN_ERRORS: [RegExp, string, ExportErrorCode][] = [
+  [/No space left on device|ENOSPC/i, 'The disk is full.', 'disk-full'],
+  [/Permission denied|EACCES|EPERM/i, 'Could not write to that folder (permission denied).', 'permission'],
+  [/Device or resource busy|EBUSY|being used by another process/i, 'The file is in use by another app.', 'in-use'],
+  [/No such file or directory/i, 'A file the export needs is missing.', 'missing-input'],
+  [/Cannot allocate memory|out of memory/i, 'The computer ran out of memory.', 'encoder'],
+  [/Invalid data found when processing input/i, 'The recording could not be read (it may be damaged).', 'unreadable']
 ]
+
+/** The code of an ffmpeg failure from its log: a known one's, else the encoder's (another encoder may do). */
+export function ffmpegErrorCode(stderr: string): ExportErrorCode {
+  for (const [re, , code] of KNOWN_ERRORS) if (re.test(stderr)) return code
+  return 'encoder'
+}
 
 /** Short, user-facing reason for an ffmpeg failure, from its log. */
 export function describeFfmpegError(stderr: string, fallback = 'The video encoder stopped unexpectedly.'): string {
@@ -67,7 +81,7 @@ export function startFfmpeg(args: string[]): FfmpegRun {
     proc.on('close', (code, signal) => {
       if (code === 0) resolve()
       else if (signal) reject(new FfmpegFailure('The video encoder was stopped.', `ffmpeg stopped (${signal})\n${stderr}`))
-      else reject(new FfmpegFailure(describeFfmpegError(stderr), `ffmpeg exited with code ${code}\n${stderr}`))
+      else reject(new FfmpegFailure(describeFfmpegError(stderr), `ffmpeg exited with code ${code}\n${stderr}`, ffmpegErrorCode(stderr)))
     })
   })
   done.catch(() => undefined)
@@ -99,9 +113,9 @@ export class FrameEncoder {
       this.proc.on('error', (e) => reject(new FfmpegFailure('Could not start the video encoder.', e.message)))
       this.proc.on('close', (code, signal) => {
         if (code === 0) resolve()
-        else if (this.killed) reject(new FfmpegFailure('The export was cancelled.', 'cancelled'))
+        else if (this.killed) reject(new FfmpegFailure('The export was cancelled.', 'cancelled', 'cancelled'))
         else if (signal) reject(new FfmpegFailure('The video encoder stopped unexpectedly.', `ffmpeg was stopped (${signal})\n${this.stderr}`))
-        else reject(new FfmpegFailure(describeFfmpegError(this.stderr), `ffmpeg exited with code ${code}\n${this.stderr}`))
+        else reject(new FfmpegFailure(describeFfmpegError(this.stderr), `ffmpeg exited with code ${code}\n${this.stderr}`, ffmpegErrorCode(this.stderr)))
       })
     })
     // Failures surface through write()/finish(); avoid unhandled rejections meanwhile.

@@ -85,8 +85,8 @@ describe('routing (test 8)', () => {
   })
 
   it("'chapters' and 'marks' never run on this PC", async () => {
-    await expect(aiText('local', { task: 'chapters', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] }, undefined, sender)).rejects.toThrow(NOT_ON_THIS_PC_MESSAGE)
-    await expect(aiText('local', { task: 'marks', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] }, undefined, sender)).rejects.toThrow(NOT_ON_THIS_PC_MESSAGE)
+    await expect(aiText('local', { task: 'chapters', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] }, undefined, sender)).rejects.toThrow(NOT_ON_THIS_PC_MESSAGE())
+    await expect(aiText('local', { task: 'marks', segments: [{ id: 'a', start: 0, end: 1, text: 'hi' }] }, undefined, sender)).rejects.toThrow(NOT_ON_THIS_PC_MESSAGE())
   })
 
   it("aiText('svc…', …) reaches compatibleClient through the service store", async () => {

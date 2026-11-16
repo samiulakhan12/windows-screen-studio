@@ -156,6 +156,8 @@ const PARTS = {
       `${R}/editor/ExportBundleOptions.tsx`,
       `${R}/editor/exportIcons.tsx`,
       `${R}/editor/exporter.ts`,
+      // The export's names in the UI language (destinations, encoders, Also save), made at step S3b from the tables below.
+      `${R}/editor/exportNames.ts`,
       `${R}/render/**`,
       // EXPORT_PRESETS labels, RESOLUTION_LABELS and ENCODER_NAMES (§9.1, §10.5): tables of labels
       // the scanner does not see as text.
