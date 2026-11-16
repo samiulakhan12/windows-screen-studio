@@ -1,4 +1,4 @@
-# Build report: output and the app (wave 12), steps S0 to S2
+# Build report: output and the app (wave 12), steps S0 to S3a
 
 Branch `feat/wave12` in `/home/user/wt-w12`. Design:
 [`docs/design/output-and-languages.md`](docs/design/output-and-languages.md) (§0 the owner's decisions,
@@ -9,8 +9,8 @@ last verification fix from `integ/wave8`, the seven parts P1 to P7 merged in the
 (P1, P2, P3, P4, P6, P7, then P5, which mounts the others' rows), and the integration commits listed
 below. Nothing was pushed.
 
-This build covers steps S0 and S1, and the lead's step S2 (its own section below). The extraction (S3
-and S4) is a later workflow, and the translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
+This build covers steps S0 and S1, the lead's step S2 and part X6's step S3a (their own sections below).
+The rest of the extraction (S3b and S4) is a later workflow, and the translations (S5) need people: no translation was drafted or written, `scripts/i18n/draft.mjs` was
 never run against any service, no AI service was contacted, `translations/reviewers.json` lists
 nobody, and `src/shared/i18n/built/shipped.json` is `[]`, so Bangla stays out of the language picker.
 
@@ -269,9 +269,57 @@ identical frames are), F7's caption (the camera's opacity is), and the L steps t
   tests passed, 8 skipped (the same skips); `npm run i18n:check` passes with one warning (65 `common`
   keys not used yet); `build-catalogues.mjs --check` matches; `npm run -s build` succeeds.
 
+## Step S3a: part X6, the formatter call sites
+
+* **What moved** (§10.5, §11.2): every call of our own files that formatted a size, length, clock,
+  date, factor, list or grouped count with one of today's helpers now goes through `fmt`: the
+  helpers §10.5 names (`formatClock`, `formatDuration`, the three `formatBytes` and two `sizeText`
+  helpers, `clockTime`, `formatTick`, `formatLevel`, `formatRate`, `zoomText`, the sounds list's
+  `lengthText`), `formatTime` at our call sites (§9.5: the timeline, transport, panels and the shared
+  copy modules §10.5 cites, such as `soundsCopy.ts:57` and `polishCopy.ts:196`), the eight calls with
+  no locale (`Home.tsx`, `search/rows.ts`, `useUpdates.ts`, `StorageSection.tsx`, `FontPicker.tsx`),
+  and the rest of §11.2's table: `versionTime`, `usedAgo`, the two local `listPhrase` copies and the
+  `toLocaleString('en-US')` counts (notes, script drafts, the LUT reader's errors, the cost line's
+  tokens, the colour grading's CPU reason). 198 calls in 59 files (60 source files changed with fmt.ts), in five commits by area.
+* **`fmt.bytes` styles.** Three of the size helpers wrote other shapes than the export dialog's
+  ("1.5 GB" and whole MB for Home and Settings › Storage, "0 KB" for nothing in Storage, never under
+  1 MB for short clips), so `fmt.bytes(n, style)` takes `'fine'` (the default, as before),
+  `'coarse'`, `'storage'` or `'megabytes'`; English runs each helper's own code, and other languages
+  write the same shapes in the format locale's digits.
+* **What stayed**, each in `fmt-sites.json` with its reason: the crop editor's pixel size (a local
+  `sizeText` that is not a size helper of §11), `usd()`'s US$ amount (fmt has no currency format yet;
+  §11.3 gives it to the cost line's extraction), the short clip's "Most action, 1:02" title (it becomes
+  a project's name, §9.7) and the share message's length (posted by main to the user's own channel,
+  outside the app; if X4 makes the message follow the UI language, the length moves to
+  `fmt.clock(s, 'hours-rounded')`). `formatTime` itself, the recording side's files and the helpers
+  tests 8 and 73 compare against are unchanged; Home's `formatBytes` and the two `listPhrase` copies
+  were local and are gone, and test 73 keeps their code as the reference.
+* **`scripts/i18n/fmt-sites.json`** lists the 198 moved calls (the call they replaced, the call now,
+  the line at S3a and the mapping), the 25 mappings and the 4 kept calls. `node
+  scripts/i18n/fmt-sites.mjs [--check]` finds every formatter call in our files with the TypeScript
+  compiler (`scripts/i18n/lib/fmtSites.cjs`) and fails on one neither moved nor kept, a kept entry
+  matching nothing, or a moved call missing from its file. A part that rewrites a listed call keeps its
+  `now` text (as `t()` values do) or updates the entry.
+* **Test 73** (`tests/i18nFmtSites.test.ts`) compares each mapping's `fmt` call with the helper it
+  replaced over §11.2's grids (seconds from −3 to 10⁶ with NaN and Infinity, bytes from −5 to 10¹²,
+  factors, ticks at nine steps, counts with decimals and NaN, lists, local instants around midnight and
+  new year, ages, version times at a fixed now), checks that each site's call is its mapping's, and runs
+  the tree check. On the S2 tree the check finds 198 calls not moved and 183 moved calls missing; with
+  S2's `fmt.ts` the `coarse`, `storage` and `megabytes` pairs differ.
+* **Size**: the renderer's JavaScript is 2,818,204 bytes against S2's 2,818,582, main's 5,897,684
+  against 5,896,910, the preload unchanged.
+* **Checks** on the final build: **tests 9 and 10 pass** against the S2 baseline
+  (`english-guard.e2e.cjs` under `xvfb-run`, compare mode; the baseline was not touched); test 73
+  passes (29 tests) and test 8 too; both typechecks are clean; vitest (`--maxWorkers=2`, private
+  `TMPDIR`): 590 files, 7,858 tests passed, 8 skipped (the same skips); `npm run i18n:check` passes
+  with the same warning (65 `common` keys unused), the scanner now reporting 2,874 texts in 218 files
+  (the eight locale-less calls are gone); `build-catalogues.mjs --check` matches; `npm run -s build`
+  succeeds. No recording-side file, `security.ts`, the CSP, the baseline, `reviewers.json` or the
+  built catalogues changed (`git diff e825ddf`).
+
 ## What is left for S3 to S5
 
-* **S3a/S3b** (X1 to X7): the extraction, file list by file list from `scripts/i18n/parts.json`, and
+* **S3b** (X1 to X5, X7), from this step's result: the extraction, file list by file list from `scripts/i18n/parts.json`, and
   only `common`'s keys for the words it holds. With it come the e2e steps that check its code: L5
   (digits and Target size through `fmt` and `NumberField`), L6 (`aria-keyshortcuts`), L9 (no plain
   ASCII text under `en-XA`), L10 (right to left under `ar-XB`, which also needs the pseudo-locale
@@ -282,6 +330,19 @@ identical frames are), F7's caption (the camera's opacity is), and the L steps t
   `textArea` and `COMMON_SAFE`; `src/shared/engine/project.ts` (X1) keeps `formatTime` ASCII. The
   label-table files may hold words that are not UI text (AI prompts in `src/shared/publish/prompts.ts`,
   ids); the part puts those in `allow.json` with their reason.
+* **After X6, for the S3b parts.** X6 moved the named helpers and the locale calls only. Numbers
+  interpolated into prose (`${n}`, `toFixed` in a template, `Math.round(m.seconds)} s`, the crop
+  editor's `${px.w} × ${px.h}`) become message values through `fmt.count` and `fmt.number` as each part
+  makes its messages (§9.3). Each part keeps the `fmt` calls of `fmt-sites.json` in its files (as
+  values of `t()`) or updates their entries; `node scripts/i18n/fmt-sites.mjs --check` and test 73
+  say which. The helpers tests 8 and 73 compare against (`ExportDialog.tsx`'s `formatClock`,
+  `formatDuration` and `formatBytes`, `formatTick`, `formatLevel`, `formatRate`, `zoomText`,
+  `clockTime`, both `lengthText`s, both exported `sizeText`s, `storage/rules.ts`'s `formatBytes` and
+  `usedAgo`, `versionTime`) stay exported although only `moments.ts` and `webhooks.ts` still call two
+  of them. X5 owns the running view's `fmt.inSentence` (§9.6, `ExportDialog.tsx`'s lower-cased
+  progress detail, not moved here). X4 decides whether the share message follows the UI language
+  (then its length moves to `fmt.clock(s, 'hours-rounded')`). `src/shared/ai/cost.ts` is in no part's
+  list; its `usd()` keeps US$ amounts as they are until a currency format joins `fmt` (§11.3).
 * **S4**: the scanner fails for the whole tree (`"scan": "fail"`). It still reads no tables of labels,
   so it cannot tell whether those were extracted; a table rule for the scanner, or the split's
   `labelTablesOf` turned into a check, belongs with S4. Any `common` key still unused then fails
