@@ -1,9 +1,9 @@
 import { timelineGaps } from '../../../shared/editor/clips'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import type { ClickRow } from '../../../shared/engine/inputData'
-import { formatTime } from '../../../shared/engine/project'
 import { isZoomClick } from '../../../shared/engine/zoom'
 import { isGroupKind, parseItemKey, type ItemKey } from '../../../shared/editor/multiSelect'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { ClickEvent, Project, StrayReason } from '../../../shared/types'
 
 /** What the user has selected on the timeline. Times are source seconds. */
@@ -100,7 +100,7 @@ export const clickState = (row: ClickRow): 'used' | 'ignored' | 'stray' => (!row
  * starts a zoom does not promise to drop one.
  */
 export function clickTooltip(row: ClickRow, deleteKeys: readonly string[], rightClicks: boolean): string {
-  const at = formatTime(row.click.t)
+  const at = fmt.clock(row.click.t)
   const stray = row.ignored?.stray
   if (stray) return `Ignored automatically at ${at}: ${STRAY_REASON_TEXT[stray]} · select it to use it again`
   if (row.ignored) return `Ignored click at ${at} · select it to use it again`

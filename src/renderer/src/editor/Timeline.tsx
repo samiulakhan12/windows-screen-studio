@@ -27,7 +27,6 @@ import {
   clampScale,
   fitScale,
   followScroll,
-  formatTick,
   overlaps,
   renderWindow,
   scrollForZoom,
@@ -38,15 +37,14 @@ import {
 import { orPress, shortcutLabel, withShortcut } from '../../../shared/editor/shortcuts'
 import { cropOf, zoomInView } from '../../../shared/engine/crop'
 import { clamp } from '../../../shared/engine/math'
-import { formatTime } from '../../../shared/engine/project'
 import { keptBounds, MIN_CLIP, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomSettingsOf, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
-import { formatLevel } from '../../../shared/editor/zoomEdit'
 import { itemKey, type GroupKind, type ItemTrack } from '../../../shared/editor/multiSelect'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { ScrollSession } from '../../../shared/engine/scroll'
 import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
 import { spotlightIcon, spotlightName } from '../../../shared/render/magnifier'
+import { fmt } from '../../../shared/i18n/fmt'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -644,7 +642,7 @@ export const Timeline = memo(
               <div className="tl-ruler" onPointerDown={(e) => e.button === 0 && scrub(e)}>
                 {ticks.map((t) => (
                   <span key={t} className="tick" style={{ left: t * px }}>
-                    {formatTick(t, step)}
+                    {fmt.tick(t, step)}
                   </span>
                 ))}
               </div>
@@ -734,7 +732,7 @@ export const Timeline = memo(
                     data-start={b.start}
                     data-end={b.end}
                     style={{ left: b.start * px, width: Math.max(2, (b.end - b.start) * px) }}
-                    title={`Scrolling ${formatTime(b.start)} – ${formatTime(b.end)}: auto zoom shows the whole page while it moves`}
+                    title={`Scrolling ${fmt.clock(b.start)} – ${fmt.clock(b.end)}: auto zoom shows the whole page while it moves`}
                   />
                 ))}
                 {links
@@ -767,7 +765,7 @@ export const Timeline = memo(
                       className={`seg zoom-seg ${selId === z.id ? 'selected' : ''} ${z.auto ? 'auto' : ''} ${scale < 1 ? 'pullback' : ''} ${tm?.toNext ? 'linked-next' : ''} ${tm?.fromPrev ? 'linked-prev' : ''}${memberClass('zoom', z.id)}`}
                       style={{ left: z.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onZoomDown(z)}
-                      title={`${formatTime(z.start)} – ${formatTime(z.end)} · ${formatLevel(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}${groupHint('zoom', z.id)}`}
+                      title={`${fmt.clock(z.start)} – ${fmt.clock(z.end)} · ${fmt.factor(scale)}${scale < 1 ? ' pull back' : ''} · ${z.auto ? 'automatic' : 'edited'} zoom${tm?.toNext ? ' · pans to the next zoom' : ''}${groupHint('zoom', z.id)}`}
                     >
                       {tm && w > 24 && (
                         <>
@@ -778,7 +776,7 @@ export const Timeline = memo(
                       <span className="edge left" />
                       {w > 34 && (
                         <span className="seg-label">
-                          {formatLevel(scale)}
+                          {fmt.factor(scale)}
                           {w > 70 ? kind : ''}
                           {z.auto && w > 110 ? ' · auto' : ''}
                         </span>
@@ -828,7 +826,7 @@ export const Timeline = memo(
                       className={`seg shape-seg ${it.look} ${selId === it.id ? 'selected' : ''}${memberClass(it.type, it.id)}`}
                       style={{ left: it.start * px, width: w, top: `${lane * itemLaneH}%`, height: `${itemLaneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
                       onPointerDown={onShapeDown(it)}
-                      title={`${it.label} · ${formatTime(it.start)} – ${formatTime(it.end)}${groupHint(it.type, it.id)}`}
+                      title={`${it.label} · ${fmt.clock(it.start)} – ${fmt.clock(it.end)}${groupHint(it.type, it.id)}`}
                     >
                       <span className="edge left" />
                       {w > 22 && itemLaneMap.count <= 2 && (
@@ -892,7 +890,7 @@ const GapBlock = memo(function GapBlock({
       data-gap-start={gap.start}
       data-gap-end={gap.end}
       style={{ left: gap.start * px, width: w }}
-      title={`${label}: ${formatTime(gap.start)} – ${formatTime(gap.end)} (${(gap.end - gap.start).toFixed(1)} s not in the video)`}
+      title={`${label}: ${fmt.clock(gap.start)} – ${fmt.clock(gap.end)} (${(gap.end - gap.start).toFixed(1)} s not in the video)`}
     >
       {gap.kind === 'cut' && w >= 22 && (
         <button

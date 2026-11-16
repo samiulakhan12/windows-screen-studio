@@ -1,6 +1,7 @@
 import { memo, useSyncExternalStore } from 'react'
 import { shortcutLabel } from '../../../shared/editor/shortcuts'
-import { formatRate, isPreviewSpeed, PREVIEW_SPEEDS, previewSpeedHint, shuttleHint, shuttleLabel, type ShuttleDir } from '../../../shared/editor/shuttle'
+import { isPreviewSpeed, PREVIEW_SPEEDS, previewSpeedHint, shuttleHint, shuttleLabel, type ShuttleDir } from '../../../shared/editor/shuttle'
+import { fmt } from '../../../shared/i18n/fmt'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
 import { useKeymap } from './keymapContext'
@@ -34,7 +35,7 @@ export const PreviewSpeedControl = memo(function PreviewSpeedControl(): JSX.Elem
         >
           {PREVIEW_SPEEDS.map((s) => (
             <option key={s} value={String(s)}>
-              {formatRate(s)}
+              {fmt.factor(s)}
             </option>
           ))}
         </select>

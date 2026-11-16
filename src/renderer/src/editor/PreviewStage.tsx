@@ -16,7 +16,7 @@ import {
 } from '../../../shared/editor/shapes'
 import { setZoomRegionInView } from '../../../shared/editor/cropEdit'
 import { dragView, holdViewAt } from '../../../shared/editor/followEdit'
-import { dragRegion, formatLevel, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
+import { dragRegion, regionFromPoints, type Box as RegionBox, type RegionHandle, type ZoomRegion } from '../../../shared/editor/zoomEdit'
 import { croppedFrameSize, fromCrop, geometryFromCrop } from '../../../shared/engine/crop'
 import { frameCamera } from '../../../shared/engine/frameView'
 import { punchedCamera } from '../../../shared/render/joins'
@@ -39,6 +39,7 @@ import { useGroup } from './groupContext'
 import { CropEditor, type CropTool } from './CropEditor'
 import { overlayBounds, OverlayEditor } from './OverlayEditor'
 import { overlayVisibleAt } from '../../../shared/render/imageOverlays'
+import { fmt } from '../../../shared/i18n/fmt'
 import { releaseFocus } from './focus'
 import type { PreviewPlayer } from './player'
 import { followPointer } from './pointer'
@@ -582,7 +583,7 @@ function RegionEditor({
     <>
       <div className="region-view" style={{ left: view.x, top: view.y, width: view.w, height: view.h }} />
       <div className="region-box" style={box} onPointerDown={onDown('move')} data-testid="region-box" title="Drag to move · corners resize (Shift: any shape)">
-        <span className="region-label">{formatLevel(zoomTargetScale(zoom))}</span>
+        <span className="region-label">{fmt.factor(zoomTargetScale(zoom))}</span>
         {CORNERS.map((c) => (
           <span
             key={c}

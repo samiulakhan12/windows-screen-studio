@@ -6,8 +6,8 @@ import { captionsOf } from '../../../shared/captions/settings'
 import type { TranscribeOptions, TranscribeProgress } from '../../../shared/api/ai'
 import { LOCAL_TRANSCRIBER_ID } from '../../../shared/api/speech'
 import { planOf, videoTimeAt } from '../../../shared/engine/freeze'
-import { formatTime } from '../../../shared/engine/project'
 import { playableFrom } from '../../../shared/engine/timeline'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { CaptionSegment, Clip, Project, Transcript } from '../../../shared/types'
 import type { EditorServices } from './context'
 import { loadBrandLook } from './greatRun'
@@ -250,7 +250,7 @@ export async function transcribe({ store }: EditorServices, options: TranscribeO
   // A project keeps at most MAX_CAPTIONS captions: say where the kept ones stop rather than drop the rest silently.
   if (fetched.leftOut) {
     const last = transcript.segments[transcript.segments.length - 1]
-    const at = formatTime(videoTimeAt(store.state.clips, planOf(store.state), last.end), false)
+    const at = fmt.clock(videoTimeAt(store.state.clips, planOf(store.state), last.end), 'whole')
     setJob({ projectId, progress: null, error: null, running: false, notice: `A project keeps at most ${MAX_CAPTIONS} captions, so the captions after ${at} were left out.` })
   }
   return true

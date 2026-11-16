@@ -2,7 +2,7 @@ import { useRef, useSyncExternalStore, type PointerEvent as ReactPointerEvent } 
 import { captionDragBounds, dragCaptionTimes, retimeWords } from '../../../shared/captions/edit'
 import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
-import { formatTime } from '../../../shared/engine/project'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { CaptionSegment } from '../../../shared/types'
 import { requestCaptions, showCaption } from './captionItems'
 import { useEditor } from './context'
@@ -113,7 +113,7 @@ export function CaptionTrack({ px, win, duration, selection, onSelect, scrub, sn
               className={`seg caption-seg ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onCaptionDown(s)}
-              title={`${s.text} · ${formatTime(s.start)} – ${formatTime(s.end)} · double-click to edit the text`}
+              title={`${s.text} · ${fmt.clock(s.start)} – ${fmt.clock(s.end)} · double-click to edit the text`}
             >
               <span className="edge left" />
               {w > 24 && <span className="seg-label">{s.text}</span>}

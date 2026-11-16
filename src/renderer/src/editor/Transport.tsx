@@ -1,8 +1,8 @@
 import { memo, useEffect, useRef, useSyncExternalStore } from 'react'
 import { withShortcut } from '../../../shared/editor/shortcuts'
 import { planOf, videoDuration, videoTimeAt } from '../../../shared/engine/freeze'
-import { formatTime } from '../../../shared/engine/project'
 import { SAFE_ZONES, type SafeChoice, type SafePlatform } from '../../../shared/render/safeZones'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { Clip, Freeze } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -90,9 +90,9 @@ export const Transport = memo(function Transport({ clips, freezes, notice, notic
     let last = ''
     // In seconds of the exported video: a pause freeze adds its time, and counts while the preview holds it.
     const plan = planOf({ clips, freezes })
-    const total = formatTime(videoDuration(clips, plan))
+    const total = fmt.clock(videoDuration(clips, plan))
     const render = (): void => {
-      const text = `${formatTime(videoTimeAt(clips, plan, player.time) + player.holdElapsed)} / ${total}`
+      const text = `${fmt.clock(videoTimeAt(clips, plan, player.time) + player.holdElapsed)} / ${total}`
       if (text !== last && timeRef.current) {
         last = text
         timeRef.current.textContent = text

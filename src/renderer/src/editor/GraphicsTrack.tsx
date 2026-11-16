@@ -6,7 +6,7 @@ import { itemLanes } from '../../../shared/editor/shapes'
 import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragAnnotationTimes } from '../../../shared/editor/annotations'
-import { formatTime } from '../../../shared/engine/project'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { Graphic } from '../../../shared/types'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -120,7 +120,7 @@ export function GraphicsTrack({ px, win, duration, selection, onSelect, scrub, s
               className={`seg graphic-seg ${g.kind}${g.auto ? ' auto' : ''} ${selId === g.id ? 'selected' : ''}${memberClass(g.id)}`}
               style={{ left: g.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onBlockDown(g)}
-              title={`${label} · ${GRAPHIC_NAMES[g.kind]}${g.auto ? ' (automatic)' : ''} · ${formatTime(g.start)} – ${formatTime(g.end)}${groupHint(g.id)}`}
+              title={`${label} · ${GRAPHIC_NAMES[g.kind]}${g.auto ? ' (automatic)' : ''} · ${fmt.clock(g.start)} – ${fmt.clock(g.end)}${groupHint(g.id)}`}
             >
               <span className="edge left" />
               {w > 22 && lanes.count <= 2 && (

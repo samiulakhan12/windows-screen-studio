@@ -6,7 +6,7 @@ import { chapterSnapLimit, sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { dragTitleTimes, TITLE_STYLES } from '../../../shared/editor/titles'
 import { clamp } from '../../../shared/engine/math'
-import { formatTime } from '../../../shared/engine/project'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { Chapter, TitleCard, TitleCardStyle } from '../../../shared/types'
 import { useEditor } from './context'
 import { releaseFocus } from './focus'
@@ -172,7 +172,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
             className={`chapter-flag ${selId === c.id ? 'selected' : ''}${memberClass('chapter', c.id)}`}
             style={{ left: c.t * px }}
             onPointerDown={onChapterDown(c)}
-            title={`${c.title || 'Chapter'} · ${formatTime(c.t)} · drag to move${groupHint('chapter', c.id)}`}
+            title={`${c.title || 'Chapter'} · ${fmt.clock(c.t)} · drag to move${groupHint('chapter', c.id)}`}
           >
             <span className="chapter-name">{c.title || 'Chapter'}</span>
           </div>
@@ -193,7 +193,7 @@ export function TitleTrack({ px, win, duration, selection, onSelect, scrub, snap
               className={`seg title-seg ${c.style} ${selId === c.id ? 'selected' : ''}${memberClass('title', c.id)}`}
               style={{ left: c.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onTitleDown(c)}
-              title={`${name} · ${styleLabel(c.style)} · ${formatTime(c.start)} – ${formatTime(c.end)}${groupHint('title', c.id)}`}
+              title={`${name} · ${styleLabel(c.style)} · ${fmt.clock(c.start)} – ${fmt.clock(c.end)}${groupHint('title', c.id)}`}
             >
               <span className="edge left" />
               {w > 22 && lanes.count <= 2 && (

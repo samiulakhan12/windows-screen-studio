@@ -5,7 +5,7 @@ import { itemLanes } from '../../../shared/editor/shapes'
 import { sameSpan } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { clamp } from '../../../shared/engine/math'
-import { formatTime } from '../../../shared/engine/project'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { ImageOverlay } from '../../../shared/types'
 import { useEditor } from './context'
 import { EditorIcon } from './EditorIcon'
@@ -139,7 +139,7 @@ export function OverlayTrack({ px, win, duration, selection, onSelect, scrub, sn
             className={`seg overlay-seg ${o.sticker ? 'sticker' : ''} ${selId === o.id ? 'selected' : ''}${memberClass(o.id)}`}
             style={{ left: o.start * px, width: w, top: `${lane * laneH}%`, height: `${laneH}%`, ['--edge' as string]: `${edgeWidth(w)}px` }}
             onPointerDown={onOverlayDown(o)}
-            title={`${name} · ${formatTime(o.start)} – ${formatTime(o.end)}${groupHint(o.id)}`}
+            title={`${name} · ${fmt.clock(o.start)} – ${fmt.clock(o.end)}${groupHint(o.id)}`}
           >
             <span className="edge left" />
             {w > 22 && lanes.count <= 2 && (

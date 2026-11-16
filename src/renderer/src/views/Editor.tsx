@@ -43,7 +43,7 @@ import {
   undoHint,
   type Keymap
 } from '../../../shared/editor/shortcuts'
-import { atOutputStart, formatRate, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
+import { atOutputStart, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
 import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
@@ -52,13 +52,13 @@ import { clickRows } from '../../../shared/engine/inputData'
 import { frameView } from '../../../shared/engine/frameView'
 import { outputSize } from '../../../shared/engine/layout'
 import { canFollow, isTall, withoutFollow } from '../../../shared/engine/reframeData'
-import { DEFAULT_EFFECTS, formatTime } from '../../../shared/engine/project'
+import { DEFAULT_EFFECTS } from '../../../shared/engine/project'
 import { scrollBreaks } from '../../../shared/engine/scroll'
 import { openedWithoutCamera, withRecordedCamera } from '../../../shared/engine/webcamData'
 import { cutRange, keptBounds, outputDuration, removeClip, splitAt } from '../../../shared/engine/timeline'
 import { nextChapter, previousChapter } from '../../../shared/editor/titles'
 import { settleDeletedWords } from '../../../shared/editor/transcript'
-import { formatLevel, ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
+import { ZOOM_LEVEL_PRESETS } from '../../../shared/editor/zoomEdit'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { focusPathFor, insertZoom, zoomAt, zoomSettingsOf, zoomStyleOf } from '../../../shared/engine/zoom'
 import type { CameraLayout, NormRect, PathMode, Project, ShapeKind, Spotlight, ZoomFocus, ZoomSegment } from '../../../shared/types'
@@ -130,6 +130,7 @@ import { GuidePanel } from '../guide/GuidePanel'
 import { ShortClipsPanel } from '../clips/ShortClipsPanel'
 import { ShortVersionDialog } from '../clips/ShortVersionDialog'
 import { settleChapters } from '../../../shared/chapters/chapterAuto'
+import { fmt } from '../../../shared/i18n/fmt'
 import { requestFindChapters } from '../editor/smartRequests'
 import type { PublishKind } from '../../../shared/publish/pack'
 import { useSearchMoment } from '../search/useSearchMoment'
@@ -688,8 +689,8 @@ function EditorSession({
 
   /** Edits to the recorded input: each one store.update (one undo step), with its notice. */
   const input = useMemo((): InputActions => {
-    const at = (ms: number): string => formatTime(ms / 1000)
-    const range = (r: { start: number; end: number }): string => `${formatTime(r.start)} – ${formatTime(r.end)}`
+    const at = (ms: number): string => fmt.clock(ms / 1000)
+    const range = (r: { start: number; end: number }): string => `${fmt.clock(r.start)} – ${fmt.clock(r.end)}`
     const undo = (): string => undoHint(latest.current.keymap)
     return {
       setIgnored: (keys, ignore) => {
@@ -805,7 +806,7 @@ function EditorSession({
         if (!zooms.length) return showNotice('No zoom is selected')
         const ctx: FieldCtx = { crop: cropOf(store.state), cursorValid: cursor.valid, style: zoomStyleOf(store.state), background: store.state.style.background }
         store.update((q) => applyField(q, GROUP_FIELDS.find((f) => f.id === 'zoom.level')!, zooms, level, ctx).project)
-        return showNotice(`Zoom level ${formatLevel(level)} for ${countOf(zooms.length, 'zoom')}`)
+        return showNotice(`Zoom level ${fmt.factor(level)} for ${countOf(zooms.length, 'zoom')}`)
       }
       const sel = latest.current.selection
       const p = store.state
@@ -1224,9 +1225,9 @@ function EditorSession({
     /** > and <: the next preview speed (nothing is written to the project). */
     const previewSpeed = (step: 1 | -1): void => {
       const next = nextPreviewSpeed(player.previewSpeed, step)
-      if (next === null) return showNotice(`The preview already plays at its ${step > 0 ? 'fastest' : 'slowest'} speed (${formatRate(player.previewSpeed)})`)
+      if (next === null) return showNotice(`The preview already plays at its ${step > 0 ? 'fastest' : 'slowest'} speed (${fmt.factor(player.previewSpeed)})`)
       player.setPreviewSpeed(next)
-      showNotice(`Preview speed ${formatRate(next)} (the export is not affected)`)
+      showNotice(`Preview speed ${fmt.factor(next)} (the export is not affected)`)
     }
     /** E-09: the selected items by `frames` frames (one undo step per run of presses). */
     const nudge = (frames: number): void => {
@@ -1662,8 +1663,8 @@ function EditorSession({
       group.keys.length >= 2 ? 'Select one item to copy its look' : picked.length && lookClassOf(p, picked[0]) ? null : 'Select an item to copy its look'
     unavailable.pasteLook = !look ? 'Copy a look first' : picked.some((k) => lookClassOf(p, k) === look.cls) ? null : `The copied look is for ${LOOK_CLASS_WORDS[look.cls][1]}`
     unavailable.toggleWaveform = p.hasAudio ? null : 'This recording has no sound'
-    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${formatRate(player.previewSpeed)})`
-    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${formatRate(player.previewSpeed)})`
+    if (nextPreviewSpeed(player.previewSpeed, 1) === null) unavailable.previewSpeedUp = `Already the fastest preview speed (${fmt.factor(player.previewSpeed)})`
+    if (nextPreviewSpeed(player.previewSpeed, -1) === null) unavailable.previewSpeedDown = `Already the slowest preview speed (${fmt.factor(player.previewSpeed)})`
     const on: Partial<Record<CommandId, boolean>> = {
       toggleSnapping: snapPref.get(),
       toggleCursor: smoothCursor && p.cursor.show,

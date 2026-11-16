@@ -5,8 +5,8 @@ import { sameSpan, type SnapExclude } from '../../../shared/editor/snapping'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { layoutRamps, segmentCorner } from '../../../shared/engine/layout'
 import { clamp } from '../../../shared/engine/math'
-import { formatTime } from '../../../shared/engine/project'
 import { CORNER_NAMES } from '../../../shared/recording/cameraBubble'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { CameraLayout, Corner, LayoutSegment, Project } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { useEditor } from './context'
@@ -205,7 +205,7 @@ export function LayoutTrack({ px, win, duration, selection, onSelect, scrub, sna
               className={`seg layout-seg ${s.layout} ${auto ? 'auto' : ''} ${selId === s.id ? 'selected' : ''}`}
               style={{ left: s.start * px, width: w, ['--edge' as string]: `${edgeWidth(w)}px` }}
               onPointerDown={onSegmentDown(s)}
-              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${formatTime(s.start)} – ${formatTime(s.end)}${auto ? AUTO_TITLE_SUFFIX : ''}`}
+              title={`${layoutLabel(s.layout)}${corner ? ` · camera ${CORNER_NAMES[corner].toLowerCase()}` : ''} · ${fmt.clock(s.start)} – ${fmt.clock(s.end)}${auto ? AUTO_TITLE_SUFFIX : ''}`}
             >
               {ramp && w > 24 && (
                 <>
