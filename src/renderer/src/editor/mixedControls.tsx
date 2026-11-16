@@ -5,7 +5,8 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { holdGesture, useEditor } from './context'
-import { t } from '../../../shared/i18n/t'
+import { t, uiLanguage } from '../../../shared/i18n/t'
+import { NumberField } from '../i18n/NumberField'
 
 /** A slider whose readout says "Mixed" when the items differ; the thumb sits at the first item's value. Moving it sets every item. */
 export function MixedSlider(props: {
@@ -190,6 +191,23 @@ export function GroupTimeField({
     e.stopPropagation()
     commit()
   }
+  // English keeps today's number input, which holds what is typed as text; other languages type their own digits (§11.1).
+  if (uiLanguage() !== 'en')
+    return (
+      <NumberField
+        className="shape-time-input"
+        aria-label={label}
+        data-testid={testId}
+        min={min}
+        max={Math.round(max * 100) / 100}
+        step={0.1}
+        placeholder={mixed ? t('style.mixedControls.mixed') : undefined}
+        value={mixed ? NaN : Math.round(value * 10) / 10}
+        onValue={(v) => setDraft(Number.isFinite(v) ? String(v) : '')}
+        onKeyDown={onKeyDown}
+        onBlur={commit}
+      />
+    )
   return (
     <input
       className="shape-time-input"

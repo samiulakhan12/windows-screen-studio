@@ -35,7 +35,7 @@ export function EffectsPanel({ project, cursor }: { project: Project; cursor: Cu
           value={effects.motionBlur}
           {...L.motionBlur}
           step={0.05}
-          format={(v) => (v === 0 ? t('style.effectsPanel.motionBlurOff') : pctFmt(v))}
+          format={(v) => (v === 0 ? t('common.state.off') : pctFmt(v))}
           onChange={(v) => store.update((p) => ({ ...p, effects: { ...p.effects, motionBlur: v } }), 'effects.motionBlur')}
         />
         <p className="hint">{t('style.effectsPanel.blursFastZoomAnd')}</p>
@@ -139,7 +139,7 @@ function TiltSection({ project, cursor }: { project: Project; cursor: CursorTrac
         {...TILT_LIMITS.perspective}
         step={0.05}
         disabled={!on}
-        format={(v) => (v === 0 ? t('style.effectsPanel.perspectiveNone') : pctFmt(v))}
+        format={(v) => (v === 0 ? t('common.state.none') : pctFmt(v))}
         onChange={(v) => set({ perspective: v }, 'tilt.perspective')}
       />
       <Chips

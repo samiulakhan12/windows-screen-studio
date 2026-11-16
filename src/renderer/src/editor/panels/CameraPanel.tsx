@@ -28,8 +28,8 @@ import { t } from '../../../../shared/i18n/t'
 
 const L = LOOK_LIMITS
 const BORDER_COLORS = [DEFAULT_WEBCAM_BORDER.color, '#000000', '#8b5cf6', '#22d3ee', '#facc15', '#f43f5e']
-const pxFmt = (v: number): string => (v > 0 ? `${fmt.count(Math.round(v))} px` : t('camera.cameraPanel.off'))
-const offPct = (v: number): string => (v > 0 ? pctFmt(v) : t('camera.cameraPanel.off'))
+const pxFmt = (v: number): string => (v > 0 ? `${fmt.count(Math.round(v))} px` : t('common.state.off'))
+const offPct = (v: number): string => (v > 0 ? pctFmt(v) : t('common.state.off'))
 const zoomFmt = (v: number): string => `${fmt.number(v, { max: 1 })}×`
 
 type Props = Pick<InspectorProps, 'project' | 'cursor' | 'recorded' | 'hasWebcam' | 'selection' | 'onSelect' | 'onNotice' | 'directorRequest'>
@@ -346,7 +346,8 @@ function LayoutSection({
         <div className="layout-actions">
           <p className="hint">{t('camera.cameraPanel.dragTheBlockOn')}</p>
           <button className="btn ghost danger" onClick={remove} title={withShortcut(t('camera.cameraPanel.deleteTitle'), keymap.deleteSelection)}>
-            <Icon name="trash" size={16} />{t('camera.cameraPanel.delete')}</button>
+            <Icon name="trash" size={16} /> {t('common.action.delete')}
+          </button>
         </div>
       ) : (
         <p className="hint">{t('camera.cameraPanel.pickALayoutTo')}</p>

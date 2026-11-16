@@ -50,7 +50,8 @@ function AddFreeze({ project, onSelect, onNotice }: InspectorProps): JSX.Element
         title={refusal ? FREEZE_REFUSAL_TEXT[refusal] : withShortcut(t('style.freezeSection.holdTitle'), keymap.freezeFrame)}
         onClick={() => addFreezeAt(services, { onSelect, onNotice })}
       >
-        <Icon name="pause" size={16} />{t('style.freezeSection.freezeFrameAtPlayhead')}</button>
+        <Icon name="pause" size={16} /> {t('style.freezeSection.freezeFrameAtPlayhead')}
+      </button>
       <p className="hint">{t('style.freezeSection.holdsThePictureSo')}</p>
     </Section>
   )
@@ -116,7 +117,8 @@ function SelectedFreeze({ project, freeze: f, onSelect }: InspectorProps & { fre
       <LookButtons itemKey={`freeze:${f.id}`} />
       <div className="row start">
         <button className="btn" disabled={!active} onClick={() => addTextOnFreeze(services, f, onSelect)} title={t('style.freezeSection.aTextThatShows')}>
-          <EditorIcon name="text" size={16} />{t('style.freezeSection.addTextOnThe')}</button>
+          <EditorIcon name="text" size={16} /> {t('style.freezeSection.addTextOnThe')}
+        </button>
         <button
           className="btn ghost danger"
           onClick={() => {

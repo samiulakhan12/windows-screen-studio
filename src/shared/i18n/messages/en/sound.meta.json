@@ -209,9 +209,6 @@
   "finder.state.ducked": {
     "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Lowered\")."
   },
-  "finder.state.cut": {
-    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Cut\")."
-  },
   "finder.state.ignored": {
     "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Ignored\")."
   },
@@ -466,5 +463,8 @@
   },
   "sfxGroup.suggested": {
     "description": "Sound effects (Audio tab, Graphics tab, callouts): the first group of a select: the effects made for this use."
+  },
+  "finder.state.cut": {
+    "description": "Sound finder (Audio tab, Unwanted sounds): what was done to a row's sound, shown in place of its buttons (\"Cut\")."
   }
 }

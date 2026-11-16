@@ -217,7 +217,8 @@ export function PresetsSection({ project, onNotice }: { project: Project; onNoti
           )}
           {form || (
             <button className="btn" disabled={!mine || busy} onClick={() => startNaming({ mode: 'new' }, '')}>
-              <Icon name="plus" size={16} />{t('style.stylePresets.saveThisLookAs')}</button>
+              <Icon name="plus" size={16} /> {t('style.stylePresets.saveThisLookAs')}
+            </button>
           )}
           <p className="hint">{t('style.stylePresets.aPresetSetsThe')}</p>
         </>

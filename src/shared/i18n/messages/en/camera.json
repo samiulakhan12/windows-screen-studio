@@ -23,7 +23,6 @@
   "cameraPanel.theLayoutOutsideAny": "{hint} (the layout outside any change)",
   "cameraPanel.changeToAtThe": "Change to {label} at the playhead: {hint}",
   "cameraPanel.dragTheBlockOn": "Drag the block on the camera track to move it; drag its ends to change when it starts and stops.",
-  "cameraPanel.delete": " Delete",
   "cameraPanel.pickALayoutTo": "Pick a layout to switch to it at the playhead, or double-click the camera track on the timeline. Changes animate smoothly in and out.",
   "cameraPanel.cameraPosition": "Camera position",
   "cameraPanel.useTheCameraS": "Use the camera''s default corner (Camera section) in this change",
@@ -57,7 +56,6 @@
   "layout.sideBySide.short": "Side by side",
   "layout.sideBySide.hint": "The screen and a tall camera card next to each other",
   "layout.cameraOnly": "Camera only",
-  "layout.cameraOnly.short": "Camera",
   "layout.cameraOnly.hint": "The camera fills the frame; the screen is hidden",
   "layout.screenOnly": "Screen only",
   "layout.screenOnly.short": "Screen",
@@ -73,7 +71,6 @@
   "layoutCommands.noCorner": "The camera layout here has no camera corner: pick the default, large camera or side by side layout first",
   "layoutCommands.cornerEnd": "Too close to the end of the video to move the camera",
   "layoutCommands.cornerNoRoom": "No room to move the camera here: another camera layout starts right after the playhead",
-  "cameraPanel.off": "Off",
   "cameraPanel.shape.circle": "Circle",
   "cameraPanel.shape.rounded": "Rounded",
   "cameraPanel.shape.square": "Square",
@@ -168,7 +165,6 @@
   "directorSection.intro.cameraOnly.title": "The camera fills the frame while you talk before and after the demo",
   "directorSection.intro.cameraLarge": "Large camera",
   "directorSection.intro.cameraLarge.title": "A big camera over the screen while you talk before and after the demo",
-  "directorSection.intro.off": "Off",
   "directorSection.intro.off.title": "No intro or outro: the bubble from the start to the end",
   "directorSection.hideAfter": "{n} s",
   "directorSection.hideNever": "Never",
@@ -182,5 +178,6 @@
   "directorSection.stripTitle": "{part} · {times}",
   "directorAnalysis.detectionNotStarted": "person detection could not start",
   "directorAnalysis.cameraUnreadable": "the camera video could not be read",
-  "directorAnalysis.detectionStopped": "person detection stopped working"
+  "directorAnalysis.detectionStopped": "person detection stopped working",
+  "layout.cameraOnly.short": "Camera"
 }

@@ -37,12 +37,12 @@ const TITLE_STYLE_KEYS: Readonly<Record<TitleCardStyle, { label: MessageKey; tit
 
 const TITLE_BACKGROUND_KEYS: Readonly<Record<TitleCard['background'], { label: MessageKey; title: MessageKey }>> = {
   blur: { label: 'text.titleBackground.blur', title: 'text.titleBackground.blur.title' },
-  solid: { label: 'text.titleBackground.solid', title: 'text.titleBackground.solid.title' },
+  solid: { label: 'common.label.colour', title: 'text.titleBackground.solid.title' },
   style: { label: 'text.titleBackground.style', title: 'text.titleBackground.style.title' }
 }
 
 /** A title card style's name ("Lower third"). */
-export const titleStyleName = (style: TitleCardStyle): string => (TITLE_STYLE_KEYS[style] ? t(TITLE_STYLE_KEYS[style].label) : t('text.titleStyle.fallback'))
+export const titleStyleName = (style: TitleCardStyle): string => (TITLE_STYLE_KEYS[style] ? t(TITLE_STYLE_KEYS[style].label) : t('common.label.title'))
 
 /** Title card styles and backgrounds as options, their words made when shown. */
 export const TITLE_STYLE_CHOICES: readonly Choice<TitleCardStyle>[] = TITLE_STYLES.map((s) => choice(s.value, TITLE_STYLE_KEYS[s.value].label, TITLE_STYLE_KEYS[s.value].title))

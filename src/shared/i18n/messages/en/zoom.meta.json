@@ -158,12 +158,6 @@
   "zoomPanel.scrollingWasNotRecorded": {
     "description": "zoomPanel, text of <p> (src/renderer/src/editor/panels/ZoomPanel.tsx:485)."
   },
-  "zoomPanel.regenerate": {
-    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:491)."
-  },
-  "zoomPanel.removeAll": {
-    "description": "zoomPanel, text of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:494)."
-  },
   "zoomPanel.selectThisClickOn": {
     "description": "zoomPanel, the title of <button> (src/renderer/src/editor/panels/ZoomPanel.tsx:517)."
   },

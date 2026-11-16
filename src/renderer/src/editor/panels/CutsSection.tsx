@@ -52,7 +52,8 @@ export function CutsSection(props: { project: Project }): JSX.Element | null {
           title={smooth ? t('style.cutsSection.everyCutIsAlready') : t('style.cutsSection.crossfadesOnTheScreen')}
           onClick={() => runSmoothAllCuts(store, notice, undoHint(keymap))}
         >
-          <EditorIcon name="sparkle" size={16} />{t('style.cutsSection.smoothAllCuts')}</button>
+          <EditorIcon name="sparkle" size={16} /> {t('style.cutsSection.smoothAllCuts')}
+        </button>
         {smooth && <p className="hint">{t('style.cutsSection.everyCutIsAlready')}</p>}
         {own > 0 && (
           <>

@@ -107,7 +107,7 @@ export const GRAPHIC_SIZE = { min: 0.02, max: 0.3 }
 export const GRAPHIC_COLORS: readonly string[] = ['#ffffff', '#ffe14d', '#39e508', '#22d3ee', '#ff5c8a', '#111111']
 /** Comes in and Goes out (§2.11). */
 export const ITEM_MOTIONS: readonly Choice<ItemMotion['kind']>[] = [
-  choice('none', 'text.motion.none'),
+  choice('none', 'common.state.none'),
   choice('fade', 'text.motion.fade'),
   choice('pop', 'text.motion.pop'),
   choice('rise', 'text.motion.rise'),
@@ -371,7 +371,7 @@ export const GROUP_FIELDS: readonly GroupField[] = [
       type: 'chips',
       options: [
         choice('pill', 'style.groupEdit.option.textStyle.pill'),
-        choice('title', 'style.groupEdit.option.textStyle.title')
+        choice('title', 'common.label.title')
       ]
     },
     look: true,

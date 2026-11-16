@@ -71,9 +71,6 @@
   "cameraPanel.dragTheBlockOn": {
     "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:349)."
   },
-  "cameraPanel.delete": {
-    "description": "cameraPanel, text of <button> (src/renderer/src/editor/panels/CameraPanel.tsx:351)."
-  },
   "cameraPanel.pickALayoutTo": {
     "description": "cameraPanel, text of <p> (src/renderer/src/editor/panels/CameraPanel.tsx:355)."
   },
@@ -173,9 +170,6 @@
   "layout.cameraOnly": {
     "description": "The name of a camera layout (camera-only): the Camera tab’s layout picker and the camera track."
   },
-  "layout.cameraOnly.short": {
-    "description": "The short name of the Camera only camera layout, on the camera track’s blocks."
-  },
   "layout.cameraOnly.hint": {
     "description": "What the Camera only camera layout shows (the layout picker’s tooltip)."
   },
@@ -220,9 +214,6 @@
   },
   "layoutCommands.cornerNoRoom": {
     "description": "Notice when a camera corner command changes nothing: there is no room at the playhead."
-  },
-  "cameraPanel.off": {
-    "description": "Camera tab: a slider’s value at 0 (no border, no shadow, no blur)."
   },
   "cameraPanel.shape.circle": {
     "description": "Camera tab: the Circle camera shape chip."
@@ -506,9 +497,6 @@
   "directorSection.intro.cameraLarge.title": {
     "description": "Camera › Auto director: the Intro and outro chip Large camera (its tooltip)."
   },
-  "directorSection.intro.off": {
-    "description": "Camera › Auto director: the Intro and outro chip Off."
-  },
   "directorSection.intro.off.title": {
     "description": "Camera › Auto director: the Intro and outro chip Off (its tooltip)."
   },
@@ -550,5 +538,8 @@
   },
   "directorAnalysis.detectionStopped": {
     "description": "Camera › Auto director: why face framing could not run, inside \"Face framing is unavailable: {reason}.\""
+  },
+  "layout.cameraOnly.short": {
+    "description": "The short name of the Camera only camera layout, on the camera track’s blocks."
   }
 }

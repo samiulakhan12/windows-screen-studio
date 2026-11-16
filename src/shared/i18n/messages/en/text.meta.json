@@ -68,17 +68,11 @@
   "titleStyle.quote.title": {
     "description": "Text tab: tooltip of the Quote title card style."
   },
-  "titleStyle.fallback": {
-    "description": "The title track’s name for a title card of an unknown style."
-  },
   "titleBackground.blur": {
     "description": "A title card background (blur): the Text tab’s Background chips and the Selection view."
   },
   "titleBackground.blur.title": {
     "description": "Text tab: tooltip of the Blurred video background chip."
-  },
-  "titleBackground.solid": {
-    "description": "A title card background (solid): the Text tab’s Background chips and the Selection view."
   },
   "titleBackground.solid.title": {
     "description": "Text tab: tooltip of the Colour background chip."
@@ -88,9 +82,6 @@
   },
   "titleBackground.style.title": {
     "description": "Text tab: tooltip of the Project background background chip."
-  },
-  "motion.none": {
-    "description": "How a pop-up or a callout comes in or goes out: None. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."
   },
   "motion.fade": {
     "description": "How a pop-up or a callout comes in or goes out: Fade. A chip of Comes in and Goes out (Graphics, Text, Shapes tabs, Selection view)."

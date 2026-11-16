@@ -271,7 +271,7 @@ export function ColourControls(props: { project: Project; which: 'screen' | 'cam
   const looks = looksFor(which)
   const look = grade.look ?? null
   const pick = (id: LookId | null): void => update((p) => withLook(p, which, id))
-  const lookLabel = (id: LookId | null): string => (id ? (lookOf(id)?.label ?? id) : t('style.colourControls.lookNone'))
+  const lookLabel = (id: LookId | null): string => (id ? (lookOf(id)?.label ?? id) : t('common.state.none'))
   const onLookKeys = (e: KeyboardEvent<HTMLDivElement>): void => {
     const i = looks.indexOf(look)
     const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? looks.length - 1 : null

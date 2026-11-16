@@ -74,7 +74,7 @@
     "key": "style.stylePanel.image",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 168,
-    "english": " Image…",
+    "english": "Image…",
     "sample": {}
   },
   {
@@ -295,7 +295,7 @@
     "key": "style.stylePanel.saveAsDefaultFor",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 398,
-    "english": " Save as default for new recordings",
+    "english": "Save as default for new recordings",
     "sample": {}
   },
   {
@@ -316,7 +316,7 @@
     "key": "style.stylePanel.resetDefaults",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 401,
-    "english": " Reset defaults",
+    "english": "Reset defaults",
     "sample": {}
   },
   {
@@ -480,7 +480,7 @@
     "key": "style.stylePresets.saveThisLookAs",
     "file": "src/renderer/src/editor/panels/StylePresets.tsx",
     "line": 211,
-    "english": " Save this look as a preset…",
+    "english": "Save this look as a preset…",
     "sample": {}
   },
   {
@@ -1360,10 +1360,10 @@
     }
   },
   {
-    "key": "style.clipPanel.speed",
+    "key": "common.label.speed",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 78,
-    "english": " Speed",
+    "english": "Speed",
     "sample": {}
   },
   {
@@ -1384,14 +1384,14 @@
     "key": "style.clipPanel.deleteClip",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 87,
-    "english": " Delete clip",
+    "english": "Delete clip",
     "sample": {}
   },
   {
-    "key": "style.clipPanel.restore",
+    "key": "common.action.restore",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 96,
-    "english": " Restore",
+    "english": "Restore",
     "sample": {}
   },
   {
@@ -1405,14 +1405,14 @@
     "key": "style.clipPanel.cutRange",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 106,
-    "english": " Cut range",
+    "english": "Cut range",
     "sample": {}
   },
   {
     "key": "style.clipPanel.speedUpOrSlow",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 109,
-    "english": " Speed up or slow down this range",
+    "english": "Speed up or slow down this range",
     "sample": {}
   },
   {
@@ -1433,21 +1433,21 @@
     "key": "style.clipPanel.splitAtPlayhead",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 132,
-    "english": " Split at playhead",
+    "english": "Split at playhead",
     "sample": {}
   },
   {
     "key": "style.clipPanel.restoreTheWholeRecording",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 164,
-    "english": " Restore the whole recording",
+    "english": "Restore the whole recording",
     "sample": {}
   },
   {
     "key": "style.clipPanel.cursorPath",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 185,
-    "english": " Cursor path",
+    "english": "Cursor path",
     "sample": {}
   },
   {
@@ -1538,7 +1538,7 @@
     "key": "style.clipPanel.then",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 467,
-    "english": " Then",
+    "english": "Then",
     "sample": {}
   },
   {
@@ -1552,7 +1552,7 @@
     "key": "style.clipPanel.lookingForIdleParts",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 486,
-    "english": " Looking for idle parts…",
+    "english": "Looking for idle parts…",
     "sample": {}
   },
   {
@@ -1608,7 +1608,7 @@
     "key": "style.clipPanel.then",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 566,
-    "english": " Then",
+    "english": "Then",
     "sample": {}
   },
   {
@@ -1629,7 +1629,7 @@
     "key": "style.clipPanel.listeningForPauses",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 585,
-    "english": " Listening for pauses…",
+    "english": "Listening for pauses…",
     "sample": {}
   },
   {
@@ -1708,7 +1708,7 @@
     "key": "style.cutsSection.smoothAllCuts",
     "file": "src/renderer/src/editor/panels/CutsSection.tsx",
     "line": 54,
-    "english": " Smooth all cuts",
+    "english": "Smooth all cuts",
     "sample": {}
   },
   {
@@ -1815,7 +1815,7 @@
     "key": "style.freezeSection.freezeFrameAtPlayhead",
     "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
     "line": 52,
-    "english": " Freeze frame at playhead",
+    "english": "Freeze frame at playhead",
     "sample": {}
   },
   {
@@ -1866,7 +1866,7 @@
     "key": "style.freezeSection.addTextOnThe",
     "file": "src/renderer/src/editor/panels/FreezeSection.tsx",
     "line": 120,
-    "english": " Add text on the freeze",
+    "english": "Add text on the freeze",
     "sample": {}
   },
   {
@@ -1935,7 +1935,7 @@
     "key": "style.selectionPanel.duplicate",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 210,
-    "english": " Duplicate",
+    "english": "Duplicate",
     "sample": {}
   },
   {
@@ -1953,10 +1953,10 @@
     "sample": {}
   },
   {
-    "key": "style.selectionPanel.delete",
+    "key": "common.action.delete",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 228,
-    "english": " Delete",
+    "english": "Delete",
     "sample": {}
   },
   {
@@ -2249,7 +2249,7 @@
     "key": "zoom.zoomPanel.ignoreClick",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 126,
-    "english": " Ignore click",
+    "english": "Ignore click",
     "sample": {}
   },
   {
@@ -2263,7 +2263,7 @@
     "key": "zoom.zoomPanel.useClick",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 131,
-    "english": " Use click",
+    "english": "Use click",
     "sample": {}
   },
   {
@@ -2461,7 +2461,7 @@
     "key": "zoom.zoomPanel.deleteZoom",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 334,
-    "english": " Delete zoom",
+    "english": "Delete zoom",
     "sample": {}
   },
   {
@@ -2635,17 +2635,17 @@
     "sample": {}
   },
   {
-    "key": "zoom.zoomPanel.regenerate",
+    "key": "common.action.regenerate",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 491,
-    "english": " Regenerate",
+    "english": "Regenerate",
     "sample": {}
   },
   {
-    "key": "zoom.zoomPanel.removeAll",
+    "key": "common.action.removeAll",
     "file": "src/renderer/src/editor/panels/ZoomPanel.tsx",
     "line": 494,
-    "english": " Remove all",
+    "english": "Remove all",
     "sample": {}
   },
   {
@@ -3084,7 +3084,7 @@
     "key": "zoom.magnifierZoomRow.addMagnifier",
     "file": "src/renderer/src/editor/panels/MagnifierZoomRow.tsx",
     "line": 18,
-    "english": " Add magnifier",
+    "english": "Add magnifier",
     "sample": {}
   },
   {
@@ -3313,10 +3313,10 @@
     "sample": {}
   },
   {
-    "key": "camera.cameraPanel.delete",
+    "key": "common.action.delete",
     "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
     "line": 351,
-    "english": " Delete",
+    "english": "Delete",
     "sample": {}
   },
   {
@@ -4022,7 +4022,7 @@
     "sample": {}
   },
   {
-    "key": "style.stylePanel.frames.none",
+    "key": "common.state.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 31,
     "english": "None",
@@ -4176,7 +4176,7 @@
     "sample": {}
   },
   {
-    "key": "style.stylePanel.borderNone",
+    "key": "common.state.none",
     "file": "src/renderer/src/editor/panels/StylePanel.tsx",
     "line": 268,
     "english": "None",
@@ -4521,7 +4521,7 @@
     "sample": {}
   },
   {
-    "key": "style.watermarkSection.kind.text",
+    "key": "common.label.text",
     "file": "src/renderer/src/editor/panels/WatermarkSection.tsx",
     "line": 77,
     "english": "Text",
@@ -4728,7 +4728,7 @@
     }
   },
   {
-    "key": "style.colourControls.lookNone",
+    "key": "common.state.none",
     "file": "src/renderer/src/editor/panels/ColourControls.tsx",
     "line": 273,
     "english": "None",
@@ -5015,7 +5015,7 @@
     "sample": {}
   },
   {
-    "key": "style.effectsPanel.motionBlurOff",
+    "key": "common.state.off",
     "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
     "line": 37,
     "english": "Off",
@@ -5144,7 +5144,7 @@
     }
   },
   {
-    "key": "style.effectsPanel.perspectiveNone",
+    "key": "common.state.none",
     "file": "src/renderer/src/editor/panels/EffectsPanel.tsx",
     "line": 141,
     "english": "None",
@@ -5341,7 +5341,7 @@
     "sample": {}
   },
   {
-    "key": "style.clipPanel.action.cut",
+    "key": "common.action.cut",
     "file": "src/renderer/src/editor/panels/ClipPanel.tsx",
     "line": 237,
     "english": "Cut",
@@ -6655,13 +6655,6 @@
     "sample": {}
   },
   {
-    "key": "text.titleStyle.fallback",
-    "file": "src/renderer/src/editor/TitleTrack.tsx",
-    "line": 27,
-    "english": "Title",
-    "sample": {}
-  },
-  {
     "key": "text.titleBackground.blur",
     "file": "src/shared/editor/titles.ts",
     "line": 32,
@@ -6673,13 +6666,6 @@
     "file": "src/shared/editor/titles.ts",
     "line": 32,
     "english": "The video behind it, blurred and darkened",
-    "sample": {}
-  },
-  {
-    "key": "text.titleBackground.solid",
-    "file": "src/shared/editor/titles.ts",
-    "line": 33,
-    "english": "Colour",
     "sample": {}
   },
   {
@@ -7021,7 +7007,7 @@
     "sample": {}
   },
   {
-    "key": "style.groupEdit.option.textStyle.title",
+    "key": "common.label.title",
     "file": "src/shared/editor/groupEdit.ts",
     "line": 351,
     "english": "Title",
@@ -7077,7 +7063,7 @@
     "sample": {}
   },
   {
-    "key": "text.motion.none",
+    "key": "common.state.none",
     "file": "src/shared/editor/groupEdit.ts",
     "line": 105,
     "english": "None",
@@ -7521,7 +7507,7 @@
     "sample": {}
   },
   {
-    "key": "style.selectionPanel.class.text",
+    "key": "common.label.text",
     "file": "src/renderer/src/editor/panels/SelectionPanel.tsx",
     "line": 33,
     "english": "Text",
@@ -8738,7 +8724,7 @@
     "sample": {}
   },
   {
-    "key": "camera.cameraPanel.off",
+    "key": "common.state.off",
     "file": "src/renderer/src/editor/panels/CameraPanel.tsx",
     "line": 32,
     "english": "Off",
@@ -9577,7 +9563,7 @@
     "sample": {}
   },
   {
-    "key": "camera.directorSection.intro.off",
+    "key": "common.state.off",
     "file": "src/renderer/src/editor/panels/DirectorSection.tsx",
     "line": 111,
     "english": "Off",

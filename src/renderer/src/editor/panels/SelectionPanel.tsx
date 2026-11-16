@@ -32,7 +32,7 @@ import { t, type MessageKey } from '../../../../shared/i18n/t'
 /** Section titles of the look classes, in their order (§4.9 item 5). */
 const CLASS_TITLE: Readonly<Record<LookClass, MessageKey>> = {
   zoom: 'style.selectionPanel.class.zoom',
-  text: 'style.selectionPanel.class.text',
+  text: 'common.label.text',
   mark: 'style.selectionPanel.class.mark',
   privacy: 'style.selectionPanel.class.privacy',
   spotlight: 'style.selectionPanel.class.spotlight',
@@ -208,7 +208,8 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
       <Section title={t('style.selectionPanel.actions')}>
         <div className="selection-actions">
           <button className="btn" onClick={() => onCommand('duplicateItems')} title={withShortcut(t('style.selectionPanel.duplicateTitle'), commandKeys(keymap, 'duplicateItems'))}>
-            <ShapeIcon name="duplicate" size={15} />{t('style.selectionPanel.duplicate')}</button>
+            <ShapeIcon name="duplicate" size={15} /> {t('style.selectionPanel.duplicate')}
+          </button>
           <button className="btn" onClick={() => onCommand('copyItems')} title={withShortcut(t('style.selectionPanel.copyTitle'), commandKeys(keymap, 'copyItems'))}>{t('common.action.copy')}</button>
           <button
             className="btn"
@@ -221,7 +222,8 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
             onClick={() => onCommand('deleteSelection')}
             title={withShortcut(t('style.selectionPanel.deleteTitle'), keymap.deleteSelection)}
           >
-            <Icon name="trash" size={15} />{t('style.selectionPanel.delete')}</button>
+            <Icon name="trash" size={15} /> {t('common.action.delete')}
+          </button>
         </div>
       </Section>
 

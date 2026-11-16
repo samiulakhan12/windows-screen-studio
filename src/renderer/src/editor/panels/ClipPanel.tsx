@@ -78,7 +78,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             {t('style.clipPanel.clipSpan', { start: fmt.clock(clip.start), end: fmt.clock(clip.end), seconds: fmt.number((clip.end - clip.start) / clip.speed, { max: 1 }) })}
           </p>
           <span className="field-label">
-            <EditorIcon name="speed" size={14} />{t('style.clipPanel.speed')}</span>
+            <EditorIcon name="speed" size={14} /> {t('common.label.speed')}
+          </span>
           <Chips label={t('style.clipPanel.clipSpeed')} value={clip.speed} onChange={setSpeed} options={SPEED_PRESETS.map((s) => ({ value: s, label: `${s}×` }))} />
           <button
             className="btn ghost danger"
@@ -86,7 +87,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             onClick={() => props.onDeleteClip(clip.id)}
             title={clips.length <= 1 ? t('style.clipPanel.theLastClipCannot') : withShortcut(t('style.clipPanel.cutClipTitle'), keymap.deleteSelection)}
           >
-            <EditorIcon name="scissors" size={16} />{t('style.clipPanel.deleteClip')}</button>
+            <EditorIcon name="scissors" size={16} /> {t('style.clipPanel.deleteClip')}
+          </button>
         </Section>
       ) : selection?.kind === 'gap' ? (
         <Section title={GAP_TITLE()[timelineGaps(clips, project.duration).find((g) => Math.abs(g.start - selection.start) < 1e-6)?.kind ?? 'cut']}>
@@ -94,7 +96,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             {t('style.clipPanel.gapSpan', { start: fmt.clock(selection.start), end: fmt.clock(selection.end), seconds: fmt.number(selection.end - selection.start, { max: 1 }) })}
           </p>
           <button className="btn" onClick={() => props.onRestore(selection.start, selection.end)}>
-            <EditorIcon name="restore" size={16} />{t('style.clipPanel.restore')}</button>
+            <EditorIcon name="restore" size={16} /> {t('common.action.restore')}
+          </button>
           <CutStyleSection project={project} gap={{ start: selection.start, end: selection.end }} />
         </Section>
       ) : selection?.kind === 'range' ? (
@@ -103,9 +106,11 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             {t('style.clipPanel.rangeSpan', { start: fmt.clock(selection.start), end: fmt.clock(selection.end), seconds: fmt.number(selection.end - selection.start, { max: 1 }) })}
           </p>
           <button className="btn" onClick={() => props.onCutRange(selection.start, selection.end)} title={withShortcut(t('style.clipPanel.cutRangeTitle'), keymap.deleteSelection)}>
-            <EditorIcon name="scissors" size={16} />{t('style.clipPanel.cutRange')}</button>
+            <EditorIcon name="scissors" size={16} /> {t('style.clipPanel.cutRange')}
+          </button>
           <span className="field-label">
-            <EditorIcon name="speed" size={14} />{t('style.clipPanel.speedUpOrSlow')}</span>
+            <EditorIcon name="speed" size={14} /> {t('style.clipPanel.speedUpOrSlow')}
+          </span>
           <Chips
             label={t('style.clipPanel.rangeSpeed')}
             value={null}
@@ -127,7 +132,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
       ) : (
         <Section title={t('style.clipPanel.edit')}>
           <button className="btn" onClick={props.onSplit} title={withShortcut(t('style.clipPanel.splitTitle'), keymap.split)}>
-            <EditorIcon name="split" size={16} />{t('style.clipPanel.splitAtPlayhead')}</button>
+            <EditorIcon name="split" size={16} /> {t('style.clipPanel.splitAtPlayhead')}
+          </button>
           <p className="hint">
             <Rich
               k={
@@ -154,7 +160,8 @@ export function ClipPanel(props: InspectorProps): JSX.Element {
             props.onSelect(null)
           }}
         >
-          <EditorIcon name="restore" size={16} />{t('style.clipPanel.restoreTheWholeRecording')}</button>
+          <EditorIcon name="restore" size={16} /> {t('style.clipPanel.restoreTheWholeRecording')}
+        </button>
       )}
     </>
   )
@@ -174,7 +181,8 @@ function CursorPathField(props: InspectorProps & { range: { start: number; end: 
   return (
     <div className="cursor-path" data-testid="cursor-path">
       <span className="field-label">
-        <EditorIcon name="crosshair" size={14} />{t('style.clipPanel.cursorPath')}</span>
+        <EditorIcon name="crosshair" size={14} /> {t('style.clipPanel.cursorPath')}
+      </span>
       <div className="row start cursor-path-actions">
         <button className="btn" onClick={() => input.setPathRange(range, 'straight')} title={t('style.clipPanel.replaceTheCursorMoves')}>{t('style.clipPanel.straighten')}</button>
         <button className="btn" onClick={() => input.setPathRange(range, 'recorded')} title={t('style.clipPanel.keepTheCursorMoves')}>{t('style.clipPanel.asRecorded')}</button>
@@ -236,7 +244,7 @@ const MODE_OPTIONS = (): { value: SmartMode; label: string; title: string }[] =>
   { value: 'silence', label: t('style.clipPanel.mode.silence'), title: t('style.clipPanel.mode.silence.title') }
 ]
 
-const ACTION_LABEL = (): Record<string, string> => ({ 2: '2×', 4: '4×', 8: '8×', cut: t('style.clipPanel.action.cut') })
+const ACTION_LABEL = (): Record<string, string> => ({ 2: '2×', 4: '4×', 8: '8×', cut: t('common.action.cut') })
 const ACTION_TITLE = (): Record<string, string> => ({
   2: t('style.clipPanel.action.idle2'),
   4: t('style.clipPanel.action.idle4'),
@@ -458,7 +466,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
             <span className="field-label">{t('style.clipPanel.idleForAtLeast')}</span>
             <Chips label={t('style.clipPanel.minimumIdleLength')} value={minIdle} onChange={(v) => choose({ minIdle: v })} options={MIN_IDLE_CHOICES.map((s) => ({ value: s, label: t('style.clipPanel.seconds', { n: fmt.number(s) }) }))} />
             <span className="field-label">
-              <EditorIcon name="speed" size={14} />{t('style.clipPanel.then')}</span>
+              <EditorIcon name="speed" size={14} /> {t('style.clipPanel.then')}
+            </span>
             <Chips
               label={t('style.clipPanel.smartSpeedAction')}
               value={action}
@@ -476,7 +485,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                 <button className="btn" onClick={() => void find()} disabled={busy}>
                   {busy ? (
                     <>
-                      <span className="smart-spinner" aria-hidden="true" />{t('style.clipPanel.lookingForIdleParts')}</>
+                      <span className="smart-spinner" aria-hidden="true" /> {t('style.clipPanel.lookingForIdleParts')}</>
                   ) : (
                     <>
                       <EditorIcon name="sparkle" size={16} /> {failure ? t('common.action.tryAgain') : t('style.clipPanel.findIdleParts')}
@@ -562,7 +571,8 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                   onChange={(v) => choose({ padding: v })}
                 />
                 <span className="field-label">
-                  <EditorIcon name="speed" size={14} />{t('style.clipPanel.then')}</span>
+                  <EditorIcon name="speed" size={14} /> {t('style.clipPanel.then')}
+                </span>
                 <Chips
                   label={t('style.clipPanel.silenceAction')}
                   value={silenceAction}
@@ -580,7 +590,7 @@ function SmartSpeed(props: InspectorProps): JSX.Element {
                     <button className="btn" onClick={() => void findSilences()} disabled={listening}>
                       {listening ? (
                         <>
-                          <span className="smart-spinner" aria-hidden="true" />{t('style.clipPanel.listeningForPauses')}</>
+                          <span className="smart-spinner" aria-hidden="true" /> {t('style.clipPanel.listeningForPauses')}</>
                       ) : (
                         <>
                           <EditorIcon name="sparkle" size={16} /> {soundFailed ? t('common.action.tryAgain') : t('style.clipPanel.findSilences')}

@@ -109,7 +109,7 @@ const sameSettings = (a: DirectorSettings | undefined, b: DirectorSettings): boo
 const INTRO_OPTIONS = (): { value: DirectorSettings['intro']; label: string; title: string }[] => [
   { value: 'camera-only', label: t('camera.directorSection.intro.cameraOnly'), title: t('camera.directorSection.intro.cameraOnly.title') },
   { value: 'camera-large', label: t('camera.directorSection.intro.cameraLarge'), title: t('camera.directorSection.intro.cameraLarge.title') },
-  { value: 'off', label: t('camera.directorSection.intro.off'), title: t('camera.directorSection.intro.off.title') }
+  { value: 'off', label: t('common.state.off'), title: t('camera.directorSection.intro.off.title') }
 ]
 const HIDE_OPTIONS = (): { value: DirectorHideAfter; label: string }[] => [
   ...([5, 10, 20] as const).map((value) => ({ value, label: t('camera.directorSection.hideAfter', { n: fmt.count(value) }) })),

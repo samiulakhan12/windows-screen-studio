@@ -471,9 +471,6 @@
   "clipPanel.clipOf": {
     "description": "Clip tab: title of the selected clip’s section. {n} is its number, {total} how many clips there are."
   },
-  "clipPanel.speed": {
-    "description": "clipPanel, text of <span> (src/renderer/src/editor/panels/ClipPanel.tsx:78)."
-  },
   "clipPanel.clipSpeed": {
     "description": "clipPanel, the label of <Chips> (src/renderer/src/editor/panels/ClipPanel.tsx:80)."
   },
@@ -482,9 +479,6 @@
   },
   "clipPanel.deleteClip": {
     "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:87)."
-  },
-  "clipPanel.restore": {
-    "description": "clipPanel, text of <button> (src/renderer/src/editor/panels/ClipPanel.tsx:96)."
   },
   "clipPanel.selectedRange": {
     "description": "clipPanel, the title of <Section> (src/renderer/src/editor/panels/ClipPanel.tsx:101)."
@@ -681,9 +675,6 @@
   "selectionPanel.pasteLook": {
     "description": "selectionPanel, text of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:221)."
   },
-  "selectionPanel.delete": {
-    "description": "selectionPanel, text of <button> (src/renderer/src/editor/panels/SelectionPanel.tsx:228)."
-  },
   "selectionPanel.selectedItems": {
     "description": "selectionPanel, the title of <Section> (src/renderer/src/editor/panels/SelectionPanel.tsx:233)."
   },
@@ -743,10 +734,6 @@
   },
   "mixedControls.mixed": {
     "description": "Selection view: shown in place of a value where the selected items differ (a slider’s readout, a tag, a field’s placeholder)."
-  },
-  "stylePanel.frames.none": {
-    "description": "Style › Device frame: name of a device frame tile (none).",
-    "screen": "tab-style"
   },
   "stylePanel.frames.none.title": {
     "description": "Style › Device frame: tooltip of the None tile.",
@@ -829,10 +816,6 @@
   },
   "stylePanel.frameThemes.dark": {
     "description": "Style › Device frame: Frame theme chip (dark colours of the frame)."
-  },
-  "stylePanel.borderNone": {
-    "description": "Style › Border: the Border width slider’s value at 0 (no border).",
-    "screen": "tab-style"
   },
   "stylePanel.defaultsNotSaved": {
     "description": "Style › New recordings: notice when the look could not be saved as the default. {reason} is why, from the system."
@@ -984,9 +967,6 @@
   "watermarkSection.unreadable": {
     "description": "Style › Watermark: error when the picked logo cannot be read."
   },
-  "watermarkSection.kind.text": {
-    "description": "Style › Watermark: Watermark type chip for a text watermark."
-  },
   "watermarkSection.kind.image": {
     "description": "Style › Watermark: Watermark type chip for a logo (an image) watermark."
   },
@@ -1068,9 +1048,6 @@
   },
   "colourControls.percent": {
     "description": "Colour: spoken value of a strength slider (the look’s, the LUT’s). {n} is a whole number."
-  },
-  "colourControls.lookNone": {
-    "description": "Colour: the Look chip with no look."
   },
   "colourControls.sliderReset": {
     "description": "Colour: announced after one slider’s Reset. {label} is the slider’s name (Temperature)."
@@ -1186,9 +1163,6 @@
   "followSection.holdTitle": {
     "description": "Style › Vertical framing: tooltip of Hold the view here (its shortcut follows in brackets)."
   },
-  "effectsPanel.motionBlurOff": {
-    "description": "Effects › Motion blur: the Strength slider’s value at 0."
-  },
   "effectsPanel.shortcutsRecorded": {
     "description": "Effects › Keyboard shortcuts: how many shortcuts the recording holds. {n} is the count."
   },
@@ -1243,9 +1217,6 @@
   "effectsPanel.angle.left": {
     "description": "Effects › 3D tilt: the Turn slider turned left. {n} is the angle in degrees."
   },
-  "effectsPanel.perspectiveNone": {
-    "description": "Effects › 3D tilt: the Perspective slider at 0 (no perspective)."
-  },
   "effectsPanel.tiltTitle": {
     "description": "effectsPanel, the title of <Section> (src/renderer/src/editor/panels/EffectsPanel.tsx:91)."
   },
@@ -1269,9 +1240,6 @@
   },
   "clipPanel.gap.trimStart": {
     "description": "Clip tab: title of a selected gap that is the trimmed start of the recording."
-  },
-  "clipPanel.gap.cut": {
-    "description": "Clip tab: title of a selected gap that is a cut part (a noun: the part that was cut out)."
   },
   "clipPanel.gap.trimEnd": {
     "description": "Clip tab: title of a selected gap that is the trimmed end of the recording."
@@ -1323,9 +1291,6 @@
   },
   "clipPanel.mode.silence.title": {
     "description": "Clip tab › Smart speed: the Silences mode chip (its tooltip)."
-  },
-  "clipPanel.action.cut": {
-    "description": "Clip tab › Smart speed: the Then chip that cuts the parts found (a verb)."
   },
   "clipPanel.action.idle2": {
     "description": "Clip tab › Smart speed: tooltip of the 2× chip for idle parts."
@@ -1711,9 +1676,6 @@
   "groupEdit.option.textStyle.pill": {
     "description": "Selection view: the text style chip for a caption pill."
   },
-  "groupEdit.option.textStyle.title": {
-    "description": "Selection view: the text style chip for a title (large text)."
-  },
   "groupEdit.option.privacyKind.blur": {
     "description": "Selection view: the privacy effect chip that blurs."
   },
@@ -1843,9 +1805,6 @@
   "selectionPanel.class.zoom": {
     "description": "Selection view: title of the section of the selected zooms, before their count in brackets."
   },
-  "selectionPanel.class.text": {
-    "description": "Selection view: title of the section of the selected text, before their count in brackets."
-  },
   "selectionPanel.class.mark": {
     "description": "Selection view: title of the section of the selected shapes, before their count in brackets."
   },
@@ -1929,5 +1888,8 @@
   },
   "mixedControls.labelMixed": {
     "description": "Selection view: accessible name of a chip row or colour row whose items differ. {label} is the row’s label."
+  },
+  "clipPanel.gap.cut": {
+    "description": "Clip tab: title of a selected gap that is a cut part (a noun: the part that was cut out)."
   }
 }

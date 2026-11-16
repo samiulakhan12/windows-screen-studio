@@ -122,11 +122,12 @@ function SelectedClick({ row, input, rightClicks }: { row: ClickRow; input: Inpu
         )}
         {state === 'used' ? (
           <button className="btn" onClick={() => input.setIgnored([row.ms], true)} title={withShortcut(t('zoom.zoomPanel.ignoreThisClickTitle'), keymap.deleteSelection)}>
-            <EyeOffIcon />{t('zoom.zoomPanel.ignoreClick')}{keymap.deleteSelection[0] && <ShortcutKeys accelerator={keymap.deleteSelection[0]} className="btn-shortcut" />}
+            <EyeOffIcon /> {t('zoom.zoomPanel.ignoreClick')}{keymap.deleteSelection[0] && <ShortcutKeys accelerator={keymap.deleteSelection[0]} className="btn-shortcut" />}
           </button>
         ) : (
           <button className="btn" onClick={() => input.setIgnored([row.ms], false)} title={t('zoom.zoomPanel.useThisClickAgain')}>
-            <Icon name="refresh" size={16} />{t('zoom.zoomPanel.useClick')}</button>
+            <Icon name="refresh" size={16} /> {t('zoom.zoomPanel.useClick')}
+          </button>
         )}
         <p className="hint">{t('zoom.zoomPanel.onlyAutomaticZoomsChange')}</p>
       </div>
@@ -324,7 +325,8 @@ function SelectedZoom(props: InspectorProps & { zoom: ZoomSegment }): JSX.Elemen
           props.onSelect(null)
         }}
       >
-        <Icon name="trash" size={16} />{t('zoom.zoomPanel.deleteZoom')}</button>
+        <Icon name="trash" size={16} /> {t('zoom.zoomPanel.deleteZoom')}
+      </button>
     </Section>
   )
 }
@@ -474,9 +476,11 @@ function AutoZoomSection({
       </div>
       <div className="row start zoom-actions">
         <button className="btn" disabled={!hasInput} onClick={regenerate}>
-          <Icon name="refresh" size={16} />{t('zoom.zoomPanel.regenerate')}</button>
+          <Icon name="refresh" size={16} /> {t('common.action.regenerate')}
+        </button>
         <button className="btn ghost danger" disabled={project.zooms.length === 0} onClick={removeAll}>
-          <Icon name="trash" size={16} />{t('zoom.zoomPanel.removeAll')}</button>
+          <Icon name="trash" size={16} /> {t('common.action.removeAll')}
+        </button>
       </div>
       {rows.length > 0 && <RecordedClicks rows={rows} input={input} selected={selectedClick} />}
     </Section>

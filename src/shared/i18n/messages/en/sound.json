@@ -69,7 +69,6 @@
   "finder.playCut": "That part is cut out of the video",
   "finder.state.muted": "Muted",
   "finder.state.ducked": "Lowered",
-  "finder.state.cut": "Cut",
   "finder.state.ignored": "Ignored",
   "finder.failed": "Could not listen to the recording: {message}",
   "finder.workerFailed": "The sound finder could not run: {reason}",
@@ -154,5 +153,6 @@
   "sfxGroup.pop": "Pops",
   "sfxGroup.click": "Clicks",
   "sfxGroup.chime": "Chimes",
-  "sfxGroup.suggested": "Suggested"
+  "sfxGroup.suggested": "Suggested",
+  "finder.state.cut": "Cut"
 }

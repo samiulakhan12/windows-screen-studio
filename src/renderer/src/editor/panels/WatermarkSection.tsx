@@ -74,7 +74,7 @@ export function WatermarkSection({ project }: { project: Project }): JSX.Element
             value={wm!.kind}
             onChange={chooseKind}
             options={[
-              { value: 'text', label: t('style.watermarkSection.kind.text') },
+              { value: 'text', label: t('common.label.text') },
               { value: 'image', label: t('style.watermarkSection.kind.image'), title: t('style.watermarkSection.kind.image.title') }
             ]}
           />

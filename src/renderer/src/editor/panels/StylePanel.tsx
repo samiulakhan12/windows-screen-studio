@@ -29,7 +29,7 @@ type BackgroundGroup = 'gradient' | 'wallpaper' | 'animated'
 const groupOf = (bg: Background): BackgroundGroup | null => (bg.type === 'gradient' || bg.type === 'wallpaper' || bg.type === 'animated' ? bg.type : null)
 
 const FRAMES = (): { kind: DeviceFrameKind; label: string; title: string }[] => [
-  { kind: 'none', label: t('style.stylePanel.frames.none'), title: t('style.stylePanel.frames.none.title') },
+  { kind: 'none', label: t('common.state.none'), title: t('style.stylePanel.frames.none.title') },
   { kind: 'browser', label: t('style.stylePanel.frames.browser'), title: t('style.stylePanel.frames.browser.title') },
   { kind: 'laptop', label: t('style.stylePanel.frames.laptop'), title: t('style.stylePanel.frames.laptop.title') },
   { kind: 'monitor', label: t('style.stylePanel.frames.monitor'), title: t('style.stylePanel.frames.monitor.title') },
@@ -165,7 +165,8 @@ export function StylePanel({
               onChange={(e) => setStyle({ background: { type: 'color', color: e.target.value } }, 'style.color')}
             />{t('style.stylePanel.solidColour')}</label>
           <button className={`btn ghost ${bg.type === 'image' ? 'active' : ''}`} onClick={onBackgroundImage}>
-            <Icon name="image" size={16} />{t('style.stylePanel.image')}</button>
+            <Icon name="image" size={16} /> {t('style.stylePanel.image')}
+          </button>
         </div>
         {(bg.type === 'image' || bg.type === 'wallpaper') && (
           <Slider
@@ -266,7 +267,7 @@ export function StylePanel({
           value={borderOk ? border.width : 0}
           {...BORDER_WIDTH}
           step={1}
-          format={(v) => (v === 0 ? t('style.stylePanel.borderNone') : `${fmt.count(v)}px`)}
+          format={(v) => (v === 0 ? t('common.state.none') : `${fmt.count(v)}px`)}
           disabled={!borderOk}
           onChange={(v) => setBorder({ width: v }, 'style.border.width')}
         />
@@ -392,9 +393,11 @@ function StyleDefaultsSection({ project, onNotice }: { project: Project; onNotic
       </p>
       <div className="defaults-actions">
         <button className="btn" disabled={busy} onClick={() => void save()}>
-          <Icon name="check" size={16} />{t('style.stylePanel.saveAsDefaultFor')}</button>
+          <Icon name="check" size={16} /> {t('style.stylePanel.saveAsDefaultFor')}
+        </button>
         <button className="btn ghost" disabled={busy || !saved} onClick={() => void reset()} title={saved ? t('style.stylePanel.goBackToThe') : t('style.stylePanel.noDefaultsAreSaved')}>
-          <Icon name="refresh" size={16} />{t('style.stylePanel.resetDefaults')}</button>
+          <Icon name="refresh" size={16} /> {t('style.stylePanel.resetDefaults')}
+        </button>
       </div>
     </Section>
   )
