@@ -20,6 +20,7 @@
 import { effectiveGrade, gradePixelsCpu, gradeTable, resolveGrade, type ResolvedGrade } from '../../../shared/render/colorGrade'
 import type { CubeLut } from '../../../shared/render/cubeLut'
 import { LOOKS } from '../../../shared/render/looks'
+import { fmt } from '../../../shared/i18n/fmt'
 import type { ColorGrade } from '../../../shared/types'
 import type { FrameImage } from './compositor'
 
@@ -231,7 +232,7 @@ export function gradeBackend(): Backend {
   gl = made
   const off = selfTest(made)
   if (off === null) useCpu('the self-test could not run')
-  else if (off > 0) useCpu(`the self-test differed in ${off.toLocaleString('en-US')} values`)
+  else if (off > 0) useCpu(`the self-test differed in ${fmt.count(off, { grouping: true })} values`)
   else {
     chosen = 'gl'
     for (const cb of [...listeners]) cb()

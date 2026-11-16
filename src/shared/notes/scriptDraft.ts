@@ -13,6 +13,7 @@
 import { SCRIPT_DRAFT_MAX_NOTES, type ScriptDraftRequest, type ScriptDraftResult } from '../api/ai'
 import { AiOutputError, type TextPrompt } from '../captions/transcriptText'
 import { NOTES_TEXT_MAX } from './notes'
+import { fmt } from '../i18n/fmt'
 
 export const SCRIPT_LIMITS = {
   notesMax: SCRIPT_DRAFT_MAX_NOTES,
@@ -54,7 +55,7 @@ export function validateScriptRequest(raw: unknown): ScriptDraftRequest {
   const notes = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { notes?: unknown }).notes : undefined
   if (typeof notes !== 'string') throw new Error('Draft script needs your notes as text.')
   if (!notes.trim()) throw new Error('Write a few bullet points first.')
-  if (notes.length > SCRIPT_LIMITS.notesMax) throw new Error(`Draft script works on up to ${SCRIPT_LIMITS.notesMax.toLocaleString('en-US')} characters of notes.`)
+  if (notes.length > SCRIPT_LIMITS.notesMax) throw new Error(`Draft script works on up to ${fmt.count(SCRIPT_LIMITS.notesMax, { grouping: true })} characters of notes.`)
   return { notes }
 }
 
@@ -93,7 +94,7 @@ export function validateScriptAnswer(answer: unknown, notes: string): string {
   if (paragraphs.length === 0) throw new AiOutputError('no paragraphs')
   const text = paragraphs.join('\n\n')
   if (text.length > SCRIPT_LIMITS.growth * notes.length + SCRIPT_LIMITS.growthExtra) throw new AiOutputError('the script came back far longer than the notes')
-  if (text.length > NOTES_TEXT_MAX) throw new AiOutputError(`the script came back longer than the ${NOTES_TEXT_MAX.toLocaleString('en-US')} characters your notes can hold`)
+  if (text.length > NOTES_TEXT_MAX) throw new AiOutputError(`the script came back longer than the ${fmt.count(NOTES_TEXT_MAX, { grouping: true })} characters your notes can hold`)
   return text
 }
 

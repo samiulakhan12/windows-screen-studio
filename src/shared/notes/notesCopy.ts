@@ -6,6 +6,7 @@
 import type { NotesHotkeyAction } from '../recording/hotkeys'
 import type { NotesMode, NotesRecordingState } from '../api/notes'
 import { readingLabel, readingSeconds } from './blocks'
+import { fmt } from '../i18n/fmt'
 
 export const NOTES_COPY = {
   groupLabel: 'Speaker notes',
@@ -81,7 +82,7 @@ export const NOTES_COPY = {
 /** "1 word", "312 words", "1,204 words". */
 export function wordsLabel(words: number): string {
   const n = Math.max(0, Math.round(words))
-  return `${n.toLocaleString('en-US')} ${n === 1 ? 'word' : 'words'}`
+  return `${fmt.count(n, { grouping: true })} ${n === 1 ? 'word' : 'words'}`
 }
 
 /** The Notes dialog's live count: "312 words · about 2 min 24 s". */

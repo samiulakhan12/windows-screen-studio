@@ -13,6 +13,7 @@
  * tabs; `#` comments. The data is exactly LUT_1D_SIZE + LUT_3D_SIZE³ lines of three numbers, the
  * shaper first, red changing fastest, and nothing after it.
  */
+import { fmt } from '../i18n/fmt'
 
 export const CUBE_LIMITS = {
   /** Largest file read, in bytes (a 65³ file is 7–10 MiB of text). */
@@ -48,7 +49,7 @@ export interface CubeLut {
 export class CubeError extends Error {
   readonly line: number
   constructor(line: number, reason: string) {
-    super(line > 0 ? `This LUT could not be used: line ${line.toLocaleString('en-US')} ${reason}.` : `This LUT could not be used: ${reason}.`)
+    super(line > 0 ? `This LUT could not be used: line ${fmt.count(line, { grouping: true })} ${reason}.` : `This LUT could not be used: ${reason}.`)
     this.name = 'CubeError'
     this.line = line
   }
@@ -83,7 +84,7 @@ function numbers(tokens: readonly string[], count: number, line: number, what: s
 function size(tokens: readonly string[], line: number, range: { min: number; max: number }, what: string): number {
   if (tokens.length !== 1 || !INTEGER.test(tokens[0])) throw new CubeError(line, `has no whole number for ${what}`)
   const n = Number(tokens[0])
-  if (n < range.min || n > range.max) throw new CubeError(line, `sets ${what} to ${n.toLocaleString('en-US')}, outside ${range.min}..${range.max.toLocaleString('en-US')}`)
+  if (n < range.min || n > range.max) throw new CubeError(line, `sets ${what} to ${fmt.count(n, { grouping: true })}, outside ${range.min}..${fmt.count(range.max, { grouping: true })}`)
   return n
 }
 
@@ -132,7 +133,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     let line = text.slice(start, end)
     start = end + 1
     if (line.length > CUBE_LIMITS.maxLine + 1 || (line.length === CUBE_LIMITS.maxLine + 1 && !line.endsWith('\r')))
-      throw new CubeError(lineNo, `is longer than ${CUBE_LIMITS.maxLine.toLocaleString('en-US')} characters`)
+      throw new CubeError(lineNo, `is longer than ${fmt.count(CUBE_LIMITS.maxLine, { grouping: true })} characters`)
     if (table && rows >= size1 && rows < total) {
       const m = DATA_LINE.exec(line)
       if (m) {
@@ -223,7 +224,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
       shaper = size1 ? new Float32Array(size1 * 3) : null
       total = size1 + size3 * size3 * size3
     }
-    if (rows >= total) throw new CubeError(lineNo, `is one more line of data than the ${total.toLocaleString('en-US')} the sizes give`)
+    if (rows >= total) throw new CubeError(lineNo, `is one more line of data than the ${fmt.count(total, { grouping: true })} the sizes give`)
     const hash = trimmed.indexOf('#')
     const tokens = (hash >= 0 ? trimmed.slice(0, hash).trim() : trimmed).split(SPACE)
     if (tokens.length !== 3) throw new CubeError(lineNo, `has ${tokens.length} ${tokens.length === 1 ? 'number' : 'numbers'}, not 3`)
@@ -244,7 +245,7 @@ export function parseCube(bytes: Uint8Array): CubeLut {
     if (end === text.length) break
   }
   if (!size3) throw new CubeError(0, 'it has no LUT_3D_SIZE')
-  if (!table || rows < total) throw new CubeError(lineNo, `ends after ${rows.toLocaleString('en-US')} of ${(total || size1 + size3 ** 3).toLocaleString('en-US')} lines of data`)
+  if (!table || rows < total) throw new CubeError(lineNo, `ends after ${fmt.count(rows, { grouping: true })} of ${fmt.count(total || size1 + size3 ** 3, { grouping: true })} lines of data`)
   return {
     title,
     size: size3,

@@ -19,6 +19,7 @@ import { presetAt, SERVICE_PRESETS } from './presets'
 import { BUNDLED_PRICE_LIST, priceOf, type PriceEntry, type PriceList } from './prices'
 import { blendedRatio, countWords, estimateTokens, imageTokens, jpegSize, tokenFamily, tokenRatio, type TokenFamily } from './tokens'
 import { usageKey, type UsageRatios } from './usageKey'
+import { fmt } from '../i18n/fmt'
 import type { ConfirmPref } from '../smart/smartPrefs'
 
 export type { ConfirmPref } from '../smart/smartPrefs'
@@ -429,7 +430,7 @@ export function aboutTime(seconds: number): string {
 /** "about 8,200": two significant figures from a thousand, tens from a hundred. */
 export function aboutCount(n: number): string {
   const r = n >= 1000 ? Math.round(n / 10 ** (Math.floor(Math.log10(n)) - 1)) * 10 ** (Math.floor(Math.log10(n)) - 1) : n >= 100 ? Math.round(n / 10) * 10 : Math.round(n)
-  return r.toLocaleString('en-US')
+  return fmt.count(r, { grouping: true })
 }
 
 const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
@@ -540,7 +541,7 @@ export function confirmText(estimate: CostEstimate, model: string): { text: stri
  */
 export function usageText(usage: AiUsage | null | undefined, price: CostEstimate['price'] | null | undefined): string {
   if (!usage || !(usage.input >= 0) || !(usage.output >= 0)) return ''
-  const tokens = `${Math.round(usage.input + usage.output).toLocaleString('en-US')} tokens`
+  const tokens = `${fmt.count(Math.round(usage.input + usage.output), { grouping: true })} tokens`
   const r = price ? rates(price.entry as PriceEntry) : null
   if (!r) return `It used ${tokens}.`
   const cost = (usage.input * r.input + usage.output * r.output) / 1e6

@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AiProviderInfo, AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import { AI_PROVIDER_KINDS } from '../../../shared/api/ai'
 import { costLineText, costSentence, needsConfirm, priceDate, sumEstimates, type CostEstimate } from '../../../shared/ai/cost'
+import { fmt } from '../../../shared/i18n/fmt'
 import { confirmCost, wasAsked } from './costConfirm'
 import { estimateFor, estimateNotes, estimateSound, useCostData, type CostData } from './useCost'
 import './cost.css'
@@ -179,8 +180,8 @@ export function CostLine(props: {
           {date && <li>Prices of {priceDate(date)}</li>}
           {known.map((r) => (
             <li key={r.key}>
-              {r.label}: {r.estimate.inputTokens[0].toLocaleString('en-US')}–{r.estimate.inputTokens[1].toLocaleString('en-US')} tokens in, {r.estimate.outputTokens[0].toLocaleString('en-US')}–
-              {r.estimate.outputTokens[1].toLocaleString('en-US')} out
+              {r.label}: {fmt.count(r.estimate.inputTokens[0], { grouping: true })}–{fmt.count(r.estimate.inputTokens[1], { grouping: true })} tokens in, {fmt.count(r.estimate.outputTokens[0], { grouping: true })}–
+              {fmt.count(r.estimate.outputTokens[1], { grouping: true })} out
             </li>
           ))}
         </ul>
