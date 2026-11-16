@@ -344,7 +344,9 @@ async function main() {
       await win.click('.modal .export-mode button:has-text("Batch")')
       for (const p of ['square', 'email']) await win.click(`.modal .preset-card[data-preset="${p}"]`)
       await shot(win, `languages-batch-${language ?? 'en'}`)
-      await win.locator('.modal button.primary', { hasText: 'Export 2 files' }).click()
+      // The count follows the UI's digits (§11.3): Bangla digits in the Bangla session, whose fixture
+      // has no translation of the button, so its English words stay.
+      await win.locator('.modal button.primary', { hasText: language === 'bn' ? 'Export ২ files' : 'Export 2 files' }).click()
       await win.waitForSelector('.modal .success:has-text("Batch finished")', { timeout: 300000 })
       await offline(app)
       await app.close()
