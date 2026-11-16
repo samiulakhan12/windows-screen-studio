@@ -3,7 +3,8 @@
  * by the design's rules, every stylesheet to X7 alone (never P6's scripts.css), and a file two rules
  * claim or no rule claims is listed for the lead instead of being guessed.
  */
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
+import { makeTree, removeTree } from './i18nFixtures'
 
 type Split = { parts: Record<string, { files: string[]; namespaces: string[] }>; conflicts: { file: string; parts: string[] }[]; unclaimed: string[] }
 const split = require('../scripts/i18n/lib/split.cjs') as {
@@ -11,7 +12,11 @@ const split = require('../scripts/i18n/lib/split.cjs') as {
   expand(glob: string): string[]
   splitParts(candidates: string[], parts?: object, never?: string[]): Split
   candidatesOf(root?: string): string[]
+  labelTablesOf(root?: string): string[]
 }
+
+const trees: string[] = []
+afterAll(() => trees.forEach(removeTree))
 
 describe('splitting the extraction between X1-X7', () => {
   it('lists a file two rules claim and a file no rule claims, and gives stylesheets to the stylesheet part only', () => {
@@ -47,5 +52,33 @@ describe('splitting the extraction between X1-X7', () => {
     for (const p of Object.values(r.parts)) for (const f of p.files) expect(f).not.toMatch(/recorder\/|views\/Toolbar\.|main\/recording\/|recordingIpc|reviewOverlay|proArgs/)
     expect(r.parts.X5.namespaces).toEqual(['home', 'export', 'settings', 'errors', 'main'])
     expect(r.parts.X1.namespaces).toEqual(['editor', 'timeline', 'commands', 'keys'])
+  })
+
+  it('gives every file with a table of labels to a part, the tables of §9.1 included, and leaves nothing unsettled', () => {
+    const r = split.splitParts(split.candidatesOf())
+    const owner = (file: string) => Object.entries(r.parts).find(([, p]) => p.files.includes(file))?.[0]
+    // EXPORT_PRESETS labels, RESOLUTION_LABELS, ENCODER_NAMES and SPEECH_TIER_NAMES: tables the scanner does not read.
+    expect(owner('src/shared/render/exportPresets.ts')).toBe('X5')
+    expect(owner('src/shared/render/exportPlan.ts')).toBe('X5')
+    expect(owner('src/shared/speech/catalog.ts')).toBe('X3')
+    expect(owner('src/shared/ai/presets.ts')).toBe('X5')
+    expect(owner('src/shared/audio/soundLibrary.ts')).toBe('X2')
+    expect(owner('src/shared/editor/groupEdit.ts')).toBe('X2')
+    expect(owner('src/shared/editor/snapping.ts')).toBe('X1')
+    expect(owner('src/shared/editor/versions.ts')).toBe('X4')
+    expect(r.conflicts).toEqual([])
+    expect(r.unclaimed).toEqual([])
+  })
+
+  it('finds tables of labels by the words in their label properties, not ids or paths', () => {
+    const root = makeTree({
+      'src/shared/a.ts': "export const LOOKS = [{ id: 'aurora', label: 'Aurora' }]\n",
+      'src/shared/b.ts': "export const MODES = { quick: { title: 'make it quick' } }\n",
+      'src/shared/c.ts': "export const IDS = [{ id: 'x', label: 'aurora-dawn' }]\nexport const ICONS = { text: 'M5 7V4h14v3M12 4v16' }\n",
+      'src/shared/d.ts': "export const plain = 'Aurora'\n",
+      'src/shared/i18n/messages/en/x.ts': "export const X = { label: 'Not a table' }\n"
+    })
+    trees.push(root)
+    expect(split.labelTablesOf(root).sort()).toEqual(['src/shared/a.ts', 'src/shared/b.ts'])
   })
 })

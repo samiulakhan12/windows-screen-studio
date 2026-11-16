@@ -8,6 +8,7 @@
  */
 const fs = require('node:fs')
 const path = require('node:path')
+const ts = require('typescript')
 const files = require('./files.cjs')
 const { globRegExp, matchesAny, scanTree } = require('./scan.cjs')
 
@@ -37,6 +38,7 @@ const PARTS = {
       'src/shared/editor/commands.ts',
       'src/shared/editor/shortcuts.ts',
       'src/shared/editor/multiSelectCopy.ts',
+      'src/shared/editor/snapping.ts',
       'src/shared/engine/**'
     ]
   },
@@ -90,6 +92,8 @@ const PARTS = {
       'src/shared/editor/layoutCommands.ts',
       'src/shared/audio/voiceCopy.ts',
       'src/shared/audio/soundsCopy.ts',
+      'src/shared/audio/**',
+      'src/shared/editor/{annotations,calloutsEdit,graphicsEdit,groupEdit,layouts,shapes,titles,zoomEdit}.ts',
       'src/shared/editor/directorCopy.ts',
       'src/shared/editor/cutsCopy.ts',
       'src/shared/editor/stylePresets.ts'
@@ -101,12 +105,15 @@ const PARTS = {
     files: [
       ...panels('Caption*.tsx', 'Speakers*.tsx', 'Studio*.tsx', 'Transcript*.tsx', 'LocalCaptions.tsx', 'Cleanup*.tsx', 'Languages*.tsx', 'Great*.tsx', 'FindChapters.tsx', 'SubtitlesField.tsx'),
       `${R}/editor/CaptionTrack.tsx`,
+      `${R}/editor/panels/captionTiles.ts`,
       `${R}/editor/{captionItems,captionPresets,chaptersRun,greatRun,speechState}.ts`,
       `${R}/guide/**`,
       `${R}/clips/**`,
       `${R}/ai/**`,
       `${R}/smart/**`,
       'src/shared/speech/speechCopy.ts',
+      // SPEECH_TIER_NAMES (§9.1): a table of labels the scanner does not see as text.
+      'src/shared/speech/catalog.ts',
       'src/shared/speech/**',
       'src/shared/captions/**',
       'src/shared/clips/**',
@@ -135,6 +142,8 @@ const PARTS = {
       'src/shared/notes/notesCopy.ts',
       'src/shared/notes/**',
       'src/shared/import/**',
+      'src/shared/editor/versions.ts',
+      'src/shared/publish/**',
       'src/shared/share/**',
       'src/shared/search/**'
     ]
@@ -148,7 +157,14 @@ const PARTS = {
       `${R}/editor/exportIcons.tsx`,
       `${R}/editor/exporter.ts`,
       `${R}/render/**`,
+      // EXPORT_PRESETS labels, RESOLUTION_LABELS and ENCODER_NAMES (§9.1, §10.5): tables of labels
+      // the scanner does not see as text.
+      'src/shared/render/exportPresets.ts',
+      'src/shared/render/exportPlan.ts',
       'src/shared/render/**',
+      // The AI providers' names and presets, shown in Settings › AI providers.
+      'src/shared/ai/**',
+      'src/shared/api/ai.ts',
       `${R}/settings/**`,
       `${R}/updates/**`,
       `${R}/views/Home.tsx`,
@@ -198,22 +214,56 @@ function splitParts(candidates, parts = PARTS, never = NEVER) {
   return out
 }
 
+/** Properties whose string values are labels a table holds for the UI (`{ id: 'aurora', label: 'Aurora' }`). */
+const LABEL_PROPS = new Set(['label', 'title', 'name', 'description', 'hint', 'tooltip', 'placeholder', 'summary', 'text', 'heading', 'help', 'note'])
+
+/** Whether a property's string looks like words a person reads, not an id or a path: a capitalised word first, or two words. */
+const looksLikeWords = (s) => /^[A-Z][a-z]+\b/.test(s) || /[A-Za-z]{2,} [A-Za-z]{2,}/.test(s)
+
+/**
+ * The source files that hold tables of labels: a string that looks like words in a property such as
+ * `label` or `title` (§9.1: COMMAND_LIST, EXPORT_PRESETS, SPEECH_TIER_NAMES, …). The scanner reads
+ * text at its sinks, not in tables, so without these the split would leave such files to nobody.
+ */
+function labelTablesOf(root = files.ROOT) {
+  const out = []
+  for (const abs of files.sourceFiles(root)) {
+    if (abs.includes(`${path.sep}i18n${path.sep}messages${path.sep}`)) continue
+    const text = fs.readFileSync(abs, 'utf8')
+    const sf = ts.createSourceFile(abs, text, ts.ScriptTarget.Latest, true, abs.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    let found = false
+    const visit = (node) => {
+      if (found) return
+      if (ts.isPropertyAssignment(node) && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) && LABEL_PROPS.has(node.name.text)) {
+        const v = node.initializer
+        if ((ts.isStringLiteral(v) || ts.isNoSubstitutionTemplateLiteral(v)) && looksLikeWords(v.text)) found = true
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sf)
+    if (found) out.push(files.rel(root, abs))
+  }
+  return out
+}
+
 /**
  * The files to split in a tree: every source file with UI text still to extract (the scanner's
- * report and failures), every file a rule names outright, and every stylesheet; the other
- * account's files (pending.json) and the parts' files (config.json's failFor) left out.
+ * report and failures), every file with a table of labels, every file a rule names outright, and
+ * every stylesheet; the other account's files (pending.json), the parts' files (config.json's
+ * failFor) and the files allow.json leaves out whole left out.
  */
 function candidatesOf(root = files.ROOT) {
   const scan = scanTree(root, { mode: 'report' })
   const config = files.readConfig(root)
   const pending = files.readPending(root)
+  const allow = files.readAllow(root)
   const named = Object.values(PARTS)
     .flatMap((p) => p.files)
     .flatMap(expand)
     .filter((g) => !g.includes('*'))
   const css = files.walk(path.join(root, 'src'), (p) => p.endsWith('.css')).map((p) => files.rel(root, p))
-  const all = [...scan.report.map((f) => f.file), ...named.filter((f) => fs.existsSync(path.join(root, f))), ...css]
-  return [...new Set(all)].filter((f) => !matchesAny(f, pending.files) && !(config.failFor ?? []).includes(f)).sort()
+  const all = [...scan.report.map((f) => f.file), ...labelTablesOf(root), ...named.filter((f) => fs.existsSync(path.join(root, f))), ...css]
+  return [...new Set(all)].filter((f) => !matchesAny(f, pending.files) && !matchesAny(f, allow.files) && !(config.failFor ?? []).includes(f)).sort()
 }
 
-module.exports = { PARTS, NEVER, expand, splitParts, candidatesOf }
+module.exports = { PARTS, NEVER, expand, splitParts, candidatesOf, labelTablesOf }
