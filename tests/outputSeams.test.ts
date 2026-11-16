@@ -66,9 +66,10 @@ describe('tooling', () => {
     expect(fs.readFileSync(path.join(root, 'scripts/predist.mjs'), 'utf8')).toContain("'check.mjs'), '--report'")
   })
 
-  it('holds every file of parts P1-P7 to the scanner from S0, in report mode for the rest', () => {
+  it('holds every file of parts P1-P7 to the scanner from S0, and the whole tree from step S4', () => {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, 'scripts/i18n/config.json'), 'utf8')) as { scan: string; failFor: string[] }
-    expect(cfg.scan).toBe('report')
+    // Step S4 (§10.4) turned the report for the rest of the tree into a failure.
+    expect(cfg.scan).toBe('fail')
     for (const f of cfg.failFor) expect(fs.existsSync(path.join(root, f)), f).toBe(true)
     for (const f of ['src/main/proArgs.ts', 'src/shared/render/stems.ts', 'src/main/timelineIpc.ts', 'src/main/presetFiles.ts', 'src/renderer/src/i18n/boot.ts', 'src/renderer/src/i18n/reviewOverlay.tsx']) expect(cfg.failFor).toContain(f)
   })

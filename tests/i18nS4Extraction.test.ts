@@ -16,12 +16,25 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { isValidElement, type ReactElement } from 'react'
 import { setCatalogue, t } from '../src/shared/i18n/t'
 import { BLOCKER_TEXT, PUBLISH_KINDS, PUBLISH_LABELS, PUBLISH_LENGTHS, PUBLISH_TONES } from '../src/shared/publish/pack'
-import { blockerText, lengthOptions, publishLabel, toneOptions } from '../src/renderer/src/publish/publishWords'
-import { FIND_WORDS } from '../src/renderer/src/editor/chaptersRun'
-import { CLIPS_WORDS } from '../src/renderer/src/clips/clipsRun'
 import { parseWebhookUrl, postFailure, webhookHelp } from '../src/shared/share/webhooks'
-import { isCancel } from '../src/renderer/src/editor/cancelled'
-import { Rich } from '../src/renderer/src/editor/panels/Rich'
+import type { PublishBlocker, PublishKind, PublishLength, PublishTone } from '../src/shared/publish/pack'
+
+// Renderer modules, loaded as the other renderer tests load them (the node project does not list them).
+const WORDS = '../src/renderer/src/publish/publishWords'
+const CHAPTERS = '../src/renderer/src/editor/chaptersRun'
+const CLIPS = '../src/renderer/src/clips/clipsRun'
+const CANCELLED = '../src/renderer/src/editor/cancelled'
+const RICH = '../src/renderer/src/editor/panels/Rich'
+const { blockerText, lengthOptions, publishLabel, toneOptions } = (await import(/* @vite-ignore */ WORDS)) as {
+  blockerText(b: Exclude<PublishBlocker, null>): string
+  lengthOptions(): readonly { value: PublishLength; label: string }[]
+  publishLabel(k: PublishKind): string
+  toneOptions(): readonly { value: PublishTone; label: string }[]
+}
+const { FIND_WORDS } = (await import(/* @vite-ignore */ CHAPTERS)) as { FIND_WORDS: { tooShort: string; asking(place: string): string } }
+const { CLIPS_WORDS } = (await import(/* @vite-ignore */ CLIPS)) as { CLIPS_WORDS: { intro: string; noRoom(n: number, need: string, free: string): string; making(i: number, n: number): string } }
+const { isCancel } = (await import(/* @vite-ignore */ CANCELLED)) as { isCancel(message: string): boolean }
+const { Rich } = (await import(/* @vite-ignore */ RICH)) as { Rich(props: { k: string; values?: Record<string, unknown> }): unknown }
 
 const files = require('../scripts/i18n/lib/files.cjs') as { readEnglish(): { messages: Record<string, string>; meta: Record<string, object> } }
 const pseudo = require('../scripts/i18n/lib/pseudo.cjs') as {

@@ -77,6 +77,8 @@ describe('the Captions tab badge (useCaptionsHost)', () => {
   const badge = (projectId = 'p1'): Badge | null => m.useCaptionsHost(projectId, () => undefined, false)
   beforeEach(async () => {
     vi.resetModules()
+    // The fresh modules' message runtime gets English, as the renderer's entry gives it (output-and-languages §9.1).
+    await import('../src/shared/i18n/messages/en/index')
     push = null
     finish = null
     m = (await import(/* @vite-ignore */ SPEECH_STATE)) as SpeechStateModule
