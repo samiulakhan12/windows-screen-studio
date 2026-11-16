@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { cleanupNotice, DEFAULT_CLEANUP, readCleanupChoices, tidyCaptions, WORD_LIST_LIMITS, WORD_LIST_MAX, type CleanupChoices, type TextResult, type WordListEntry } from '../../../../shared/captions/cleanup'
 import { applyTextResult } from '../../../../shared/captions/edit'
+import { t } from '../../../../shared/i18n/t'
 import type { Project } from '../../../../shared/types'
 import { currentWordList, ipcMessage, loadWordList, onSectionRequest, onWordList, saveWordList, takeSectionRequest } from '../captionItems'
 import { useEditor } from '../context'
@@ -18,19 +19,19 @@ import { CostLine } from '../../ai/CostLine'
 import { runCostText } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 
-const DIGITS: { value: CleanupChoices['digits']; label: string }[] = [
-  { value: 'above-ten', label: 'Above ten' },
-  { value: 'all', label: 'All' },
-  { value: 'off', label: 'Off' }
+const digitOptions = (): { value: CleanupChoices['digits']; label: string }[] => [
+  { value: 'above-ten', label: t('captions.cleanup.digits.aboveTen') },
+  { value: 'all', label: t('captions.cleanup.digits.all') },
+  { value: 'off', label: t('common.state.off') }
 ]
-const BLEEP: { value: CleanupChoices['bleep']; label: string; title?: string }[] = [
-  { value: 'off', label: 'Off' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'strict', label: 'Strict', title: 'Also words that are only rude in some places' }
+const bleepOptions = (): { value: CleanupChoices['bleep']; label: string; title?: string }[] => [
+  { value: 'off', label: t('common.state.off') },
+  { value: 'standard', label: t('captions.cleanup.bleep.standard') },
+  { value: 'strict', label: t('captions.cleanup.bleep.strict'), title: t('captions.cleanup.bleep.strictTitle') }
 ]
-const BLEEP_SOUND: { value: CleanupChoices['bleepSound']; label: string }[] = [
-  { value: 'tone', label: 'Tone' },
-  { value: 'silence', label: 'Silence' }
+const bleepSoundOptions = (): { value: CleanupChoices['bleepSound']; label: string }[] => [
+  { value: 'tone', label: t('captions.cleanup.sound.tone') },
+  { value: 'silence', label: t('captions.cleanup.sound.silence') }
 ]
 
 /** A labelled checkbox (the Toggle look) whose input carries the test id. */
@@ -44,7 +45,7 @@ function Check(props: { testid: string; label: string; title?: string; checked: 
 }
 
 /** Why Fix captions with AI ticked nothing; it goes once a provider is added. */
-const NO_PROVIDER = 'To fix spelling with AI, add an AI provider first: the button is in the AI tools section.'
+const noProvider = (): string => t('captions.cleanup.noProvider')
 
 /** Numbers the AI fix's requests, so each has its own request id. */
 let cleanupSeq = 0
@@ -152,13 +153,13 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     } else if (focusAi.current && listed?.length === 0) {
       // No provider: the tick box is not shown, so there is nothing to focus; say what comes first.
       focusAi.current = false
-      setStatus(NO_PROVIDER)
+      setStatus(noProvider())
       setWrittenHere(false)
     }
   })
   // Added in Settings over the editor, a provider makes that message wrong: it goes (the focus stays put).
   useEffect(() => {
-    if (status === NO_PROVIDER && listed?.length) setStatus('')
+    if (status === noProvider() && listed?.length) setStatus('')
   }, [status, listed])
   useEffect(() => {
     if (addingWord) termBox.current?.focus()
@@ -197,10 +198,10 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
         // What the run cost, for the notice (smart-tools.md §11.6).
         cost = runCostText(result.usage, chosen)
         if (result.task === 'cleanup') fix = result
-        else leftOut = 'The AI fix was left out: the provider answered something else.'
+        else leftOut = t('captions.cleanup.leftOut.otherAnswer')
       } catch (err) {
         if (mine.cancelled || !live.current) return
-        leftOut = `The AI fix was left out: ${ipcMessage(err).replace(/\.?$/, '.')}`
+        leftOut = t('captions.cleanup.leftOut.error', { reason: ipcMessage(err).replace(/\.?$/, '.') })
       } finally {
         // Only the run still going: a cancelled run's late answer leaves the next run busy (and its Cancel).
         if (run.current === mine) {
@@ -216,10 +217,10 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     // only when it kept their ids and times (applyTextResult, as Fix captions did).
     if (fix && store.state.transcript?.segments !== before) {
       fix = undefined
-      leftOut = 'The AI fix was left out: the captions changed while the provider worked.'
+      leftOut = t('captions.cleanup.leftOut.changed')
     } else if (fix && !applyTextResult(asked, fix.segments)) {
       fix = undefined
-      leftOut = "The AI fix was left out: the provider changed the captions' timing or left some out."
+      leftOut = t('captions.cleanup.leftOut.timing')
     }
     let out: ReturnType<typeof tidyCaptions> | null = null
     // One undo step for the rules, the AI fix and the bleeps.
@@ -241,21 +242,21 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
     run.current = null
     setBusy(false)
     setRunning(null)
-    setStatus('Tidy captions was cancelled; nothing was changed.')
+    setStatus(t('captions.cleanup.cancelled'))
     setWrittenHere(false)
   }
   // Cancel pressed with the keyboard, or the run ending while it is on Cancel: the focus goes back to Tidy captions.
   const cancelFocus = useStopFocus(busy, 'cleanup-run')
 
   const saveWords = (next: readonly WordListEntry[]): Promise<void> =>
-    saveWordList(next).catch((err: unknown) => setError(`The word list could not be saved: ${ipcMessage(err)}`))
+    saveWordList(next).catch((err: unknown) => setError(t('captions.cleanup.wordsNotSaved', { reason: ipcMessage(err) })))
   const addWord = async (): Promise<void> => {
-    const t = term.replace(/\s+/g, ' ').trim()
-    if (!t) return
+    const typed = term.replace(/\s+/g, ' ').trim()
+    if (!typed) return
     const keyed = wordForm.byKey()
-    const rest = words.filter((w) => w.term.toLowerCase() !== t.toLowerCase())
+    const rest = words.filter((w) => w.term.toLowerCase() !== typed.toLowerCase())
     // Saved before the form closes, so Add a word is already off when this word fills the list.
-    await saveWords([{ term: t, heard: heardForms(heard) }, ...rest])
+    await saveWords([{ term: typed, heard: heardForms(heard) }, ...rest])
     setTerm('')
     setHeard('')
     closeWordForm(keyed)
@@ -263,30 +264,30 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
 
   return (
     <div data-testid="caption-cleanup">
-      <Section title="Clean up">
-        <Check testid="cleanup-caps" label="Capital letters" title="At the start of sentences, and “I”" checked={choices.caps} onChange={(caps) => choose({ caps })} />
-        <Check testid="cleanup-punct" label="Full stops and spaces" title="A full stop before a pause, no space before punctuation" checked={choices.punct} onChange={(punct) => choose({ punct })} />
+      <Section title={t('captions.cleanup.title')}>
+        <Check testid="cleanup-caps" label={t('captions.cleanup.caps')} title={t('captions.cleanup.capsTitle')} checked={choices.caps} onChange={(caps) => choose({ caps })} />
+        <Check testid="cleanup-punct" label={t('captions.cleanup.punct')} title={t('captions.cleanup.punctTitle')} checked={choices.punct} onChange={(punct) => choose({ punct })} />
         <div className="field" data-testid="cleanup-digits">
-          <span>Numbers as digits</span>
-          <Chips label="Numbers as digits" value={choices.digits} options={DIGITS} onChange={(digits) => choose({ digits })} />
+          <span>{t('captions.cleanup.digits.label')}</span>
+          <Chips label={t('captions.cleanup.digits.label')} value={choices.digits} options={digitOptions()} onChange={(digits) => choose({ digits })} />
         </div>
 
         <div className="field" data-testid="cleanup-words">
-          <span>Word list</span>
-          <ul className="caption-list" aria-label="Word list">
+          <span>{t('captions.cleanup.words.label')}</span>
+          <ul className="caption-list" aria-label={t('captions.cleanup.words.label')}>
             {words.map((w, i) => (
               <li key={w.term} className="caption-row">
                 <span className="caption-text">
                   {w.term}
-                  {w.heard.length > 0 && <span className="hint"> — also heard as: {w.heard.join(', ')}</span>}
+                  {w.heard.length > 0 && <span className="hint"> — {t('captions.cleanup.words.alsoHeard', { heard: w.heard.join(', ') })}</span>}
                 </span>
                 <button
                   ref={i === 0 ? firstRemove : undefined}
                   className="btn small ghost"
-                  aria-label={`Remove ${w.term} from the word list`}
+                  aria-label={t('captions.cleanup.words.removeLabel', { term: w.term })}
                   onClick={() => void saveWords(words.filter((x) => x !== w))}
                 >
-                  Remove
+                  {t('common.action.remove')}
                 </button>
               </li>
             ))}
@@ -301,48 +302,48 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
               }}
             >
               <label className="field">
-                <span>Word</span>
+                <span>{t('captions.cleanup.words.word')}</span>
                 <input ref={termBox} className="captions-select" value={term} maxLength={WORD_LIST_LIMITS.chars} onChange={(e) => setTerm(e.target.value)} />
               </label>
               <label className="field">
-                <span>Also heard as (comma between)</span>
+                <span>{t('captions.cleanup.words.heard')}</span>
                 <input className="captions-select" value={heard} onChange={(e) => setHeard(e.target.value)} />
               </label>
               <div className="row start">
                 <button type="submit" className="btn small primary" disabled={!term.trim()}>
-                  Add
+                  {t('common.action.add')}
                 </button>
                 <button type="button" className="btn small ghost" onClick={() => closeWordForm()}>
-                  Cancel
+                  {t('common.action.cancel')}
                 </button>
               </div>
             </form>
           ) : (
             <div className="row start">
               <button ref={wordForm.opener} className="btn small" disabled={words.length >= WORD_LIST_MAX} onClick={() => setAddingWord(true)}>
-                Add a word
+                {t('captions.cleanup.words.add')}
               </button>
             </div>
           )}
         </div>
 
         <div className="field" data-testid="cleanup-bleep">
-          <span>Bleep swear words</span>
-          <Chips label="Bleep swear words" value={choices.bleep} options={BLEEP} onChange={(bleep) => choose({ bleep })} />
+          <span>{t('captions.cleanup.bleep.label')}</span>
+          <Chips label={t('captions.cleanup.bleep.label')} value={choices.bleep} options={bleepOptions()} onChange={(bleep) => choose({ bleep })} />
         </div>
         {choices.bleep !== 'off' && (
           <div className="field" data-testid="cleanup-bleep-sound">
-            <span>Bleep sound</span>
-            <Chips label="Bleep sound" value={choices.bleepSound} options={BLEEP_SOUND} onChange={(bleepSound) => choose({ bleepSound })} />
+            <span>{t('captions.cleanup.sound.label')}</span>
+            <Chips label={t('captions.cleanup.sound.label')} value={choices.bleepSound} options={bleepSoundOptions()} onChange={(bleepSound) => choose({ bleepSound })} />
           </div>
         )}
 
         {providers.length > 0 && (
           <>
-            <Check testid="cleanup-ai" inputRef={aiBox} label="Also fix spelling and misheard words with AI" checked={choices.ai} onChange={(on) => choose({ ai: on })} />
+            <Check testid="cleanup-ai" inputRef={aiBox} label={t('captions.cleanup.ai')} checked={choices.ai} onChange={(on) => choose({ ai: on })} />
             {choices.ai && (
               <label className="field">
-                <span>Provider</span>
+                <span>{t('common.label.provider')}</span>
                 <select className="captions-select" data-testid="cleanup-ai-provider" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)}>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -364,11 +365,11 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
             disabled={busy || !project.transcript?.segments.length}
             onClick={() => void tidy()}
           >
-            {busy ? 'Working…' : 'Tidy captions'}
+            {busy ? t('common.state.working') : t('captions.cleanup.run')}
           </button>
           {busy && (
             <button className="btn small ghost" onClick={cancel} {...cancelFocus}>
-              Cancel
+              {t('common.action.cancel')}
             </button>
           )}
           <LocalProgress requestId={running} onStop={cancel} returnFocus="cleanup-run" />
@@ -379,7 +380,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
             id="cleanup-cost"
             choice={chosen}
             full
-            actions={[{ key: 'fix', label: 'Fix spelling', buttonId: 'cleanup-run', request: () => ({ task: 'cleanup', segments: store.state.transcript?.segments ?? [] }) }]}
+            actions={[{ key: 'fix', label: t('captions.cleanup.fixLabel'), buttonId: 'cleanup-run', request: () => ({ task: 'cleanup', segments: store.state.transcript?.segments ?? [] }) }]}
           />
         )}
         {error && (
@@ -391,7 +392,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
           {status}
         </p>
         <LocalWritten show={writtenHere && !!status} />
-        <p className="hint">Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.</p>
+        <p className="hint">{t('captions.cleanup.hint')}</p>
       </Section>
     </div>
   )

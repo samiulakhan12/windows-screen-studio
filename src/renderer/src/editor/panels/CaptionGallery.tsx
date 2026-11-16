@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { legacyTwin } from '../../../../shared/captions/studioEdit'
 import { withPreset } from '../../../../shared/captions/settings'
 import type { SavedLook } from '../../../../shared/captions/studioPresets'
+import { t } from '../../../../shared/i18n/t'
 import type { CaptionSettings, CaptionStudio } from '../../../../shared/types'
 import { fontGeneration } from '../../render/fontLoader'
 import { drawStudioSample } from '../../render/studioLayer'
@@ -181,13 +182,13 @@ const focusTaken = (): void => {
  */
 function firstRows(tiles: readonly GalleryTile[], n: number, keep: readonly (string | null)[]): GalleryTile[] {
   const rows = tiles.slice(0, n)
-  for (const t of tiles.slice(n)) {
-    if (!keep.includes(t.id)) continue
+  for (const tile of tiles.slice(n)) {
+    if (!keep.includes(tile.id)) continue
     let free = rows.length - 1
     while (free >= 0 && keep.includes(rows[free].id)) free--
     if (free < 0) break
     rows.splice(free, 1)
-    rows.push(t)
+    rows.push(tile)
   }
   return rows
 }
@@ -236,7 +237,7 @@ export function CaptionGallery(props: {
   // radio (§2.15), and so is the focused one, so an undo that moves the checked look never takes
   // away the tile with the focus. A later one takes the last place neither holds.
   const shown = showAll ? tiles : firstRows(tiles, cols * 2, [checked, focusId])
-  const stop = shown.find((t) => t.id === focusId)?.id ?? shown.find((t) => t.id === checked)?.id ?? shown[0]?.id ?? null
+  const stop = shown.find((tile) => tile.id === focusId)?.id ?? shown.find((tile) => tile.id === checked)?.id ?? shown[0]?.id ?? null
   // A focused tile can still leave the filter: an undo or redo to a Studio look takes away the
   // Classic "Your current style" tile. The focus then goes to the tab stop, not to the page.
   const hadFocus = typeof document !== 'undefined' && !!gridRef.current?.contains(document.activeElement)
@@ -297,12 +298,12 @@ export function CaptionGallery(props: {
   // tile's filter (switched to for this, not remembered).
   const takeFocus = (): void => {
     if (!focusAsked) return
-    if (checked && !tiles.some((t) => t.id === checked)) {
-      const home = galleryTiles('all', value, saved, brand).find((t) => t.id === checked)?.group
+    if (checked && !tiles.some((tile) => tile.id === checked)) {
+      const home = galleryTiles('all', value, saved, brand).find((tile) => tile.id === checked)?.group
       // Taken once that filter shows (the effect below runs again).
       if (home && home !== filter) return setWanted(home)
     }
-    const id = shown.find((t) => t.id === checked)?.id ?? stop
+    const id = shown.find((tile) => tile.id === checked)?.id ?? stop
     if (!id) return
     const cover = gridRef.current?.closest('[inert]')
     if (cover) {
@@ -327,7 +328,7 @@ export function CaptionGallery(props: {
   }, [])
   useEffect(() => takeRef.current(), [filter, stop])
   const onKeyDown = (e: ReactKeyboardEvent): void => {
-    const i = shown.findIndex((t) => t.id === stop)
+    const i = shown.findIndex((tile) => tile.id === stop)
     if (i < 0) return
     let next = -1
     if (e.key === 'ArrowRight') next = Math.min(shown.length - 1, i + 1)
@@ -359,17 +360,17 @@ export function CaptionGallery(props: {
     const at = saved.indexOf(deletable)
     const entry = deletable
     removeLook(entry.id).then(
-      () => group.notice(`Deleted “${entry.name}”`, { action: { label: 'Undo', run: () => void restoreLook(entry, at) } }),
-      (err: unknown) => group.notice(`The style could not be deleted: ${err instanceof Error ? err.message : String(err)}`)
+      () => group.notice(t('captions.gallery.deleted', { name: entry.name }), { action: { label: t('captions.gallery.undo'), run: () => void restoreLook(entry, at) } }),
+      (err: unknown) => group.notice(t('captions.gallery.notDeleted', { reason: err instanceof Error ? err.message : String(err) }))
     )
   }
   // Play plays the tile it names: the tab stop's (the focused tile, else the checked one, §2.5).
   const playTile = stop
-  const playName = shown.find((t) => t.id === stop)?.name
+  const playName = shown.find((tile) => tile.id === stop)?.name
 
   return (
     <div className="caption-gallery-wrap">
-      <div className="chips caption-gallery-filter" role="group" aria-label="Show styles for" data-testid="caption-gallery-filter">
+      <div className="chips caption-gallery-filter" role="group" aria-label={t('captions.gallery.showFor')} data-testid="caption-gallery-filter">
         {filtersFor(saved, brand).map((f) => (
           <button key={f.id} type="button" className={`chip ${filter === f.id ? 'active' : ''}`} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
             {f.label}
@@ -380,7 +381,7 @@ export function CaptionGallery(props: {
         ref={gridRef}
         className="caption-gallery"
         role="radiogroup"
-        aria-label="Caption style"
+        aria-label={t('captions.gallery.label')}
         data-testid="caption-gallery"
         style={{ gridTemplateColumns: `repeat(${cols}, ${size.w}px)` }}
         onKeyDown={onKeyDown}
@@ -393,57 +394,57 @@ export function CaptionGallery(props: {
           }
         }}
       >
-        {shown.map((t) => {
-          const on = t.id === checked
+        {shown.map((tile) => {
+          const on = tile.id === checked
           // "Your current style" is said as it is shown, on its own line under the name (§2.5).
-          const label = t.current ? `${tileLabel(t)}, your current style` : tileLabel(t)
-          const reason = t.id === suggested ? `tile-why-${t.id}` : undefined
+          const label = tile.current ? t('captions.gallery.currentLabel', { label: tileLabel(tile) }) : tileLabel(tile)
+          const reason = tile.id === suggested ? `tile-why-${tile.id}` : undefined
           return (
             <div
-              key={t.id}
+              key={tile.id}
               role="radio"
               aria-checked={on}
               aria-label={label}
               aria-describedby={reason}
-              tabIndex={t.id === stop ? 0 : -1}
-              data-tile={t.id}
-              className={`caption-tile ${on ? 'checked' : ''}${t.current ? ' current' : ''}`}
-              title={t.description}
-              onClick={() => pick(t.id)}
+              tabIndex={tile.id === stop ? 0 : -1}
+              data-tile={tile.id}
+              className={`caption-tile ${on ? 'checked' : ''}${tile.current ? ' current' : ''}`}
+              title={tile.description}
+              onClick={() => pick(tile.id)}
               onFocus={() => {
-                setFocusId(t.id)
-                if (t.id.startsWith(MINE_PREFIX)) setLastSaved(t.id)
+                setFocusId(tile.id)
+                if (tile.id.startsWith(MINE_PREFIX)) setLastSaved(tile.id)
                 // Focus never starts an animation under reduced motion (§2.15).
-                if (!reduced) setActive(t.id)
-                startPreview(t.id, 'focus')
+                if (!reduced) setActive(tile.id)
+                startPreview(tile.id, 'focus')
               }}
               onPointerEnter={() => {
-                if (!reduced) setActive(t.id)
-                startPreview(t.id, 'pointer')
+                if (!reduced) setActive(tile.id)
+                startPreview(tile.id, 'pointer')
               }}
               onPointerLeave={() => {
-                setActive((a) => (a === t.id ? null : a))
+                setActive((a) => (a === tile.id ? null : a))
                 stopPreview()
               }}
             >
               <Thumb
-                look={tileLook(t, value)}
+                look={tileLook(tile, value)}
                 frame={frame}
                 size={size}
                 language={language}
-                playing={once === t.id ? 'once' : !reduced && active === t.id ? 'loop' : null}
+                playing={once === tile.id ? 'once' : !reduced && active === tile.id ? 'loop' : null}
                 onDone={() => setOnce(null)}
                 fonts={fonts}
               />
-              <span className="tile-name">{t.name}</span>
-              {t.current && <span className="tile-current">Your current style</span>}
-              {t.id === suggested && (
+              <span className="tile-name">{tile.name}</span>
+              {tile.current && <span className="tile-current">{t('captions.gallery.current')}</span>}
+              {tile.id === suggested && (
                 <>
                   <span className="tile-badge" aria-hidden="true">
-                    Suggested
+                    {t('captions.gallery.suggestedBadge')}
                   </span>
                   <span id={reason} className="sr-only">
-                    {suggestedReason(t.id, frame)}
+                    {suggestedReason(tile.id, frame)}
                   </span>
                 </>
               )}
@@ -454,17 +455,17 @@ export function CaptionGallery(props: {
       <div className="caption-gallery-tools">
         {tiles.length > cols * 2 && (
           <button type="button" className="btn small" aria-expanded={showAll} data-testid="caption-gallery-more" onClick={() => setShowAll((v) => !v)}>
-            {showAll ? 'Show fewer styles' : 'Show all styles'}
+            {showAll ? t('captions.gallery.fewer') : t('captions.gallery.all')}
           </button>
         )}
         {playTile && (
-          <button type="button" className="btn small" data-testid="caption-tile-play" aria-label={`Play a preview of ${playName}`} title={`Play a preview of ${playName}`} onClick={() => setOnce(playTile)}>
-            Play
+          <button type="button" className="btn small" data-testid="caption-tile-play" aria-label={t('captions.gallery.playLabel', { name: playName ?? '' })} title={t('captions.gallery.playLabel', { name: playName ?? '' })} onClick={() => setOnce(playTile)}>
+            {t('common.action.play')}
           </button>
         )}
         {showsSaved && (
           <button type="button" className="btn small ghost danger" data-testid="caption-tile-delete" disabled={!deletable} onClick={remove}>
-            {deletable ? `Delete “${deletable.name}”` : 'Delete'}
+            {deletable ? t('captions.gallery.deleteName', { name: deletable.name }) : t('common.action.delete')}
           </button>
         )}
       </div>

@@ -5,6 +5,7 @@
  */
 import { useEffect, useId, useRef } from 'react'
 import { useModalFocus } from '../editor/modalFocus'
+import { t } from '../../../shared/i18n/t'
 import './cost.css'
 
 export function CostConfirm({ text, action, onDone }: { text: string; action: string; onDone(run: boolean): void }): JSX.Element {
@@ -18,11 +19,11 @@ export function CostConfirm({ text, action, onDone }: { text: string; action: st
   return (
     <div className="overlay modal-backdrop cost-confirm-scrim">
       <div className="cost-confirm" role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-text`} ref={box} data-testid="cost-confirm">
-        <h2 id={`${id}-title`}>{action === 'Start' ? 'Start on this PC?' : 'Run it?'}</h2>
+        <h2 id={`${id}-title`}>{action === 'Start' ? t('captions.ai.confirm.startTitle') : t('captions.ai.confirm.runTitle')}</h2>
         <p id={`${id}-text`}>{text}</p>
         <div className="cost-confirm-actions">
           <button ref={cancel} type="button" className="btn primary" onClick={() => onDone(false)}>
-            Cancel
+            {t('common.action.cancel')}
           </button>
           <button type="button" className="btn" data-testid="cost-confirm-run" onClick={() => onDone(true)}>
             {action}

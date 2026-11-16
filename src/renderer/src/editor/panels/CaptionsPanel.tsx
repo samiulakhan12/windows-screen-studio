@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { AiProviderInfo, AiTextRequest, AiTextResult, TextChoice, TranscribeOptions } from '../../../../shared/api/ai'
 import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions/captionData'
 import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
-import { languageSubtitleFile, spokenSegments, SUBTITLE_FORMATS, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { languageSubtitleFile, spokenSegments, type SubtitleFormat } from '../../../../shared/captions/subtitles'
 import { displayTime } from '../../../../shared/editor/clips'
 import { reviewHint, undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
 import { chapterNear, createChapter } from '../../../../shared/editor/titles'
@@ -66,6 +66,9 @@ import { useLocalAi, useLocalAiReady } from '../../ai/localAiState'
 import { FIND_CHAPTERS_BUILT, runFindChapters } from '../chaptersRun'
 import { sanitizeSmartPref, DEFAULT_FIND_CHAPTERS, type FindChaptersPref } from '../../../../shared/smart/smartPrefs'
 import { fmt } from '../../../../shared/i18n/fmt'
+import { t, tParts } from '../../../../shared/i18n/t'
+import { askNow, whenYes } from '../askNow'
+import { captionLanguageName, subtitleFormats } from '../captionWords'
 import { CostLine } from '../../ai/CostLine'
 import { useCostDataRead } from '../../ai/useCost'
 import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
@@ -103,7 +106,7 @@ export const CAPTION_LANGUAGES: { code: string; name: string }[] = [
 
 const KIND_NAMES: Record<AiProviderInfo['kind'], string> = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude' }
 /** Where a transcript was made, for its summary line ('local': on this PC). */
-const TRANSCRIBER_NAMES: Record<Transcript['provider'], string> = { ...KIND_NAMES, local: 'this PC' }
+const transcriberName = (provider: Transcript['provider']): string => (provider === 'local' ? t('captions.generate.byThisPc') : KIND_NAMES[provider])
 
 /** Opens the app settings at the AI providers (the settings dialog listens for it). */
 const openAiSettings = (): void => void window.dispatchEvent(new CustomEvent('ssw:open-settings', { detail: { section: 'ai' } }))
@@ -280,9 +283,9 @@ function ScriptSection({ text, onNotice }: { text: string; onNotice: (message: s
       }
       await window.api.updateNotes({ text })
       if (live.current) setAsking(false)
-      onNotice('Your speaker notes are this script again')
+      onNotice(t('captions.script.used'))
     } catch (err) {
-      onNotice(`Your speaker notes could not be changed: ${ipcMessage(err)}`)
+      onNotice(t('captions.script.notChanged', { reason: ipcMessage(err) }))
     } finally {
       if (live.current) setBusy(false)
     }
@@ -307,8 +310,8 @@ function ScriptSection({ text, onNotice }: { text: string; onNotice: (message: s
               className="btn small"
               onClick={() =>
                 void navigator.clipboard.writeText(text).then(
-                  () => onNotice('Script copied'),
-                  () => onNotice('The script could not be copied')
+                  () => onNotice(t('captions.script.copied')),
+                  () => onNotice(t('captions.script.notCopied'))
                 )
               }
             >
@@ -339,7 +342,7 @@ function ScriptSection({ text, onNotice }: { text: string; onNotice: (message: s
 
 function CaptionsIntro(): JSX.Element {
   return (
-    <Section title="Captions">
+    <Section title={t('common.label.captions')}>
       <div className="captions-intro">
         <EditorIcon name="captions" size={28} />
         <p>{SPEECH_COPY.intro}</p>
@@ -401,19 +404,21 @@ function GenerateSection({
     remembered.source = source
   }, [provider, source])
 
-  const confirmReplace = (): boolean =>
-    !hasTranscript || window.confirm('Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).')
+  // In English window.confirm answers at once, so what the answer starts still starts in the click (askNow).
+  const confirmReplace = (): boolean | Promise<boolean> => !hasTranscript || askNow(t('captions.generate.replaceQuestion'), 'captions.generate.replaceAction')
   // On this PC with a downloaded model (a chip, or "Make them now with …", which selects it), in
   // `spoken`, which becomes the Spoken language (a Bangla run again from its error card).
   const startLocal = (id: SpeechModelId, asked = true, spoken = language): void => {
-    if (mine?.running || (asked && !confirmReplace())) return
-    if (spoken !== language) setLanguage(spoken)
-    chooseModel(id, spoken)
-    clearTranscriptionError()
-    const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
-    if (spoken) options.language = spoken
-    void startLocalCaptions(services, options).then((ok) => {
-      if (ok) setOpen(false)
+    if (mine?.running) return
+    whenYes(asked ? confirmReplace() : true, () => {
+      if (spoken !== language) setLanguage(spoken)
+      chooseModel(id, spoken)
+      clearTranscriptionError()
+      const options: TranscribeOptions = { providerId: LOCAL_TRANSCRIBER_ID, model: id, source: stems ? source : 'auto' }
+      if (spoken) options.language = spoken
+      void startLocalCaptions(services, options).then((ok) => {
+        if (ok) setOpen(false)
+      })
     })
   }
   // The Bangla model offered under the summary of captions detected as Bengali (§14.4): Bengali
@@ -426,29 +431,32 @@ function GenerateSection({
     const bangla = modelView(local, BANGLA_MODEL)
     if (!bangla) return
     const busy = bangla.status.state === 'downloading' || bangla.status.state === 'verifying'
-    if (!busy && !confirmReplace()) return
-    setLanguage('bn')
-    setProvider(LOCAL_TRANSCRIBER_ID)
-    setOpen(true)
-    if (bangla.status.state === 'installed') return startLocal(bangla.id, false, 'bn')
-    chooseModel(bangla.id, 'bn')
-    clearTranscriptionError()
-    if (busy) return
-    const lacksSpace = local.disk.free !== null && local.disk.free < downloadSpaceNeeded(bangla.id, 'received' in bangla.status ? bangla.status.received : 0)
-    const offline = typeof navigator !== 'undefined' && navigator.onLine === false
-    if (otherDownload(local, bangla.id) || lacksSpace || offline) return
-    void downloadThenCaptions(project.id, bangla.id, { providerId: LOCAL_TRANSCRIBER_ID, model: bangla.id, source: stems ? source : 'auto', language: 'bn' })
+    whenYes(busy || confirmReplace(), () => {
+      setLanguage('bn')
+      setProvider(LOCAL_TRANSCRIBER_ID)
+      setOpen(true)
+      if (bangla.status.state === 'installed') return startLocal(bangla.id, false, 'bn')
+      chooseModel(bangla.id, 'bn')
+      clearTranscriptionError()
+      if (busy) return
+      const lacksSpace = local.disk.free !== null && local.disk.free < downloadSpaceNeeded(bangla.id, 'received' in bangla.status ? bangla.status.received : 0)
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+      if (otherDownload(local, bangla.id) || lacksSpace || offline) return
+      void downloadThenCaptions(project.id, bangla.id, { providerId: LOCAL_TRANSCRIBER_ID, model: bangla.id, source: stems ? source : 'auto', language: 'bn' })
+    })
   }
   const start = (): void => {
     if (localChosen && model) return startLocal(model)
     if (!chosen || mine?.running) return
-    if (!confirmReplace()) return
-    clearTranscriptionError()
-    const options: TranscribeOptions = { providerId: chosen.id, source: stems ? source : 'auto' }
-    if (language) options.language = language
-    // Once it worked the form closes: the summary shows the new captions and the job's notice.
-    void transcribe(services, options).then((ok) => {
-      if (ok) setOpen(false)
+    const pick = chosen
+    whenYes(confirmReplace(), () => {
+      clearTranscriptionError()
+      const options: TranscribeOptions = { providerId: pick.id, source: stems ? source : 'auto' }
+      if (language) options.language = language
+      // Once it worked the form closes: the summary shows the new captions and the job's notice.
+      void transcribe(services, options).then((ok) => {
+        if (ok) setOpen(false)
+      })
     })
   }
   const startRef = useRef(start)
@@ -492,17 +500,17 @@ function GenerateSection({
   }, [summaryShown])
 
   if (hasTranscript && !open && !mine?.running && !mine?.error) {
-    const t = project.transcript!
-    const languageName = t.language ? (CAPTION_LANGUAGES.find((l) => l.code === t.language)?.name ?? t.language) : null
-    const run = t.provider === 'local' ? localRun(project.id, t) : null
+    const tr = project.transcript!
+    const languageName = tr.language ? captionLanguageName(tr.language, CAPTION_LANGUAGES.find((l) => l.code === tr.language)?.name ?? tr.language) : null
+    const run = tr.provider === 'local' ? localRun(project.id, tr) : null
     // Captions in Bengali made with another model: the Bangla model is offered instead of the "Smaller models…" line.
-    const offerBangla = banglaOfferApplies(local, t)
+    const offerBangla = banglaOfferApplies(local, tr)
     return (
-      <Section title="Generate">
-        {t.provider === 'local' ? (
+      <Section title={t('captions.generate.summaryTitle')}>
+        {tr.provider === 'local' ? (
           <div className="local-captions" data-testid="local-captions" data-state="done">
             <p className="hint" data-testid="local-summary">
-              {doneLine({ count: t.segments.length, model: t.model, language: languageName, detected: run?.detected, took: run?.took })}{' '}
+              {doneLine({ count: tr.segments.length, model: tr.model, language: languageName, detected: run?.detected, took: run?.took })}{' '}
               {run?.detected && languageName && (
                 <button
                   type="button"
@@ -516,16 +524,17 @@ function GenerateSection({
                 </button>
               )}
             </p>
-            {!offerBangla && isSmallTier(t.model) && t.language && t.language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHintDone}</p>}
+            {!offerBangla && isSmallTier(tr.model) && tr.language && tr.language !== 'en' && <p className="hint warn">{SPEECH_COPY.languageHintDone}</p>}
             {offerBangla && local && <BanglaOffer state={local} onUse={takeBanglaOffer} />}
           </div>
         ) : (
           <p className="hint">
-            {t.segments.length} captions by {TRANSCRIBER_NAMES[t.provider]}
-            {languageName ? ` (${languageName})` : ''}.
+            {languageName
+              ? t('captions.generate.byLanguage', { n: fmt.count(tr.segments.length), by: transcriberName(tr.provider), language: languageName })
+              : t('captions.generate.by', { n: fmt.count(tr.segments.length), by: transcriberName(tr.provider) })}
           </p>
         )}
-        {t.provider !== 'local' && estimatedShare(t.segments) > 0.5 && (
+        {tr.provider !== 'local' && estimatedShare(tr.segments) > 0.5 && (
           <p className="hint" data-testid="estimated-summary">
             {TIMING_COPY.summary}
           </p>
@@ -534,12 +543,12 @@ function GenerateSection({
           <div className="captions-suggestion" role="status">
             <p className="hint warn">{mine.notice}</p>
             <button className="link" onClick={clearTranscriptionError}>
-              Dismiss
+              {t('captions.action.dismiss')}
             </button>
           </div>
         )}
         <button ref={regenerateRef} className="btn" onClick={() => setOpen(true)}>
-          <Icon name="refresh" size={15} /> Regenerate captions…
+          <Icon name="refresh" size={15} /> {t('captions.generate.regenerateOpen')}
         </button>
       </Section>
     )
@@ -547,7 +556,7 @@ function GenerateSection({
 
   if (mine?.running && mine.local) {
     return (
-      <Section title="Generating captions">
+      <Section title={t('captions.generate.generating')}>
         <LocalRunning job={mine} duration={project.duration} />
       </Section>
     )
@@ -555,16 +564,28 @@ function GenerateSection({
 
   if (mine?.running) {
     const p = mine.progress
-    const phase = mine.stopping ? 'Stopping…' : !p ? 'Starting…' : p.phase === 'extracting' ? 'Preparing the sound…' : p.phase === 'uploading' ? 'Sending the sound…' : p.phase === 'transcribing' ? 'Transcribing…' : 'Finishing…'
+    const phase = t(
+      mine.stopping
+        ? 'captions.generate.phase.stopping'
+        : !p
+          ? 'captions.generate.phase.starting'
+          : p.phase === 'extracting'
+            ? 'captions.generate.phase.extracting'
+            : p.phase === 'uploading'
+              ? 'captions.generate.phase.uploading'
+              : p.phase === 'transcribing'
+                ? 'captions.generate.phase.transcribing'
+                : 'captions.generate.phase.finishing'
+    )
     // Moving until a part is done: a recording sent in one part reports 0 of 1 until it is finished.
     const share = p && p.total > 0 && p.done > 0 ? Math.min(1, p.done / p.total) : null
     return (
-      <Section title="Generating captions">
+      <Section title={t('captions.generate.generating')}>
         {/* Not a live region itself (docs/design/offline-captions.md §7.7): the hidden one says the phase. */}
         <div className="captions-progress">
           <span className="captions-phase">
             {phase}
-            {p && p.total > 1 ? ` Part ${Math.min(p.done + 1, p.total)} of ${p.total}.` : ''}
+            {p && p.total > 1 ? ` ${t('captions.generate.part', { n: fmt.count(Math.min(p.done + 1, p.total)), total: fmt.count(p.total) })}` : ''}
           </span>
           <span className="sr-only" aria-live="polite">
             {phase}
@@ -574,7 +595,7 @@ function GenerateSection({
           </div>
         </div>
         <button ref={cancelRef} className="btn" onClick={cancelTranscription} disabled={!!mine.stopping}>
-          Cancel
+          {t('common.action.cancel')}
         </button>
       </Section>
     )
@@ -582,7 +603,7 @@ function GenerateSection({
 
   if (checking) {
     return (
-      <Section title={hasTranscript ? 'Regenerate captions' : 'Generate captions'}>
+      <Section title={hasTranscript ? t('captions.generate.titleAgain') : t('captions.generate.title')}>
         <p className="hint" data-testid="local-captions" data-state="checking">
           {SPEECH_COPY.checking}
         </p>
@@ -593,21 +614,19 @@ function GenerateSection({
   const none = providers !== null && capable.length === 0 && !local
   const smallTier = localChosen && !!model && isSmallTier(model)
   return (
-    <Section title={hasTranscript ? 'Regenerate captions' : 'Generate captions'}>
+    <Section title={hasTranscript ? t('captions.generate.titleAgain') : t('captions.generate.title')}>
       {speech.status === 'ready' && !speech.state.engine.available && <p className="hint">{unavailableLine(speech.state.engine.reason)}</p>}
       {none && (
         <div className="captions-empty">
           <p>
-            {providers!.length === 0
-              ? 'Add an AI provider with your own API key to make captions. Transcription works with OpenAI and Gemini.'
-              : 'None of your AI providers can transcribe: Claude cannot listen to audio. Add an OpenAI or Gemini key to make captions (Claude can still fix and translate them).'}
+            {providers!.length === 0 ? t('captions.generate.noProvider') : t('captions.generate.noTranscriber')}
           </p>
           <button ref={addRef} className="btn primary" onClick={openAiSettings}>
-            <EditorIcon name="gear" size={15} /> Add an AI provider
+            <EditorIcon name="gear" size={15} /> {t('common.action.addAiProvider')}
           </button>
-          {listError && <p className="hint warn">Your providers could not be read: {listError}</p>}
+          {listError && <p className="hint warn">{t('captions.generate.providersUnread', { reason: listError })}</p>}
           <button className="link" onClick={reload}>
-            Check again
+            {t('captions.action.checkAgain')}
           </button>
         </div>
       )}
@@ -615,10 +634,10 @@ function GenerateSection({
         <>
           {capable.length > 0 ? (
             <label className="field">
-              <span>Provider</span>
+              <span>{t('common.label.provider')}</span>
               <select
                 className="captions-select"
-                aria-label="Transcription provider"
+                aria-label={t('captions.generate.providerLabel')}
                 value={localChosen ? LOCAL_TRANSCRIBER_ID : (chosen?.id ?? '')}
                 onChange={(e) => {
                   setProvider(e.target.value)
@@ -638,27 +657,27 @@ function GenerateSection({
           )}
           {localChosen && model && project.hasAudio && <LocalQuality state={local!} model={model} project={project} chipsRef={chipsRef} language={language} />}
           <label className="field">
-            <span>Spoken language</span>
-            <select ref={languageRef} className="captions-select" aria-label="Spoken language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-              <option value="">Detect automatically</option>
+            <span>{t('captions.generate.spokenLanguage')}</span>
+            <select ref={languageRef} className="captions-select" aria-label={t('captions.generate.spokenLanguage')} value={language} onChange={(e) => setLanguage(e.target.value)}>
+              <option value="">{t('captions.generate.detect')}</option>
               {CAPTION_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
-                  {l.name}
+                  {captionLanguageName(l.code, l.name)}
                 </option>
               ))}
             </select>
           </label>
           {stems && (
             <div className="field">
-              <span>Sound</span>
+              <span>{t('common.label.sound')}</span>
               <Chips<NonNullable<TranscribeOptions['source']>>
-                label="Sound to transcribe"
+                label={t('captions.generate.source.label')}
                 value={source ?? 'auto'}
                 onChange={setSource}
                 options={[
-                  { value: 'auto', label: 'Auto', title: 'The microphone when it was recorded on its own, else all the sound' },
-                  { value: 'mic', label: 'Microphone', disabled: !stems.mic, title: stems.mic ? 'Only your voice' : 'The microphone was not recorded on its own' },
-                  { value: 'mixed', label: 'Mixed sound', title: 'The microphone and the computer sound together' }
+                  { value: 'auto', label: t('captions.generate.source.auto'), title: t('captions.generate.source.autoTitle') },
+                  { value: 'mic', label: t('captions.generate.source.mic'), disabled: !stems.mic, title: stems.mic ? t('captions.generate.source.micTitle') : t('captions.generate.source.micMissing') },
+                  { value: 'mixed', label: t('captions.generate.source.mixed'), title: t('captions.generate.source.mixedTitle') }
                 ]}
               />
             </div>
@@ -707,27 +726,27 @@ function GenerateSection({
               />
               {hasTranscript && (
                 <button className="btn ghost" onClick={() => setOpen(false)}>
-                  Close
+                  {t('common.action.close')}
                 </button>
               )}
             </>
           ) : (
             <>
-              {!project.hasAudio && <p className="hint warn">This recording has no sound to transcribe.</p>}
+              {!project.hasAudio && <p className="hint warn">{t('captions.generate.noSound')}</p>}
               <div className="row start captions-actions">
                 <button ref={generateRef} id="captions-generate" aria-describedby={chosen ? 'captions-generate-cost-transcribe' : undefined} className="btn primary" disabled={!project.hasAudio} onClick={start}>
-                  <EditorIcon name="captions" size={15} /> {hasTranscript ? 'Regenerate' : 'Generate captions'}
+                  <EditorIcon name="captions" size={15} /> {hasTranscript ? t('common.action.regenerate') : t('captions.generate.title')}
                 </button>
                 {hasTranscript && (
                   <button className="btn ghost" onClick={() => setOpen(false)}>
-                    Close
+                    {t('common.action.close')}
                   </button>
                 )}
               </div>
-              <p className="hint">The recording&apos;s sound is sent to {chosen ? placeOf(chosen) : 'the provider'} with your key; it is billed to your account.</p>
+              <p className="hint">{t('captions.generate.sentTo', { where: chosen ? placeOf(chosen) : t('captions.generate.theProvider') })}</p>
               {/* What Generate captions sends to its provider, and what it costs (smart-tools.md §11.5), part P5's. */}
               {chosen && project.hasAudio && (
-                <CostLine id="captions-generate-cost" choice={choiceOf(chosen)} full actions={[{ key: 'transcribe', label: 'Captions', buttonId: 'captions-generate', request: null }]} transcribeSeconds={project.duration} />
+                <CostLine id="captions-generate-cost" choice={choiceOf(chosen)} full actions={[{ key: 'transcribe', label: t('common.label.captions'), buttonId: 'captions-generate', request: null }]} transcribeSeconds={project.duration} />
               )}
               {chosen?.transcriptionModel && providerTiming(chosen.kind, chosen.transcriptionModel) === 'text' && (
                 <p className="hint" data-testid="estimated-times-hint">
@@ -751,7 +770,7 @@ function GenerateSection({
       )}
       {mine?.error && !localChosen && (
         <div className="captions-error" role="alert">
-          <p>Captions could not be made: {mine.error}</p>
+          <p>{t('captions.generate.failed', { reason: mine.error })}</p>
           {local && !mine.local && (
             <p data-testid="cloud-error-local">
               {SPEECH_COPY.cloudErrorOffer}{' '}
@@ -767,7 +786,7 @@ function GenerateSection({
             </p>
           )}
           <button className="link" onClick={clearTranscriptionError}>
-            Dismiss
+            {t('captions.action.dismiss')}
           </button>
         </div>
       )}
@@ -875,7 +894,7 @@ function TranscriptSection({
 
   const split = (id: string): void => {
     const next = splitCaption(store.state.transcript?.segments ?? [], id, displayTime(store.state.clips, player.time))
-    if (!next) return onNotice('Move the playhead inside this caption, between two of its words, to split it there')
+    if (!next) return onNotice(t('captions.list.splitWhere'))
     store.update((p) => setSegments(p, next))
   }
   const merge = (id: string): void => {
@@ -888,48 +907,48 @@ function TranscriptSection({
   }
   const replaceAll = (): void => {
     const r = replaceInCaptions(store.state.transcript?.segments ?? [], find, replace)
-    if (!r.count) return onNotice(`"${find}" is not in the captions`)
+    if (!r.count) return onNotice(t('captions.list.notFound', { text: find }))
     store.update((p) => setSegments(p, r.segments))
-    onNotice(`Replaced ${r.count} ${r.count === 1 ? 'time' : 'times'}`)
+    onNotice(t('captions.list.replaced', { count: r.count, n: fmt.count(r.count) }))
   }
 
   const playheadIn = (s: CaptionSegment): boolean => {
-    const t = displayTime(clips, player.time)
-    return t > s.start && t < s.end
+    const at = displayTime(clips, player.time)
+    return at > s.start && at < s.end
   }
 
   return (
     <Section
-      title={`Transcript (${segments.length})`}
+      title={t('captions.list.title', { n: fmt.count(segments.length) })}
       aside={
-        <button className={`btn ghost icon-btn ${showFind ? 'active' : ''}`} title="Find and replace" aria-label="Find and replace" aria-pressed={showFind} onClick={() => setShowFind((v) => !v)}>
+        <button className={`btn ghost icon-btn ${showFind ? 'active' : ''}`} title={t('captions.list.findReplace')} aria-label={t('captions.list.findReplace')} aria-pressed={showFind} onClick={() => setShowFind((v) => !v)}>
           <SearchIcon size={14} />
         </button>
       }
     >
       {showFind && (
         <div className="captions-find">
-          <input className="tc-input" aria-label="Find in captions" placeholder="Find" value={find} onChange={(e) => setFind(e.target.value)} />
-          <input className="tc-input" aria-label="Replace with" placeholder="Replace with" value={replace} onChange={(e) => setReplace(e.target.value)} />
+          <input className="tc-input" aria-label={t('captions.list.findLabel')} placeholder={t('captions.list.find')} value={find} onChange={(e) => setFind(e.target.value)} />
+          <input className="tc-input" aria-label={t('captions.list.replaceWith')} placeholder={t('captions.list.replaceWith')} value={replace} onChange={(e) => setReplace(e.target.value)} />
           <div className="row start">
-            <span className="hint">{find ? `${matchCount} ${matchCount === 1 ? 'match' : 'matches'}` : 'Ignores upper and lower case'}</span>
+            <span className="hint">{find ? t('captions.list.matches', { count: matchCount, n: fmt.count(matchCount) }) : t('captions.list.anyCase')}</span>
             <button className="btn small" disabled={!matchCount} onClick={replaceAll}>
-              Replace all
+              {t('captions.list.replaceAll')}
             </button>
           </div>
         </div>
       )}
-      {segments.length === 0 && <p className="hint">Every caption was deleted. Regenerate them above, or undo.</p>}
+      {segments.length === 0 && <p className="hint">{t('captions.list.empty')}</p>}
       {pages > 1 && (
         <div className="row captions-pager">
           <button className="btn small" disabled={shownPage === 0} onClick={() => setPage(shownPage - 1)}>
-            Earlier
+            {t('captions.list.earlier')}
           </button>
           <span className="hint">
-            {shownPage * PAGE + 1}–{Math.min(segments.length, (shownPage + 1) * PAGE)} of {segments.length}
+            {t('captions.list.range', { first: fmt.count(shownPage * PAGE + 1), last: fmt.count(Math.min(segments.length, (shownPage + 1) * PAGE)), total: fmt.count(segments.length) })}
           </span>
           <button className="btn small" disabled={shownPage >= pages - 1} onClick={() => setPage(shownPage + 1)}>
-            Later
+            {t('captions.list.later')}
           </button>
         </div>
       )}
@@ -943,13 +962,13 @@ function TranscriptSection({
               data-caption-row={s.id}
               className={`caption-row ${selectedId === s.id ? 'selected' : ''} ${currentId === s.id ? 'current' : ''} ${find && matchIds.has(s.id) ? 'match' : ''}`}
             >
-              <button className="caption-time" title="Go to this caption" onClick={() => go(s.id)}>
+              <button className="caption-time" title={t('captions.list.goTo')} onClick={() => go(s.id)}>
                 {at}
               </button>
               <textarea
                 className="caption-text"
                 rows={Math.min(4, Math.max(1, Math.ceil(s.text.length / 34)))}
-                aria-label={`Caption at ${at}`}
+                aria-label={t('captions.list.captionAt', { time: at })}
                 value={s.text}
                 onFocus={() => selectedId !== s.id && onSelect({ kind: 'caption', id: s.id })}
                 onChange={(e) => setText(s.id, e.target.value)}
@@ -957,13 +976,13 @@ function TranscriptSection({
               />
               {labelled && <CaptionSpeakerSelect segments={segments} seg={s} at={at} />}
               <div className="caption-tools">
-                <button className="btn ghost icon-btn" title="Split at the playhead" aria-label="Split at the playhead" onClick={() => split(s.id)} disabled={!playheadIn(s) && currentId !== s.id}>
+                <button className="btn ghost icon-btn" title={t('captions.list.split')} aria-label={t('captions.list.split')} onClick={() => split(s.id)} disabled={!playheadIn(s) && currentId !== s.id}>
                   <EditorIcon name="scissors" size={14} />
                 </button>
-                <button className="btn ghost icon-btn" title="Merge with the next caption" aria-label="Merge with the next caption" onClick={() => merge(s.id)} disabled={isLast}>
+                <button className="btn ghost icon-btn" title={t('captions.list.merge')} aria-label={t('captions.list.merge')} onClick={() => merge(s.id)} disabled={isLast}>
                   <Icon name="plus" size={14} />
                 </button>
-                <button className="btn ghost icon-btn" title={withShortcut('Delete this caption', keymap.deleteSelection)} aria-label="Delete this caption" onClick={() => remove(s.id)}>
+                <button className="btn ghost icon-btn" title={withShortcut(t('captions.list.delete'), keymap.deleteSelection)} aria-label={t('captions.list.delete')} onClick={() => remove(s.id)}>
                   <Icon name="trash" size={14} />
                 </button>
               </div>
@@ -971,7 +990,7 @@ function TranscriptSection({
           )
         })}
       </ol>
-      <p className="hint">Times are where each caption plays in the video. Drag captions on the caption track to change their timing.</p>
+      <p className="hint">{t('captions.list.timesHint')}</p>
     </Section>
   )
 }
@@ -1025,7 +1044,7 @@ function AiToolsSection({
     if (pieces.length && live.current) setAsk({ what, action, text, pieces, said: now, run })
     else if (!pieces.length) run()
     // The tab is gone (the answer came after it closed): nothing to ask in, so nothing is used.
-    else onNotice(`${what} not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.`)
+    else onNotice(t('captions.tools.notUsed', { what }))
   }
   // The providers, services and On this PC (smart-tools.md §7.6.1: the shared select is useTextChoices('title')).
   const localReady = useLocalAiReady()
@@ -1065,7 +1084,7 @@ function AiToolsSection({
   useEffect(
     () => () => {
       live.current = false
-      if (pendingChapters.current) onNotice('Suggested chapters not added: open the Captions tab and suggest them again to add them.')
+      if (pendingChapters.current) onNotice(t('captions.tools.chaptersLeft'))
     },
     [] // eslint-disable-line react-hooks/exhaustive-deps
   )
@@ -1076,7 +1095,7 @@ function AiToolsSection({
   }
   const addChapters = (added: ReturnType<typeof createChapter>[]): void => {
     store.update((p) => ({ ...p, chapters: [...(p.chapters ?? []), ...added] }))
-    onNotice(`Added ${added.length} ${added.length === 1 ? 'chapter' : 'chapters'} (see the Text tab)`)
+    onNotice(t('captions.tools.chaptersAdded', { count: added.length, n: fmt.count(added.length) }))
   }
   useEffect(() => {
     remembered.textProvider = provider
@@ -1109,7 +1128,7 @@ function AiToolsSection({
         onProgress: () => undefined
       })
       if (controller.signal.aborted) return
-      if ('needsCaptions' in out) setError('Make captions first: chapters are named from what is said.')
+      if ('needsCaptions' in out) setError(t('captions.tools.needsCaptions'))
       else onNotice(out.notice)
     } catch (err) {
       if (!controller.signal.aborted && live.current) setError(ipcMessage(err))
@@ -1156,28 +1175,28 @@ function AiToolsSection({
       setRunning(null)
     }
     const fail = (message: string): void => (live.current ? setError(message) : onNotice(message))
-    if (!result || typeof result !== 'object' || result.task !== task) return fail('The provider answered something else; nothing was changed.')
+    if (!result || typeof result !== 'object' || result.task !== task) return fail(t('captions.tools.otherAnswer'))
     if (result.task === 'chapters') {
       const found = readSuggestedChapters(result.chapters, store.state.duration)
       const added = newChapters(found)
-      if (!added.length) return fail(found.length ? 'The suggested chapters are already there.' : 'The provider suggested no chapters.')
+      if (!added.length) return fail(found.length ? t('captions.tools.chaptersThere') : t('captions.tools.noChapters'))
       // Chapter titles count as said once they are the recording's. With nothing the check notes they are added at once;
       // else they are shown with the note, and Add the chapters asks first.
       const now = projectSaid(store.state)
       if (!notedPieces(added.map((c) => c.title).join('\n'), now).length) return addChapters(added)
-      if (!live.current) return onNotice('Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.')
+      if (!live.current) return onNotice(t('captions.tools.chaptersNotAdded'))
       setSaid(now)
       setChapters(added.map((c) => ({ t: c.t, title: c.title })))
     } else if (result.task === 'title') {
       const text = readSuggestedText('title', result.text)
-      if (!text) return fail('The provider suggested no title.')
+      if (!text) return fail(t('captions.tools.noTitle'))
       if (live.current) {
         setSaid(projectSaid(store.state))
         setTitle(text)
       }
     } else if (result.task === 'summary') {
       const text = readSuggestedText('summary', result.text)
-      if (!text) return fail('The provider wrote no summary.')
+      if (!text) return fail(t('captions.tools.noSummary'))
       if (live.current) {
         setSaid(projectSaid(store.state))
         setSummary(text)
@@ -1197,8 +1216,8 @@ function AiToolsSection({
     handled.current = request.n
     onRequestHandled?.()
     const task = request.task
-    if (!chosen) return onNotice('Add an AI provider first: the button is in the AI tools section')
-    if (busy) return onNotice('An AI tool is already working')
+    if (!chosen) return onNotice(t('captions.tools.addProviderFirst'))
+    if (busy) return onNotice(t('captions.tools.busy'))
     // The tab may be scrolled to its captions: the tools come into view, with their progress and the answer under them.
     toolsRef.current?.scrollIntoView({ block: 'start' })
     // The tool's button is pressed, so the cost line asks its question first, as for a click (smart-tools.md §11.5).
@@ -1206,21 +1225,21 @@ function AiToolsSection({
     tool.current?.click()
   }, [request, providers, costRead, localRead]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const label = (task: AiTask, text: string): string => (busy === task ? 'Working…' : text)
+  const label = (task: AiTask, text: string): string => (busy === task ? t('common.state.working') : text)
   return (
-    <Section title="AI tools">
+    <Section title={t('captions.tools.title')}>
       {providers !== null && list.length === 0 ? (
         <div className="captions-empty">
-          <p>Add an AI provider to suggest chapters, a title and a summary from your captions. OpenAI, Gemini and Claude all can.</p>
+          <p>{t('captions.tools.noProvider')}</p>
           <button className="btn" onClick={openAiSettings}>
-            <EditorIcon name="gear" size={15} /> Add an AI provider
+            <EditorIcon name="gear" size={15} /> {t('common.action.addAiProvider')}
           </button>
         </div>
       ) : (
         <>
           <label className="field" ref={toolsRef}>
-            <span>Provider</span>
-            <select className="captions-select" aria-label="AI provider for text" value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} disabled={!list.length}>
+            <span>{t('common.label.provider')}</span>
+            <select className="captions-select" aria-label={t('captions.tools.providerLabel')} value={chosen?.id ?? ''} onChange={(e) => setProvider(e.target.value)} disabled={!list.length}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
                   {choiceLabel(p)}
@@ -1231,15 +1250,15 @@ function AiToolsSection({
           <LocalNote choice={choice} tasks={['title', 'summary']} />
           <div className="captions-ai">
             <button ref={chaptersTool} id="captions-ai-chapters" aria-describedby="captions-ai-cost-chapters" className="btn" disabled={!chosen || !!busy} onClick={() => void run('chapters')}
-              title={chosen?.kind === 'local' ? 'Finds chapters and names them on this PC: Review lists each one.' : `Finds chapters with ${chosen?.place ?? 'the AI'}'s suggestions: Review lists each one.`}
+              title={chosen?.kind === 'local' ? t('captions.tools.chaptersLocal') : t('captions.tools.chaptersWith', { where: chosen?.place ?? t('captions.tools.theAi') })}
             >
-              {label('chapters', 'Suggest chapters')}
+              {label('chapters', t('captions.tools.suggestChapters'))}
             </button>
-            <button ref={titleTool} id="captions-ai-title" aria-describedby="captions-ai-cost-title" className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title="A name for this recording from what is said">
-              {label('title', 'Suggest a title')}
+            <button ref={titleTool} id="captions-ai-title" aria-describedby="captions-ai-cost-title" className="btn" disabled={!chosen || !!busy} onClick={() => void run('title')} title={t('captions.tools.titleHint')}>
+              {label('title', t('captions.tools.suggestTitle'))}
             </button>
-            <button ref={summaryTool} id="captions-ai-summary" aria-describedby="captions-ai-cost-summary" className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title="A short summary of what is said, to copy into a description">
-              {label('summary', 'Summarize')}
+            <button ref={summaryTool} id="captions-ai-summary" aria-describedby="captions-ai-cost-summary" className="btn" disabled={!chosen || !!busy} onClick={() => void run('summary')} title={t('captions.tools.summaryHint')}>
+              {label('summary', t('captions.tools.summarize'))}
             </button>
             <LocalProgress requestId={running} onStop={stopRun} returnFocus={busy ? `captions-ai-${busy}` : undefined} />
           </div>
@@ -1249,7 +1268,7 @@ function AiToolsSection({
             choice={choice}
             actions={(['chapters', 'title', 'summary'] as const).map((task) => ({
               key: task,
-              label: task === 'chapters' ? 'Chapters' : task === 'title' ? 'Title' : 'Summary',
+              label: task === 'chapters' ? t('captions.tools.chapters') : task === 'title' ? t('common.label.title') : t('captions.tools.summary'),
               buttonId: `captions-ai-${task}`,
               request: () => ({ task, segments: [...spokenSegments(store.state)] })
             }))}
@@ -1257,7 +1276,7 @@ function AiToolsSection({
           {title && (
             <div className="captions-suggestion" role="status">
               <p>
-                Suggested title: <strong>{title}</strong>
+                {tParts<ReactNode>('captions.tools.suggestedTitle', { title }, { b: (chunks) => <strong key="title">{chunks}</strong> })}
               </p>
               <LocalWritten show={writtenHere} />
               {said && checkNote(titleChecks, 'captions-title-check', said)}
@@ -1267,24 +1286,24 @@ function AiToolsSection({
                   aria-describedby={titleChecks.length ? 'captions-title-check' : undefined}
                   onClick={() =>
                     // The name counts as said once it is the recording's: asked about first when the check notes anything in it.
-                    confirmed('Suggested title', 'Use anyway', title, () => {
+                    confirmed(t('captions.tools.suggestedTitleWhat'), 'Use anyway', title, () => {
                       store.update((p) => ({ ...p, name: title }))
                       closeTitle()
-                      onNotice('Recording renamed')
+                      onNotice(t('captions.tools.renamed'))
                     })
                   }
                 >
-                  Rename the recording
+                  {t('captions.tools.rename')}
                 </button>
                 <button className="btn small ghost" aria-describedby={titleChecks.length ? 'captions-title-check' : undefined} onClick={closeTitle}>
-                  Dismiss
+                  {t('captions.action.dismiss')}
                 </button>
               </div>
             </div>
           )}
           {chapters && (
             <div className="captions-suggestion" role="status" data-testid="captions-chapters-suggestion">
-              <p>Suggested chapters:</p>
+              <p>{t('captions.tools.suggestedChaptersHead')}</p>
               <ol className="captions-chapter-list">
                 {chapters.map((c) => (
                   <li key={c.t}>
@@ -1302,25 +1321,25 @@ function AiToolsSection({
                     const added = newChapters(chapters)
                     if (!added.length) {
                       closeChapters()
-                      return onNotice('The suggested chapters are already there.')
+                      return onNotice(t('captions.tools.chaptersThere'))
                     }
-                    confirmed('Suggested chapters', 'Use anyway', added.map((c) => c.title).join('\n'), () => {
+                    confirmed(t('captions.tools.suggestedChapters'), 'Use anyway', added.map((c) => c.title).join('\n'), () => {
                       closeChapters()
                       addChapters(added)
                     })
                   }}
                 >
-                  Add the chapters
+                  {t('captions.tools.addChapters')}
                 </button>
                 <button className="btn small ghost" aria-describedby={chapterChecks.length ? 'captions-chapters-check' : undefined} onClick={closeChapters}>
-                  Dismiss
+                  {t('captions.action.dismiss')}
                 </button>
               </div>
             </div>
           )}
           {summary && (
             <div className="captions-suggestion" role="status">
-              <p>Summary:</p>
+              <p>{t('captions.tools.summaryHead')}</p>
               <p className="captions-summary">{summary}</p>
               <LocalWritten show={writtenHere} />
               {said && checkNote(summaryChecks, 'captions-summary-check', said)}
@@ -1329,18 +1348,18 @@ function AiToolsSection({
                   className="btn small primary"
                   aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined}
                   onClick={() =>
-                    confirmed('Summary', 'Copy anyway', summary, () => {
+                    confirmed(t('captions.tools.summary'), 'Copy anyway', summary, () => {
                       void navigator.clipboard.writeText(summary).then(
-                        () => onNotice('Summary copied'),
-                        () => onNotice('The summary could not be copied')
+                        () => onNotice(t('captions.tools.summaryCopied')),
+                        () => onNotice(t('captions.tools.summaryNotCopied'))
                       )
                     })
                   }
                 >
-                  Copy
+                  {t('common.action.copy')}
                 </button>
                 <button className="btn small ghost" aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined} onClick={closeSummary}>
-                  Dismiss
+                  {t('captions.action.dismiss')}
                 </button>
               </div>
             </div>
@@ -1350,7 +1369,7 @@ function AiToolsSection({
               {error}
             </p>
           )}
-          <p className="hint">{`${choice?.kind === 'local' ? 'Each tool reads the caption text on this PC: nothing is sent.' : `Each tool sends the caption text (not the sound) to ${choice ? choice.place : 'the provider'}.`} Undo reverts any change.`}</p>
+          <p className="hint">{choice?.kind === 'local' ? t('captions.tools.hintLocal') : t('captions.tools.hintSends', { where: choice ? choice.place : t('captions.generate.theProvider') })}</p>
           {ask && <NotedConfirm ask={ask} onClose={() => setAsk(null)} />}
         </>
       )}
@@ -1370,14 +1389,14 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
   const save = useCallback(async (): Promise<void> => {
     const { project: p, format: f } = latest.current
     const segments = p.transcript?.segments ?? []
-    if (!segments.length) return onNotice('There are no captions to export')
+    if (!segments.length) return onNotice(t('captions.export.none'))
     setSaving(true)
     try {
       // The spoken captions with bleeped words masked, as the export's subtitle files carry them (§11.7).
       const file = await window.api.saveCaptions(p.name, f, languageSubtitleFile(p, null, f, speakerFileOptions()))
-      if (file) onNotice(`Captions saved: ${file}`)
+      if (file) onNotice(t('captions.export.saved', { file }))
     } catch (err) {
-      onNotice(`The captions could not be saved: ${ipcMessage(err)}`)
+      onNotice(t('captions.export.failed', { reason: ipcMessage(err) }))
     } finally {
       setSaving(false)
     }
@@ -1393,21 +1412,21 @@ function ExportSection({ project, transcript, request, onNotice }: { project: Pr
   }, [request, save])
 
   return (
-    <Section title="Export captions">
+    <Section title={t('captions.export.title')}>
       <Chips<SubtitleFormat>
-        label="Subtitle format"
+        label={t('captions.export.format.label')}
         value={format}
         onChange={(f) => {
           remembered.format = f
           setFormat(f)
         }}
-        options={SUBTITLE_FORMATS}
+        options={subtitleFormats()}
       />
       <SpeakerNamesToggle project={project} />
       <button ref={buttonRef} className="btn" disabled={saving || !transcript.segments.length} onClick={() => void save()}>
-        <EditorIcon name="captions" size={15} /> {saving ? 'Saving…' : 'Export captions…'}
+        <EditorIcon name="captions" size={15} /> {saving ? t('common.state.saving') : t('captions.export.button')}
       </button>
-      <p className="hint">Times follow your cuts and speed changes, like the exported video. Captions are drawn on the video when Show captions is on.</p>
+      <p className="hint">{t('captions.export.hint')}</p>
     </Section>
   )
 }

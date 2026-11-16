@@ -11,6 +11,8 @@ import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { AI_LIMITS, type ListedModel, type ModelListTarget } from '../../../shared/api/ai'
 import { filterModels } from '../../../shared/ai/modelFilter'
 import { usd } from '../../../shared/ai/cost'
+import { fmt } from '../../../shared/i18n/fmt'
+import { t } from '../../../shared/i18n/t'
 import type { AiProviderKind } from '../../../shared/types'
 import { ipcMessage } from '../settings/providerText'
 import { rememberListedModels } from './useCost'
@@ -22,9 +24,9 @@ const SHOWN = 200
 /** "US$2.00 / US$10.00 per million tokens", or "price varies". */
 export function priceLabel(m: ListedModel): string | null {
   if (!m.prices) return null
-  if (m.prices === 'varies') return 'price varies'
-  if (m.prices.input === 0 && m.prices.output === 0) return 'free'
-  return `${usd(m.prices.input)} / ${usd(m.prices.output)} per million tokens`
+  if (m.prices === 'varies') return t('captions.ai.model.priceVaries')
+  if (m.prices.input === 0 && m.prices.output === 0) return t('captions.ai.model.free')
+  return t('captions.ai.model.price', { input: usd(m.prices.input), output: usd(m.prices.output) })
 }
 
 /** The kind of provider a target's models belong to (what filters the list for a field). */
@@ -60,7 +62,7 @@ export function ModelCombobox(props: { id: string; label: string; value: string;
       const list = await window.api.listModels(target)
       setModels(list)
       const n = filterModels(kindOf(target), list.map((m) => m.id), field).length
-      setStatus({ text: n === 1 ? 'Loaded 1 model' : `Loaded ${n} models`, error: false })
+      setStatus({ text: t('captions.ai.model.loaded', { count: n, n: fmt.count(n) }), error: false })
       const pid = 'providerId' in target ? target.providerId : target.draft.id
       if (pid) rememberListedModels(pid, list)
       typed.current = false
@@ -140,10 +142,10 @@ export function ModelCombobox(props: { id: string; label: string; value: string;
           onBlur={() => setOpen(false)}
         />
         <button type="button" className="btn ghost settings-small" disabled={!target || loading} onClick={() => void load()}>
-          {loading ? 'Loading…' : 'Load models'}
+          {loading ? t('common.state.loading') : t('captions.ai.model.load')}
         </button>
       </div>
-      <ul id={listId} role="listbox" aria-label="Models the provider lists" className="model-list" hidden={!expanded}>
+      <ul id={listId} role="listbox" aria-label={t('captions.ai.model.list')} className="model-list" hidden={!expanded}>
         {expanded &&
           shown.map((m, i) => {
             const price = priceLabel(m)

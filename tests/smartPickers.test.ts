@@ -342,7 +342,8 @@ describe('the hints name the place the text goes (test 103)', () => {
     // place (or this PC), never a kind's name.
     for (const file of ['editor/panels/CaptionsPanel.tsx', 'publish/PublishDialog.tsx']) {
       const text = readFileSync(path.join(RENDERER, file), 'utf8')
-      const hints = text.split('\n').filter((l) => /sent to|[Ss]ends the|sends your/.test(l))
+      // An extracted hint is the line that formats its message (captions.generate.sentTo, captions.tools.hintSends).
+      const hints = text.split('\n').filter((l) => /sent to|[Ss]ends the|sends your|\.sentTo'|\.hintSends'/.test(l))
       expect(hints.length, file).toBeGreaterThan(0)
       for (const line of hints) expect(line, file).not.toMatch(/KIND_NAMES\[/)
     }

@@ -1,0 +1,3286 @@
+[
+  {
+    "key": "captions.ai.confirm.startTitle",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 22,
+    "english": "Start on this PC?",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.confirm.runTitle",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 22,
+    "english": "Run it?",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/ai/CostConfirm.tsx",
+    "line": 26,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.sound",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 35,
+    "english": "the recording's sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.notes",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 36,
+    "english": "notes",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.yourNotes",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 36,
+    "english": "your notes",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.chapterNames",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 40,
+    "english": "chapter names and what is said in them",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.eachChapter",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 40,
+    "english": "what is said in each chapter",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.clips",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 42,
+    "english": "what is said in the clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.steps",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 44,
+    "english": "the steps' narration",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.captions",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 47,
+    "english": "captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.what.yourCaptions",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 47,
+    "english": "your captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.local",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 164,
+    "english": "Stays on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sends",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 165,
+    "english": "Sends captions to OpenAI",
+    "sample": {
+      "what": "captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.cost.details",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 174,
+    "english": "Details",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.model",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 180,
+    "english": "Model: gpt-4o-mini",
+    "sample": {
+      "model": "gpt-4o-mini"
+    }
+  },
+  {
+    "key": "captions.ai.cost.modelLocal",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 180,
+    "english": "chosen on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.pricesOf",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 181,
+    "english": "Prices of 12 Mar 2026",
+    "sample": {
+      "date": "12 Mar 2026"
+    }
+  },
+  {
+    "key": "captions.ai.cost.tokens",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 184,
+    "english": "Chapters: 1,200–1,500 tokens in, 40–80 out",
+    "sample": {
+      "label": "Chapters",
+      "inLow": "1,200",
+      "inHigh": "1,500",
+      "outLow": "40",
+      "outHigh": "80"
+    }
+  },
+  {
+    "key": "captions.ai.cost.localSentence",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 197,
+    "english": "Stays on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.cost.sendsSentence",
+    "file": "src/renderer/src/ai/CostLine.tsx",
+    "line": 197,
+    "english": "Sends your captions to OpenAI.",
+    "sample": {
+      "what": "your captions",
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.ai.local.phase.loading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 32,
+    "english": "On this PC: loading the model",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.phase.reading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 33,
+    "english": "On this PC: reading the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.phase.writing",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 34,
+    "english": "On this PC: writing",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.waiting",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 44,
+    "english": "Waiting for AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.loading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 46,
+    "english": "Loading the model",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.value.reading",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 48,
+    "english": "Reading, 45 percent",
+    "sample": {
+      "percent": "45"
+    }
+  },
+  {
+    "key": "captions.ai.local.value.writing",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 50,
+    "english": "Writing, about 2 minutes left",
+    "sample": {
+      "left": "about 2 minutes left"
+    }
+  },
+  {
+    "key": "captions.ai.local.bar",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 77,
+    "english": "AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.local.stopLabel",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 83,
+    "english": "Stop AI on this PC",
+    "sample": {}
+  },
+  {
+    "key": "common.action.stop",
+    "file": "src/renderer/src/ai/LocalProgress.tsx",
+    "line": 85,
+    "english": "Stop",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.priceVaries",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 27,
+    "english": "price varies",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.free",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 28,
+    "english": "free",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.price",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 29,
+    "english": "US$2.00 / US$10.00 per million tokens",
+    "sample": {
+      "input": "US$2.00",
+      "output": "US$10.00"
+    }
+  },
+  {
+    "key": "captions.ai.model.loaded",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 65,
+    "english": [
+      "Loaded 0 models",
+      "Loaded 1 model",
+      "Loaded 2 models",
+      "Loaded 1000 models"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "common.state.loading",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 145,
+    "english": "Loading…",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.load",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 145,
+    "english": "Load models",
+    "sample": {}
+  },
+  {
+    "key": "captions.ai.model.list",
+    "file": "src/renderer/src/ai/ModelCombobox.tsx",
+    "line": 148,
+    "english": "Models the provider lists",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 101,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.track.hidden",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 101,
+    "english": "Captions are hidden: they show on the video once Show captions is on (Captions tab)",
+    "sample": {}
+  },
+  {
+    "key": "captions.track.caption",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 117,
+    "english": "Here is the product tour · 0:00.5 – 0:02.5 · double-click to edit the text",
+    "sample": {
+      "text": "Here is the product tour",
+      "start": "0:00.5",
+      "end": "0:02.5"
+    }
+  },
+  {
+    "key": "captions.track.empty",
+    "file": "src/renderer/src/editor/CaptionTrack.tsx",
+    "line": 125,
+    "english": "No captions left: generate them again in the Captions tab",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.running",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 205,
+    "english": "A transcription is already running",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.notTranscript",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 218,
+    "english": "The provider returned something that is not a transcript",
+    "sample": {}
+  },
+  {
+    "key": "captions.transcribe.noSpeech",
+    "file": "src/renderer/src/editor/captionItems.ts",
+    "line": 219,
+    "english": "No speech was found in this recording",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.full",
+    "file": "src/renderer/src/editor/captionPresets.ts",
+    "line": 15,
+    "english": "You have 50 saved styles. Delete one first.",
+    "sample": {
+      "n": "50"
+    }
+  },
+  {
+    "key": "captions.look.defaultName",
+    "file": "src/renderer/src/editor/captionPresets.ts",
+    "line": 72,
+    "english": "My style 3",
+    "sample": {
+      "n": "3"
+    }
+  },
+  {
+    "key": "captions.export.format.srt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 32,
+    "english": "SubRip subtitles: YouTube, Vimeo, most video players and editors",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.vtt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 33,
+    "english": "WebVTT subtitles: web video players",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.txtLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 34,
+    "english": "Text",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.txt",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 34,
+    "english": "The transcript as plain text",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.title",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 51,
+    "english": "Speakers",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.labelStems",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 54,
+    "english": "Label You and Others",
+    "sample": {
+      "youName": "You",
+      "othersName": "Others"
+    }
+  },
+  {
+    "key": "captions.speakers.labelStemsTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 57,
+    "english": "Who speaks in each caption, from the microphone and computer sound tracks",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.replaceQuestion",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 60,
+    "english": "Replace the speaker labels with You and Others from the sound tracks?",
+    "sample": {
+      "youName": "You",
+      "othersName": "Others"
+    }
+  },
+  {
+    "key": "captions.speakers.remove",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 63,
+    "english": "Remove labels",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.none",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 66,
+    "english": "Speaker labels come from Gemini, or from recordings that kept the microphone and the computer sound apart.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.mixedHint",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 69,
+    "english": "For calls, transcribe the Mixed sound so the other people’s words are captioned too.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.nameLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 71,
+    "english": "Name of Speaker 1",
+    "sample": {
+      "name": "Speaker 1"
+    }
+  },
+  {
+    "key": "captions.speakers.count",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 72,
+    "english": [
+      "0 captions",
+      "1 caption",
+      "2 captions",
+      "1000 captions"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.speakers.labelled",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 74,
+    "english": [
+      "Labelled 0 captions: 7 You, 0 Others.",
+      "Labelled 1 caption: 7 You, 0 Others.",
+      "Labelled 2 captions: 7 You, 0 Others.",
+      "Labelled 1000 captions: 7 You, 0 Others."
+    ],
+    "sample": [
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "you": "7",
+        "others": "0",
+        "youName": "You",
+        "othersName": "Others",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.speakers.nothingHeard",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 76,
+    "english": "No caption had enough sound on either track to tell who speaks.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.levelsFailed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 79,
+    "english": "The sound tracks could not be measured, so no labels were added.",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.renamed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 81,
+    "english": "Renamed Speaker 1 to Priya (Undo brings the old name back)",
+    "sample": {
+      "from": "Speaker 1",
+      "to": "Priya"
+    }
+  },
+  {
+    "key": "captions.speakers.unlabelled",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 81,
+    "english": "Removed the label Speaker 1",
+    "sample": {
+      "from": "Speaker 1"
+    }
+  },
+  {
+    "key": "captions.speakers.removed",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 83,
+    "english": "Speaker labels removed (Undo brings them back)",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.noSpeaker",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 86,
+    "english": "No speaker",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.newSpeaker",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 88,
+    "english": "New speaker (Speaker 3)",
+    "sample": {
+      "name": "Speaker 3"
+    }
+  },
+  {
+    "key": "captions.speakers.selectLabel",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 89,
+    "english": "Speaker of the caption at 0:03.2",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "captions.speakers.showOnVideo",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 91,
+    "english": "Show speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.showOnVideoTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 94,
+    "english": "Put the speaker’s name before each caption on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.inFiles",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 97,
+    "english": "Speaker names in SRT and text",
+    "sample": {}
+  },
+  {
+    "key": "captions.speakers.inFilesTitle",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 100,
+    "english": "Start each caption with the speaker’s name, like “Priya: Hello”. WebVTT files always name the speaker.",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.theSpoken",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 114,
+    "english": "the spoken language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.spokenRow",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 115,
+    "english": "English · spoken",
+    "sample": {
+      "language": "English"
+    }
+  },
+  {
+    "key": "captions.languages.spokenCaptions",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 115,
+    "english": "Spoken captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.changedSince",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 119,
+    "english": [
+      "0 captions changed since",
+      "1 caption changed since",
+      "2 captions changed since",
+      "1000 captions changed since"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.untranslated",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 120,
+    "english": [
+      "0 captions are not translated: they show in English",
+      "1 caption is not translated: it shows in English",
+      "2 captions are not translated: they show in English",
+      "1000 captions are not translated: they show in English"
+    ],
+    "sample": [
+      {
+        "spoken": "English",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "spoken": "English",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "spoken": "English",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "spoken": "English",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.bleepsNote",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 121,
+    "english": "Bleeped words are not masked in translations",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translatedRow",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 123,
+    "english": "Bengali · translated",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.translatedHere",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 125,
+    "english": "Bengali · translated on this PC",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.translatedWith",
+    "file": "src/renderer/src/editor/captionWords.ts",
+    "line": 126,
+    "english": "Bengali · translated with Gemini",
+    "sample": {
+      "language": "Bengali",
+      "via": "Gemini"
+    }
+  },
+  {
+    "key": "captions.ai.wrongTask",
+    "file": "src/renderer/src/editor/greatRun.ts",
+    "line": 124,
+    "english": "The AI provider answered another task.",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.deleted",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 363,
+    "english": "Deleted “My style 2”",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "captions.gallery.undo",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 363,
+    "english": "Undo",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.notDeleted",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 364,
+    "english": "The style could not be deleted: Access denied.",
+    "sample": {
+      "reason": "Access denied."
+    }
+  },
+  {
+    "key": "captions.gallery.showFor",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 373,
+    "english": "Show styles for",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.label",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 384,
+    "english": "Caption style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.currentLabel",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 400,
+    "english": "Clean, classic: white text with a soft shadow, your current style",
+    "sample": {
+      "label": "Clean, classic: white text with a soft shadow"
+    }
+  },
+  {
+    "key": "captions.gallery.current",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 440,
+    "english": "Your current style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggestedBadge",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 444,
+    "english": "Suggested",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.fewer",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 458,
+    "english": "Show fewer styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.all",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 458,
+    "english": "Show all styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.playLabel",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 462,
+    "english": "Play a preview of Bold Pop",
+    "sample": {
+      "name": "Bold Pop"
+    }
+  },
+  {
+    "key": "common.action.play",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 463,
+    "english": "Play",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.deleteName",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 468,
+    "english": "Delete “My style 2”",
+    "sample": {
+      "name": "My style 2"
+    }
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/editor/panels/CaptionGallery.tsx",
+    "line": 468,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.byThisPc",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 109,
+    "english": "this PC",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.used",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 286,
+    "english": "Your speaker notes are this script again",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.notChanged",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 288,
+    "english": "Your speaker notes could not be changed: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.script.copied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 313,
+    "english": "Script copied",
+    "sample": {}
+  },
+  {
+    "key": "captions.script.notCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 314,
+    "english": "The script could not be copied",
+    "sample": {}
+  },
+  {
+    "key": "common.label.captions",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 345,
+    "english": "Captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.replaceQuestion",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 408,
+    "english": "Replace the captions with new ones? Your changes to the current captions are replaced too (Undo brings them back).",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.summaryTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 509,
+    "english": "Generate",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.byLanguage",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 533,
+    "english": "12 captions by Gemini (Bengali).",
+    "sample": {
+      "n": "12",
+      "by": "Gemini",
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.generate.by",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 534,
+    "english": "12 captions by OpenAI.",
+    "sample": {
+      "n": "12",
+      "by": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.action.dismiss",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 546,
+    "english": "Dismiss",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.regenerateOpen",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 551,
+    "english": "Regenerate captions…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.generating",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 559,
+    "english": "Generating captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.stopping",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 569,
+    "english": "Stopping…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.starting",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 571,
+    "english": "Starting…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.extracting",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 573,
+    "english": "Preparing the sound…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.uploading",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 575,
+    "english": "Sending the sound…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.transcribing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 577,
+    "english": "Transcribing…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.phase.finishing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 578,
+    "english": "Finishing…",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.part",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 588,
+    "english": "Part 2 of 3.",
+    "sample": {
+      "n": "2",
+      "total": "3"
+    }
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 598,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.titleAgain",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 606,
+    "english": "Regenerate captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 606,
+    "english": "Generate captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 622,
+    "english": "Add an AI provider with your own API key to make captions. Transcription works with OpenAI and Gemini.",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noTranscriber",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 622,
+    "english": "None of your AI providers can transcribe: Claude cannot listen to audio. Add an OpenAI or Gemini key to make captions (Claude can still fix and translate them).",
+    "sample": {}
+  },
+  {
+    "key": "common.action.addAiProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 625,
+    "english": "Add an AI provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.providersUnread",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 627,
+    "english": "Your providers could not be read: Access denied.",
+    "sample": {
+      "reason": "Access denied."
+    }
+  },
+  {
+    "key": "captions.action.checkAgain",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 629,
+    "english": "Check again",
+    "sample": {}
+  },
+  {
+    "key": "common.label.provider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 637,
+    "english": "Provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.providerLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 640,
+    "english": "Transcription provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.spokenLanguage",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 660,
+    "english": "Spoken language",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.detect",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 662,
+    "english": "Detect automatically",
+    "sample": {}
+  },
+  {
+    "key": "common.label.sound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 672,
+    "english": "Sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.label",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 674,
+    "english": "Sound to transcribe",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.auto",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 678,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.autoTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 678,
+    "english": "The microphone when it was recorded on its own, else all the sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mic",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 679,
+    "english": "Microphone",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.micTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 679,
+    "english": "Only your voice",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.micMissing",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 679,
+    "english": "The microphone was not recorded on its own",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mixed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 680,
+    "english": "Mixed sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.source.mixedTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 680,
+    "english": "The microphone and the computer sound together",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 729,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.noSound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 735,
+    "english": "This recording has no sound to transcribe.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.regenerate",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 738,
+    "english": "Regenerate",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.sentTo",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 746,
+    "english": "The recording's sound is sent to OpenAI with your key; it is billed to your account.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.generate.theProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 746,
+    "english": "the provider",
+    "sample": {}
+  },
+  {
+    "key": "captions.generate.failed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 773,
+    "english": "Captions could not be made: The sound of the recording could not be read.",
+    "sample": {
+      "reason": "The sound of the recording could not be read."
+    }
+  },
+  {
+    "key": "captions.list.splitWhere",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 897,
+    "english": "Move the playhead inside this caption, between two of its words, to split it there",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.notFound",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 910,
+    "english": "\"hello\" is not in the captions",
+    "sample": {
+      "text": "hello"
+    }
+  },
+  {
+    "key": "captions.list.replaced",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 912,
+    "english": [
+      "Replaced 0 times",
+      "Replaced 1 time",
+      "Replaced 2 times",
+      "Replaced 1000 times"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.list.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 922,
+    "english": "Transcript (12)",
+    "sample": {
+      "n": "12"
+    }
+  },
+  {
+    "key": "captions.list.findReplace",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 924,
+    "english": "Find and replace",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.findLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 931,
+    "english": "Find in captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.find",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 931,
+    "english": "Find",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.replaceWith",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 932,
+    "english": "Replace with",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.matches",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 934,
+    "english": [
+      "0 matches",
+      "1 match",
+      "2 matches",
+      "1000 matches"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.list.anyCase",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 934,
+    "english": "Ignores upper and lower case",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.replaceAll",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 936,
+    "english": "Replace all",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.empty",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 941,
+    "english": "Every caption was deleted. Regenerate them above, or undo.",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.earlier",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 945,
+    "english": "Earlier",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.range",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 948,
+    "english": "151–300 of 420",
+    "sample": {
+      "first": "151",
+      "last": "300",
+      "total": "420"
+    }
+  },
+  {
+    "key": "captions.list.later",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 951,
+    "english": "Later",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.goTo",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 965,
+    "english": "Go to this caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.captionAt",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 971,
+    "english": "Caption at 0:03.2",
+    "sample": {
+      "time": "0:03.2"
+    }
+  },
+  {
+    "key": "captions.list.split",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 979,
+    "english": "Split at the playhead",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.merge",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 982,
+    "english": "Merge with the next caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.delete",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 985,
+    "english": "Delete this caption",
+    "sample": {}
+  },
+  {
+    "key": "captions.list.timesHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 993,
+    "english": "Times are where each caption plays in the video. Drag captions on the caption track to change their timing.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.notUsed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1047,
+    "english": "Suggested title not used: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
+    "sample": {
+      "what": "Suggested title"
+    }
+  },
+  {
+    "key": "captions.tools.chaptersLeft",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1087,
+    "english": "Suggested chapters not added: open the Captions tab and suggest them again to add them.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersAdded",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1098,
+    "english": [
+      "Added 0 chapters (see the Text tab)",
+      "Added 1 chapter (see the Text tab)",
+      "Added 2 chapters (see the Text tab)",
+      "Added 1000 chapters (see the Text tab)"
+    ],
+    "sample": [
+      {
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.tools.needsCaptions",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1131,
+    "english": "Make captions first: chapters are named from what is said.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.otherAnswer",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1178,
+    "english": "The provider answered something else; nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersThere",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1182,
+    "english": "The suggested chapters are already there.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1182,
+    "english": "The provider suggested no chapters.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersNotAdded",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1187,
+    "english": "Suggested chapters not added: there is a link, address or file name nobody said to check. Run it again with the Captions tab open.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1192,
+    "english": "The provider suggested no title.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noSummary",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1199,
+    "english": "The provider wrote no summary.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.addProviderFirst",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1219,
+    "english": "Add an AI provider first: the button is in the AI tools section",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.busy",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1220,
+    "english": "An AI tool is already working",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1228,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1230,
+    "english": "AI tools",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.noProvider",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1233,
+    "english": "Add an AI provider to suggest chapters, a title and a summary from your captions. OpenAI, Gemini and Claude all can.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.providerLabel",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1242,
+    "english": "AI provider for text",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersLocal",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1253,
+    "english": "Finds chapters and names them on this PC: Review lists each one.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chaptersWith",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1253,
+    "english": "Finds chapters with OpenAI's suggestions: Review lists each one.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.tools.theAi",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1253,
+    "english": "the AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1255,
+    "english": "Suggest chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.titleHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1257,
+    "english": "A name for this recording from what is said",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1258,
+    "english": "Suggest a title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryHint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1260,
+    "english": "A short summary of what is said, to copy into a description",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summarize",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1261,
+    "english": "Summarize",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.chapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1271,
+    "english": "Chapters",
+    "sample": {}
+  },
+  {
+    "key": "common.label.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1271,
+    "english": "Title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summary",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1271,
+    "english": "Summary",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedTitle",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1279,
+    "english": "Suggested title: Saving a file",
+    "sample": {
+      "title": "Saving a file"
+    }
+  },
+  {
+    "key": "captions.tools.suggestedTitleWhat",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1289,
+    "english": "Suggested title",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.renamed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1292,
+    "english": "Recording renamed",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.rename",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1296,
+    "english": "Rename the recording",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedChaptersHead",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1306,
+    "english": "Suggested chapters:",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.suggestedChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1326,
+    "english": "Suggested chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.addChapters",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1332,
+    "english": "Add the chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryHead",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1342,
+    "english": "Summary:",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1353,
+    "english": "Summary copied",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.summaryNotCopied",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1354,
+    "english": "The summary could not be copied",
+    "sample": {}
+  },
+  {
+    "key": "common.action.copy",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1359,
+    "english": "Copy",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.hintLocal",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1372,
+    "english": "Each tool reads the caption text on this PC: nothing is sent. Undo reverts any change.",
+    "sample": {}
+  },
+  {
+    "key": "captions.tools.hintSends",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1372,
+    "english": "Each tool sends the caption text (not the sound) to OpenAI. Undo reverts any change.",
+    "sample": {
+      "where": "OpenAI"
+    }
+  },
+  {
+    "key": "captions.export.none",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1392,
+    "english": "There are no captions to export",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.saved",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1397,
+    "english": "Captions saved: C:\\Videos\\Product tour.srt",
+    "sample": {
+      "file": "C:\\Videos\\Product tour.srt"
+    }
+  },
+  {
+    "key": "captions.export.failed",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1399,
+    "english": "The captions could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.export.title",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1415,
+    "english": "Export captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.format.label",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1417,
+    "english": "Subtitle format",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1427,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.button",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1427,
+    "english": "Export captions…",
+    "sample": {}
+  },
+  {
+    "key": "captions.export.hint",
+    "file": "src/renderer/src/editor/panels/CaptionsPanel.tsx",
+    "line": 1429,
+    "english": "Times follow your cuts and speed changes, like the exported video. Captions are drawn on the video when Show captions is on.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.digits.aboveTen",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 23,
+    "english": "Above ten",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.digits.all",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 24,
+    "english": "All",
+    "sample": {}
+  },
+  {
+    "key": "common.state.off",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 25,
+    "english": "Off",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.standard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 29,
+    "english": "Standard",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.strict",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 30,
+    "english": "Strict",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.strictTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 30,
+    "english": "Also words that are only rude in some places",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.tone",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 33,
+    "english": "Tone",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.silence",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 34,
+    "english": "Silence",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.noProvider",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 48,
+    "english": "To fix spelling with AI, add an AI provider first: the button is in the AI tools section.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.otherAnswer",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 201,
+    "english": "The AI fix was left out: the provider answered something else.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.error",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 204,
+    "english": "The AI fix was left out: The provider is busy.",
+    "sample": {
+      "reason": "The provider is busy."
+    }
+  },
+  {
+    "key": "captions.cleanup.leftOut.changed",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 220,
+    "english": "The AI fix was left out: the captions changed while the provider worked.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.leftOut.timing",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 223,
+    "english": "The AI fix was left out: the provider changed the captions' timing or left some out.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.cancelled",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 245,
+    "english": "Tidy captions was cancelled; nothing was changed.",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.wordsNotSaved",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 252,
+    "english": "The word list could not be saved: The disk is full.",
+    "sample": {
+      "reason": "The disk is full."
+    }
+  },
+  {
+    "key": "captions.cleanup.title",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 267,
+    "english": "Clean up",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.caps",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 268,
+    "english": "Capital letters",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.capsTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 268,
+    "english": "At the start of sentences, and “I”",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.punct",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 269,
+    "english": "Full stops and spaces",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.punctTitle",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 269,
+    "english": "A full stop before a pause, no space before punctuation",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.digits.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 271,
+    "english": "Numbers as digits",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 276,
+    "english": "Word list",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.alsoHeard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 282,
+    "english": "also heard as: flone, flow n",
+    "sample": {
+      "heard": "flone, flow n"
+    }
+  },
+  {
+    "key": "captions.cleanup.words.removeLabel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 287,
+    "english": "Remove Flown from the word list",
+    "sample": {
+      "term": "Flown"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 290,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.word",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 305,
+    "english": "Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.heard",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 309,
+    "english": "Also heard as (comma between)",
+    "sample": {}
+  },
+  {
+    "key": "common.action.add",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 314,
+    "english": "Add",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 317,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.words.add",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 324,
+    "english": "Add a word",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.bleep.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 331,
+    "english": "Bleep swear words",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.sound.label",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 336,
+    "english": "Bleep sound",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.ai",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 343,
+    "english": "Also fix spelling and misheard words with AI",
+    "sample": {}
+  },
+  {
+    "key": "common.label.provider",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 346,
+    "english": "Provider",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 368,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.run",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 368,
+    "english": "Tidy captions",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.fixLabel",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 383,
+    "english": "Fix spelling",
+    "sample": {}
+  },
+  {
+    "key": "captions.cleanup.hint",
+    "file": "src/renderer/src/editor/panels/CleanupSection.tsx",
+    "line": 395,
+    "english": "Tidy changes are listed in Review mode. The word list also helps Generate captions spell these words.",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.style",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 26,
+    "english": "Style for this video's shape",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.styleTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 26,
+    "english": "Skipped when you picked a style yourself",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.emphasis",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 27,
+    "english": "Emphasise key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.emoji",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 28,
+    "english": "Emoji next to key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.keywords",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 29,
+    "english": "Keyword pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.keywordsTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 29,
+    "english": "A big card replaces the caption for a key word",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.counters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 30,
+    "english": "Counters for statistics",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.countersTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 30,
+    "english": "Percentages, money, “grew by”, “from 20 to 80”",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.lists",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 31,
+    "english": "List cards",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.speakers",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 32,
+    "english": "Lower thirds with speaker names",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.speakersTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 32,
+    "english": "Only names you typed for the speakers",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.chapters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 33,
+    "english": "Chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.quotes",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 34,
+    "english": "Quote cards (needs AI)",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.tidy",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 35,
+    "english": "Tidy the text",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.tidyTitle",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 35,
+    "english": "Capitals, punctuation, digits",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoOnCamera",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 39,
+    "english": "Auto: on in tall and square videos where you are on camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoTall",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 41,
+    "english": "Auto: on in tall and square videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoChapters",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 43,
+    "english": "Auto: on in wide videos that have chapters",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.optionsButton",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 57,
+    "english": "Choose what Make my captions great does",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.optionsLabel",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 99,
+    "english": "Make my captions great options",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.quotesNeedAi",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 117,
+    "english": "Choose an AI provider under Better picks with AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.autoMark",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 122,
+    "english": "Auto",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.automatic",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 128,
+    "english": "Emoji next to key words, automatic",
+    "sample": {
+      "label": "Emoji next to key words"
+    }
+  },
+  {
+    "key": "captions.great.letFlown",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 138,
+    "english": "Let Flown choose emoji, pop-ups, counters, lists and chapter titles",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.sound",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 142,
+    "english": "Sound on pop-ups",
+    "sample": {}
+  },
+  {
+    "key": "common.state.none",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 144,
+    "english": "None",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.soundPop",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 145,
+    "english": "Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.soundDing",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 146,
+    "english": "Ding",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.provider",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 150,
+    "english": "Better picks with AI",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.providerNone",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 159,
+    "english": "No, on this PC only",
+    "sample": {}
+  },
+  {
+    "key": "captions.great.aiPicks",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 169,
+    "english": "AI picks",
+    "sample": {}
+  },
+  {
+    "key": "common.action.done",
+    "file": "src/renderer/src/editor/panels/GreatOptions.tsx",
+    "line": 172,
+    "english": "Done",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.full",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 83,
+    "english": "A project keeps at most 10 translations: remove one to add another",
+    "sample": {
+      "n": "10"
+    }
+  },
+  {
+    "key": "captions.languages.allAdded",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 84,
+    "english": "Every language on the list is added already",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.failed",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 208,
+    "english": "Could not translate: a project keeps at most 10 translations: remove one to add another.",
+    "sample": {
+      "reason": "a project keeps at most 10 translations: remove one to add another"
+    }
+  },
+  {
+    "key": "captions.languages.upToDate",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 213,
+    "english": "The Bengali captions are up to date",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.failedError",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 230,
+    "english": "Could not translate: The provider is busy.",
+    "sample": {
+      "reason": "The provider is busy."
+    }
+  },
+  {
+    "key": "captions.languages.failedTiming",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 248,
+    "english": "Could not translate: the provider changed the captions' timing or left some out.",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translated",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 255,
+    "english": [
+      "Translated 0 captions into Hindi",
+      "Translated 1 caption into Hindi",
+      "Translated 2 captions into Hindi",
+      "Translated 1000 captions into Hindi"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.translatedAgain",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 255,
+    "english": [
+      "Translated again 0 captions into Hindi",
+      "Translated again 1 caption into Hindi",
+      "Translated again 2 captions into Hindi",
+      "Translated again 1000 captions into Hindi"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "captions.languages.cancelled",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 266,
+    "english": "Could not translate: it was cancelled.",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.title",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 318,
+    "english": "Languages",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.drawn",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 319,
+    "english": "Captions drawn on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.show",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 362,
+    "english": "Show on the video",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againLabel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 370,
+    "english": "Translate the Bengali captions again",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "captions.languages.againNoProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Add an AI provider to translate",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againStale",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Translates only the captions that changed or are missing",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.againCurrent",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 373,
+    "english": "Up to date",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.again",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 376,
+    "english": "Translate again",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.removeLabel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 386,
+    "english": "Remove the Bengali captions",
+    "sample": {
+      "language": "Bengali"
+    }
+  },
+  {
+    "key": "common.action.remove",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 390,
+    "english": "Remove",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.add",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 414,
+    "english": "Add a language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.noProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 419,
+    "english": "Add an AI provider to translate your captions. OpenAI, Gemini and Claude all can.",
+    "sample": {}
+  },
+  {
+    "key": "common.action.addAiProvider",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 422,
+    "english": "Add an AI provider",
+    "sample": {}
+  },
+  {
+    "key": "common.action.close",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 425,
+    "english": "Close",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.language",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 432,
+    "english": "Language",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.via",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 441,
+    "english": "Translate with",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translate",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 459,
+    "english": "Translate",
+    "sample": {}
+  },
+  {
+    "key": "captions.languages.translating",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 485,
+    "english": [
+      "Translating 0 captions into Hindi…",
+      "Translating 1 caption into Hindi…",
+      "Translating 2 captions into Hindi…",
+      "Translating 1000 captions into Hindi…"
+    ],
+    "sample": [
+      {
+        "language": "Hindi",
+        "count": 0,
+        "n": "0"
+      },
+      {
+        "language": "Hindi",
+        "count": 1,
+        "n": "1"
+      },
+      {
+        "language": "Hindi",
+        "count": 2,
+        "n": "2"
+      },
+      {
+        "language": "Hindi",
+        "count": 1000,
+        "n": "1000"
+      }
+    ]
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/editor/panels/LanguagesSection.tsx",
+    "line": 488,
+    "english": "Cancel",
+    "sample": {}
+  },
+  {
+    "key": "common.state.working",
+    "file": "src/renderer/src/editor/panels/SpeakersSection.tsx",
+    "line": 93,
+    "english": "Working…",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.srtTitle",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 18,
+    "english": "Save the captions as an SRT file next to the video, one per language (YouTube, Vimeo, most players)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.vttTitle",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 19,
+    "english": "Save the captions as a WebVTT file next to the video, one per language (web players)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.label",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 49,
+    "english": "Subtitles",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.languages",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 52,
+    "english": "Subtitle languages",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.files",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 64,
+    "english": "Subtitle files",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.filesHint",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 75,
+    "english": "As files next to the video, one for each language ticked. This is what YouTube takes.",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.streams",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 79,
+    "english": "Also inside the video (players can switch them)",
+    "sample": {}
+  },
+  {
+    "key": "captions.subtitles.streamsHint",
+    "file": "src/renderer/src/editor/panels/SubtitlesField.tsx",
+    "line": 82,
+    "english": "They are separate from the captions drawn on the video.",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.long",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 37,
+    "english": "Long videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.short",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 38,
+    "english": "Short clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.classic",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 39,
+    "english": "Classic",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.mine",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 40,
+    "english": "Mine",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.brand",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 41,
+    "english": "Brand",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.filter.all",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 42,
+    "english": "All",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.long",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 46,
+    "english": "long videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.short",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 47,
+    "english": "short clips",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.classic",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 48,
+    "english": "classic",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.mine",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 49,
+    "english": "your styles",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.group.brand",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 50,
+    "english": "brand kit",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.subtitle.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Subtitle",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.subtitle.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Clean two-line subtitles in a crisp font",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.karaoke-fill.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Karaoke Fill",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.karaoke-fill.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Each word fills with colour as it is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.glass.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Glass Pill",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.glass.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Frosted glass behind each line",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlighter.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Highlighter",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlighter.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Key words marked like a highlighter pen",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.editorial.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Editorial",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.editorial.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calm text with key words in a large serif",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.typewriter.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Typewriter",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.typewriter.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Letters type on as each word is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.terminal.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Terminal",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.terminal.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Code-editor colours on a dark panel",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.news.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "News Bar",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.news.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Capitals on a red band, like a news ticker",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bold-pop.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bold Pop",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bold-pop.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Big capitals, three words at a time; the spoken word turns green",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.clean-short.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Clean Short",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.clean-short.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calm sentence-case words with a soft shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.text-box.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Text Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.text-box.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Dark words on white boxes, like phone apps' own text",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.weight-shift.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Light to Bold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.weight-shift.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Lowercase words turn bold as they are spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.one-word.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "One Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.one-word.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "One big word at a time",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.comic.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Comic",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.comic.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Comic-book capitals with a thick outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stacked.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Stacked",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stacked.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Lines of different sizes stacked together",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlight-box.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Highlight Box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.highlight-box.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "The spoken word on a red box",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.neon.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Neon",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.neon.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "The spoken word glows cyan",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.outline.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.outline.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Hollow letters that fill as they are spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.handwritten.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Handwritten",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.handwritten.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Handwriting that writes itself on",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-speech.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Speech Bubble",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-speech.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A speech bubble that points at your camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.chat.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Chat",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.chat.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Calls and interviews as chat bubbles: you on the right, others on the left",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.cinema.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Cinema",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.cinema.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Film-style subtitles in warm yellow, low on the frame",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gold.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gold.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gold serif letters for titles and launches",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.circle.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Circle",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.circle.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A hand-drawn circle around the key words",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gradient.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.gradient.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bold capitals in a pink to orange gradient",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stickers.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Stickers",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.stickers.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Each word a tilted sticker; the spoken one turns yellow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.spotlight-word.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Spotlight Word",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.spotlight-word.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Only the spoken word is lit",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.retro-pixel.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Retro Pixel",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.retro-pixel.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "A pixel font with a colour split, for gaming",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.block-3d.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "3D Block",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.block-3d.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Capitals with depth, for announcements",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-round.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Bubble",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.preset.bubble-round.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 54,
+    "english": "Rounded, soft and friendly",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.clean.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Clean",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.clean.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "White text with a soft shadow",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.boxed.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Boxed",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.boxed.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Text on a dark box, like TV subtitles",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.karaoke.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Karaoke",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.karaoke.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Each word lights up as it is spoken",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.minimal.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Minimal",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.minimal.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Light, small text with a thin outline",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.bold.name",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Bold",
+    "sample": {}
+  },
+  {
+    "key": "captions.look.classic.bold.description",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 57,
+    "english": "Big outlined capitals; the spoken word lights up",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.savedByYou",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 79,
+    "english": "Saved by you",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.brandDescription",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 81,
+    "english": "The caption style of your brand kit",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.yourSavedStyle",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 124,
+    "english": "Your saved style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.yourStyle",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 129,
+    "english": "Your style",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.tileLabel",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 155,
+    "english": "Bold Pop, short clips: big capitals, three words at a time",
+    "sample": {
+      "name": "Bold Pop",
+      "group": "short clips",
+      "description": "big capitals, three words at a time"
+    }
+  },
+  {
+    "key": "captions.gallery.suggested.camera",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 163,
+    "english": "Suggested when you are on camera",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggested.tall",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 164,
+    "english": "Suggested for tall videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.gallery.suggested.wide",
+    "file": "src/renderer/src/editor/panels/captionTiles.ts",
+    "line": 164,
+    "english": "Suggested for wide videos",
+    "sample": {}
+  },
+  {
+    "key": "captions.speech.noEngine",
+    "file": "src/renderer/src/editor/speechState.ts",
+    "line": 64,
+    "english": "The speech engine cannot be asked from this window",
+    "sample": {}
+  },
+  {
+    "key": "captions.speech.stateUnread",
+    "file": "src/renderer/src/editor/speechState.ts",
+    "line": 71,
+    "english": "The speech state could not be read",
+    "sample": {}
+  }
+]

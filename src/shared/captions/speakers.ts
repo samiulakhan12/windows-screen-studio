@@ -156,28 +156,3 @@ export function speakerCaption(seg: CaptionSegment): CaptionSegment {
   const { words: _old, ...rest } = seg
   return { ...rest, text: `${name} ${seg.text}`, words: [...label, ...own] }
 }
-
-/** What the Speakers section and the options say (docs/design/transcription.md §7). */
-export const SPEAKER_COPY = {
-  title: 'Speakers',
-  labelStems: 'Label You and Others',
-  labelStemsTitle: 'Who speaks in each caption, from the microphone and computer sound tracks',
-  replaceQuestion: 'Replace the speaker labels with You and Others from the sound tracks?',
-  remove: 'Remove labels',
-  none: 'Speaker labels come from Gemini, or from recordings that kept the microphone and the computer sound apart.',
-  mixedHint: 'For calls, transcribe the Mixed sound so the other people’s words are captioned too.',
-  nameLabel: (name: string): string => `Name of ${name}`,
-  count: (n: number): string => `${n} ${n === 1 ? 'caption' : 'captions'}`,
-  labelled: (you: number, others: number): string => `Labelled ${you + others} ${you + others === 1 ? 'caption' : 'captions'}: ${you} You, ${others} Others.`,
-  nothingHeard: 'No caption had enough sound on either track to tell who speaks.',
-  levelsFailed: 'The sound tracks could not be measured, so no labels were added.',
-  renamed: (from: string, to: string): string => (to ? `Renamed ${from} to ${to} (Undo brings the old name back)` : `Removed the label ${from}`),
-  removed: 'Speaker labels removed (Undo brings them back)',
-  noSpeaker: 'No speaker',
-  newSpeaker: (name: string): string => `New speaker (${name})`,
-  selectLabel: (at: string): string => `Speaker of the caption at ${at}`,
-  showOnVideo: 'Show speaker names',
-  showOnVideoTitle: 'Put the speaker’s name before each caption on the video',
-  inFiles: 'Speaker names in SRT and text',
-  inFilesTitle: 'Start each caption with the speaker’s name, like “Priya: Hello”. WebVTT files always name the speaker.'
-} as const

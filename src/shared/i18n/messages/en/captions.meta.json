@@ -1,1 +1,1271 @@
-{}
+{
+  "ai.confirm.startTitle": {
+    "description": "Title of the question asked before a long run of AI on this PC starts (a Start button follows)."
+  },
+  "ai.confirm.runTitle": {
+    "description": "Title of the question asked before a paid AI run whose cost passes the amount set in Settings (a Run button follows)."
+  },
+  "ai.what.sound": {
+    "description": "What an AI transcription sends, inside \"Sends {what} to {where}\" and the cost sentences of the cost line under an AI tool."
+  },
+  "ai.what.notes": {
+    "description": "What Draft script sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.yourNotes": {
+    "description": "What Draft script sends, inside \"Sends {what} to {where}.\" read by screen readers for its button."
+  },
+  "ai.what.chapterNames": {
+    "description": "What naming chapters sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.eachChapter": {
+    "description": "What naming chapters sends, inside the cost sentence read by screen readers for its button."
+  },
+  "ai.what.clips": {
+    "description": "What naming short clips sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.steps": {
+    "description": "What naming a guide's steps sends, inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.captions": {
+    "description": "What a captions AI tool sends (tidy, translate, make great), inside \"Sends {what} to {where}\" on the cost line."
+  },
+  "ai.what.yourCaptions": {
+    "description": "What a captions AI tool sends, inside the cost sentence read by screen readers for its button."
+  },
+  "ai.cost.local": {
+    "description": "Cost line under an AI tool when it runs with AI on this PC and its time is not known yet."
+  },
+  "ai.cost.sends": {
+    "description": "Cost line under an AI tool before its cost is known: {what} is what is sent (\"captions\"), {where} the AI service's name.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.cost.details": {
+    "description": "Link button on the cost line that shows the model, the date of the prices and each action's tokens."
+  },
+  "ai.cost.model": {
+    "description": "Details of the cost line: the AI model a run uses.",
+    "user": [
+      "model"
+    ]
+  },
+  "ai.cost.modelLocal": {
+    "description": "Details of the cost line, after \"Model:\": the model of AI on this PC is chosen on this PC."
+  },
+  "ai.cost.pricesOf": {
+    "description": "Details of the cost line: the date of the price list the cost comes from."
+  },
+  "ai.cost.tokens": {
+    "description": "Details of the cost line: an action (its label) and the ranges of tokens it sends and gets back."
+  },
+  "ai.cost.localSentence": {
+    "description": "Read by screen readers for an AI tool's button when it runs on this PC and its time is not known yet."
+  },
+  "ai.cost.sendsSentence": {
+    "description": "Read by screen readers for an AI tool's button before its cost is known: {what} is what is sent (\"your captions\"), {where} the AI service.",
+    "user": [
+      "where"
+    ]
+  },
+  "ai.local.phase.loading": {
+    "description": "Announced once by screen readers while AI on this PC loads its model."
+  },
+  "ai.local.phase.reading": {
+    "description": "Announced once by screen readers while AI on this PC reads the text it was given."
+  },
+  "ai.local.phase.writing": {
+    "description": "Announced once by screen readers while AI on this PC writes its answer."
+  },
+  "ai.local.value.waiting": {
+    "description": "Value text of the progress bar of AI on this PC while another request runs first."
+  },
+  "ai.local.value.loading": {
+    "description": "Value text of the progress bar of AI on this PC while it loads its model."
+  },
+  "ai.local.value.reading": {
+    "description": "Value text of the progress bar of AI on this PC while it reads the text: {percent} is how much it has read."
+  },
+  "ai.local.value.writing": {
+    "description": "Value text of the progress bar of AI on this PC while it writes: {left} is the time left (\"about 2 minutes left\")."
+  },
+  "ai.local.bar": {
+    "description": "Name of the progress bar beside a tool while AI on this PC runs."
+  },
+  "ai.local.stopLabel": {
+    "description": "Accessible name of the Stop button beside the progress of AI on this PC."
+  },
+  "ai.model.priceVaries": {
+    "description": "Settings › AI providers, the model list: an OpenRouter router model whose price depends on the model it picks."
+  },
+  "ai.model.free": {
+    "description": "Settings › AI providers, the model list: a model that costs nothing."
+  },
+  "ai.model.price": {
+    "description": "Settings › AI providers, the model list: the price of a model, US$ per million tokens sent and received."
+  },
+  "ai.model.loaded": {
+    "description": "Settings › AI providers: status after Load models; {n} is how many models the provider lists."
+  },
+  "ai.model.load": {
+    "description": "Settings › AI providers: button that loads the list of models from the provider."
+  },
+  "ai.model.list": {
+    "description": "Settings › AI providers: accessible name of the list of models the provider gave."
+  },
+  "track.hidden": {
+    "description": "Tooltip of the caption track on the timeline while captions are turned off."
+  },
+  "track.caption": {
+    "description": "Tooltip of a caption on the timeline's caption track: its text, then where it starts and ends.",
+    "user": [
+      "text"
+    ]
+  },
+  "track.empty": {
+    "description": "Shown on the caption track when every caption was deleted."
+  },
+  "transcribe.running": {
+    "description": "Error in the Captions tab when captions are asked for while a transcription runs."
+  },
+  "transcribe.notTranscript": {
+    "description": "Error in the Captions tab when the AI provider's answer to a transcription cannot be read."
+  },
+  "transcribe.noSpeech": {
+    "description": "Error in the Captions tab when a transcription found no words."
+  },
+  "look.full": {
+    "description": "Error when a caption style is saved while the list of saved styles is full ({n} is the limit, 50)."
+  },
+  "look.defaultName": {
+    "description": "The name a saved caption style gets when the user gives none; {n} counts up from 1."
+  },
+  "ai.wrongTask": {
+    "description": "Error of Make my captions great and the guide when the AI provider answered a different request."
+  },
+  "speech.noEngine": {
+    "description": "Why captions on this PC are not offered: this window cannot reach the speech engine."
+  },
+  "speech.stateUnread": {
+    "description": "Why captions on this PC are not offered: the state of the speech models could not be read."
+  },
+  "generate.byThisPc": {
+    "description": "Captions tab, Generate summary: who made the captions when they were made on this PC, inside \"{n} captions by {by}.\""
+  },
+  "script.used": {
+    "description": "Notice after \"Use as speaker notes again\" in the Captions tab's Your script section."
+  },
+  "script.notChanged": {
+    "description": "Notice when the speaker notes could not be set to the recording's script; {reason} is the error."
+  },
+  "script.copied": {
+    "description": "Notice after the recording's script was copied to the clipboard."
+  },
+  "script.notCopied": {
+    "description": "Notice when the recording's script could not be copied to the clipboard."
+  },
+  "generate.replaceQuestion": {
+    "description": "Question before captions are made again over the current ones."
+  },
+  "generate.replaceAction": {
+    "description": "Button of the question before captions are made again: replaces the current captions (outside English; in English the system dialog says OK)."
+  },
+  "generate.summaryTitle": {
+    "description": "Captions tab: heading of the section that says how the captions were made and offers Regenerate."
+  },
+  "generate.by": {
+    "description": "Captions tab, Generate summary: how many captions and who made them ({by}: OpenAI, Gemini, Claude or \"this PC\"). The count does not change the noun in English today.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "generate.byLanguage": {
+    "description": "Captions tab, Generate summary with the spoken language in brackets.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "action.dismiss": {
+    "description": "Link button that hides a suggestion, a notice or an error in the Captions tab."
+  },
+  "generate.regenerateOpen": {
+    "description": "Captions tab: button that opens the form to make the captions again."
+  },
+  "generate.generating": {
+    "description": "Captions tab: heading while captions are being made."
+  },
+  "generate.phase.stopping": {
+    "description": "Captions tab: phase of a transcription being cancelled."
+  },
+  "generate.phase.starting": {
+    "description": "Captions tab: phase of a transcription before any progress came."
+  },
+  "generate.phase.extracting": {
+    "description": "Captions tab: phase while the sound is read from the recording."
+  },
+  "generate.phase.uploading": {
+    "description": "Captions tab: phase while the sound is sent to the AI provider."
+  },
+  "generate.phase.transcribing": {
+    "description": "Captions tab: phase while the AI provider transcribes."
+  },
+  "generate.phase.finishing": {
+    "description": "Captions tab: last phase of a transcription."
+  },
+  "generate.part": {
+    "description": "Captions tab: which part of a long recording is being transcribed, after the phase."
+  },
+  "generate.titleAgain": {
+    "description": "Captions tab: heading of the form that makes captions again."
+  },
+  "generate.title": {
+    "description": "Captions tab: heading of the form that makes captions, and its button."
+  },
+  "generate.noProvider": {
+    "description": "Captions tab with no AI provider and no captions on this PC.",
+    "dnt": [
+      "OpenAI",
+      "Gemini"
+    ]
+  },
+  "generate.noTranscriber": {
+    "description": "Captions tab when the only AI providers cannot transcribe.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "generate.providersUnread": {
+    "description": "Captions tab: the list of AI providers could not be read; {reason} is the error."
+  },
+  "action.checkAgain": {
+    "description": "Link button that reads the AI providers or the speech models again."
+  },
+  "generate.providerLabel": {
+    "description": "Captions tab: accessible name of the select of who makes the captions."
+  },
+  "generate.spokenLanguage": {
+    "description": "Captions tab: label of the select of the language spoken in the recording."
+  },
+  "generate.detect": {
+    "description": "Captions tab: first choice of Spoken language, the transcriber finds the language."
+  },
+  "generate.source.label": {
+    "description": "Captions tab: accessible name of the chips that choose which sound is transcribed."
+  },
+  "generate.source.auto": {
+    "description": "Captions tab, Sound: the microphone when it was recorded on its own, else all the sound."
+  },
+  "generate.source.autoTitle": {
+    "description": "Tooltip of the Auto chip of the sound to transcribe."
+  },
+  "generate.source.mic": {
+    "description": "Captions tab, Sound: only the microphone."
+  },
+  "generate.source.micTitle": {
+    "description": "Tooltip of the Microphone chip of the sound to transcribe."
+  },
+  "generate.source.micMissing": {
+    "description": "Tooltip of the Microphone chip when the recording has no separate microphone track."
+  },
+  "generate.source.mixed": {
+    "description": "Captions tab, Sound: the microphone and the computer sound together."
+  },
+  "generate.source.mixedTitle": {
+    "description": "Tooltip of the Mixed sound chip of the sound to transcribe."
+  },
+  "generate.noSound": {
+    "description": "Captions tab: a recording without sound."
+  },
+  "generate.sentTo": {
+    "description": "Captions tab, under Generate captions: where the sound goes ({where}: the AI service's name or \"the provider\").",
+    "user": [
+      "where"
+    ]
+  },
+  "generate.theProvider": {
+    "description": "Inside \"…is sent to {where}…\" when no AI provider is chosen yet."
+  },
+  "generate.failed": {
+    "description": "Captions tab: a transcription failed; {reason} is the error."
+  },
+  "list.splitWhere": {
+    "description": "Notice when a caption is split while the playhead is not inside it."
+  },
+  "list.notFound": {
+    "description": "Notice after Replace all found nothing; {text} is what was searched for.",
+    "user": [
+      "text"
+    ]
+  },
+  "list.replaced": {
+    "description": "Notice after Replace all in the captions; {n} is how many times."
+  },
+  "list.title": {
+    "description": "Captions tab: heading of the list of captions with how many there are."
+  },
+  "list.findReplace": {
+    "description": "Captions tab: button that shows the find and replace fields."
+  },
+  "list.findLabel": {
+    "description": "Captions tab: accessible name of the find field."
+  },
+  "list.find": {
+    "description": "Captions tab: placeholder of the find field."
+  },
+  "list.replaceWith": {
+    "description": "Captions tab: placeholder and accessible name of the replace field."
+  },
+  "list.matches": {
+    "description": "Captions tab: how many times the text searched for is found."
+  },
+  "list.anyCase": {
+    "description": "Captions tab: hint beside Replace all while the find field is empty."
+  },
+  "list.replaceAll": {
+    "description": "Captions tab: button that replaces every match in the captions."
+  },
+  "list.empty": {
+    "description": "Captions tab when the list of captions is empty."
+  },
+  "list.earlier": {
+    "description": "Captions tab: button that shows the previous page of captions."
+  },
+  "list.range": {
+    "description": "Captions tab: which captions the page shows."
+  },
+  "list.later": {
+    "description": "Captions tab: button that shows the next page of captions."
+  },
+  "list.goTo": {
+    "description": "Tooltip of a caption's time in the list: moves the playhead there."
+  },
+  "list.captionAt": {
+    "description": "Accessible name of a caption's text field; {time} is where it plays."
+  },
+  "list.split": {
+    "description": "Tooltip and name of the button that splits a caption at the playhead."
+  },
+  "list.merge": {
+    "description": "Tooltip and name of the button that joins a caption with the next one."
+  },
+  "list.delete": {
+    "description": "Tooltip (with its shortcut) and name of the button that deletes a caption."
+  },
+  "list.timesHint": {
+    "description": "Captions tab: hint under the list of captions."
+  },
+  "tools.notUsed": {
+    "description": "Notice when an AI suggestion came after the Captions tab closed and holds something to check; {what} is \"Suggested title\" or \"Summary\"."
+  },
+  "tools.chaptersLeft": {
+    "description": "Notice when the Captions tab closes with suggested chapters not added."
+  },
+  "tools.chaptersAdded": {
+    "description": "Notice after suggested chapters were added."
+  },
+  "tools.needsCaptions": {
+    "description": "Error of Suggest chapters without captions."
+  },
+  "tools.otherAnswer": {
+    "description": "Error of an AI tool of the Captions tab when the answer is not what was asked."
+  },
+  "tools.chaptersThere": {
+    "description": "Suggest chapters found only chapters the recording has."
+  },
+  "tools.noChapters": {
+    "description": "Suggest chapters: the AI suggested none."
+  },
+  "tools.chaptersNotAdded": {
+    "description": "Notice when suggested chapters came after the Captions tab closed and hold something to check."
+  },
+  "tools.noTitle": {
+    "description": "Suggest a title: the AI suggested none."
+  },
+  "tools.noSummary": {
+    "description": "Summarize: the AI wrote nothing."
+  },
+  "tools.addProviderFirst": {
+    "description": "Notice when an AI tool is run from the command palette with no AI provider."
+  },
+  "tools.busy": {
+    "description": "Notice when an AI tool is run while another one works."
+  },
+  "tools.title": {
+    "description": "Captions tab: heading of the section with Suggest chapters, Suggest a title and Summarize."
+  },
+  "tools.noProvider": {
+    "description": "Captions tab, AI tools, with no AI provider.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "tools.providerLabel": {
+    "description": "Captions tab, AI tools: accessible name of the provider select."
+  },
+  "tools.chaptersLocal": {
+    "description": "Tooltip of Suggest chapters with AI on this PC."
+  },
+  "tools.chaptersWith": {
+    "description": "Tooltip of Suggest chapters with an AI service ({where}: its name, or \"the AI\").",
+    "user": [
+      "where"
+    ]
+  },
+  "tools.theAi": {
+    "description": "Inside \"Finds chapters with {where}'s suggestions\" when no AI is chosen."
+  },
+  "tools.suggestChapters": {
+    "description": "Captions tab, AI tools: button."
+  },
+  "tools.titleHint": {
+    "description": "Tooltip of Suggest a title."
+  },
+  "tools.suggestTitle": {
+    "description": "Captions tab, AI tools: button."
+  },
+  "tools.summaryHint": {
+    "description": "Tooltip of Summarize."
+  },
+  "tools.summarize": {
+    "description": "Captions tab, AI tools: button that writes a summary."
+  },
+  "tools.chapters": {
+    "description": "Cost line of the AI tools: the label of Suggest chapters' cost."
+  },
+  "tools.summary": {
+    "description": "Cost line of the AI tools: the label of Summarize's cost; also what the link check names."
+  },
+  "tools.suggestedTitle": {
+    "description": "Captions tab: the title the AI suggested, in bold.",
+    "user": [
+      "title"
+    ]
+  },
+  "tools.suggestedTitleWhat": {
+    "description": "What the link check names when it asks about a suggested title."
+  },
+  "tools.renamed": {
+    "description": "Notice after the recording took the suggested title."
+  },
+  "tools.rename": {
+    "description": "Button that gives the recording the suggested title."
+  },
+  "tools.suggestedChaptersHead": {
+    "description": "Captions tab: heading of the list of suggested chapters."
+  },
+  "tools.suggestedChapters": {
+    "description": "What the link check names when it asks about suggested chapters."
+  },
+  "tools.addChapters": {
+    "description": "Button that adds the suggested chapters."
+  },
+  "tools.summaryHead": {
+    "description": "Captions tab: heading of the summary the AI wrote."
+  },
+  "tools.summaryCopied": {
+    "description": "Notice after the summary was copied."
+  },
+  "tools.summaryNotCopied": {
+    "description": "Notice when the summary could not be copied."
+  },
+  "tools.hintLocal": {
+    "description": "Captions tab, AI tools: hint with AI on this PC."
+  },
+  "tools.hintSends": {
+    "description": "Captions tab, AI tools: hint with an AI service ({where}: its name, or \"the provider\").",
+    "user": [
+      "where"
+    ]
+  },
+  "export.none": {
+    "description": "Notice when Export captions runs without captions."
+  },
+  "export.saved": {
+    "description": "Notice after a subtitle file was saved; {file} is its path.",
+    "user": [
+      "file"
+    ]
+  },
+  "export.failed": {
+    "description": "Notice when a subtitle file could not be saved; {reason} is the error."
+  },
+  "export.title": {
+    "description": "Captions tab: heading of the section that saves a subtitle file."
+  },
+  "export.format.label": {
+    "description": "Captions tab, Export captions: accessible name of the format chips."
+  },
+  "export.button": {
+    "description": "Captions tab: button that saves the captions as a subtitle file."
+  },
+  "export.hint": {
+    "description": "Captions tab, Export captions: hint."
+  },
+  "export.format.srt": {
+    "description": "Tooltip of the SRT chip of Export captions.",
+    "dnt": [
+      "YouTube",
+      "Vimeo"
+    ]
+  },
+  "export.format.vtt": {
+    "description": "Tooltip of the VTT chip of Export captions.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "export.format.txtLabel": {
+    "description": "Export captions: the chip that saves the transcript as plain text."
+  },
+  "export.format.txt": {
+    "description": "Tooltip of the Text chip of Export captions."
+  },
+  "speakers.title": {
+    "description": "Captions tab: heading of the section that lists who speaks."
+  },
+  "speakers.labelStems": {
+    "description": "Button that labels each caption with who speaks, from the microphone and computer sound tracks; {youName} and {othersName} are the labels written into the captions (\"You\", \"Others\"), which stay as they are."
+  },
+  "speakers.labelStemsTitle": {
+    "description": "Tooltip of the button that labels the speakers from the sound tracks."
+  },
+  "speakers.replaceQuestion": {
+    "description": "Question before speaker labels are replaced by the ones the sound tracks give; the names are the labels written into the captions."
+  },
+  "speakers.replaceAction": {
+    "description": "Button of the question before speaker labels are replaced (outside English; in English the system dialog says OK)."
+  },
+  "speakers.remove": {
+    "description": "Button that removes every speaker label."
+  },
+  "speakers.none": {
+    "description": "Speakers section with no labels and no separate sound tracks.",
+    "dnt": [
+      "Gemini"
+    ]
+  },
+  "speakers.mixedHint": {
+    "description": "Hint of the Speakers section for recordings with separate sound tracks."
+  },
+  "speakers.nameLabel": {
+    "description": "Accessible name of the field that renames a speaker; {name} is the speaker's label.",
+    "user": [
+      "name"
+    ]
+  },
+  "speakers.count": {
+    "description": "Speakers section: how many captions a speaker has."
+  },
+  "speakers.labelled": {
+    "description": "Notice after the speakers were labelled from the sound tracks: how many captions, and how many for each label."
+  },
+  "speakers.nothingHeard": {
+    "description": "Notice when the sound tracks could not tell who speaks in any caption."
+  },
+  "speakers.levelsFailed": {
+    "description": "Notice when the sound tracks could not be read."
+  },
+  "speakers.renamed": {
+    "description": "Notice after a speaker was renamed.",
+    "user": [
+      "from",
+      "to"
+    ]
+  },
+  "speakers.unlabelled": {
+    "description": "Notice after a speaker's name was emptied, which removes the label.",
+    "user": [
+      "from"
+    ]
+  },
+  "speakers.removed": {
+    "description": "Notice after every speaker label was removed."
+  },
+  "speakers.noSpeaker": {
+    "description": "Choice of a caption's speaker select: no label."
+  },
+  "speakers.newSpeaker": {
+    "description": "Choice of a caption's speaker select that adds a speaker; {name} is the label it gets (\"Speaker 3\").",
+    "user": [
+      "name"
+    ]
+  },
+  "speakers.selectLabel": {
+    "description": "Accessible name of a caption's speaker select; {time} is where the caption plays."
+  },
+  "speakers.showOnVideo": {
+    "description": "Toggle that writes the speaker's name before each caption on the video."
+  },
+  "speakers.showOnVideoTitle": {
+    "description": "Tooltip of Show speaker names."
+  },
+  "speakers.inFiles": {
+    "description": "Toggle that writes the speaker's name in SRT and text subtitle files.",
+    "dnt": [
+      "SRT"
+    ]
+  },
+  "speakers.inFilesTitle": {
+    "description": "Tooltip of Speaker names in SRT and text.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "subtitles.srtTitle": {
+    "description": "Export dialog, Subtitles: tooltip of the SRT chip.",
+    "dnt": [
+      "SRT",
+      "YouTube",
+      "Vimeo"
+    ]
+  },
+  "subtitles.vttTitle": {
+    "description": "Export dialog, Subtitles: tooltip of the VTT chip.",
+    "dnt": [
+      "WebVTT"
+    ]
+  },
+  "subtitles.label": {
+    "description": "Export dialog: label of the row that writes subtitle files and streams."
+  },
+  "subtitles.languages": {
+    "description": "Export dialog, Subtitles: accessible name of the language checkboxes."
+  },
+  "subtitles.files": {
+    "description": "Export dialog, Subtitles: accessible name of the SRT and VTT chips."
+  },
+  "subtitles.filesHint": {
+    "description": "Export dialog, Subtitles: hint under the SRT and VTT chips.",
+    "dnt": [
+      "YouTube"
+    ]
+  },
+  "subtitles.streams": {
+    "description": "Export dialog, Subtitles: toggle that writes subtitle streams into the video file."
+  },
+  "subtitles.streamsHint": {
+    "description": "Export dialog, Subtitles: hint under the streams toggle."
+  },
+  "great.style": {
+    "description": "Make my captions great options: picks a caption style for the video's shape."
+  },
+  "great.styleTitle": {
+    "description": "Tooltip of \"Style for this video's shape\"."
+  },
+  "great.emphasis": {
+    "description": "Make my captions great options."
+  },
+  "great.emoji": {
+    "description": "Make my captions great options."
+  },
+  "great.keywords": {
+    "description": "Make my captions great options: a big card for a key word."
+  },
+  "great.keywordsTitle": {
+    "description": "Tooltip of Keyword pop-ups."
+  },
+  "great.counters": {
+    "description": "Make my captions great options: animated numbers."
+  },
+  "great.countersTitle": {
+    "description": "Tooltip of Counters for statistics: the kinds of numbers that get a counter."
+  },
+  "great.lists": {
+    "description": "Make my captions great options."
+  },
+  "great.speakers": {
+    "description": "Make my captions great options."
+  },
+  "great.speakersTitle": {
+    "description": "Tooltip of Lower thirds with speaker names."
+  },
+  "great.chapters": {
+    "description": "Make my captions great options."
+  },
+  "great.quotes": {
+    "description": "Make my captions great options."
+  },
+  "great.tidy": {
+    "description": "Make my captions great options."
+  },
+  "great.tidyTitle": {
+    "description": "Tooltip of Tidy the text."
+  },
+  "great.autoOnCamera": {
+    "description": "Tooltip of an option left on Auto: when it is on."
+  },
+  "great.autoTall": {
+    "description": "Tooltip of an option left on Auto: when it is on."
+  },
+  "great.autoChapters": {
+    "description": "Tooltip of Chapter titles left on Auto: when it is on."
+  },
+  "great.optionsButton": {
+    "description": "Tooltip and name of the button beside Make my captions great that opens its options."
+  },
+  "great.optionsLabel": {
+    "description": "Accessible name of the options of Make my captions great."
+  },
+  "great.quotesNeedAi": {
+    "description": "Tooltip of Quote cards while no AI provider is chosen."
+  },
+  "great.autoMark": {
+    "description": "After an option's name while Flown chooses it (\"Emoji next to key words · Auto\")."
+  },
+  "great.automatic": {
+    "description": "Accessible name of an option left on Auto."
+  },
+  "great.letFlown": {
+    "description": "Button that puts the Auto options back to Auto.",
+    "dnt": [
+      "Flown"
+    ]
+  },
+  "great.sound": {
+    "description": "Make my captions great options: the sound of keyword pop-ups."
+  },
+  "great.soundPop": {
+    "description": "A pop-up sound: a short pop."
+  },
+  "great.soundDing": {
+    "description": "A pop-up sound: a bell."
+  },
+  "great.provider": {
+    "description": "Make my captions great options: the AI provider that picks key words, or none."
+  },
+  "great.providerNone": {
+    "description": "Better picks with AI: no AI, the picks are made on this PC."
+  },
+  "great.aiPicks": {
+    "description": "Cost line of Make my captions great: the label of the AI picks' cost."
+  },
+  "cleanup.digits.aboveTen": {
+    "description": "Clean up, Numbers as digits: spelled numbers above ten become digits."
+  },
+  "cleanup.digits.all": {
+    "description": "Clean up, Numbers as digits: every spelled number becomes digits."
+  },
+  "cleanup.bleep.standard": {
+    "description": "Clean up, Bleep swear words: the usual list of swear words."
+  },
+  "cleanup.bleep.strict": {
+    "description": "Clean up, Bleep swear words: also milder words."
+  },
+  "cleanup.bleep.strictTitle": {
+    "description": "Tooltip of the Strict bleep choice."
+  },
+  "cleanup.sound.tone": {
+    "description": "Clean up, Bleep sound: a beep tone."
+  },
+  "cleanup.sound.silence": {
+    "description": "Clean up, Bleep sound: the word is silenced."
+  },
+  "cleanup.noProvider": {
+    "description": "Clean up: Fix with AI was asked for with no AI provider."
+  },
+  "cleanup.leftOut.otherAnswer": {
+    "description": "Clean up: the AI fix was not used because the answer was not what was asked."
+  },
+  "cleanup.leftOut.error": {
+    "description": "Clean up: the AI fix was not used; {reason} is the error, ending with a full stop."
+  },
+  "cleanup.leftOut.changed": {
+    "description": "Clean up: the AI fix was not used because the captions were edited meanwhile."
+  },
+  "cleanup.leftOut.timing": {
+    "description": "Clean up: the AI fix was not used because the answer changed the timing."
+  },
+  "cleanup.cancelled": {
+    "description": "Clean up: status after Cancel."
+  },
+  "cleanup.wordsNotSaved": {
+    "description": "Clean up: the word list could not be saved; {reason} is the error."
+  },
+  "cleanup.title": {
+    "description": "Captions tab: heading of the section that tidies the caption text."
+  },
+  "cleanup.caps": {
+    "description": "Clean up: capital letters at the start of sentences."
+  },
+  "cleanup.capsTitle": {
+    "description": "Tooltip of Capital letters."
+  },
+  "cleanup.punct": {
+    "description": "Clean up: punctuation."
+  },
+  "cleanup.punctTitle": {
+    "description": "Tooltip of Full stops and spaces."
+  },
+  "cleanup.digits.label": {
+    "description": "Clean up: label of the choice of when spelled numbers become digits."
+  },
+  "cleanup.words.label": {
+    "description": "Clean up: the user's words that captions must spell as given."
+  },
+  "cleanup.words.alsoHeard": {
+    "description": "Clean up, Word list: after a word, the ways the speech engine mishears it, after a dash.",
+    "user": [
+      "heard"
+    ]
+  },
+  "cleanup.words.removeLabel": {
+    "description": "Accessible name of a word's Remove button.",
+    "user": [
+      "term"
+    ]
+  },
+  "cleanup.words.word": {
+    "description": "Clean up, Add a word: the word field."
+  },
+  "cleanup.words.heard": {
+    "description": "Clean up, Add a word: the field of the ways the word is misheard."
+  },
+  "cleanup.words.add": {
+    "description": "Clean up: button that opens the form to add a word to the word list."
+  },
+  "cleanup.bleep.label": {
+    "description": "Clean up: label of the choice of which swear words are bleeped."
+  },
+  "cleanup.sound.label": {
+    "description": "Clean up: label of the choice of the bleep's sound."
+  },
+  "cleanup.ai": {
+    "description": "Clean up: checkbox that adds an AI fix to Tidy captions."
+  },
+  "cleanup.run": {
+    "description": "Clean up: button that tidies the captions."
+  },
+  "cleanup.fixLabel": {
+    "description": "Cost line of Clean up: the label of the AI fix's cost."
+  },
+  "cleanup.hint": {
+    "description": "Clean up: hint at the end of the section."
+  },
+  "languages.full": {
+    "description": "Languages: why no language can be added (tooltip of Add a language, and inside an error)."
+  },
+  "languages.allAdded": {
+    "description": "Languages: why no language can be added."
+  },
+  "languages.failed": {
+    "description": "Languages: a translation could not start; {reason} is the reason, starting lower case."
+  },
+  "languages.upToDate": {
+    "description": "Languages: status when Translate again found nothing to translate."
+  },
+  "languages.failedError": {
+    "description": "Languages: a translation failed; {reason} is the error, ending with a full stop."
+  },
+  "languages.failedTiming": {
+    "description": "Languages: the translation was not used because it changed the timing."
+  },
+  "languages.translated": {
+    "description": "Languages: status after a translation (the cost of the run may follow)."
+  },
+  "languages.translatedAgain": {
+    "description": "Languages: status after Translate again."
+  },
+  "languages.cancelled": {
+    "description": "Languages: status after a translation was cancelled."
+  },
+  "languages.title": {
+    "description": "Captions tab: heading of the section with the caption languages."
+  },
+  "languages.drawn": {
+    "description": "Languages: accessible name of the radio group that picks the language drawn on the video."
+  },
+  "languages.show": {
+    "description": "Languages: radio of a row that draws its captions on the video."
+  },
+  "languages.againLabel": {
+    "description": "Accessible name of a row's Translate again."
+  },
+  "languages.againNoProvider": {
+    "description": "Tooltip of Translate again with no AI provider."
+  },
+  "languages.againStale": {
+    "description": "Tooltip of Translate again."
+  },
+  "languages.againCurrent": {
+    "description": "Tooltip of Translate again when nothing changed."
+  },
+  "languages.again": {
+    "description": "Languages: button that translates the changed captions again."
+  },
+  "languages.removeLabel": {
+    "description": "Accessible name of a row's Remove."
+  },
+  "languages.add": {
+    "description": "Languages: button that opens the form to translate the captions."
+  },
+  "languages.noProvider": {
+    "description": "Languages with no AI provider.",
+    "dnt": [
+      "OpenAI",
+      "Gemini",
+      "Claude"
+    ]
+  },
+  "languages.language": {
+    "description": "Languages, Add a language: the language select."
+  },
+  "languages.via": {
+    "description": "Languages, Add a language: accessible name of the AI provider chips."
+  },
+  "languages.translate": {
+    "description": "Languages, Add a language: button, and the label of its cost."
+  },
+  "languages.translating": {
+    "description": "Languages: status while a translation runs."
+  },
+  "languages.theSpoken": {
+    "description": "Languages, outside English: the spoken language when the transcript does not name it."
+  },
+  "languages.spokenRow": {
+    "description": "Languages, outside English: the row of the spoken captions."
+  },
+  "languages.spokenCaptions": {
+    "description": "Languages, outside English: the row of the spoken captions when their language is not known."
+  },
+  "languages.changedSince": {
+    "description": "Languages, outside English: a row's note, how many spoken captions changed since the translation."
+  },
+  "languages.untranslated": {
+    "description": "Languages, outside English: a row's note, how many captions have no translation."
+  },
+  "languages.bleepsNote": {
+    "description": "Languages, outside English: a row's note when words are bleeped."
+  },
+  "languages.translatedRow": {
+    "description": "Languages, outside English: a translation's row when its track is not found."
+  },
+  "languages.translatedHere": {
+    "description": "Languages, outside English: a translation made on this PC."
+  },
+  "languages.translatedWith": {
+    "description": "Languages, outside English: a translation and who made it (an AI service's name or host).",
+    "user": [
+      "via"
+    ]
+  },
+  "gallery.filter.long": {
+    "description": "Caption style gallery: filter chip, styles for wide videos."
+  },
+  "gallery.filter.short": {
+    "description": "Caption style gallery: filter chip, styles for tall short clips."
+  },
+  "gallery.filter.classic": {
+    "description": "Caption style gallery: filter chip, the five classic styles; also a classic look's name when its own is not known."
+  },
+  "gallery.filter.mine": {
+    "description": "Caption style gallery: filter chip, the styles the user saved."
+  },
+  "gallery.filter.brand": {
+    "description": "Caption style gallery: filter chip and tile of the brand kit's caption style."
+  },
+  "gallery.filter.all": {
+    "description": "Caption style gallery: filter chip, every style."
+  },
+  "gallery.group.long": {
+    "description": "Inside a style tile's accessible name: \"{name}, {group}: {description}\"."
+  },
+  "gallery.group.short": {
+    "description": "Inside a style tile's accessible name."
+  },
+  "gallery.group.classic": {
+    "description": "Inside a style tile's accessible name."
+  },
+  "gallery.group.mine": {
+    "description": "Inside a style tile's accessible name."
+  },
+  "gallery.group.brand": {
+    "description": "Inside a style tile's accessible name."
+  },
+  "look.preset.subtitle.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Subtitle\" (subtitle)."
+  },
+  "look.preset.subtitle.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Subtitle\", what it looks like."
+  },
+  "look.preset.karaoke-fill.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Karaoke Fill\" (karaoke-fill)."
+  },
+  "look.preset.karaoke-fill.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Karaoke Fill\", what it looks like."
+  },
+  "look.preset.glass.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Glass Pill\" (glass)."
+  },
+  "look.preset.glass.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Glass Pill\", what it looks like."
+  },
+  "look.preset.highlighter.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Highlighter\" (highlighter)."
+  },
+  "look.preset.highlighter.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Highlighter\", what it looks like."
+  },
+  "look.preset.editorial.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Editorial\" (editorial)."
+  },
+  "look.preset.editorial.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Editorial\", what it looks like."
+  },
+  "look.preset.typewriter.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Typewriter\" (typewriter)."
+  },
+  "look.preset.typewriter.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Typewriter\", what it looks like."
+  },
+  "look.preset.terminal.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Terminal\" (terminal)."
+  },
+  "look.preset.terminal.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Terminal\", what it looks like."
+  },
+  "look.preset.news.name": {
+    "description": "Caption style gallery: the name of the built-in style \"News Bar\" (news)."
+  },
+  "look.preset.news.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"News Bar\", what it looks like."
+  },
+  "look.preset.bold-pop.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Bold Pop\" (bold-pop)."
+  },
+  "look.preset.bold-pop.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Bold Pop\", what it looks like."
+  },
+  "look.preset.clean-short.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Clean Short\" (clean-short)."
+  },
+  "look.preset.clean-short.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Clean Short\", what it looks like."
+  },
+  "look.preset.text-box.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Text Box\" (text-box)."
+  },
+  "look.preset.text-box.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Text Box\", what it looks like."
+  },
+  "look.preset.weight-shift.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Light to Bold\" (weight-shift)."
+  },
+  "look.preset.weight-shift.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Light to Bold\", what it looks like."
+  },
+  "look.preset.one-word.name": {
+    "description": "Caption style gallery: the name of the built-in style \"One Word\" (one-word)."
+  },
+  "look.preset.one-word.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"One Word\", what it looks like."
+  },
+  "look.preset.comic.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Comic\" (comic)."
+  },
+  "look.preset.comic.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Comic\", what it looks like."
+  },
+  "look.preset.stacked.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Stacked\" (stacked)."
+  },
+  "look.preset.stacked.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Stacked\", what it looks like."
+  },
+  "look.preset.highlight-box.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Highlight Box\" (highlight-box)."
+  },
+  "look.preset.highlight-box.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Highlight Box\", what it looks like."
+  },
+  "look.preset.neon.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Neon\" (neon)."
+  },
+  "look.preset.neon.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Neon\", what it looks like."
+  },
+  "look.preset.outline.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Outline\" (outline)."
+  },
+  "look.preset.outline.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Outline\", what it looks like."
+  },
+  "look.preset.handwritten.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Handwritten\" (handwritten)."
+  },
+  "look.preset.handwritten.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Handwritten\", what it looks like."
+  },
+  "look.preset.bubble-speech.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Speech Bubble\" (bubble-speech)."
+  },
+  "look.preset.bubble-speech.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Speech Bubble\", what it looks like."
+  },
+  "look.preset.chat.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Chat\" (chat)."
+  },
+  "look.preset.chat.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Chat\", what it looks like."
+  },
+  "look.preset.cinema.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Cinema\" (cinema)."
+  },
+  "look.preset.cinema.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Cinema\", what it looks like."
+  },
+  "look.preset.gold.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Gold\" (gold)."
+  },
+  "look.preset.gold.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Gold\", what it looks like."
+  },
+  "look.preset.circle.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Circle\" (circle)."
+  },
+  "look.preset.circle.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Circle\", what it looks like."
+  },
+  "look.preset.gradient.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Gradient\" (gradient)."
+  },
+  "look.preset.gradient.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Gradient\", what it looks like."
+  },
+  "look.preset.stickers.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Stickers\" (stickers)."
+  },
+  "look.preset.stickers.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Stickers\", what it looks like."
+  },
+  "look.preset.spotlight-word.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Spotlight Word\" (spotlight-word)."
+  },
+  "look.preset.spotlight-word.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Spotlight Word\", what it looks like."
+  },
+  "look.preset.retro-pixel.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Retro Pixel\" (retro-pixel)."
+  },
+  "look.preset.retro-pixel.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Retro Pixel\", what it looks like."
+  },
+  "look.preset.block-3d.name": {
+    "description": "Caption style gallery: the name of the built-in style \"3D Block\" (block-3d)."
+  },
+  "look.preset.block-3d.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"3D Block\", what it looks like."
+  },
+  "look.preset.bubble-round.name": {
+    "description": "Caption style gallery: the name of the built-in style \"Bubble\" (bubble-round)."
+  },
+  "look.preset.bubble-round.description": {
+    "description": "Caption style gallery: tooltip of the built-in style \"Bubble\", what it looks like."
+  },
+  "look.classic.clean.name": {
+    "description": "Caption style gallery, Classic: the name of the classic style \"Clean\"."
+  },
+  "look.classic.clean.description": {
+    "description": "Caption style gallery, Classic: tooltip of the classic style \"Clean\"."
+  },
+  "look.classic.boxed.name": {
+    "description": "Caption style gallery, Classic: the name of the classic style \"Boxed\"."
+  },
+  "look.classic.boxed.description": {
+    "description": "Caption style gallery, Classic: tooltip of the classic style \"Boxed\"."
+  },
+  "look.classic.karaoke.name": {
+    "description": "Caption style gallery, Classic: the name of the classic style \"Karaoke\"."
+  },
+  "look.classic.karaoke.description": {
+    "description": "Caption style gallery, Classic: tooltip of the classic style \"Karaoke\"."
+  },
+  "look.classic.minimal.name": {
+    "description": "Caption style gallery, Classic: the name of the classic style \"Minimal\"."
+  },
+  "look.classic.minimal.description": {
+    "description": "Caption style gallery, Classic: tooltip of the classic style \"Minimal\"."
+  },
+  "look.classic.bold.name": {
+    "description": "Caption style gallery, Classic: the name of the classic style \"Bold\"."
+  },
+  "look.classic.bold.description": {
+    "description": "Caption style gallery, Classic: tooltip of the classic style \"Bold\"."
+  },
+  "gallery.savedByYou": {
+    "description": "Tooltip of a style the user saved."
+  },
+  "gallery.brandDescription": {
+    "description": "Tooltip of the brand kit's style tile."
+  },
+  "gallery.yourSavedStyle": {
+    "description": "The look's name when its saved style was deleted."
+  },
+  "gallery.yourStyle": {
+    "description": "The look's name when it comes from no known style."
+  },
+  "gallery.tileLabel": {
+    "description": "Accessible name of a style tile: its name, its group and what it looks like, starting lower case."
+  },
+  "gallery.suggested.camera": {
+    "description": "Read by screen readers for the Suggested badge."
+  },
+  "gallery.suggested.tall": {
+    "description": "Read by screen readers for the Suggested badge."
+  },
+  "gallery.suggested.wide": {
+    "description": "Read by screen readers for the Suggested badge."
+  },
+  "gallery.deleted": {
+    "description": "Notice after a saved caption style was deleted (an Undo button follows).",
+    "user": [
+      "name"
+    ]
+  },
+  "gallery.undo": {
+    "description": "Button of the notice after a saved style was deleted."
+  },
+  "gallery.notDeleted": {
+    "description": "Notice when a saved style could not be deleted."
+  },
+  "gallery.showFor": {
+    "description": "Accessible name of the gallery's filter chips."
+  },
+  "gallery.label": {
+    "description": "Accessible name of the gallery of caption styles."
+  },
+  "gallery.currentLabel": {
+    "description": "Accessible name of the tile of the project's own classic style."
+  },
+  "gallery.current": {
+    "description": "Under the tile of the project's own classic style."
+  },
+  "gallery.suggestedBadge": {
+    "description": "Badge on the style the gallery suggests."
+  },
+  "gallery.fewer": {
+    "description": "Gallery button that shows two rows again."
+  },
+  "gallery.all": {
+    "description": "Gallery button that shows every style."
+  },
+  "gallery.playLabel": {
+    "description": "Tooltip and name of the gallery's Play button.",
+    "user": [
+      "name"
+    ]
+  },
+  "gallery.deleteName": {
+    "description": "Gallery button that deletes the saved style that has the focus.",
+    "user": [
+      "name"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ import { DEFAULT_GREAT_OPTIONS, greatNotice, planCaptionsGreat, planCaptionsGrea
 import { readCaptionStudio } from '../../../shared/captions/studioData'
 import type { BrandKit } from '../../../shared/editor/brandKit'
 import type { EditStore } from '../../../shared/editor/editStore'
+import { t } from '../../../shared/i18n/t'
 import type { CaptionStudio, Project } from '../../../shared/types'
 import { keepVersionBefore } from '../versions/autoVersion'
 
@@ -120,7 +121,7 @@ async function requestMarks(project: Project, provider: string, tidy: { cleanup:
   signal.addEventListener('abort', stop)
   try {
     const result = await window.api.aiText(provider, request, id)
-    if (result.task !== 'marks') throw new Error('The AI provider answered another task.')
+    if (result.task !== 'marks') throw new Error(t('captions.ai.wrongTask'))
     return { answer: result.answer, sent }
   } finally {
     signal.removeEventListener('abort', stop)

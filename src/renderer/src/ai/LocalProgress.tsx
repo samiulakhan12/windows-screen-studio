@@ -13,8 +13,10 @@
  */
 import type { AiTextTask, NamesRequest, TextChoice } from '../../../shared/api/ai'
 import type { LocalAiProgress, LocalAiState } from '../../../shared/api/localAi'
+import { fmt } from '../../../shared/i18n/fmt'
 import { LOCAL_MODELS } from '../../../shared/localAi/catalog'
 import { LOCAL_MESSAGES, progressWords, timeLeft } from '../../../shared/localAi/messages'
+import { t, type MessageKey } from '../../../shared/i18n/t'
 import { useStopFocus } from '../editor/returnFocus'
 import { localNote, modelInUse, useLocalAi, useLocalAiProgress } from './localAiState'
 import './localAi.css'
@@ -26,24 +28,26 @@ export function memoryLow(state: LocalAiState): boolean {
   return !!spec && state.pc.freeMemBytes < spec.peakMB * 2 ** 20 + 2 ** 30
 }
 
-const PHASE_WORDS: Record<LocalAiProgress['phase'], string> = {
-  waiting: LOCAL_MESSAGES.waiting,
-  loading: 'On this PC: loading the model',
-  reading: 'On this PC: reading the text',
-  writing: 'On this PC: writing'
+const PHASE_WORDS: Record<Exclude<LocalAiProgress['phase'], 'waiting'>, MessageKey> = {
+  loading: 'captions.ai.local.phase.loading',
+  reading: 'captions.ai.local.phase.reading',
+  writing: 'captions.ai.local.phase.writing'
 }
+
+/** The phase as the live region says it once. */
+const phaseWords = (phase: LocalAiProgress['phase']): string => (phase === 'waiting' ? LOCAL_MESSAGES.waiting : t(PHASE_WORDS[phase]))
 
 /** The progress bar's value text (§14): "Reading, 45 percent", "Writing, about 2 minutes left". */
 export function progressValueText(p: LocalAiProgress): string {
   switch (p.phase) {
     case 'waiting':
-      return 'Waiting for AI on this PC'
+      return t('captions.ai.local.value.waiting')
     case 'loading':
-      return 'Loading the model'
+      return t('captions.ai.local.value.loading')
     case 'reading':
-      return `Reading, ${p.total > 0 ? Math.min(100, Math.round((p.done / p.total) * 100)) : 0} percent`
+      return t('captions.ai.local.value.reading', { percent: fmt.count(p.total > 0 ? Math.min(100, Math.round((p.done / p.total) * 100)) : 0) })
     case 'writing':
-      return `Writing, ${timeLeft(p.secondsLeft ?? 0)}`
+      return t('captions.ai.local.value.writing', { left: timeLeft(p.secondsLeft ?? 0) })
   }
 }
 
@@ -64,21 +68,21 @@ export function LocalProgress(props: { requestId: string | null; onStop(): void;
   return (
     <div className="local-progress" data-testid="local-progress" data-phase={progress.phase}>
       <span className="sr-only" role="status" aria-live="polite">
-        {PHASE_WORDS[progress.phase]}
+        {phaseWords(progress.phase)}
       </span>
       <span className="local-progress-text" aria-hidden="true">
         {progressWords(progress)}
         {low ? ` · ${LOCAL_MESSAGES.lowMemory}` : ''}
       </span>
-      <progress className="local-progress-bar" max={1} {...(fraction !== null ? { value: fraction } : {})} aria-label="AI on this PC" aria-valuetext={progressValueText(progress)} />
+      <progress className="local-progress-bar" max={1} {...(fraction !== null ? { value: fraction } : {})} aria-label={t('captions.ai.local.bar')} aria-valuetext={progressValueText(progress)} />
       <button
         type="button"
         className="btn ghost settings-small"
         onClick={props.onStop}
         {...stopFocus}
-        aria-label="Stop AI on this PC"
+        aria-label={t('captions.ai.local.stopLabel')}
       >
-        Stop
+        {t('common.action.stop')}
       </button>
     </div>
   )

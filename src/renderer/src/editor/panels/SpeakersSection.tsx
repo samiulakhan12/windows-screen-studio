@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { cleanSpeakerName, SPEAKER_NAME_MAX, clearSpeakers, nextSpeakerName, renameSpeaker, setSpeaker, SPEAKER_COPY, speakersOf, stemSpeakers } from '../../../../shared/captions/speakers'
+import { cleanSpeakerName, SPEAKER_NAME_MAX, clearSpeakers, nextSpeakerName, renameSpeaker, setSpeaker, speakersOf, stemSpeakers } from '../../../../shared/captions/speakers'
 import { captionsOf } from '../../../../shared/captions/settings'
+import { t } from '../../../../shared/i18n/t'
+import { askNow } from '../askNow'
+import { speakerCopy } from '../captionWords'
 import type { CaptionSegment, Project } from '../../../../shared/types'
 import { loadAudioAnalysis } from '../audioAnalysis'
 import { useEditor } from '../context'
@@ -41,60 +44,62 @@ export function SpeakersSection({ project, onNotice }: { project: Project; onNot
     const next = renameSpeaker(store.state.transcript?.segments ?? [], from, to)
     if (!next) return
     store.update((p) => setSegments(p, next))
-    onNotice(SPEAKER_COPY.renamed(from, cleanSpeakerName(to)))
+    onNotice(speakerCopy.renamed(from, cleanSpeakerName(to)))
   }
   const remove = (): void => {
     const next = clearSpeakers(store.state.transcript?.segments ?? [])
     if (!next) return
     store.update((p) => setSegments(p, next))
-    onNotice(SPEAKER_COPY.removed)
+    onNotice(speakerCopy.removed)
   }
   const fromStems = async (): Promise<void> => {
     if (busy) return
-    if (speakers.length && !window.confirm(SPEAKER_COPY.replaceQuestion)) return
+    // In English window.confirm answers at once (askNow), so the run starts in the click as before.
+    const answer = speakers.length ? askNow(speakerCopy.replaceQuestion, 'captions.speakers.replaceAction') : true
+    if (!(typeof answer === 'boolean' ? answer : await answer)) return
     setBusy(true)
     try {
       const levels = await loadAudioAnalysis(project.id, ['mic', 'system'])
-      if (!levels.mic || !levels.system) return onNotice(SPEAKER_COPY.levelsFailed)
+      if (!levels.mic || !levels.system) return onNotice(speakerCopy.levelsFailed)
       // On the captions as they are now (an edit made while measuring is kept).
       const r = stemSpeakers(store.state.transcript?.segments ?? [], levels.mic, levels.system)
-      if (!r.you && !r.others) return onNotice(SPEAKER_COPY.nothingHeard)
+      if (!r.you && !r.others) return onNotice(speakerCopy.nothingHeard)
       store.update((p) => setSegments(p, r.segments))
-      onNotice(SPEAKER_COPY.labelled(r.you, r.others))
+      onNotice(speakerCopy.labelled(r.you, r.others))
     } catch {
-      onNotice(SPEAKER_COPY.levelsFailed)
+      onNotice(speakerCopy.levelsFailed)
     } finally {
       if (live.current) setBusy(false)
     }
   }
 
   return (
-    <Section title={SPEAKER_COPY.title}>
+    <Section title={speakerCopy.title}>
       {speakers.length > 0 && (
         <ul className="speaker-list" data-testid="speaker-list">
           {/* Keyed by place, not name: a rename keeps the field (and the focus). */}
           {speakers.map((s, i) => (
             <li key={i} className="speaker-row">
               <SpeakerName name={s.name} onRename={(to) => rename(s.name, to)} />
-              <span className="hint">{SPEAKER_COPY.count(s.count)}</span>
+              <span className="hint">{speakerCopy.count(s.count)}</span>
             </li>
           ))}
         </ul>
       )}
-      {!speakers.length && !stems && <p className="hint">{SPEAKER_COPY.none}</p>}
+      {!speakers.length && !stems && <p className="hint">{speakerCopy.none}</p>}
       <div className="row start">
         {stems && (
-          <button className="btn small" disabled={busy || !segments.length} title={SPEAKER_COPY.labelStemsTitle} onClick={() => void fromStems()}>
-            {busy ? 'Working…' : SPEAKER_COPY.labelStems}
+          <button className="btn small" disabled={busy || !segments.length} title={speakerCopy.labelStemsTitle} onClick={() => void fromStems()}>
+            {busy ? t('common.state.working') : speakerCopy.labelStems}
           </button>
         )}
         {speakers.length > 0 && (
           <button className="btn small ghost" onClick={remove}>
-            {SPEAKER_COPY.remove}
+            {speakerCopy.remove}
           </button>
         )}
       </div>
-      {stems && <p className="hint">{SPEAKER_COPY.mixedHint}</p>}
+      {stems && <p className="hint">{speakerCopy.mixedHint}</p>}
     </Section>
   )
 }
@@ -109,7 +114,7 @@ function SpeakerName({ name, onRename }: { name: string; onRename: (to: string) 
   return (
     <input
       className="tc-input speaker-name"
-      aria-label={SPEAKER_COPY.nameLabel(name)}
+      aria-label={speakerCopy.nameLabel(name)}
       value={draft}
       maxLength={SPEAKER_NAME_MAX}
       onChange={(e) => setDraft(e.target.value)}
@@ -141,7 +146,7 @@ export function CaptionSpeakerSelect({ segments, seg, at }: { segments: readonly
   return (
     <select
       className="captions-select caption-speaker"
-      aria-label={SPEAKER_COPY.selectLabel(at)}
+      aria-label={speakerCopy.selectLabel(at)}
       value={seg.speaker ?? ''}
       onChange={(e) => {
         const name = e.target.value === NEW ? fresh : e.target.value
@@ -149,13 +154,13 @@ export function CaptionSpeakerSelect({ segments, seg, at }: { segments: readonly
         if (next) store.update((p) => setSegments(p, next))
       }}
     >
-      <option value="">{SPEAKER_COPY.noSpeaker}</option>
+      <option value="">{speakerCopy.noSpeaker}</option>
       {names.map((n) => (
         <option key={n} value={n}>
           {n}
         </option>
       ))}
-      <option value={NEW}>{SPEAKER_COPY.newSpeaker(fresh)}</option>
+      <option value={NEW}>{speakerCopy.newSpeaker(fresh)}</option>
     </select>
   )
 }
@@ -169,8 +174,8 @@ export function ShowSpeakerToggle({ project }: { project: Project }): JSX.Elemen
   const s = captionsOf(project)
   return (
     <Toggle
-      label={SPEAKER_COPY.showOnVideo}
-      title={SPEAKER_COPY.showOnVideoTitle}
+      label={speakerCopy.showOnVideo}
+      title={speakerCopy.showOnVideoTitle}
       checked={s.showSpeaker === true}
       onChange={(on) =>
         store.update((p) => {
@@ -198,8 +203,8 @@ export function SpeakerNamesToggle({ project }: { project: Project }): JSX.Eleme
   if (!project.transcript?.segments.some((s) => s.speaker)) return null
   return (
     <Toggle
-      label={SPEAKER_COPY.inFiles}
-      title={SPEAKER_COPY.inFilesTitle}
+      label={speakerCopy.inFiles}
+      title={speakerCopy.inFilesTitle}
       checked={on}
       onChange={(v) => {
         namesInFiles = v
