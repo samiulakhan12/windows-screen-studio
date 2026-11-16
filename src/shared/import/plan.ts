@@ -295,10 +295,19 @@ export function importArgs(base: readonly string[], plan: Pick<ImportPlan, 'vide
   return args
 }
 
-/** "About 3 min left" from the time spent and the share done; null while too early to tell (§4.5). */
-export function etaText(elapsedSeconds: number, progress: number | null): string | null {
+/**
+ * The whole minutes left from the time spent and the share done, 0 for less than a minute; null while
+ * too early to tell (§4.5). The import dialog says it in the UI language.
+ */
+export function etaMinutes(elapsedSeconds: number, progress: number | null): number | null {
   if (progress === null || !(progress >= 0.03) || progress >= 1 || !(elapsedSeconds >= 5)) return null
   const left = (elapsedSeconds * (1 - progress)) / progress
-  if (left < 60) return 'Less than a minute left'
-  return `About ${Math.round(left / 60)} min left`
+  return left < 60 ? 0 : Math.round(left / 60)
+}
+
+/** "About 3 min left" from the time spent and the share done; null while too early to tell (§4.5). English (main imports this module). */
+export function etaText(elapsedSeconds: number, progress: number | null): string | null {
+  const minutes = etaMinutes(elapsedSeconds, progress)
+  if (minutes === null) return null
+  return minutes === 0 ? 'Less than a minute left' : `About ${minutes} min left`
 }

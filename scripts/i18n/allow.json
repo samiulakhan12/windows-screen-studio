@@ -62,6 +62,30 @@
       "kind": "sink",
       "text": "The UI font took too long",
       "reason": "Why the UI language fell back to English, written only to the log (section 9.4 step 4: any failure renders English and logs the reason); never shown."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer maps 0:v:0",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer maps 0:a:0?",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer ends -af with aresample",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
+    },
+    {
+      "file": "src/shared/import/plan.ts",
+      "kind": "sink",
+      "text": "proxyArgs no longer sets -vf",
+      "reason": "A programming check of the import's ffmpeg arguments (proxyArgs changed shape): thrown in main while it builds the command, for developers and tests; never a user's mistake."
     }
   ]
 }
