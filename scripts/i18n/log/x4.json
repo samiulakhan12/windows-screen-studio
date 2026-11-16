@@ -5498,5 +5498,332 @@
     "n": "1000"
    }
   ]
+ },
+ {
+  "key": "review.share.title",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 91,
+  "english": "Share",
+  "sample": {}
+ },
+ {
+  "key": "review.share.intro",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 92,
+  "english": "Copy exports to your cloud folders and tell your team in a chat. Nothing goes through a Flown server.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.readError",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 95,
+  "english": "Could not read the share settings: disk not ready",
+  "sample": {
+   "error": "disk not ready"
+  }
+ },
+ {
+  "key": "review.share.folders",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 99,
+  "english": "Cloud folders",
+  "sample": {}
+ },
+ {
+  "key": "review.share.noFolders",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 100,
+  "english": "No OneDrive, Dropbox or Google Drive folder was found on this PC. Add any folder instead.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.useName",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 114,
+  "english": "Use OneDrive",
+  "sample": {
+   "name": "OneDrive"
+  }
+ },
+ {
+  "key": "common.action.use",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 115,
+  "english": "Use",
+  "sample": {}
+ },
+ {
+  "key": "common.action.removeName",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 125,
+  "english": "Remove OneDrive",
+  "sample": {
+   "name": "OneDrive"
+  }
+ },
+ {
+  "key": "common.action.remove",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 127,
+  "english": "Remove",
+  "sample": {}
+ },
+ {
+  "key": "review.share.foldersHint",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 135,
+  "english": "Videos go into a Flown folder inside. Your cloud app uploads them.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.addFolder",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 138,
+  "english": "+ Add a folder…",
+  "sample": {}
+ },
+ {
+  "key": "review.share.looking",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 141,
+  "english": "Looking…",
+  "sample": {}
+ },
+ {
+  "key": "review.share.lookAgain",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 141,
+  "english": "Look again",
+  "sample": {}
+ },
+ {
+  "key": "review.share.chats",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 145,
+  "english": "Chats",
+  "sample": {}
+ },
+ {
+  "key": "review.share.noChats",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 146,
+  "english": "No chat yet.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.webhookMasked",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 157,
+  "english": "Webhook (only the end is shown)",
+  "sample": {}
+ },
+ {
+  "key": "review.share.unreadable",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 161,
+  "english": "The webhook cannot be read on this PC: remove it and paste it again.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.posting",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 165,
+  "english": "Posting a test message…",
+  "sample": {}
+ },
+ {
+  "key": "review.share.removeQuestion",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 171,
+  "english": "Remove “#team-videos”? Its webhook is deleted from this PC.",
+  "sample": {
+   "name": "#team-videos"
+  }
+ },
+ {
+  "key": "common.action.cancel",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 192,
+  "english": "Cancel",
+  "sample": {}
+ },
+ {
+  "key": "review.share.testName",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 197,
+  "english": "Test #team-videos",
+  "sample": {
+   "name": "#team-videos"
+  }
+ },
+ {
+  "key": "review.share.test",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 198,
+  "english": "Test",
+  "sample": {}
+ },
+ {
+  "key": "review.share.addChatButton",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 225,
+  "english": "+ Add a chat",
+  "sample": {}
+ },
+ {
+  "key": "review.share.addChat",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 257,
+  "english": "Add a chat",
+  "sample": {}
+ },
+ {
+  "key": "common.label.name",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 259,
+  "english": "Name",
+  "sample": {}
+ },
+ {
+  "key": "review.share.namePlaceholder",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 260,
+  "english": "#team-videos",
+  "sample": {}
+ },
+ {
+  "key": "review.share.webhookUrl",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 264,
+  "english": "Webhook URL",
+  "sample": {}
+ },
+ {
+  "key": "review.share.webhookPlaceholder",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 272,
+  "english": "https://hooks.slack.com/services/…",
+  "sample": {}
+ },
+ {
+  "key": "review.share.hideWebhook",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 279,
+  "english": "Hide the webhook",
+  "sample": {}
+ },
+ {
+  "key": "review.share.showWebhook",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 279,
+  "english": "Show the webhook",
+  "sample": {}
+ },
+ {
+  "key": "common.action.hide",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 280,
+  "english": "Hide",
+  "sample": {}
+ },
+ {
+  "key": "common.action.show",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 280,
+  "english": "Show",
+  "sample": {}
+ },
+ {
+  "key": "review.share.webhookHint",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 284,
+  "english": "Paste an incoming webhook from Slack, Discord or Microsoft Teams. Flown posts the title, the length and where the video was saved. The video itself is never uploaded. It is encrypted on this PC.",
+  "sample": {}
+ },
+ {
+  "key": "common.state.saving",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 297,
+  "english": "Saving…",
+  "sample": {}
+ },
+ {
+  "key": "review.share.addChatSubmit",
+  "file": "src/renderer/src/share/ShareSection.tsx",
+  "line": 297,
+  "english": "Add chat",
+  "sample": {}
+ },
+ {
+  "key": "review.share.afterExport",
+  "file": "src/renderer/src/share/ShareAfterExport.tsx",
+  "line": 15,
+  "english": "After export",
+  "sample": {}
+ },
+ {
+  "key": "review.share.afterExportOne",
+  "file": "src/renderer/src/share/ShareAfterExport.tsx",
+  "line": 18,
+  "english": "After export works when one file is exported.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.foundFolders",
+  "file": "src/renderer/src/share/ShareAfterExport.tsx",
+  "line": 22,
+  "english": "Flown found OneDrive, Dropbox on this PC. Check them in Settings › Share to copy exports there.",
+  "sample": {
+   "folders": "OneDrive, Dropbox"
+  }
+ },
+ {
+  "key": "review.share.addTarget",
+  "file": "src/renderer/src/share/ShareAfterExport.tsx",
+  "line": 23,
+  "english": "Add a cloud folder or a chat in Settings › Share.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.remembered",
+  "file": "src/renderer/src/share/ShareAfterExport.tsx",
+  "line": 38,
+  "english": "Remembered for this destination. The video itself is never posted to a chat.",
+  "sample": {}
+ },
+ {
+  "key": "review.share.done",
+  "file": "src/renderer/src/share/ShareDone.tsx",
+  "line": 56,
+  "english": "Share",
+  "sample": {}
+ },
+ {
+  "key": "common.action.tryAgain",
+  "file": "src/renderer/src/share/ShareDone.tsx",
+  "line": 75,
+  "english": "Try again",
+  "sample": {}
+ },
+ {
+  "key": "common.action.showInFolder",
+  "file": "src/renderer/src/share/ShareDone.tsx",
+  "line": 80,
+  "english": "Show in folder",
+  "sample": {}
+ },
+ {
+  "key": "review.share.copyLink",
+  "file": "src/renderer/src/share/ShareDone.tsx",
+  "line": 85,
+  "english": "Copy link",
+  "sample": {}
+ },
+ {
+  "key": "review.share.cancel",
+  "file": "src/renderer/src/share/ShareDone.tsx",
+  "line": 97,
+  "english": "Cancel share",
+  "sample": {}
  }
 ]

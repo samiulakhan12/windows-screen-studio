@@ -1746,5 +1746,135 @@
   },
   "search.moreMoments": {
     "description": "Home's search of every recording: the row that shows more found moments of a recording."
+  },
+  "share.title": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the section's title (a noun: sharing)."
+  },
+  "share.intro": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): what the section does."
+  },
+  "share.readError": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the settings could not be read; {error} is the reason."
+  },
+  "share.folders": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the heading and list of OneDrive, Dropbox or Google Drive folders on this PC."
+  },
+  "share.noFolders": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): no cloud folder was found. OneDrive, Dropbox and Google Drive are product names.",
+    "dnt": [
+      "OneDrive",
+      "Dropbox",
+      "Google Drive"
+    ]
+  },
+  "share.useName": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a folder's switch for screen readers: copy exports there; {name} is the folder's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.foldersHint": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): under the cloud folders."
+  },
+  "share.addFolder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that picks any folder to copy exports to."
+  },
+  "share.looking": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): while cloud folders are looked for again."
+  },
+  "share.lookAgain": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that looks for cloud folders again."
+  },
+  "share.chats": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the heading and list of team chats (Slack, Discord, Microsoft Teams webhooks)."
+  },
+  "share.noChats": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): no chat was added."
+  },
+  "share.webhookMasked": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the tooltip of a chat's webhook address, shown masked."
+  },
+  "share.unreadable": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a chat whose saved webhook cannot be decrypted."
+  },
+  "share.posting": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): while Test posts a message to a chat."
+  },
+  "share.removeQuestion": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the question before a chat is removed; {name} is the chat's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.testName": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): a chat's Test button for screen readers; {name} is the chat's name.",
+    "user": [
+      "name"
+    ]
+  },
+  "share.test": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that posts a test message to a chat (a verb)."
+  },
+  "share.addChatButton": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that opens the form to add a chat."
+  },
+  "share.addChat": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the title of the form that adds a chat."
+  },
+  "share.namePlaceholder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): an example chat name in the Name field (a Slack channel name)."
+  },
+  "share.webhookUrl": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the field for a chat's incoming webhook address.",
+    "dnt": [
+      "URL"
+    ]
+  },
+  "share.webhookPlaceholder": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): an example webhook address. Keep it as it is.",
+    "dnt": [
+      "https://hooks.slack.com/services/"
+    ]
+  },
+  "share.hideWebhook": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that hides the webhook address being typed."
+  },
+  "share.showWebhook": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that shows the webhook address being typed."
+  },
+  "share.webhookHint": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): under the webhook field. Slack, Discord and Microsoft Teams are product names.",
+    "dnt": [
+      "Slack",
+      "Discord",
+      "Microsoft Teams"
+    ]
+  },
+  "share.addChatSubmit": {
+    "description": "Settings › Share (copy exports to cloud folders and post to team chats): the button that saves the new chat."
+  },
+  "share.afterExport": {
+    "description": "The export dialog's settings: what Flown does with the file when the export finishes (copy to a cloud folder, post to a chat)."
+  },
+  "share.afterExportOne": {
+    "description": "The export dialog: After export is off for several files."
+  },
+  "share.foundFolders": {
+    "description": "The export dialog: cloud folders were found but not checked yet; {folders} lists their names (\"OneDrive, Dropbox\"). Settings › Share is a place in the app."
+  },
+  "share.addTarget": {
+    "description": "The export dialog: no place to share to yet."
+  },
+  "share.remembered": {
+    "description": "The export dialog: under the After export choices (a destination is an export preset)."
+  },
+  "share.done": {
+    "description": "The export's done view: the heading of what was shared (a noun)."
+  },
+  "share.copyLink": {
+    "description": "The export's done view: copies the link of a file copied to a cloud folder."
+  },
+  "share.cancel": {
+    "description": "The export's done view: stops copying and posting."
   }
 }
