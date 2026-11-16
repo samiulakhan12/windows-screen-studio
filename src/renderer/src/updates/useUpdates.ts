@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { UpdateInstallResult } from '../../../shared/api/updates'
 import { fmt } from '../../../shared/i18n/fmt'
 import type { UpdateState } from '../../../shared/updates/updates'
+import { t } from '../../../shared/i18n/t'
 
 /** Flown's update state (NW-15, docs/design/auto-update.md): what main last said, null until it answers. */
 export function useUpdates(): UpdateState | null {
@@ -74,5 +75,5 @@ export function checkedAt(iso: string, now = new Date()): string {
   const d = new Date(iso)
   if (!Number.isFinite(d.getTime())) return ''
   const time = fmt.time(d.getTime())
-  return d.toDateString() === now.toDateString() ? time : `${fmt.date(d.getTime(), 'day')}, ${time}`
+  return d.toDateString() === now.toDateString() ? time : t('settings.updates.dayTime', { day: fmt.date(d.getTime(), 'day'), time })
 }

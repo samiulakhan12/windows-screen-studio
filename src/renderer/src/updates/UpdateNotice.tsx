@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { installUpdate, isPutOff, putOff, useRefusal, useUpdates } from './useUpdates'
 import './updates.css'
+import { t } from '../../../shared/i18n/t'
 
 /**
  * Home's title bar, once an update is downloaded (NW-15, docs/design/auto-update.md §1.7): "Flown
@@ -19,7 +20,7 @@ export function UpdateNotice(): JSX.Element {
     <div ref={slot} className="update-slot" aria-live="polite">
       {show && (
         <Pill slot={slot}>
-          <span className="update-pill-text">{refused ?? `Flown ${s.version} is ready. It installs when you close Flown.`}</span>
+          <span className="update-pill-text">{refused ?? t('main.updates.ready', { version: s.version ?? '' })}</span>
           <button
             type="button"
             className="btn primary update-pill-btn"
@@ -27,7 +28,7 @@ export function UpdateNotice(): JSX.Element {
               void installUpdate().then((r) => setRefused(r.ok ? null : r.reason), () => undefined)
             }}
           >
-            Restart now
+            {t('settings.updates.restart')}
           </button>
           <button
             type="button"
@@ -37,7 +38,7 @@ export function UpdateNotice(): JSX.Element {
               setTick((n) => n + 1)
             }}
           >
-            Later
+            {t('common.action.later')}
           </button>
         </Pill>
       )}

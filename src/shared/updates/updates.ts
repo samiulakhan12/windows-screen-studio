@@ -2,6 +2,8 @@
  * Flown's own updates (NW-15, docs/design/auto-update.md): the state Settings › About and Home
  * show, the events that move it, and its plain copy. Pure: main runs it, the tests drive it.
  */
+import { fmt } from '../i18n/fmt'
+import { t } from '../i18n/t'
 
 /** First automatic check after start-up. */
 export const FIRST_CHECK_MS = 30_000
@@ -39,17 +41,34 @@ export type UpdaterEvent =
   | { type: 'downloaded'; version: string; notes?: unknown }
   | { type: 'error'; stage: 'check' | 'download'; message: string }
 
+/** The updates' plain copy in the UI language, each read when it is shown (main sets the errors and the refusal; Settings and Home show them). */
 export const UPDATE_COPY = {
-  disabled: 'Updates are turned off in this build.',
-  never: 'Flown has not looked for updates yet.',
-  upToDate: 'Flown is up to date.',
-  checking: 'Checking for updates…',
-  checkFailed: "Couldn't check for updates. Check your internet connection and try again.",
-  downloadFailed: "The update couldn't be downloaded. Flown will try again later.",
+  get disabled(): string {
+    return t('main.updates.disabled')
+  },
+  get never(): string {
+    return t('main.updates.never')
+  },
+  get upToDate(): string {
+    return t('main.updates.upToDate')
+  },
+  get checking(): string {
+    return t('main.updates.checking')
+  },
+  get checkFailed(): string {
+    return t('main.updates.checkFailed')
+  },
+  get downloadFailed(): string {
+    return t('main.updates.downloadFailed')
+  },
   /** The same, when automatic updates are off: nothing tries again by itself. */
-  downloadFailedManual: "The update couldn't be downloaded. Try again.",
-  notReady: 'There is no update ready to install.'
-} as const
+  get downloadFailedManual(): string {
+    return t('main.updates.downloadFailedManual')
+  },
+  get notReady(): string {
+    return t('main.updates.notReady')
+  }
+}
 
 const VERSION_RE = /^\d{1,6}\.\d{1,6}\.\d{1,6}$/
 
@@ -170,11 +189,11 @@ export function statusLine(s: UpdateState): string {
     case 'checking':
       return UPDATE_COPY.checking
     case 'available':
-      return `Flown ${s.version} is available.`
+      return t('main.updates.available', { version: s.version ?? '' })
     case 'downloading':
-      return `Downloading Flown ${s.version}… ${s.percent ?? 0}%`
+      return t('main.updates.downloadingPercent', { version: s.version ?? '', percent: fmt.count(s.percent ?? 0) })
     case 'ready':
-      return `Flown ${s.version} is ready. It installs when you close Flown.`
+      return t('main.updates.ready', { version: s.version ?? '' })
     case 'error':
       // Only automatic updates try a failed download again by themselves (the next check).
       if (s.error === UPDATE_COPY.downloadFailed && !s.auto) return UPDATE_COPY.downloadFailedManual
@@ -188,7 +207,7 @@ export function statusLine(s: UpdateState): string {
  * once, not at every percent.
  */
 export function spokenStatus(s: UpdateState): string {
-  return s.phase === 'downloading' ? `Downloading Flown ${s.version}…` : statusLine(s)
+  return s.phase === 'downloading' ? t('main.updates.downloading', { version: s.version ?? '' }) : statusLine(s)
 }
 
 /**
@@ -197,14 +216,33 @@ export function spokenStatus(s: UpdateState): string {
  */
 export type BusyKind = 'recording' | 'processing' | 'export' | 'captions' | 'analysis' | 'import' | 'voice' | 'copy' | 'share'
 
-export const BUSY_COPY: Record<BusyKind, string> = {
-  recording: 'Stop the recording first.',
-  processing: 'Wait for the recording to finish processing.',
-  export: 'Finish or stop the export first.',
-  captions: 'Wait for the captions to finish, or stop them.',
-  analysis: 'Wait for the sound analysis to finish.',
-  import: 'Wait for the import to finish, or cancel it.',
-  voice: 'Wait for Clean voice to finish.',
-  copy: 'Wait for the copy to finish, or cancel it.',
-  share: 'Wait for the share to finish.'
+/** Why a restart waits, in the UI language: each reason is read when it is shown (main's refusals, Home's own check). */
+export const BUSY_COPY: Readonly<Record<BusyKind, string>> = {
+  get recording(): string {
+    return t('main.busy.recording')
+  },
+  get processing(): string {
+    return t('main.busy.processing')
+  },
+  get export(): string {
+    return t('main.busy.export')
+  },
+  get captions(): string {
+    return t('main.busy.captions')
+  },
+  get analysis(): string {
+    return t('main.busy.analysis')
+  },
+  get import(): string {
+    return t('main.busy.import')
+  },
+  get voice(): string {
+    return t('main.busy.voice')
+  },
+  get copy(): string {
+    return t('main.busy.copy')
+  },
+  get share(): string {
+    return t('main.busy.share')
+  }
 }

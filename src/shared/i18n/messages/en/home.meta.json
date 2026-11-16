@@ -1,1 +1,292 @@
-{}
+{
+  "phase.preparing": {
+    "description": "Home: the Start recording button while the recording is being prepared."
+  },
+  "phase.countdown": {
+    "description": "Home: the Start recording button during the countdown."
+  },
+  "phase.recording": {
+    "description": "Home: the Start recording button while recording."
+  },
+  "windowHint.full": {
+    "description": "Home: Windows tab: what a window recording gets on this PC."
+  },
+  "windowHint.effects": {
+    "description": "Home: Windows tab: what a window recording gets when native window capture is missing.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "windowHint.moving": {
+    "description": "Home: Windows tab: after what a window recording gets."
+  },
+  "windowHint.none": {
+    "description": "Home: Windows tab: window recordings get no effects on this PC; <link> is a button that switches to the Area tab.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "date.today": {
+    "description": "Home: a recording made today; {time} is a time (\"14:32\")."
+  },
+  "date.yesterday": {
+    "description": "Home: a recording made yesterday; {time} is a time."
+  },
+  "showInExplorer": {
+    "description": "Home: tooltip of the folder button of a recording (opens it in Windows File Explorer).",
+    "dnt": [
+      "Explorer"
+    ]
+  },
+  "showNameInExplorer": {
+    "description": "Home: accessible name of a recording’s folder button; {name} is the project’s name.",
+    "user": [
+      "name"
+    ],
+    "dnt": [
+      "Explorer"
+    ]
+  },
+  "privacySettings": {
+    "description": "Home: opens the Windows privacy setting that lets Flown use the microphone or camera."
+  },
+  "warn.micMissing": {
+    "description": "Home: notice when a recording starts without its microphone."
+  },
+  "warn.cameraMissing": {
+    "description": "Home: notice when a recording starts without its camera."
+  },
+  "recovering": {
+    "description": "Home: shown while an unfinished recording is turned into a project."
+  },
+  "unfinished.deleteQuestion": {
+    "description": "Home: the question before an unfinished recording is deleted; {size} is its size (\"1.5 GB\")."
+  },
+  "savingRecording": {
+    "description": "Home: shown while a finished recording is saved."
+  },
+  "target.areaOn": {
+    "description": "Home: New recording: the area picked and its screen; {width} and {height} are pixels.",
+    "digits": "latn"
+  },
+  "target.area": {
+    "description": "Home: the size of the area picked, in pixels.",
+    "digits": "latn"
+  },
+  "target.pickArea": {
+    "description": "Home: New recording: no area picked yet."
+  },
+  "target.pickWindow": {
+    "description": "Home: New recording: no window picked yet."
+  },
+  "target.noScreen": {
+    "description": "Home: New recording: no screen to record."
+  },
+  "sources.title": {
+    "description": "Home: the heading of the sources (screens, windows, an area)."
+  },
+  "sources.areaHint": {
+    "description": "Home: Area tab: how to pick an area."
+  },
+  "sources.windowHint": {
+    "description": "Home: Windows tab hint."
+  },
+  "sources.screenHint": {
+    "description": "Home: Screens tab hint."
+  },
+  "tab.screens": {
+    "description": "Home: the tab of screens to record."
+  },
+  "tab.windows": {
+    "description": "Home: the tab of app windows to record (not the operating system)."
+  },
+  "tab.area": {
+    "description": "Home: the tab for recording a part of a screen."
+  },
+  "sources.refresh": {
+    "description": "Home: accessible name of the button that lists the screens and windows again."
+  },
+  "sources.noWindows": {
+    "description": "Home: no app window to record."
+  },
+  "sources.noScreens": {
+    "description": "Home: no screen to record."
+  },
+  "sources.noWindowsHint": {
+    "description": "Home: under \"No windows found.\""
+  },
+  "sources.noScreensHint": {
+    "description": "Home: under \"No screens found.\""
+  },
+  "region.size": {
+    "description": "Home: Area tab: the size of the area picked, in pixels.",
+    "digits": "latn"
+  },
+  "region.change": {
+    "description": "Home: Area tab: picks the area again."
+  },
+  "unfinished.title": {
+    "description": "Home: the heading of recordings that did not finish (their footage was kept)."
+  },
+  "unfinished.intro": {
+    "description": "Home: under Unfinished recordings."
+  },
+  "unfinished.interrupted": {
+    "description": "Home: an unfinished recording stopped before it ended (Flown closed or the PC turned off)."
+  },
+  "unfinished.failed": {
+    "description": "Home: an unfinished recording whose processing failed."
+  },
+  "unfinished.recoverTitle": {
+    "description": "Home: tooltip of Recover and Retry."
+  },
+  "unfinished.recover": {
+    "description": "Home: turns an interrupted recording into a project."
+  },
+  "unfinished.retry": {
+    "description": "Home: processes a failed recording again."
+  },
+  "library.title": {
+    "description": "Home: the heading of the list of projects."
+  },
+  "library.empty": {
+    "description": "Home: there are no projects yet."
+  },
+  "library.emptyHint": {
+    "description": "Home: under \"Your recordings will show up here.\" \"Start recording\" names the button."
+  },
+  "library.deleteQuestion": {
+    "description": "Home: the question before a project is deleted; {name} is the project’s name.",
+    "user": [
+      "name"
+    ]
+  },
+  "record.title": {
+    "description": "Home: the heading of the recording panel."
+  },
+  "record.audioCamera": {
+    "description": "Home: accessible name of the group of sound and camera choices."
+  },
+  "record.microphone": {
+    "description": "Home: the microphone menu’s label; also a microphone with no name."
+  },
+  "record.noMicrophone": {
+    "description": "Home: record without a microphone."
+  },
+  "record.micLevel": {
+    "description": "Home: tooltip of the microphone’s level meter."
+  },
+  "record.micDisconnected": {
+    "description": "Home: the microphone picked is not connected."
+  },
+  "record.noCamera": {
+    "description": "Home: record without a camera."
+  },
+  "record.cameraDisconnected": {
+    "description": "Home: the camera picked is not connected."
+  },
+  "record.windowsOnly": {
+    "description": "Home: tooltip of System audio on other systems.",
+    "dnt": [
+      "Windows"
+    ]
+  },
+  "record.systemAudio": {
+    "description": "Home: records the sound the PC plays."
+  },
+  "record.keysTitle": {
+    "description": "Home: tooltip of Record keyboard activity. \"Ctrl + C\" is a keycap.",
+    "dnt": [
+      "Ctrl + C"
+    ]
+  },
+  "record.keys": {
+    "description": "Home: the switch that records shortcuts and when typing happens."
+  },
+  "record.keysHint": {
+    "description": "Home: under Record keyboard activity."
+  },
+  "record.frameRate": {
+    "description": "Home: the label of the frame rate choice (30 or 60 fps)."
+  },
+  "record.fps30": {
+    "description": "Home: tooltip of 30 fps."
+  },
+  "record.fps60": {
+    "description": "Home: tooltip of 60 fps."
+  },
+  "record.fps": {
+    "description": "Home: a frame rate choice; fps is never translated.",
+    "digits": "latn",
+    "dnt": [
+      "fps"
+    ]
+  },
+  "record.selectArea": {
+    "description": "Home: the Start recording button on the Area tab before an area is picked."
+  },
+  "record.start": {
+    "description": "Home: starts the recording."
+  },
+  "record.stopHintKeys": {
+    "description": "Home: how to stop a recording; {keys} is the stop hotkey, shown as keycaps (Ctrl Shift 2), never translated."
+  },
+  "record.stopHint": {
+    "description": "Home: how to stop a recording when no stop hotkey is set."
+  },
+  "finishLaterTitle": {
+    "description": "Home: tooltip of Finish later."
+  },
+  "finishLater": {
+    "description": "Home: stops processing a recording; it stays under Unfinished recordings."
+  },
+  "cameraBubble.drag": {
+    "description": "The camera bubble shown on the screen while recording: tooltip."
+  },
+  "cameraBubble.live": {
+    "description": "The camera bubble: accessible name of the live camera picture."
+  },
+  "cameraBubble.waiting": {
+    "description": "The camera bubble: shown until the camera’s picture arrives."
+  },
+  "cameraBubble.toolbar": {
+    "description": "The camera bubble: accessible name of its buttons."
+  },
+  "cameraBubble.sizeSmall": {
+    "description": "The camera bubble: accessible name of the small size button."
+  },
+  "cameraBubble.sizeMedium": {
+    "description": "The camera bubble: accessible name of the medium size button."
+  },
+  "cameraBubble.sizeLarge": {
+    "description": "The camera bubble: accessible name of the large size button."
+  },
+  "cameraBubble.small": {
+    "description": "The camera bubble: tooltip of the S size button."
+  },
+  "cameraBubble.medium": {
+    "description": "The camera bubble: tooltip of the M size button."
+  },
+  "cameraBubble.large": {
+    "description": "The camera bubble: tooltip of the L size button."
+  },
+  "cameraBubble.hide": {
+    "description": "The camera bubble: accessible name of its hide button."
+  },
+  "cameraBubble.hideTitle": {
+    "description": "The camera bubble: tooltip of its hide button."
+  },
+  "regionPicker.drag": {
+    "description": "The area picker over the screen: what to do."
+  },
+  "regionPicker.keys": {
+    "description": "The area picker: the keys that confirm and cancel. Enter and Esc are keycaps, never translated.",
+    "dnt": [
+      "Enter",
+      "Esc"
+    ]
+  },
+  "regionPicker.record": {
+    "description": "The area picker: confirms the area."
+  }
+}

@@ -1560,5 +1560,935 @@
     "line": 490,
     "english": "Save",
     "sample": {}
+  },
+  {
+    "key": "main.updates.disabled",
+    "file": "src/shared/updates/updates.ts",
+    "line": 46,
+    "english": "Updates are turned off in this build.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.never",
+    "file": "src/shared/updates/updates.ts",
+    "line": 49,
+    "english": "Flown has not looked for updates yet.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.upToDate",
+    "file": "src/shared/updates/updates.ts",
+    "line": 52,
+    "english": "Flown is up to date.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.checking",
+    "file": "src/shared/updates/updates.ts",
+    "line": 55,
+    "english": "Checking for updates…",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.checkFailed",
+    "file": "src/shared/updates/updates.ts",
+    "line": 58,
+    "english": "Couldn't check for updates. Check your internet connection and try again.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.downloadFailed",
+    "file": "src/shared/updates/updates.ts",
+    "line": 61,
+    "english": "The update couldn't be downloaded. Flown will try again later.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.downloadFailedManual",
+    "file": "src/shared/updates/updates.ts",
+    "line": 65,
+    "english": "The update couldn't be downloaded. Try again.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.notReady",
+    "file": "src/shared/updates/updates.ts",
+    "line": 68,
+    "english": "There is no update ready to install.",
+    "sample": {}
+  },
+  {
+    "key": "main.updates.available",
+    "file": "src/shared/updates/updates.ts",
+    "line": 191,
+    "english": "Flown 0.7.2 is available.",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "main.updates.downloadingPercent",
+    "file": "src/shared/updates/updates.ts",
+    "line": 193,
+    "english": "Downloading Flown 0.7.2… 42%",
+    "sample": {
+      "version": "0.7.2",
+      "percent": "42"
+    }
+  },
+  {
+    "key": "main.updates.ready",
+    "file": "src/shared/updates/updates.ts",
+    "line": 195,
+    "english": "Flown 0.7.2 is ready. It installs when you close Flown.",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "main.updates.downloading",
+    "file": "src/shared/updates/updates.ts",
+    "line": 209,
+    "english": "Downloading Flown 0.7.2…",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "main.busy.recording",
+    "file": "src/shared/updates/updates.ts",
+    "line": 221,
+    "english": "Stop the recording first.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.processing",
+    "file": "src/shared/updates/updates.ts",
+    "line": 224,
+    "english": "Wait for the recording to finish processing.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.export",
+    "file": "src/shared/updates/updates.ts",
+    "line": 227,
+    "english": "Finish or stop the export first.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.captions",
+    "file": "src/shared/updates/updates.ts",
+    "line": 230,
+    "english": "Wait for the captions to finish, or stop them.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.analysis",
+    "file": "src/shared/updates/updates.ts",
+    "line": 233,
+    "english": "Wait for the sound analysis to finish.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.import",
+    "file": "src/shared/updates/updates.ts",
+    "line": 236,
+    "english": "Wait for the import to finish, or cancel it.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.voice",
+    "file": "src/shared/updates/updates.ts",
+    "line": 239,
+    "english": "Wait for Clean voice to finish.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.copy",
+    "file": "src/shared/updates/updates.ts",
+    "line": 242,
+    "english": "Wait for the copy to finish, or cancel it.",
+    "sample": {}
+  },
+  {
+    "key": "main.busy.share",
+    "file": "src/shared/updates/updates.ts",
+    "line": 245,
+    "english": "Wait for the share to finish.",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.check",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 15,
+    "english": "Check for updates",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.download",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 17,
+    "english": "Download Flown 0.7.2",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "settings.updates.downloading",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 19,
+    "english": "Downloading…",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.restart",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 21,
+    "english": "Restart now",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.title",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 50,
+    "english": "Updates",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.lastChecked",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 54,
+    "english": "Last checked 10:42.",
+    "sample": {
+      "when": "10:42"
+    }
+  },
+  {
+    "key": "settings.updates.downloadingLabel",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 62,
+    "english": "Downloading Flown 0.7.2",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "settings.updates.auto",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 100,
+    "english": "Update Flown automatically",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.hint",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 103,
+    "english": "Flown looks for a new version on GitHub every few hours, downloads it in the background and installs it when you close Flown. The same check refreshes the list of suggested AI models.",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.notes",
+    "file": "src/renderer/src/updates/UpdatesBlock.tsx",
+    "line": 107,
+    "english": "What's new in 0.7.2",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "main.updates.ready",
+    "file": "src/renderer/src/updates/UpdateNotice.tsx",
+    "line": 23,
+    "english": "Flown 0.7.2 is ready. It installs when you close Flown.",
+    "sample": {
+      "version": "0.7.2"
+    }
+  },
+  {
+    "key": "settings.updates.restart",
+    "file": "src/renderer/src/updates/UpdateNotice.tsx",
+    "line": 31,
+    "english": "Restart now",
+    "sample": {}
+  },
+  {
+    "key": "common.action.later",
+    "file": "src/renderer/src/updates/UpdateNotice.tsx",
+    "line": 41,
+    "english": "Later",
+    "sample": {}
+  },
+  {
+    "key": "settings.updates.dayTime",
+    "file": "src/renderer/src/updates/useUpdates.ts",
+    "line": 78,
+    "english": "30 Oct, 10:42",
+    "sample": {
+      "day": "30 Oct",
+      "time": "10:42"
+    }
+  },
+  {
+    "key": "home.phase.preparing",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 93,
+    "english": "Preparing…",
+    "sample": {}
+  },
+  {
+    "key": "home.phase.countdown",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 93,
+    "english": "Starting…",
+    "sample": {}
+  },
+  {
+    "key": "home.phase.recording",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 93,
+    "english": "Recording…",
+    "sample": {}
+  },
+  {
+    "key": "home.windowHint.full",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 146,
+    "english": "Window recordings get auto zoom, click highlights and the smooth cursor.",
+    "sample": {}
+  },
+  {
+    "key": "home.windowHint.effects",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 146,
+    "english": "Window recordings get auto zoom and click highlights. The Windows cursor stays in the video, so there is no smooth cursor: native window capture is not available on this PC.",
+    "sample": {}
+  },
+  {
+    "key": "home.windowHint.moving",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 147,
+    "english": "Moving the window is fine; a resized window is fitted into its starting size.",
+    "sample": {}
+  },
+  {
+    "key": "home.windowHint.none",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 153,
+    "english": "Window recordings keep the Windows cursor in the video and have no auto zoom, click highlights or smooth cursor here. Record an area instead to get them.",
+    "sample": {}
+  },
+  {
+    "key": "home.date.today",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 301,
+    "english": "Today, 14:32",
+    "sample": {
+      "time": "14:32"
+    }
+  },
+  {
+    "key": "home.date.yesterday",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 302,
+    "english": "Yesterday, 09:10",
+    "sample": {
+      "time": "09:10"
+    }
+  },
+  {
+    "key": "home.showInExplorer",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 332,
+    "english": "Show in Explorer",
+    "sample": {}
+  },
+  {
+    "key": "home.showNameInExplorer",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 332,
+    "english": "Show Product tour in Explorer",
+    "sample": {
+      "name": "Product tour"
+    }
+  },
+  {
+    "key": "home.privacySettings",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 362,
+    "english": "Open privacy settings",
+    "sample": {}
+  },
+  {
+    "key": "home.warn.micMissing",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 644,
+    "english": "The selected microphone is not connected, so the recording has no microphone.",
+    "sample": {}
+  },
+  {
+    "key": "home.warn.cameraMissing",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 645,
+    "english": "The selected camera is not connected, so the recording has no camera.",
+    "sample": {}
+  },
+  {
+    "key": "home.recovering",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 685,
+    "english": "Recovering recording…",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.deleteQuestion",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 700,
+    "english": "Delete this unfinished recording (1.5 GB)? This cannot be undone.",
+    "sample": {
+      "size": "1.5 GB"
+    }
+  },
+  {
+    "key": "home.savingRecording",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 710,
+    "english": "Saving recording…",
+    "sample": {}
+  },
+  {
+    "key": "home.target.areaOn",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 730,
+    "english": "Area 1280 × 720 on Entire screen",
+    "sample": {
+      "width": "1280",
+      "height": "720",
+      "source": "Entire screen"
+    }
+  },
+  {
+    "key": "home.target.area",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 731,
+    "english": "Area 1280 × 720",
+    "sample": {
+      "width": "1280",
+      "height": "720"
+    }
+  },
+  {
+    "key": "home.target.pickArea",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 732,
+    "english": "Pick a screen, then drag out an area",
+    "sample": {}
+  },
+  {
+    "key": "home.target.pickWindow",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 733,
+    "english": "Pick a window to record",
+    "sample": {}
+  },
+  {
+    "key": "home.target.noScreen",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 733,
+    "english": "No screen found",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.title",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 751,
+    "english": "What to record",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.areaHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 756,
+    "english": "Click a screen, then drag over the part you want to record.",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.windowHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 756,
+    "english": "Pick the window to record.",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.screenHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 756,
+    "english": "Pick the screen to record.",
+    "sample": {}
+  },
+  {
+    "key": "home.tab.screens",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 762,
+    "english": "Screens",
+    "sample": {}
+  },
+  {
+    "key": "home.tab.windows",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 765,
+    "english": "Windows",
+    "sample": {}
+  },
+  {
+    "key": "home.tab.area",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 768,
+    "english": "Area",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.refresh",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 771,
+    "english": "Refresh sources",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.noWindows",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 793,
+    "english": "No windows found.",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.noScreens",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 793,
+    "english": "No screens found.",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.noWindowsHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 794,
+    "english": "Open the app you want to record, then refresh.",
+    "sample": {}
+  },
+  {
+    "key": "home.sources.noScreensHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 794,
+    "english": "Refresh to look again.",
+    "sample": {}
+  },
+  {
+    "key": "home.region.size",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 802,
+    "english": "Area 1280 × 720",
+    "sample": {
+      "width": "1280",
+      "height": "720"
+    }
+  },
+  {
+    "key": "home.region.change",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 805,
+    "english": "Change area",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.title",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 813,
+    "english": "Unfinished recordings",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.intro",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 819,
+    "english": "Footage that was kept when a recording did not finish. Recover it to edit it like any other recording.",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.interrupted",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 829,
+    "english": "Interrupted",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.failed",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 829,
+    "english": "Processing failed",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.recoverTitle",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 833,
+    "english": "Turn the saved footage into a project",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.recover",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 834,
+    "english": "Recover",
+    "sample": {}
+  },
+  {
+    "key": "home.unfinished.retry",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 834,
+    "english": "Retry",
+    "sample": {}
+  },
+  {
+    "key": "home.library.title",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 848,
+    "english": "Recent recordings",
+    "sample": {}
+  },
+  {
+    "key": "home.library.empty",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 862,
+    "english": "Your recordings will show up here.",
+    "sample": {}
+  },
+  {
+    "key": "home.library.emptyHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 863,
+    "english": "Pick what to record and press Start recording. Every recording opens in the editor and is saved automatically.",
+    "sample": {}
+  },
+  {
+    "key": "home.library.deleteQuestion",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 875,
+    "english": "Delete \"Product tour\"? This cannot be undone.",
+    "sample": {
+      "name": "Product tour"
+    }
+  },
+  {
+    "key": "home.record.title",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 890,
+    "english": "New recording",
+    "sample": {}
+  },
+  {
+    "key": "home.record.audioCamera",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 897,
+    "english": "Audio and camera",
+    "sample": {}
+  },
+  {
+    "key": "home.record.microphone",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 900,
+    "english": "Microphone",
+    "sample": {}
+  },
+  {
+    "key": "home.record.noMicrophone",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 903,
+    "english": "No microphone",
+    "sample": {}
+  },
+  {
+    "key": "home.record.micLevel",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 911,
+    "english": "Microphone level",
+    "sample": {}
+  },
+  {
+    "key": "home.record.micDisconnected",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 915,
+    "english": "Your microphone is disconnected.",
+    "sample": {}
+  },
+  {
+    "key": "home.record.noCamera",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 923,
+    "english": "No camera",
+    "sample": {}
+  },
+  {
+    "key": "home.record.cameraDisconnected",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 930,
+    "english": "Your camera is disconnected.",
+    "sample": {}
+  },
+  {
+    "key": "home.record.windowsOnly",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 935,
+    "english": "Windows only",
+    "sample": {}
+  },
+  {
+    "key": "home.record.systemAudio",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 937,
+    "english": "System audio",
+    "sample": {}
+  },
+  {
+    "key": "home.record.keysTitle",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 948,
+    "english": "Records shortcuts such as Ctrl + C for the keystroke overlay, and when you type so auto zoom can follow your typing. Which keys you type is never recorded.",
+    "sample": {}
+  },
+  {
+    "key": "home.record.keys",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 951,
+    "english": "Record keyboard activity",
+    "sample": {}
+  },
+  {
+    "key": "home.record.keysHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 955,
+    "english": "Shortcuts and when you type, never which keys.",
+    "sample": {}
+  },
+  {
+    "key": "home.record.frameRate",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 959,
+    "english": "Frame rate",
+    "sample": {}
+  },
+  {
+    "key": "home.record.fps30",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 969,
+    "english": "Lighter: half the frames to capture, encode and edit",
+    "sample": {}
+  },
+  {
+    "key": "home.record.fps60",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 969,
+    "english": "Smoothest motion",
+    "sample": {}
+  },
+  {
+    "key": "home.record.fps",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 972,
+    "english": "30 fps",
+    "sample": {
+      "fps": "30"
+    }
+  },
+  {
+    "key": "home.record.selectArea",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1023,
+    "english": "Select an area first",
+    "sample": {}
+  },
+  {
+    "key": "home.record.start",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1023,
+    "english": "Start recording",
+    "sample": {}
+  },
+  {
+    "key": "home.record.stopHintKeys",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1026,
+    "english": "Stop with the floating bar or Ctrl + Shift + 2.",
+    "sample": {
+      "keys": "Ctrl + Shift + 2"
+    }
+  },
+  {
+    "key": "home.record.stopHint",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1026,
+    "english": "Stop with the floating bar.",
+    "sample": {}
+  },
+  {
+    "key": "home.finishLaterTitle",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1052,
+    "english": "Keep the recording and convert it later from Unfinished recordings",
+    "sample": {}
+  },
+  {
+    "key": "home.finishLater",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 1053,
+    "english": "Finish later",
+    "sample": {}
+  },
+  {
+    "key": "common.state.saving",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 93,
+    "english": "Saving…",
+    "sample": {}
+  },
+  {
+    "key": "common.action.delete",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 335,
+    "english": "Delete",
+    "sample": {}
+  },
+  {
+    "key": "common.action.deleteName",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 335,
+    "english": "Delete Product tour",
+    "sample": {
+      "name": "Product tour"
+    }
+  },
+  {
+    "key": "common.label.camera",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 920,
+    "english": "Camera",
+    "sample": {}
+  },
+  {
+    "key": "common.action.refresh",
+    "file": "src/renderer/src/views/Home.tsx",
+    "line": 771,
+    "english": "Refresh",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.drag",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 94,
+    "english": "Drag to move the camera to another corner",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.live",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 97,
+    "english": "Live camera",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.waiting",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 98,
+    "english": "Camera…",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.toolbar",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 99,
+    "english": "Camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.sizeSmall",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 105,
+    "english": "Camera bubble size small",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.sizeMedium",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 105,
+    "english": "Camera bubble size medium",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.sizeLarge",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 105,
+    "english": "Camera bubble size large",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.small",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 106,
+    "english": "Small",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.medium",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 106,
+    "english": "Medium",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.large",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 106,
+    "english": "Large",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.hide",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 112,
+    "english": "Hide camera bubble",
+    "sample": {}
+  },
+  {
+    "key": "home.cameraBubble.hideTitle",
+    "file": "src/renderer/src/views/CameraBubble.tsx",
+    "line": 112,
+    "english": "Hide the camera bubble (show it again from the recording bar). The camera keeps recording.",
+    "sample": {}
+  },
+  {
+    "key": "home.regionPicker.drag",
+    "file": "src/renderer/src/views/RegionPicker.tsx",
+    "line": 77,
+    "english": "Drag to select the area to record",
+    "sample": {}
+  },
+  {
+    "key": "home.regionPicker.keys",
+    "file": "src/renderer/src/views/RegionPicker.tsx",
+    "line": 79,
+    "english": "Enter to confirm · Esc to cancel",
+    "sample": {}
+  },
+  {
+    "key": "home.regionPicker.record",
+    "file": "src/renderer/src/views/RegionPicker.tsx",
+    "line": 107,
+    "english": "Record this area",
+    "sample": {}
+  },
+  {
+    "key": "common.action.cancel",
+    "file": "src/renderer/src/views/RegionPicker.tsx",
+    "line": 104,
+    "english": "Cancel",
+    "sample": {}
   }
 ]

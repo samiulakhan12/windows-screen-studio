@@ -161,7 +161,8 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
       </p>
       <p className="hint">{SPEECH_COPY.aiProvidersNoKey}</p>
       <p className="settings-privacy">
-        <span aria-hidden="true">🔒</span> {t('settings.ai.privacy')}
+        <span aria-hidden="true">🔒</span>
+        {` ${t('settings.ai.privacy')}`}
       </p>
       {/* AI on this PC first (smart-tools.md §2.5): part P4's row, which opens its section. */}
       <LocalAiRow onOpen={() => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT, { detail: { section: 'localAi' } }))} />
@@ -192,7 +193,7 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
         <>
           {loadError && (
             <p className="error" role="alert">
-              {t('settings.ai.readFailed', { reason: loadError })}
+              {richText('settings.ai.readFailed', { reason: loadError })}
             </p>
           )}
           {providers && providers.length === 0 && <p className="settings-empty">{t('settings.ai.empty')}</p>}
@@ -242,7 +243,7 @@ export function AiProvidersSection({ onChanged, autoFocus = true }: { onChanged?
                     {removing?.id === p.id ? (
                       <div className="ai-remove-question" role="alert">
                         <span>
-                          {t('settings.ai.removeQuestion', { name: p.label })}
+                          {richText('settings.ai.removeQuestion', { name: p.label })}
                           {removeError && <span className="error"> {removeError}</span>}
                         </span>
                         <button type="button" className="btn danger settings-small" onClick={() => void remove(p)}>

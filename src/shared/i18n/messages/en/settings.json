@@ -153,5 +153,16 @@
   "provider.addressAbove": "the address above",
   "provider.checking": "Checking…",
   "provider.saveAndCheck": "Save and check",
-  "provider.addButton": "Add provider"
+  "provider.addButton": "Add provider",
+  "updates.check": "Check for updates",
+  "updates.download": "Download Flown {version}",
+  "updates.downloading": "Downloading…",
+  "updates.restart": "Restart now",
+  "updates.title": "Updates",
+  "updates.lastChecked": "Last checked {when}.",
+  "updates.downloadingLabel": "Downloading Flown {version}",
+  "updates.auto": "Update Flown automatically",
+  "updates.hint": "Flown looks for a new version on GitHub every few hours, downloads it in the background and installs it when you close Flown. The same check refreshes the list of suggested AI models.",
+  "updates.notes": "What's new in {version}",
+  "updates.dayTime": "{day}, {time}"
 }

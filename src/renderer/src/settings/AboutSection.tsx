@@ -6,6 +6,7 @@ import { UpdatesBlock } from '../updates/UpdatesBlock'
 import { NoticesPanel } from './NoticesPanel'
 import './about.css'
 import { t } from '../../../shared/i18n/t'
+import { richText } from '../i18n/richText'
 
 /**
  * About Flown: logo, version, who makes it and a link to their website. The link goes through
@@ -32,10 +33,10 @@ export function AboutSection({ reveal = false }: { reveal?: boolean }): JSX.Elem
         <div className="about-text">
           <p className="about-name">
             {info?.name ?? APP_NAME}
-            {info && <span className="about-version">{t('settings.about.version', { version: info.version })}</span>}
+            {info && <span className="about-version">{richText('settings.about.version', { version: info.version })}</span>}
           </p>
           <p>
-            {t('settings.about.builtBy', { company: COMPANY_NAME })}{' '}
+            {richText('settings.about.builtBy', { company: COMPANY_NAME })}{' '}
             <a
               className="link"
               href={COMPANY_URL}

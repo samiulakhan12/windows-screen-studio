@@ -133,7 +133,7 @@ export function StorageSection(): JSX.Element {
                     {sharedNote(r.shared)}
                   </span>
                   <span className="storage-size">
-                    {r.capped ? t('settings.storage.atLeast', { size: fmt.bytes(r.bytes, 'storage') }) : fmt.bytes(r.bytes, 'storage')}
+                    {r.capped ? richText('settings.storage.atLeast', { size: fmt.bytes(r.bytes, 'storage') }) : fmt.bytes(r.bytes, 'storage')}
                   </span>
                   <button type="button" className="btn ghost settings-small" aria-label={t('settings.storage.showLabel', { name: r.name })} onClick={() => void window.api.revealProject(r.id).catch(() => undefined)}>
                     {t('common.action.show')}
@@ -195,7 +195,7 @@ export function StorageSection(): JSX.Element {
                 groups.map((g) => (
                   <fieldset key={g.action} className="storage-group">
                     <legend>
-                      {t(g.action === 'remove' ? 'settings.storage.groupRemove' : 'settings.storage.groupCaches', { count: g.items.length, n: fmt.count(g.items.length), size: fmt.bytes(freedBytes(g.items), 'storage') })}
+                      {richText(g.action === 'remove' ? 'settings.storage.groupRemove' : 'settings.storage.groupCaches', { count: g.items.length, n: fmt.count(g.items.length), size: fmt.bytes(freedBytes(g.items), 'storage') })}
                     </legend>
                     {g.items.map((i) => (
                       <label key={keyOf(i)} className="storage-check storage-item">
@@ -211,7 +211,7 @@ export function StorageSection(): JSX.Element {
                         />
                         <span className="storage-name">{i.name}</span>
                         <span className="storage-meta">
-                          {t('settings.storage.used', { date: dateOf(i.createdAt), when: fmt.relative(i.lastUsed, overview.now) })}
+                          {richText('settings.storage.used', { date: dateOf(i.createdAt), when: fmt.relative(i.lastUsed, overview.now) })}
                           {sharedNote(i.shared)}
                         </span>
                         <span className="storage-size">{fmt.bytes(i.bytes, 'storage')}</span>
@@ -223,7 +223,7 @@ export function StorageSection(): JSX.Element {
               <div className="health-actions">
                 {plan.length > 0 && (
                   <button type="button" className="btn danger settings-small" onClick={() => void run()} disabled={busy || chosen.length === 0}>
-                    {t('settings.storage.move', { n: fmt.count(chosen.length), size: fmt.bytes(chosenBytes, 'storage') })}
+                    {richText('settings.storage.move', { n: fmt.count(chosen.length), size: fmt.bytes(chosenBytes, 'storage') })}
                   </button>
                 )}
                 <button
@@ -248,7 +248,7 @@ export function StorageSection(): JSX.Element {
               </p>
               {result.failed.map((f) => (
                 <p key={keyOf(f.item)} className="hint storage-failed">
-                  {t(f.item.action === 'caches' ? 'settings.storage.failedCaches' : 'settings.storage.failed', { name: f.item.name, reason: f.reason })}
+                  {richText(f.item.action === 'caches' ? 'settings.storage.failedCaches' : 'settings.storage.failed', { name: f.item.name, reason: f.reason })}
                 </p>
               ))}
             </div>

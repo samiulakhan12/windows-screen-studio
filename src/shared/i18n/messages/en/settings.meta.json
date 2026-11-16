@@ -540,5 +540,42 @@
   },
   "provider.addButton": {
     "description": "Settings › Add a provider: saves a new provider."
+  },
+  "updates.check": {
+    "description": "Settings › About › Updates: the action button that looks for a new version."
+  },
+  "updates.download": {
+    "description": "Settings › About › Updates: the action button that downloads a found update; {version} is its number."
+  },
+  "updates.downloading": {
+    "description": "Settings › About › Updates: the action button while the update downloads (not pressable)."
+  },
+  "updates.restart": {
+    "description": "Settings › About › Updates and Home’s title bar: restarts Flown to install the downloaded update."
+  },
+  "updates.title": {
+    "description": "Settings › About: the heading of the updates block."
+  },
+  "updates.lastChecked": {
+    "description": "Settings › About › Updates: when the last check ran; {when} is a time (\"10:42\") or a day and time (\"30 Oct, 10:42\")."
+  },
+  "updates.downloadingLabel": {
+    "description": "Settings › About › Updates: the accessible name of the download’s progress bar."
+  },
+  "updates.auto": {
+    "description": "Settings › About › Updates: checkbox for automatic updates."
+  },
+  "updates.hint": {
+    "description": "Settings › About › Updates: how automatic updates work.",
+    "dnt": [
+      "Flown",
+      "GitHub"
+    ]
+  },
+  "updates.notes": {
+    "description": "Settings › About › Updates: opens the release notes of the update; {version} is its number. The notes themselves are not translated."
+  },
+  "updates.dayTime": {
+    "description": "Settings › About › Updates: when the last check ran on another day; {day} is a date (\"30 Oct\"), {time} a time (\"10:42\")."
   }
 }

@@ -28,5 +28,68 @@
   "confirm.cancel": {
     "description": "Cancel button of a confirmation in a translated UI.",
     "screen": "main-dialogs"
+  },
+  "updates.disabled": {
+    "description": "Settings › About › Updates: this build of Flown does not update itself (a build made without the update feed)."
+  },
+  "updates.never": {
+    "description": "Settings › About › Updates: no check has run since Flown was installed."
+  },
+  "updates.upToDate": {
+    "description": "Settings › About › Updates: the last check found nothing newer."
+  },
+  "updates.checking": {
+    "description": "Settings › About › Updates: a check is running."
+  },
+  "updates.checkFailed": {
+    "description": "Settings › About › Updates: the check failed."
+  },
+  "updates.downloadFailed": {
+    "description": "Settings › About › Updates: the download failed and automatic updates will try again. Main sets it; the page tells it apart from the manual form below by its text, so both come from this catalogue."
+  },
+  "updates.downloadFailedManual": {
+    "description": "Settings › About › Updates: the download failed and automatic updates are off."
+  },
+  "updates.notReady": {
+    "description": "Restart now was asked for, but no update is downloaded."
+  },
+  "updates.available": {
+    "description": "Settings › About › Updates: a newer version exists; {version} is its number (\"0.7.2\")."
+  },
+  "updates.downloadingPercent": {
+    "description": "Settings › About › Updates: the download’s progress in percent."
+  },
+  "updates.ready": {
+    "description": "Settings › About › Updates and Home’s title bar: an update is downloaded."
+  },
+  "updates.downloading": {
+    "description": "Settings › About › Updates: what screen readers hear while the update downloads (without the percent); also the progress bar’s name."
+  },
+  "busy.recording": {
+    "description": "Why Flown cannot restart now (to install an update or change language): a recording is running."
+  },
+  "busy.processing": {
+    "description": "Why Flown cannot restart now: a finished recording is still being saved or processed."
+  },
+  "busy.export": {
+    "description": "Why Flown cannot restart now: an export is running."
+  },
+  "busy.captions": {
+    "description": "Why Flown cannot restart now: captions are being made."
+  },
+  "busy.analysis": {
+    "description": "Why Flown cannot restart now: the sound is being analysed."
+  },
+  "busy.import": {
+    "description": "Why Flown cannot restart now: a video is being imported."
+  },
+  "busy.voice": {
+    "description": "Why Flown cannot restart now: Clean voice is working. \"Clean voice\" is the feature’s name."
+  },
+  "busy.copy": {
+    "description": "Why Flown cannot restart now: a project is being copied."
+  },
+  "busy.share": {
+    "description": "Why Flown cannot restart now: a video is being shared."
   }
 }
