@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
 import { DEFAULT_EXPORT_OPTIONS } from '../src/shared/render/exportPresets'
 import type { Project } from '../src/shared/types'
@@ -17,14 +17,25 @@ import { mockReact, render, unmountAll, type El } from './studioHarness'
  *   and leave its frame on the element.
  * - data-settled tells a reader when the pixels are the newest frame's, so a test waits for it
  *   instead of a fixed time.
+ * - seekedFrame waits only so long for the sought frame, then gives the element's picture unverified
+ *   (under load it can still be the frame before): that picture is shown but not settled, and taken
+ *   again until it is the sought frame, which replaces it and settles; a newer request or closing
+ *   the dialog ends the checks, and every picture replaced is let go.
+ * - The screen is sought and checked at its recording's own rate (capture.fps, 60 when absent).
  */
 
-/** The video's readiness and seeks, held until the test lets them through, and the frames taken. */
+/**
+ * The video's readiness and seeks, held until the test lets them through, and the frames taken. Whether
+ * each picture taken is the sought frame comes from `verdicts`, in order; once they run out, it is
+ * unless `lagging` (the element keeps the frame before).
+ */
 const media = vi.hoisted(() => ({
   readyNow: true,
   waiting: [] as (() => void)[],
-  seeks: [] as { t: number; land: () => void }[],
-  frames: [] as { t: number; closed: boolean; displayWidth: number; displayHeight: number; close(): void }[]
+  seeks: [] as { t: number; fps: number; land: () => void }[],
+  verdicts: [] as boolean[],
+  lagging: false,
+  frames: [] as { t: number; fps: number; verified: boolean; closed: boolean; displayWidth: number; displayHeight: number; close(): void }[]
 }))
 /** What each drawFrame call drew: its time and the screen picture it was given (undefined: the element). */
 const drawn = vi.hoisted(() => [] as { t: number; screen: unknown }[])
@@ -34,10 +45,13 @@ vi.mock('../src/renderer/src/editor/media', () => ({
   WEBCAM_PROXY_FPS: 30,
   createVideo: () => ({ muted: false, removeAttribute: () => undefined, load: () => undefined }),
   whenReady: () => (media.readyNow ? Promise.resolve() : new Promise<void>((ready) => void media.waiting.push(ready))),
-  seekToFrame: (_v: unknown, t: number) => new Promise<void>((land) => void media.seeks.push({ t, land })),
-  seekedFrame: async (_v: unknown, t: number) => {
+  seekToFrame: (_v: unknown, t: number, fps: number) => new Promise<void>((land) => void media.seeks.push({ t, fps, land })),
+  seekedFrame: async (_v: unknown, t: number, fps: number) => {
+    const verified = media.verdicts.length > 0 ? media.verdicts.shift()! : !media.lagging
     const frame = {
       t,
+      fps,
+      verified,
       closed: false,
       displayWidth: 1280,
       displayHeight: 720,
@@ -46,7 +60,7 @@ vi.mock('../src/renderer/src/editor/media', () => ({
       }
     }
     media.frames.push(frame)
-    return { frame, verified: true }
+    return { frame, verified }
   }
 }))
 vi.mock('../src/renderer/src/render/compositor', () => ({
@@ -81,10 +95,25 @@ const settled = (els: El[]): unknown => canvas(els).props['data-settled']
 const microtasks = async (): Promise<void> => {
   for (let i = 0; i < 10; i++) await Promise.resolve()
 }
+/** The preview of a recording made at `fps` (capture.fps). */
+const previewAtRate = (time: number, fps: number): El => {
+  const recorded: Project = { ...project, capture: { ...project.capture, fps } }
+  return { type: ExportPreview, props: { ...preview(time).props, project: recorded, scene: { project: recorded } } }
+}
 /** Lands the seek to `t` (asked once the video is ready), lets its promise chain run, then renders again. */
 async function land(t: number, root: El): Promise<El[]> {
   await microtasks()
   media.seeks.find((s) => s.t === t)!.land()
+  await microtasks()
+  return render(root)
+}
+/**
+ * With fake timers: lets time pass until the preview takes the screen's picture again (or `ms` have
+ * passed), lets its promise chain run, then renders again.
+ */
+async function recheck(root: El, ms = 1000): Promise<El[]> {
+  const taken = media.frames.length
+  for (let waited = 0; waited < ms && media.frames.length === taken; waited += 5) await vi.advanceTimersByTimeAsync(5)
   await microtasks()
   return render(root)
 }
@@ -94,8 +123,13 @@ beforeEach(() => {
   media.readyNow = true
   media.waiting.length = 0
   media.seeks.length = 0
+  media.verdicts.length = 0
+  media.lagging = false
   media.frames.length = 0
   drawn.length = 0
+})
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('ExportPreview: the picture drawn', () => {
@@ -171,5 +205,107 @@ describe('ExportPreview: data-settled', () => {
     expect(drawn).toEqual([])
     expect(settled(await land(1.5, moved))).toBe('')
     expect(drawn.map((d) => d.t)).toEqual([1.5])
+  })
+})
+
+describe('ExportPreview: a picture that is not yet the sought frame', () => {
+  it('is shown without data-settled, taken again until it is the sought frame, which replaces it and settles', async () => {
+    vi.useFakeTimers()
+    // seekedFrame stopped waiting while the element still showed the frame before, and the next check too.
+    media.verdicts.push(false, false)
+    const root = preview(1.5)
+    canvas(render(root))
+    let els = await land(1.5, root)
+    const before = media.frames[0]
+    expect(before.verified).toBe(false)
+    expect(drawn).toEqual([{ t: 1.5, screen: before }])
+    expect(settled(els)).toBeUndefined()
+    // Taken again: still the frame before. That picture is let go and the canvas keeps the first one.
+    els = await recheck(root)
+    expect(media.frames).toHaveLength(2)
+    expect(media.frames[1].closed).toBe(true)
+    expect(before.closed).toBe(false)
+    expect(drawn).toHaveLength(1)
+    expect(settled(els)).toBeUndefined()
+    // The sought frame has reached the element: drawn, settled, and the picture it replaces let go.
+    els = await recheck(root)
+    const sought = media.frames[2]
+    expect(sought.verified).toBe(true)
+    expect(drawn.at(-1)).toEqual({ t: 1.5, screen: sought })
+    expect(before.closed).toBe(true)
+    expect(sought.closed).toBe(false)
+    expect(settled(els)).toBe('')
+    // Nothing more is taken once it is there.
+    await recheck(root, 2000)
+    expect(media.frames).toHaveLength(3)
+    unmountAll()
+    expect(sought.closed).toBe(true)
+  })
+
+  it('a newer request ends the checks: no picture of the old time is taken again, and the one shown is let go when replaced', async () => {
+    vi.useFakeTimers()
+    media.verdicts.push(false)
+    const opened = preview(0)
+    canvas(render(opened))
+    expect(settled(await land(0, opened))).toBeUndefined()
+    const before = media.frames[0]
+    const moved = preview(1.5)
+    expect(settled(render(moved))).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(media.frames.map((f) => f.t)).toEqual([0])
+    const els = await land(1.5, moved)
+    expect(drawn.map((d) => d.t)).toEqual([0, 1.5])
+    expect(before.closed).toBe(true)
+    expect(settled(els)).toBe('')
+  })
+
+  it('closing the dialog ends the checks and lets go of every picture taken', async () => {
+    vi.useFakeTimers()
+    media.lagging = true
+    const root = preview(1.5)
+    canvas(render(root))
+    await land(1.5, root)
+    await recheck(root)
+    expect(media.frames).toHaveLength(2)
+    unmountAll()
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(media.frames).toHaveLength(2)
+    expect(media.frames.every((f) => f.closed)).toBe(true)
+  })
+
+  it('the checks are bounded: a picture that never becomes the sought frame stays shown, never settled', async () => {
+    vi.useFakeTimers()
+    media.lagging = true
+    const root = preview(1.5)
+    canvas(render(root))
+    await land(1.5, root)
+    await vi.advanceTimersByTimeAsync(60000)
+    const taken = media.frames.length
+    expect(taken).toBeGreaterThan(2)
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(media.frames).toHaveLength(taken)
+    expect(settled(render(root))).toBeUndefined()
+    expect(drawn).toEqual([{ t: 1.5, screen: media.frames[0] }])
+    expect(media.frames[0].closed).toBe(false)
+    expect(media.frames.slice(1).every((f) => f.closed)).toBe(true)
+  })
+})
+
+describe("ExportPreview: the screen recording's frame rate", () => {
+  it('seeks and checks the screen at its recording rate (capture.fps), 60 when the project has none', async () => {
+    const at30 = previewAtRate(1.5, 30)
+    canvas(render(at30))
+    const els = await land(1.5, at30)
+    expect(media.seeks.map((s) => s.fps)).toEqual([30])
+    expect(media.frames.map((f) => f.fps)).toEqual([30])
+    expect(settled(els)).toBe('')
+    unmountAll()
+    media.seeks.length = 0
+    media.frames.length = 0
+    const plain = preview(1.5)
+    canvas(render(plain))
+    await land(1.5, plain)
+    expect(media.seeks.map((s) => s.fps)).toEqual([60])
+    expect(media.frames.map((f) => f.fps)).toEqual([60])
   })
 })

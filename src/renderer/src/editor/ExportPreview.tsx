@@ -32,14 +32,31 @@ interface Props {
 }
 
 /**
- * A sought frame: its picture and sound times, and the screen's decoded frame whose timestamp is the
- * sought one (null: the element is drawn). The camera is drawn from its element, which the
- * camera layer segments for a blurred background.
+ * A sought frame: its picture and sound times, and the screen's decoded frame (null: the element is
+ * drawn). The camera is drawn from its element, which the camera layer segments for a blurred background.
  */
 interface Sought {
   t: number
   sound: number
   screen: VideoFrame | null
+  /**
+   * The screen frame's timestamp is the sought one's (true too when there is no frame to check). False
+   * while it is the picture seekedFrame gave up waiting on, which under load can be the frame before.
+   */
+  verified: boolean
+}
+
+/**
+ * How often, and how many times, a screen picture that is not yet the sought frame is taken again:
+ * at least 10 s, past which a file whose timestamps never match is not checked any longer.
+ */
+const RECHECK_MS = 25
+const RECHECKS = 400
+
+/** The screen recording's frame rate, as its proxy was made (capture.fps; 60 for older projects). */
+function screenRate(project: Project): number {
+  const fps = project.capture?.fps
+  return typeof fps === 'number' && Number.isFinite(fps) && fps > 0 ? fps : SCREEN_PROXY_FPS
 }
 
 /** A camera still's person mask, when the camera's background is blurred (A* shows it blurred, as the export does). */
@@ -113,9 +130,20 @@ export function ExportPreview(props: Props): JSX.Element {
     }
   }, [props.screenUrl, props.webcamUrl])
 
+  // The screen is sought and checked at its own rate, as the export reads its frames.
+  const screenFps = screenRate(props.project)
+
   // Seek both videos to the wanted frame; the newest request wins.
   useEffect(() => {
     let live = true
+    // The wait before the screen's picture is taken again; a newer request or closing the dialog ends it at once.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let wake: (() => void) | null = null
+    const pause = (ms: number): Promise<void> =>
+      new Promise((resolve) => {
+        wake = resolve
+        timer = setTimeout(resolve, ms)
+      })
     const m = media.current
     if (!m) return
     const t = props.time
@@ -126,21 +154,39 @@ export function ExportPreview(props: Props): JSX.Element {
         await whenReady(m.screen)
         // A newer request seeks instead: this one's seek could land after it and leave this frame on the element.
         if (!live) return
-        await Promise.all([seekToFrame(m.screen, t, SCREEN_PROXY_FPS), m.webcam ? whenReady(m.webcam).then(() => seekToFrame(m.webcam!, Math.max(0, camT), WEBCAM_PROXY_FPS)) : null])
+        await Promise.all([seekToFrame(m.screen, t, screenFps), m.webcam ? whenReady(m.webcam).then(() => seekToFrame(m.webcam!, Math.max(0, camT), WEBCAM_PROXY_FPS)) : null])
         // 'seeked' can come a moment before the new picture reaches the element, and the preview draws
         // once per seek: the screen is drawn from the decoded frame whose timestamp is the sought one, as
         // the export and the thumbnail draw it (seekedFrame), never the picture before.
-        const screen = (await seekedFrame(m.screen, t, SCREEN_PROXY_FPS))?.frame ?? null
-        if (live) setFrameTime({ t, sound, screen })
-        else screen?.close()
+        const seeked = await seekedFrame(m.screen, t, screenFps)
+        if (!live) return void seeked?.frame.close()
+        setFrameTime({ t, sound, screen: seeked?.frame ?? null, verified: seeked?.verified ?? true })
+        if (!seeked || seeked.verified) return
+        // seekedFrame stopped waiting before the sought frame reached the element (under load it can take
+        // longer): its picture, perhaps the frame before, stays on the canvas without data-settled, and
+        // the element's picture is taken again until it is the sought frame, which replaces it.
+        for (let i = 0; i < RECHECKS; i++) {
+          await pause(RECHECK_MS)
+          if (!live) return
+          const again = await seekedFrame(m.screen, t, screenFps, 0)
+          if (!again) return
+          if (live && again.verified) {
+            setFrameTime({ t, sound, screen: again.frame, verified: true })
+            return
+          }
+          again.frame.close()
+          if (!live) return
+        }
       } catch {
         // The preview is a convenience: the export reports real failures.
       }
     })()
     return () => {
       live = false
+      clearTimeout(timer)
+      wake?.()
     }
-  }, [props.time, props.soundTime, props.project.webcamOffset, props.screenUrl, props.webcamUrl])
+  }, [props.time, props.soundTime, props.project.webcamOffset, props.screenUrl, props.webcamUrl, screenFps])
 
   useEffect(() => {
     const c = canvas.current
@@ -176,10 +222,10 @@ export function ExportPreview(props: Props): JSX.Element {
     setShown(frameTime)
   }, [frameTime, scene, project, props.background, props.held, props.screenUrl, props.webcamUrl, pixels.width, pixels.height, size.fps, masks, assets, stillsReady])
 
-  // Present once the canvas holds the newest time's frame; absent before the first draw and while a
-  // newer frame is sought (the canvas still shows the one before). A font or image that arrives later
-  // draws the same frame again.
-  const settled = shown !== null && shown === frameTime && frameTime.t === props.time && frameTime.sound === (props.soundTime ?? props.time) ? '' : undefined
+  // Present once the canvas holds the newest time's frame; absent before the first draw, while a
+  // newer frame is sought (the canvas still shows the one before) and while the screen's picture is
+  // not yet the sought frame's. A font or image that arrives later draws the same frame again.
+  const settled = shown !== null && shown === frameTime && frameTime.verified && frameTime.t === props.time && frameTime.sound === (props.soundTime ?? props.time) ? '' : undefined
   if (scene.alpha) return <canvas key="alpha" ref={canvas} className="export-preview-canvas alpha-preview" role="img" aria-label={t('alpha.preview.name')} data-settled={settled} style={{ width: css.width, height: css.height }} />
   return <canvas key="opaque" ref={canvas} className="export-preview-canvas" data-settled={settled} style={{ width: css.width, height: css.height }} />
 }
