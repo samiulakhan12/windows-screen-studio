@@ -144,6 +144,12 @@
   "shot.sendOne": {
     "description": "shotViewer, text of <label> (src/renderer/src/guide/ShotViewer.tsx:277)."
   },
+  "shot.willSend": {
+    "description": "Make a guide › the screenshots to send: said by a screen reader when a screenshot's tick is turned on. {label} is the step's name (smart.guide.stepLabel, \"step 3\") with its first letter made a capital."
+  },
+  "shot.willNotSend": {
+    "description": "Make a guide › the screenshots to send: said by a screen reader when a screenshot's tick is turned off. {label} is the step's name (smart.guide.stepLabel, \"step 3\") with its first letter made a capital."
+  },
   "shot.adjustHint": {
     "description": "shotViewer, text of <p> (src/renderer/src/guide/ShotViewer.tsx:288)."
   },

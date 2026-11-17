@@ -165,6 +165,31 @@ describe('the room of an answer (test 69)', () => {
     expect(engine.calls).toHaveLength(2)
   })
 
+  it('says what was wrong in the UI language: cut off, or not JSON', async () => {
+    const { t } = await import('../src/shared/i18n/t')
+    const { uiEnglish, uiPseudo } = await import('./pseudoUi')
+    const failure = async (answer: (c: { maxTokens: number }) => Partial<LlmAnswer>): Promise<string> => {
+      const client = makeLocalClient({ engine: fakeEngine([answer]), spec: small, sender: fakePage().sender as never, beginJob: fakeJobs().beginJob })
+      const err = await client.json(titlePrompt(), opts()).catch((x: unknown) => x)
+      expect(err).toBeInstanceOf(AiOutputError)
+      return (err as Error).message
+    }
+    const cut = (c: { maxTokens: number }): Partial<LlmAnswer> => ({ text: '{"text":"A ti', output: c.maxTokens })
+    const notJson = (): Partial<LlmAnswer> => ({ text: 'A title', output: 3 })
+    try {
+      uiEnglish()
+      expect(await failure(notJson)).toBe("The AI's answer could not be used (it was not JSON). Nothing was changed; try again.")
+      uiPseudo('en-XA')
+      for (const [answer, detail] of [[cut, 'errors.aiOutput.cutOff'], [notJson, 'errors.aiOutput.notJson']] as const) {
+        const said = await failure(answer)
+        expect(said).toBe(t('errors.aiOutput.unusable', { detail: t(detail) }))
+        expect(said).not.toMatch(/it was (cut off|not JSON)/)
+      }
+    } finally {
+      uiEnglish()
+    }
+  })
+
   it('the prompt and its room stay within the context less one batch', async () => {
     const long = textPrompts({ task: 'cleanup', segments: Array.from({ length: 40 }, (_, i) => seg(i, 'word '.repeat(14))) })[0]
     const engine = fakeEngine([() => ({ text: '{"segments":[]}' })])

@@ -191,7 +191,7 @@ export function makeLocalClient(deps: {
       try {
         return JSON.parse(answer.text) as unknown
       } catch {
-        throw new AiOutputError(cutOff(answer, room) ? 'it was cut off' : 'it was not JSON')
+        throw new AiOutputError(cutOff(answer, room) ? t('errors.aiOutput.cutOff') : t('errors.aiOutput.notJson'))
       }
     }
   }

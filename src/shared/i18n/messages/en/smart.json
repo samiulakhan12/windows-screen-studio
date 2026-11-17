@@ -46,6 +46,8 @@
   "chapters.lookingShare": "Looking at the screen… {share}",
   "chapters.found": "{count, plural, one {Found {n} chapter.} other {Found {n} chapters.}} Review lists them: keep or remove each one.",
   "shot.sendOne": "Send {label}''s screenshot",
+  "shot.willSend": "{label}''s screenshot will be sent.",
+  "shot.willNotSend": "{label}''s screenshot will not be sent.",
   "shot.adjustHint": "Move the crop and the ring with the arrow keys (Shift: further, Alt: resize the crop), or drag them. Enter is Done.",
   "shot.wholeScreenAlt": "The whole screen for {label}",
   "shot.screenshotFitted": "Screenshot, fitted",

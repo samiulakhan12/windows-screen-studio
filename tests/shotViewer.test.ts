@@ -167,3 +167,28 @@ describe('test 112: Adjust', () => {
     expect(calls.blurred).toEqual(['c3000'])
   })
 })
+
+describe('the send form', () => {
+  it('a screen reader hears whether the screenshot will be sent, in the UI language', async () => {
+    const { t } = await import('../src/shared/i18n/t')
+    const { uiEnglish, uiPseudo } = await import('./pseudoUi')
+    const said = (els: El[]): string => textOf(els.find((e) => e.props.className === 'guide-viewer-said'))
+    const tick = (on: boolean): El[] => {
+      ;(byTestId(render(viewer()), 'guide-send-tick')!.props.onChange as (e: unknown) => void)({ target: { checked: on } })
+      return render(viewer())
+    }
+    props = { ...props, mode: 'send', place: 'OpenAI', ticked: new Set(['c3000']) }
+    try {
+      uiEnglish()
+      expect(said(tick(false))).toBe("Step 1's screenshot will not be sent.")
+      expect(said(tick(true))).toBe("Step 1's screenshot will be sent.")
+      unmountAll()
+      uiPseudo('en-XA')
+      expect(said(tick(false))).toBe(t('smart.shot.willNotSend', { label: 'Step 1' }))
+      expect(said(tick(true))).toBe(t('smart.shot.willSend', { label: 'Step 1' }))
+      expect(said(render(viewer()))).not.toMatch(/screenshot will/)
+    } finally {
+      uiEnglish()
+    }
+  })
+})

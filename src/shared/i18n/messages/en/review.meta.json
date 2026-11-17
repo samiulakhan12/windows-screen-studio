@@ -1956,7 +1956,7 @@
     "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:490)."
   },
   "publish.tags": {
-    "description": "publishDialog, text of <span> (src/renderer/src/publish/PublishDialog.tsx:498)."
+    "description": "Publish › YouTube card: the label above the tags field, and the {what} of \"{what} copied\" (review.publish.copied) after Copy tags."
   },
   "publish.tagsLabel": {
     "description": "publishDialog, the aria-label of <textarea> (src/renderer/src/publish/PublishDialog.tsx:499)."

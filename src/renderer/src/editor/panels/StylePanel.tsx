@@ -175,7 +175,7 @@ export function StylePanel({
             value={blur}
             {...L.backgroundBlur}
             step={0.05}
-            format={(v) => (v === 0 ? 'Off' : pctFmt(v))}
+            format={(v) => (v === 0 ? t('common.state.off') : pctFmt(v))}
             onChange={(v) => setStyle({ background: { ...bg, blur: v } }, 'style.background.blur')}
           />
         )}

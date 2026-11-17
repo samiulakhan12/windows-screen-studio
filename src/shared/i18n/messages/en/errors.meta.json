@@ -1192,6 +1192,15 @@
   "aiOutput.noChanges": {
     "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": what was wrong with the AI service's answer, a clause starting lower case."
   },
+  "aiOutput.cutOff": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": the answer of AI on this PC stopped before its end, a clause starting lower case."
+  },
+  "aiOutput.notJson": {
+    "description": "A technical reason in the brackets of \"The AI's answer could not be used (…). Nothing was changed; try again.\": the answer of AI on this PC was not in the expected data format, a clause starting lower case.",
+    "dnt": [
+      "JSON"
+    ]
+  },
   "retired.text": {
     "description": "Shown where a caption or text tool fails because the AI service retired the model. {maker} is the service's maker (OpenAI, Google, Anthropic), {model} the model's name and {day} the date (\"26 February 2027\").",
     "user": [

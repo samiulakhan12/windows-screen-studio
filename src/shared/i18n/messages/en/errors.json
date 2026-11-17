@@ -320,6 +320,8 @@
   "aiOutput.noSteps": "no steps",
   "aiOutput.noReleaseNotes": "no release notes",
   "aiOutput.noChanges": "no changes listed",
+  "aiOutput.cutOff": "it was cut off",
+  "aiOutput.notJson": "it was not JSON",
   "retired.text": "{maker} retired {model} on {day}. Choose another model in Settings › AI providers.",
   "retired.transcriptionUse": "{maker} retired {model} on {day}. Choose {next} as the transcription model in Settings › AI providers, or make captions On this PC.",
   "retired.transcription": "{maker} retired {model} on {day}. Choose another transcription model in Settings › AI providers, or make captions On this PC.",

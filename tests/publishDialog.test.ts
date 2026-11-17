@@ -469,6 +469,29 @@ describe("Publish dialog: what a card's buttons did is said on that card (§5.1)
     expect(notices).toEqual([])
   })
 
+  it('Copy tags names the tags in the UI language', async () => {
+    const { t } = await import('../src/shared/i18n/t')
+    const { uiEnglish, uiPseudo } = await import('./pseudoUi')
+    try {
+      for (const [set, copied] of [[uiEnglish, 'Tags copied'], [() => uiPseudo('en-XA'), null]] as const) {
+        set()
+        let out = await opened()
+        type(card(out, 'youtube'), t('review.publish.tagsLabel'), 'reports, dashboards')
+        out = render()
+        press(card(out, 'youtube'), t('review.publish.copyTags'))
+        await flush()
+        out = render()
+        expect(clipboardText).toBe('reports, dashboards')
+        expect(said(card(out, 'youtube'))).toEqual([['status', copied ?? t('review.publish.copied', { what: t('review.publish.tags') })]])
+        if (!copied) expect(said(card(out, 'youtube'))[0][1]).not.toContain('Tags')
+        current = { ...base, id: `p${++projects}` }
+        providersGate = deferred<void>()
+      }
+    } finally {
+      uiEnglish()
+    }
+  })
+
   it('a link nobody said shows a note next to its card; Copy asks first, with the focus on Cancel, and copies it as written (§4.8)', async () => {
     const note = (els: El[]): string | null => {
       const box = els.find((e) => e.props['data-testid'] === 'publish-check')

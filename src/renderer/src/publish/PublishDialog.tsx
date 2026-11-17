@@ -499,7 +499,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
       <div className="publish-actions">
         <button className="btn small primary" disabled={!text || busy} onClick={() => onCopy(copied, label)}>{t('common.action.copy')}</button>
         {isYoutube && (
-          <button className="btn small" disabled={!tags.length || busy} onClick={() => onCopy(tags.join(', '), 'Tags')}>{t('review.publish.copyTags')}</button>
+          <button className="btn small" disabled={!tags.length || busy} onClick={() => onCopy(tags.join(', '), t('review.publish.tags'))}>{t('review.publish.copyTags')}</button>
         )}
         {busy ? (
           <>

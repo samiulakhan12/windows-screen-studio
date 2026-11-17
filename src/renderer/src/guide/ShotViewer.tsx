@@ -139,7 +139,7 @@ export function ShotViewer(props: {
       else next.delete(shot.key)
       return next
     })
-    setSaid(`${cap(shot.label)}'s screenshot ${on ? 'will be sent' : 'will not be sent'}.`)
+    setSaid(t(on ? 'smart.shot.willSend' : 'smart.shot.willNotSend', { label: cap(shot.label) }))
   }
 
   const pan = (e: KeyboardEvent<HTMLDivElement>): void => {
