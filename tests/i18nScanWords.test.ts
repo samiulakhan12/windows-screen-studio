@@ -83,6 +83,16 @@ export const MOODS = ['Calm', 'Upbeat', 'Lo-fi']`
     ])
   })
 
+  it("finds a failure's words and a save dialog's file type, and passes their ids and CSS filters", () => {
+    const src = `export function fail(id: string) {
+  patch(id, { status: 'error', error: 'The provider wrote nothing; try again.' })
+  return { ok: false, error: 'The file could not be read.' }
+}
+export const KINDS = { html: { ext: 'html', filter: 'Web page' }, pdf: { ext: 'pdf', filter: 'PDF' } }
+export const LOOK = { filter: 'blur(4px) saturate(1.2)', error: 'error' }`
+    expect(words('src/main/guide/save.ts', src)).toEqual(['table:The provider wrote nothing; try again.', 'table:The file could not be read.', 'table:Web page'])
+  })
+
   it("finds a component's own text prop and copy a function returns, builds or throws", () => {
     const src = `class VersionError extends Error {}
 export function phase(p: string, what: string, where: string, local: boolean): string {

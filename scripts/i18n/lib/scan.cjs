@@ -288,17 +288,21 @@ const isUndefined = (e) => !!e && ((ts.isIdentifier(e) && e.text === 'undefined'
  */
 const WORD_KINDS = Object.freeze(['table', 'copy', 'fragment'])
 
-/** Property names whose string values are data, whatever they look like. */
+/**
+ * Property names whose string values are data, whatever they look like. Not `error` or `filter`: a
+ * failure's words (`{ status: 'error', error: '…' }`) and a save dialog's file type are shown; an id
+ * or a CSS filter there still reads as no words.
+ */
 const DATA_PROPS = new Set([
   'id', 'ids', 'key', 'keys', 'k', 'kind', 'type', 'value', 'values', 'family', 'fontFamily', 'fontName', 'font', 'fonts', 'className', 'class',
   'displayName', 'tagName', 'style', 'css', 'color', 'colour', 'background', 'fill', 'stroke', 'icon', 'path', 'file', 'files', 'fileName',
   'filename', 'dir', 'folder', 'url', 'href', 'src', 'ext', 'extension', 'extensions', 'mime', 'mimeType', 'codec', 'encoder', 'keywords',
   'testId', 'testid', 'role', 'lang', 'locale', 'repo', 'commit', 'sha', 'sha256', 'hash', 'accelerator', 'channel', 'event', 'method',
   'pattern', 'regex', 'selector', 'prompt', 'system', 'schema', 'format', 'mode', 'variant', 'group', 'category', 'slug', 'model', 'voice',
-  'easing', 'cursor', 'align', 'position', 'anchor', 'shape', 'look', 'theme', 'preset', 'state', 'status', 'code', 'error', 'level', 'unit',
+  'easing', 'cursor', 'align', 'position', 'anchor', 'shape', 'look', 'theme', 'preset', 'state', 'status', 'code', 'level', 'unit',
   'units', 'tag', 'tags', 'english', 'en', 'licence', 'license', 'spdx', 'holder', 'copyright', 'artist', 'album', 'source', 'credit',
   'author', 'publisher', 'host', 'origin', 'endpoint', 'header', 'headers', 'contentType', 'accept', 'charset', 'encoding', 'args', 'arg',
-  'flags', 'filter', 'filters', 'vf', 'af', 'pixFmt', 'profile', 'tune', 'container', 'muxer', 'demuxer', 'ffmpeg', 'Authorization',
+  'flags', 'filters', 'vf', 'af', 'pixFmt', 'profile', 'tune', 'container', 'muxer', 'demuxer', 'ffmpeg', 'Authorization',
   'authorization', 'userAgent', 'fontStack', 'stack', 'csp'
 ])
 

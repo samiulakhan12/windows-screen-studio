@@ -167,6 +167,25 @@
   "analysisIpc.theAnalysisWasStopped": {
     "description": "Main process: a reason shown to the user when this fails (main/analysisIpc.ts)."
   },
+  "analysisIpc.tookTooLong": {
+    "description": "Clip › Find idle parts: why the recording could not be analysed, shown after \"The recording could not be analysed:\" (style.clipPanel.notAnalysed), so it starts lower case and has no full stop. The analysis ran longer than its time limit and was stopped."
+  },
+  "analysisIpc.ffmpegNotStarted": {
+    "description": "Clip › Find idle parts: why the recording could not be analysed, shown after \"The recording could not be analysed:\" (style.clipPanel.notAnalysed), so it starts lower case and has no full stop. The video tool could not start; {reason} is the system's own words.",
+    "dnt": [
+      "ffmpeg"
+    ],
+    "user": [
+      "reason"
+    ]
+  },
+  "analysisIpc.unreadableExit": {
+    "description": "Clip › Find idle parts: why the recording could not be analysed, shown after \"The recording could not be analysed:\" (style.clipPanel.notAnalysed), so it starts lower case and has no full stop. The video tool could not read the recording; {code} is its exit code, in Latin digits.",
+    "dnt": [
+      "ffmpeg"
+    ],
+    "digits": "latn"
+  },
   "assetIpc.unknownAssetKind": {
     "description": "Main process: a reason shown to the user when this fails (main/assetIpc.ts)."
   },

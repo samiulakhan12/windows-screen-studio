@@ -451,6 +451,24 @@
       "reason": "detect()'s failure when ffmpeg cannot start: speechOfFile only writes it to console.warn (sound levels are used instead); never shown."
     },
     {
+      "file": "src/main/sceneScan.ts",
+      "kind": "table",
+      "pattern": "^(?:ffmpeg could not be started \\(\\$\\{…\\}\\)|ffmpeg could not read the video \\(exit code \\$\\{…\\}\\))$",
+      "reason": "runScan's failure when ffmpeg cannot start or read the recording: detectScenes rejects with it, and its callers (Find chapters, Short clips, Polish, Make a guide) only write it to console.warn and go on without the screen; never shown."
+    },
+    {
+      "file": "src/main/filmstrip.ts",
+      "kind": "table",
+      "pattern": "^(?:ffmpeg could not be started \\(\\$\\{…\\}\\)|ffmpeg could not read the video \\(exit code \\$\\{…\\}\\$\\{…\\}\\))$",
+      "reason": "runFfmpeg's failure when ffmpeg cannot start or read the proxy: the filmstrip only writes it to console.warn and the timeline goes on without thumbnails; never shown."
+    },
+    {
+      "file": "src/preload/projects.ts",
+      "kind": "table",
+      "text": "No response from the app",
+      "reason": "saveProjectSync's fallback for a sync save main leaves unanswered, which projectsIpc's projects:saveSync never does (it sets returnValue on every path); the preload has no catalogue (test 86)."
+    },
+    {
       "file": "src/main/speech/vad.ts",
       "kind": "copy",
       "text": "no result",

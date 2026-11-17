@@ -11,13 +11,15 @@ const h = vi.hoisted(() => ({
   appEvents: new Map<string, () => void>(),
   /** Every process spawned, and a callback for the next one (called as soon as it starts). */
   spawned: [] as ChildProcess[],
-  onSpawn: null as ((proc: ChildProcess) => void) | null
+  onSpawn: null as ((proc: ChildProcess) => void) | null,
+  /** A program to start in place of ffmpeg (one that is not there), or null. */
+  command: null as string | null
 }))
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   const spawn = (...args: Parameters<typeof actual.spawn>): ChildProcess => {
-    const proc = actual.spawn(...args)
+    const proc = h.command ? actual.spawn(h.command, ...(args.slice(1) as [readonly string[], object])) : actual.spawn(...args)
     h.spawned.push(proc)
     h.onSpawn?.(proc)
     return proc
@@ -215,6 +217,38 @@ describe('detectStill', () => {
     await expect(detectStill('rec-broken', 1)).rejects.toThrow(/^ffmpeg could not read the video \(exit code \d+\)$/)
     await expect(detectStill('rec-broken', 1)).rejects.toThrow(/could not read/)
     expect(h.spawned.length).toBe(runs + 2)
+  })
+
+  it('says why it failed in the UI language, as the Clip tab shows it', async () => {
+    const { t } = await import('../src/shared/i18n/t')
+    const { uiEnglish, uiPseudo } = await import('./pseudoUi')
+    const why = (id: string): Promise<string> => detectStill(id, 1).then(() => 'found', (err: Error) => err.message)
+    const dir = path.join(projectsRoot, 'rec-unreadable')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
+    seed('rec-nostart')
+    try {
+      // English says what it said before.
+      uiEnglish()
+      const unreadable = await why('rec-unreadable')
+      const code = /^ffmpeg could not read the video \(exit code (\d+)\)$/.exec(unreadable)?.[1]
+      h.command = path.join(h.root, 'no-ffmpeg-here')
+      const notStarted = await why('rec-nostart')
+      const reason = /^ffmpeg could not be started \((.*ENOENT.*)\)$/.exec(notStarted)?.[1]
+      h.command = null
+      expect(code).toBeDefined()
+      expect(reason).toBeDefined()
+      // Another UI language says it in its own words, with the exit code and the system's reason as they are.
+      uiPseudo('en-XA')
+      expect(await why('rec-unreadable')).toBe(t('errors.analysisIpc.unreadableExit', { code: code! }))
+      h.command = path.join(h.root, 'no-ffmpeg-here')
+      expect(await why('rec-nostart')).toBe(t('errors.analysisIpc.ffmpegNotStarted', { reason: reason! }))
+      expect(t('errors.analysisIpc.unreadableExit', { code: code! })).not.toBe(unreadable)
+      expect(t('errors.analysisIpc.ffmpegNotStarted', { reason: reason! })).not.toBe(notStarted)
+    } finally {
+      h.command = null
+      uiEnglish()
+    }
   })
 
   it('decodes only the key frames of a 60 fps proxy, and every frame of a 30 fps one', async () => {

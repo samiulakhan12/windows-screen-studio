@@ -109,7 +109,7 @@ function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesO
     try {
       proc = spawn(ffmpegPath(), freezeDetectArgs(file, DETECT_MIN, keyFramesOnly, crop), { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] })
     } catch (err) {
-      resolve({ error: `ffmpeg could not be started (${err instanceof Error ? err.message : String(err)})` })
+      resolve({ error: t('errors.analysisIpc.ffmpegNotStarted', { reason: err instanceof Error ? err.message : String(err) }) })
       return
     }
     running.add(proc, id)
@@ -137,12 +137,12 @@ function runFreezeDetect(file: string, id: string, timeoutMs: number, keyFramesO
       if ('error' in result) console.warn(`Still detection failed: ${result.error}${last ? ` (${last.slice(0, 300)})` : ''}`)
       resolve(result)
     }
-    proc.on('error', (err) => finish({ error: `ffmpeg could not be started (${err.message})` }))
+    proc.on('error', (err) => finish({ error: t('errors.analysisIpc.ffmpegNotStarted', { reason: err.message }) }))
     proc.on('close', (code, signal) => {
       if (code === 0) finish({ log: log + tail })
-      else if (timedOut) finish({ error: 'the analysis took too long and was stopped' })
-      else if (signal) finish({ error: 'the analysis was stopped' })
-      else finish({ error: `ffmpeg could not read the video (exit code ${code})` })
+      else if (timedOut) finish({ error: t('errors.analysisIpc.tookTooLong') })
+      else if (signal) finish({ error: t('errors.analysisIpc.theAnalysisWasStopped') })
+      else finish({ error: t('errors.analysisIpc.unreadableExit', { code: String(code) }) })
     })
   })
 }
