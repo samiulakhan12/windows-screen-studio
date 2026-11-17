@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { exportPreviewSize, exportProject, exportSize } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
-import { drawFrame, type RenderScene } from '../render/compositor'
+import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
 import { CameraMaskPreparer, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
-import { createVideo, SCREEN_PROXY_FPS, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
+import { createVideo, SCREEN_PROXY_FPS, seekedFrame, seekToFrame, WEBCAM_PROXY_FPS, whenReady } from './media'
 import { planOf } from '../../../shared/engine/freeze'
 import { frameVideoTime, joinAt, joinPlan } from '../../../shared/render/joins'
 import { alphaOf } from '../../../shared/render/alpha'
@@ -29,6 +29,17 @@ interface Props {
   held?: boolean
   /** Largest size of the picture in CSS pixels. */
   box: { width: number; height: number }
+}
+
+/**
+ * A sought frame: its picture and sound times, and the screen's decoded frame whose timestamp is the
+ * sought one (null: the element is drawn). The camera is drawn from its element, which the
+ * camera layer segments for a blurred background.
+ */
+interface Sought {
+  t: number
+  sound: number
+  screen: VideoFrame | null
 }
 
 /** A camera still's person mask, when the camera's background is blurred (A* shows it blurred, as the export does). */
@@ -58,7 +69,11 @@ export function ExportPreview(props: Props): JSX.Element {
   // The see-through background its stills were composed with: an opaque and a transparent A* are never the same still.
   const joinStillsAlpha = useRef<RenderScene['alpha']>(undefined)
   const [stillsReady, setStillsReady] = useState(0)
-  const [frameTime, setFrameTime] = useState<{ t: number; sound: number } | null>(null)
+  const [frameTime, setFrameTime] = useState<Sought | null>(null)
+  // A sought frame's screen picture is let go once another replaces it, or the preview goes.
+  useEffect(() => () => frameTime?.screen?.close(), [frameTime])
+  // The sought frame the canvas last drew: data-settled below says whether it is the newest request's.
+  const [shown, setShown] = useState<Sought | null>(null)
   // The camera's background blur: redraw when a frame's person mask arrives.
   const [masks, setMasks] = useState(0)
   useEffect(() => onCameraMasksChanged(() => setMasks((n) => n + 1)), [])
@@ -109,8 +124,15 @@ export function ExportPreview(props: Props): JSX.Element {
     void (async () => {
       try {
         await whenReady(m.screen)
+        // A newer request seeks instead: this one's seek could land after it and leave this frame on the element.
+        if (!live) return
         await Promise.all([seekToFrame(m.screen, t, SCREEN_PROXY_FPS), m.webcam ? whenReady(m.webcam).then(() => seekToFrame(m.webcam!, Math.max(0, camT), WEBCAM_PROXY_FPS)) : null])
-        if (live) setFrameTime({ t, sound })
+        // 'seeked' can come a moment before the new picture reaches the element, and the preview draws
+        // once per seek: the screen is drawn from the decoded frame whose timestamp is the sought one, as
+        // the export and the thumbnail draw it (seekedFrame), never the picture before.
+        const screen = (await seekedFrame(m.screen, t, SCREEN_PROXY_FPS))?.frame ?? null
+        if (live) setFrameTime({ t, sound, screen })
+        else screen?.close()
       } catch {
         // The preview is a convenience: the export reports real failures.
       }
@@ -149,9 +171,15 @@ export function ExportPreview(props: Props): JSX.Element {
       }
       extras = { video, join: at ? { at, still } : null }
     }
-    drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound, extras)
+    const screenFrame: FrameImage | null = frameTime.screen ? { image: frameTime.screen, width: frameTime.screen.displayWidth, height: frameTime.screen.displayHeight } : null
+    drawFrame(ctx, w, h, frameTime.t, scene, { screen: m.screen, webcam: m.webcam, background: props.background, screenFrame }, { frameInterval: 1 / size.fps, blurSamples: props.held ? 1 : 4 }, frameTime.sound, extras)
+    setShown(frameTime)
   }, [frameTime, scene, project, props.background, props.held, props.screenUrl, props.webcamUrl, pixels.width, pixels.height, size.fps, masks, assets, stillsReady])
 
-  if (scene.alpha) return <canvas key="alpha" ref={canvas} className="export-preview-canvas alpha-preview" role="img" aria-label={t('alpha.preview.name')} style={{ width: css.width, height: css.height }} />
-  return <canvas key="opaque" ref={canvas} className="export-preview-canvas" style={{ width: css.width, height: css.height }} />
+  // Present once the canvas holds the newest time's frame; absent before the first draw and while a
+  // newer frame is sought (the canvas still shows the one before). A font or image that arrives later
+  // draws the same frame again.
+  const settled = shown !== null && shown === frameTime && frameTime.t === props.time && frameTime.sound === (props.soundTime ?? props.time) ? '' : undefined
+  if (scene.alpha) return <canvas key="alpha" ref={canvas} className="export-preview-canvas alpha-preview" role="img" aria-label={t('alpha.preview.name')} data-settled={settled} style={{ width: css.width, height: css.height }} />
+  return <canvas key="opaque" ref={canvas} className="export-preview-canvas" data-settled={settled} style={{ width: css.width, height: css.height }} />
 }
