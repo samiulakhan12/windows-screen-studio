@@ -593,6 +593,8 @@
   "publish.stale": "Written from older captions: Regenerate to update.",
   "publish.text": "{label} text",
   "publish.notWrittenYet": "Not written yet.",
+  "publish.error.otherAnswer": "The provider answered something else; try again.",
+  "publish.error.empty": "The provider wrote nothing; try again.",
   "publish.chapters": "Chapters (from your timeline)",
   "publish.addChapters": "Add chapters so viewers can jump:",
   "publish.noChapters": "No chapters: add some in the Text tab and they appear here with their times.",

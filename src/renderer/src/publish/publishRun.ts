@@ -9,6 +9,7 @@ import { PUBLISH_KINDS, taskOfKind, type PublishKind, type PublishLength, type P
 import { CancelledError, createQueue } from '../../../shared/publish/queue'
 import { plainText } from '../../../shared/publish/text'
 import { tagsText } from '../../../shared/publish/youtube'
+import { t } from '../../../shared/i18n/t'
 import type { CaptionSegment } from '../../../shared/types'
 import { ipcMessage } from '../editor/captionItems'
 
@@ -162,12 +163,12 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
         if (!mine()) return
         current.delete(key)
         if (!result || typeof result !== 'object' || result.task !== task) {
-          patch(projectId, kind, { status: 'error', error: 'The provider answered something else; try again.' })
+          patch(projectId, kind, { status: 'error', error: t('review.publish.error.otherAnswer') })
           return
         }
         const { text, tags } = cardText(result)
         if (!text) {
-          patch(projectId, kind, { status: 'error', error: 'The provider wrote nothing; try again.' })
+          patch(projectId, kind, { status: 'error', error: t('review.publish.error.empty') })
           return
         }
         patch(projectId, kind, { status: 'done', text, tags, error: null, writtenFrom: ctx.key, local: ctx.providerId === LOCAL_TEXT_ID })

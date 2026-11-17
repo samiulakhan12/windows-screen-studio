@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AI_TEXT_TASKS, type AiTextResult } from '../src/shared/api/ai'
 import { AiOutputError, runTextTask, textPrompt, validateTextRequest, type TextPrompt } from '../src/shared/captions/transcriptText'
 import { migrateProject } from '../src/shared/engine/project'
@@ -13,7 +13,9 @@ import type { CaptionSegment, Clip } from '../src/shared/types'
 import { readCleanupChoices, tidyCaptions } from '../src/shared/captions/cleanup'
 import { languageSubtitleFile } from '../src/shared/captions/subtitles'
 import { linksToCheck, saidLinks } from '../src/shared/publish/check'
+import { t } from '../src/shared/i18n/t'
 import { studioProject } from './p4Fixtures'
+import { uiEnglish, uiPseudo } from './pseudoUi'
 
 const seg = (id: string, start: number, end: number, text: string): CaptionSegment => ({ id, start, end, text })
 const SEGS = [seg('a', 0, 4, 'Today I show how to add a user.'), seg('b', 5, 9, 'Open Settings at https://example.com/settings and click Users.'), seg('c', 10, 14, 'Then press Save.')]
@@ -358,6 +360,35 @@ describe('the text a card shows', () => {
     expect(await card('title', 'Add a user evil.com/login')).toBe('Add a user evil.com/login')
     expect(await card('linkedin', 'A tour of users. Get it at https://evil.example/login')).toBe('A tour of users. Get it at https://evil.example/login')
     expect(await card('summary', 'Open https://example.com/settings to add users.')).toBe('Open https://example.com/settings to add users.')
+  })
+})
+
+describe('a card the provider wrote no text for', () => {
+  it('says why in the UI language', async () => {
+    const { writeItem, packItems } = (await import(/* @vite-ignore */ PUBLISH_RUN)) as {
+      writeItem: (projectId: string, kind: string, ctx: unknown) => Promise<void>
+      packItems: (projectId: string) => Record<string, { status: string; error: string | null }>
+    }
+    let answer: unknown = null
+    vi.stubGlobal('window', { api: { aiText: async () => answer, cancelAiText: async () => undefined } })
+    const ctx = { providerId: 'svc', segments: SEGS, tone: 'friendly', length: 'normal', key: 'k' }
+    try {
+      for (const set of [uiEnglish, () => uiPseudo('en-XA')]) {
+        set()
+        answer = { task: 'summary', text: 'Another task.' }
+        await writeItem('nothing', 'title', ctx)
+        expect(packItems('nothing').title).toMatchObject({ status: 'error', error: t('review.publish.error.otherAnswer') })
+        answer = { task: 'title', text: '  ' }
+        await writeItem('nothing', 'title', ctx)
+        expect(packItems('nothing').title).toMatchObject({ status: 'error', error: t('review.publish.error.empty') })
+      }
+      // English says what it said before.
+      uiEnglish()
+      expect([t('review.publish.error.otherAnswer'), t('review.publish.error.empty')]).toEqual(['The provider answered something else; try again.', 'The provider wrote nothing; try again.'])
+    } finally {
+      uiEnglish()
+      vi.unstubAllGlobals()
+    }
   })
 })
 

@@ -1940,6 +1940,12 @@
   "publish.notWrittenYet": {
     "description": "publishDialog, the placeholder of <textarea> (src/renderer/src/publish/PublishDialog.tsx:460)."
   },
+  "publish.error.otherAnswer": {
+    "description": "Publish dialog, a card's error when the AI provider returned the result of another task (src/renderer/src/publish/publishRun.ts)."
+  },
+  "publish.error.empty": {
+    "description": "Publish dialog, a card's error when the AI provider returned no text (src/renderer/src/publish/publishRun.ts)."
+  },
   "publish.chapters": {
     "description": "publishDialog, text of <p> (src/renderer/src/publish/PublishDialog.tsx:469)."
   },
