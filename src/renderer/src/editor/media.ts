@@ -1,4 +1,5 @@
 import { frameCovers, frameSeekTime } from '../../../shared/render/frameTiming'
+import { ExportFailure } from '../../../shared/render/exportPlan'
 import { t } from '../../../shared/i18n/t'
 
 /**
@@ -66,7 +67,8 @@ export function whenReady(v: HTMLVideoElement): Promise<void> {
     }
     const fail = (): void => {
       cleanup()
-      reject(new Error(t('editor.media.loadFailed', { reason: v.error?.message ?? t('editor.media.unknownError') })))
+      // Coded: an export stops on a recording it cannot read instead of trying another encoder (output-and-languages §9.6).
+      reject(new ExportFailure(t('editor.media.loadFailed', { reason: v.error?.message ?? t('editor.media.unknownError') }), 'unreadable'))
     }
     const cleanup = (): void => {
       v.removeEventListener('loadeddata', ok)
@@ -97,7 +99,7 @@ export function seekTo(v: HTMLVideoElement, at: number): Promise<void> {
     const fail = (): void => {
       v.removeEventListener('seeked', done)
       v.removeEventListener('error', fail)
-      reject(new Error(t('editor.media.readFailed', { reason: v.error?.message ?? t('editor.media.unknownError') })))
+      reject(new ExportFailure(t('editor.media.readFailed', { reason: v.error?.message ?? t('editor.media.unknownError') }), 'unreadable'))
     }
     v.addEventListener('seeked', done)
     v.addEventListener('error', fail)

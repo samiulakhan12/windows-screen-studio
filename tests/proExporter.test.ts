@@ -33,6 +33,8 @@ const h = vi.hoisted(() => ({
    * for a failure of the page's own).
    */
   fail: null as { at: 'before-start' | 'after-start'; message: string; code: string | null } | null,
+  /** The screen's frames fail to read with this error. */
+  screenFails: null as Error | null,
   details: [] as (string | undefined)[]
 }))
 
@@ -40,6 +42,7 @@ class FakeSource {
   readonly kind = 'decoder'
   async get(i: number) {
     await Promise.resolve()
+    if (h.screenFails) throw h.screenFails
     return { image: { i }, width: 1920, height: 1080 }
   }
   next(): void {}
@@ -139,6 +142,7 @@ vi.stubGlobal('window', {
 
 // Renderer code (DOM types): imported at run time so the Node typecheck of tests/ does not follow it.
 const EXPORTER = '../src/renderer/src/editor/exporter'
+const MEDIA = '../src/renderer/src/editor/media'
 const { exportVideo } = (await import(/* @vite-ignore */ EXPORTER)) as { exportVideo(input: unknown): Promise<unknown> }
 
 function project(): Project {
@@ -295,5 +299,41 @@ describe('a route is decided by its own failure, not by what an earlier export l
     await expect(run({ codec: 'hevc' }, caps)).rejects.toThrow('The disk is full.')
     expect(h.pro.map((p) => p.route)).toEqual([webcodecs])
     expect(h.bases).toHaveLength(0)
+  })
+})
+
+describe('the page’s own failure to read a recording stops the export, as its words did (output-and-languages §9.6)', () => {
+  const caps: CodecCaps = { webcodecs: { hevc: true, av1: false }, gpu: { hevc: ['hevc_nvenc'], av1: [] }, overrides: {} }
+  afterEach(() => {
+    h.screenFails = null
+  })
+
+  /** The errors media.ts's own seek and load give for a video element that fails. */
+  async function mediaFailures(): Promise<Error[]> {
+    const media = await vi.importActual<{ whenReady(v: unknown): Promise<void>; seekTo(v: unknown, at: number): Promise<void> }>(MEDIA)
+    const video = () => Object.assign(new EventTarget(), { readyState: 0, seeking: false, currentTime: 0, duration: 10, error: { message: 'PIPELINE_ERROR_READ: FFmpegDemuxer: data source error' } })
+    const failing = async (start: (v: ReturnType<typeof video>) => Promise<void>): Promise<Error> => {
+      const v = video()
+      const p = start(v)
+      v.dispatchEvent(new Event('error'))
+      return p.then(
+        () => {
+          throw new Error('expected a failure')
+        },
+        (e: Error) => e
+      )
+    }
+    return [await failing((v) => media.seekTo(v, 2)), await failing((v) => media.whenReady(v))]
+  }
+
+  it('a recording the video element cannot read or load fails at the first route with its own message', async () => {
+    const errors = await mediaFailures()
+    expect(errors.map((e) => e.message)).toEqual(['Could not read video (PIPELINE_ERROR_READ: FFmpegDemuxer: data source error)', 'Could not load video (PIPELINE_ERROR_READ: FFmpegDemuxer: data source error)'])
+    for (const e of errors) {
+      h.screenFails = e
+      await expect(run({ codec: 'hevc' }, caps)).rejects.toThrow(e.message)
+      expect(h.pro).toHaveLength(1)
+      expect(h.bases).toHaveLength(0)
+    }
   })
 })

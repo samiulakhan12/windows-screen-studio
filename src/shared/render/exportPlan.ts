@@ -203,6 +203,9 @@ export class ExportFailure extends Error {
  */
 export const refusedForGood = (code: ExportErrorCode | null | undefined): boolean => !!code && code !== 'encoder' && code !== 'unknown'
 
+/** The code a failure carries itself (an ExportFailure, such as the page's own read of a recording), or null. */
+export const failureCode = (e: unknown): ExportErrorCode | null => (e instanceof ExportFailure ? e.code : null)
+
 /** How frames become a file, in the order to try them. */
 export type ExportRoute =
   | { video: 'webcodecs'; codec: 'h264' | 'vp9' | 'hevc' | 'av1'; hardware: boolean }

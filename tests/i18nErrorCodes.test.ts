@@ -5,7 +5,8 @@
  * - For every English message main produces for an export (ffmpeg.ts's KNOWN_ERRORS and its other
  *   failures through toIpcError, renameError's, validateJob's and the soundtrack's), the decision by
  *   code (errorCodeOf, refusedForGood) equals the decision exporter.ts made with its regex
- *   NOT_ENCODER_RELATED, kept below only to compare.
+ *   NOT_ENCODER_RELATED, kept below only to compare. So does it for the page's own failures to load or
+ *   read a recording (media.ts), which carry their code themselves.
  * - Under en-XA the messages change and the codes, so the decisions, do not.
  * - Home's source refresh still decides on SOURCE_GONE and on both texts of recordingIpc.ts, and the
  *   recording side's text Home shows is marked lang="en" only in a translated UI.
@@ -18,7 +19,7 @@ import type { ExportJob } from '../src/shared/api/export'
 import { setCatalogue, t } from '../src/shared/i18n/t'
 import { describeFfmpegError, ffmpegErrorCode, FfmpegFailure } from '../src/main/ffmpeg'
 import { errorCodeOf, ExportFailure, ffmpegText, renameError, resolveSoundInputs, toIpcError, validateJob } from '../src/main/exportJob'
-import { refusedForGood } from '../src/shared/render/exportPlan'
+import { failureCode, refusedForGood } from '../src/shared/render/exportPlan'
 import { EFFECT_SOURCES } from '../src/shared/audio/soundLibrary'
 
 const pseudo = require('../scripts/i18n/lib/pseudo.cjs') as {
@@ -30,6 +31,8 @@ const files = require('../scripts/i18n/lib/files.cjs') as { readEnglish(): { mes
 const NOT_ENCODER_RELATED = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
 
 const ROOT = path.resolve(__dirname, '..')
+// Renderer code: imported at run time so the Node typecheck of tests/ does not follow its DOM types.
+const MEDIA = '../src/renderer/src/editor/media'
 const english = (): void => setCatalogue({ language: 'en', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
 /** en-XA: every message bracketed and longer, as the pseudo-locale build makes it (§16.3). */
 function enXA(): void {
@@ -92,6 +95,23 @@ async function jobRefusals(): Promise<unknown[]> {
     await caught(() => resolveSoundInputs(job({ effects: [{ id: effect, times: [1], gain: 1 }] }), '/p', async () => false, [], { soundDir: '/library' })),
     await caught(() => resolveSoundInputs(job({ effects: [{ id: 'nope', times: [1], gain: 1 }] }), '/p', async () => true, [], { soundDir: '/library' }))
   ]
+}
+
+/** media.ts's failures for a video element that cannot load or read a recording: the page's own, in an export's frame loop. */
+async function pageReadFailures(): Promise<Error[]> {
+  const media = (await import(/* @vite-ignore */ MEDIA)) as { whenReady(v: unknown): Promise<void>; seekTo(v: unknown, at: number): Promise<void> }
+  const failing = async (start: (v: EventTarget) => Promise<void>): Promise<Error> => {
+    const v = Object.assign(new EventTarget(), { readyState: 0, seeking: false, currentTime: 0, duration: 10, error: { message: 'PIPELINE_ERROR_READ' } })
+    const p = start(v)
+    v.dispatchEvent(new Event('error'))
+    return p.then(
+      () => {
+        throw new Error('expected a failure')
+      },
+      (e: Error) => e
+    )
+  }
+  return [await failing((v) => media.whenReady(v)), await failing((v) => media.seekTo(v, 2))]
 }
 
 const messageOf = (e: unknown): string => toIpcError(e).message
@@ -157,6 +177,21 @@ describe('test 72: an export stops or tries the next encoder by code, as it did 
     for (let i = 0; i < shown.length; i++) if (messages[i] !== 'Invalid export settings') expect(shown[i]).not.toBe(messages[i])
     expect(ffmpegText(ffmpegFailures()[0])).toBe(t('errors.diskFull'))
     expect(t('errors.diskFull').startsWith('[')).toBe(true)
+  })
+
+  it('the page’s own failures to load or read a recording stop the export, by their code as by their words', async () => {
+    const failures = await pageReadFailures()
+    expect(failures.map((e) => e.message)).toEqual(['Could not load video (PIPELINE_ERROR_READ)', 'Could not read video (PIPELINE_ERROR_READ)'])
+    for (const e of failures) expect({ message: e.message, stops: refusedForGood(failureCode(e)) }).toEqual({ message: e.message, stops: NOT_ENCODER_RELATED.test(e.message) })
+    expect(failures.map(failureCode)).toEqual(['unreadable', 'unreadable'])
+    // The page's other failures (a WebCodecs encoder's) carry no code and try the next route, as their words did.
+    const encoder = new Error("The graphics card's encoder failed: Encoder creation error.")
+    expect(refusedForGood(failureCode(encoder))).toBe(NOT_ENCODER_RELATED.test(encoder.message))
+    // Under en-XA the words change and the code does not.
+    enXA()
+    const shown = await pageReadFailures()
+    expect(shown.map(failureCode)).toEqual(['unreadable', 'unreadable'])
+    for (let i = 0; i < shown.length; i++) expect(shown[i].message).not.toBe(failures[i].message)
   })
 
   it('ffmpeg.ts’s English sentences have their own messages, equal in English', () => {

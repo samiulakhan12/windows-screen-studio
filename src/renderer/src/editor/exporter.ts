@@ -8,7 +8,7 @@ import { croppedFrameSize } from '../../../shared/engine/crop'
 import { cameraShownAt } from '../../../shared/engine/layout'
 import { outputChapters } from '../../../shared/render/chapters'
 import { clickSoundJob } from '../../../shared/render/clickSound'
-import { exportDimensions, exportProject, exportRoutes, isAudioOnly, MB, refusedForGood, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
+import { exportDimensions, exportProject, exportRoutes, failureCode, isAudioOnly, MB, refusedForGood, routeLabel, targetBitrates, type ExportRoute } from '../../../shared/render/exportPlan'
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Graphic, Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
@@ -343,8 +343,9 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
       const e = cleanIpcError(err)
       const last = r === routes.length - 1
       if (last) throw e
-      // Main's code for this route's refused start or failed frame or finish; null is a failure of this page's own.
-      if (refusedForGood(refusal.code)) throw e
+      // The page's own code (a recording it cannot read), else main's for this route's refused start or failed
+      // frame or finish; null is another failure of this page's own, such as a WebCodecs encoder's.
+      if (refusedForGood(failureCode(err) ?? refusal.code)) throw e
       console.warn(`Export with ${routeLabel(route, input.settings.format)} failed, trying the next encoder:`, e)
       notice = t('export.fallback', { failed: routeName(route, input.settings.format), next: routeName(routes[r + 1], input.settings.format) })
     }
