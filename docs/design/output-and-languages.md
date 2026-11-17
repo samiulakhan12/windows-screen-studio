@@ -2143,8 +2143,10 @@ export const fmt: {
   `inputmode="decimal"` that shows `fmt` digits, reads typed and pasted digits of any script through
   `fmt.parseNumber`, keeps `min`, `max` and `step`, and steps with ArrowUp and ArrowDown. Chromium
   formats `type="number"` with the app's en-US locale and refuses ২৫ typed through Avro or Bijoy; a
-  text field does neither. Every other numeric or time text field parses with `fmt.parseNumber`, never
-  `Number()`.
+  text field does neither. A site that commits only on Enter or on leaving the field (the Selection
+  view's group time fields) gives `NumberField` the value it holds until then, so each step shows,
+  is announced, and steps on from the last one. Every other numeric or time text field parses with
+  `fmt.parseNumber`, never `Number()`.
 - `Intl.DurationFormat`, `Intl.Locale.prototype.getTextInfo` and `Intl.ListFormat` are used through
   small local type declarations; the tsconfigs' `lib` stays `ES2022`.
 

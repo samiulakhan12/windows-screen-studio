@@ -191,7 +191,8 @@ export function GroupTimeField({
     e.stopPropagation()
     commit()
   }
-  // English keeps today's number input, which holds what is typed as text; other languages type their own digits (§11.1).
+  // English keeps today's number input, which holds what is typed as text; other languages type their own digits (§11.1),
+  // and the field shows the value not yet committed, so ArrowUp and ArrowDown step on from it and a screen reader hears it.
   if (uiLanguage() !== 'en')
     return (
       <NumberField
@@ -202,7 +203,7 @@ export function GroupTimeField({
         max={Math.round(max * 100) / 100}
         step={0.1}
         placeholder={mixed ? t('style.mixedControls.mixed') : undefined}
-        value={mixed ? NaN : Math.round(value * 10) / 10}
+        value={draft !== null ? (draft === '' ? NaN : Number(draft)) : mixed ? NaN : Math.round(value * 10) / 10}
         onValue={(v) => setDraft(Number.isFinite(v) ? String(v) : '')}
         onKeyDown={onKeyDown}
         onBlur={commit}

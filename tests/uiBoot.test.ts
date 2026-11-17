@@ -79,6 +79,7 @@ const CANVAS = '../src/renderer/src/i18n/canvasLang'
 const FONTS = '../src/renderer/src/i18n/uiFonts'
 const CONFIRM = '../src/renderer/src/i18n/askConfirm'
 const FIELD = '../src/renderer/src/i18n/NumberField'
+const MIXED = '../src/renderer/src/editor/mixedControls'
 const CATALOG_FONTS = '../src/renderer/src/render/catalogFonts'
 const boot = (await import(/* @vite-ignore */ BOOT)) as {
   bootLanguage(view: string): Promise<UiInfo>
@@ -98,6 +99,9 @@ const { askConfirm } = (await import(/* @vite-ignore */ CONFIRM)) as { askConfir
 const field = (await import(/* @vite-ignore */ FIELD)) as {
   NumberField(props: Record<string, unknown>): { type: unknown; props: Record<string, unknown> }
   stepValue(from: number, dir: 1 | -1, bounds: { min?: number; max?: number; step?: number }): number
+}
+const { GroupTimeField } = (await import(/* @vite-ignore */ MIXED)) as {
+  GroupTimeField(props: { label: string; value: number; mixed?: boolean; min: number; max: number; onCommit: (v: number) => void; testId?: string }): { type: unknown; props: Record<string, unknown> }
 }
 const { BUNDLED_FONT_URLS } = (await import(/* @vite-ignore */ CATALOG_FONTS)) as { BUNDLED_FONT_URLS: Record<string, string> }
 const rt = await import('../src/shared/i18n/t')
@@ -390,6 +394,41 @@ describe('number fields (test 83)', () => {
     expect(onValue.mock.lastCall![0]).toBeNaN()
     ;(el.props.onBlur as (e: unknown) => void)({})
     expect(render(27).props.value).toBe('২৭')
+  })
+
+  it('in the Selection view outside English, the group’s time field shows each step, says it, and commits where the steps end', () => {
+    rt.setCatalogue({ language: 'bn', messages: {}, formatLocale: 'bn', dir: 'ltr' })
+    type Node = { type: unknown; props: Record<string, unknown> }
+    let value = 1
+    const commits: number[] = []
+    const onCommit = (v: number): void => void (commits.push(v), (value = v))
+    // GroupTimeField, then NumberField, then the field outside English: one useState each, in that order.
+    const render = (): Node => {
+      hooks.i = 0
+      let el: Node = GroupTimeField({ label: 'Starts at', testId: 'group-start', value, min: 0, max: 30, onCommit })
+      while (typeof el.type === 'function') el = (el.type as (p: Record<string, unknown>) => Node)(el.props)
+      return el
+    }
+    const key = (k: string): void => {
+      const e = { key: k, defaultPrevented: false, preventDefault: () => void (e.defaultPrevented = true), stopPropagation: () => undefined }
+      ;(render().props.onKeyDown as (e: unknown) => void)(e)
+    }
+    hooks.states = []
+    expect(render().props).toMatchObject({ type: 'text', role: 'spinbutton', 'data-testid': 'group-start', value: fmt.count(1), 'aria-valuenow': 1 })
+    for (const shown of [1.1, 1.2, 1.3]) {
+      key('ArrowUp')
+      expect(render().props).toMatchObject({ value: fmt.count(shown), 'aria-valuenow': shown, 'aria-valuetext': fmt.count(shown) })
+    }
+    expect(commits).toEqual([])
+    ;(render().props.onBlur as (e: unknown) => void)({})
+    expect(commits).toEqual([1.3])
+    expect(render().props).toMatchObject({ value: fmt.count(1.3), 'aria-valuenow': 1.3 })
+    // Typed digits, then a step from them; Enter commits where the step ends.
+    ;(render().props.onChange as (e: unknown) => void)({ currentTarget: { value: '২.৫' } })
+    key('ArrowDown')
+    expect(render().props).toMatchObject({ value: fmt.count(2.4), 'aria-valuenow': 2.4 })
+    key('Enter')
+    expect(commits).toEqual([1.3, 2.4])
   })
 
   it('steps as a number input does, from min by step, without float noise', () => {
