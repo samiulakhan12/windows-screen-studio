@@ -33,8 +33,9 @@ import {
   type VoiceSource
 } from '../../shared/audio/voiceClean'
 import { VOICE_COPY } from '../../shared/audio/voiceCopy'
+import { ExportFailure } from '../../shared/render/exportPlan'
 import type { VoiceStrength } from '../../shared/types'
-import { describeFfmpegError } from '../ffmpeg'
+import { describeFfmpegError, ffmpegErrorCode } from '../ffmpeg'
 
 /** Seconds a render may take: this much, plus RENDER_PER_SECOND for each second of sound. */
 const RENDER_BASE = 60
@@ -348,7 +349,8 @@ export class VoiceCleaner {
         if (timedOut) return reject(new Error(VOICE_COPY.tooLong))
         const last = log.trim().split('\n').pop() ?? ''
         console.warn(`Clean voice failed (${signal ?? `exit code ${code}`}): ${last.slice(0, 300)}`)
-        reject(new Error(describeFfmpegError(log, VOICE_COPY.engine)))
+        // The same words, with ffmpeg's code for an export's choice of the next encoder (output-and-languages §9.6).
+        reject(new ExportFailure(describeFfmpegError(log, VOICE_COPY.engine), ffmpegErrorCode(log)))
       })
     })
   }

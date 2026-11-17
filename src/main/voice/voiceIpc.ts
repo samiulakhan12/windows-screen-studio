@@ -12,7 +12,7 @@ import { isVoiceStrength } from '../../shared/audio/voiceClean'
 import { VOICE_COPY, voiceReason } from '../../shared/audio/voiceCopy'
 import type { ExportErrorCode, ExportJob } from '../../shared/api/export'
 import { ExportFailure } from '../../shared/render/exportPlan'
-import type { SoundInputs } from '../exportJob'
+import { errorCodeOf, type SoundInputs } from '../exportJob'
 import { ffmpegPath } from '../ffmpeg'
 import { projectDir } from '../projects'
 import { isAppUrl } from '../security'
@@ -41,7 +41,8 @@ export const stopVoiceClean = (id: string): Promise<void> => voiceCleaner.cancel
 /**
  * Why cleaning the voice for an export failed, as a code (output-and-languages §9.6): a missing
  * sound file stops the export and a file another app holds stops it too, as their words did before
- * codes; anything else lets the next encoder try, as before.
+ * codes; any other reason is 'unknown' here, and cleanVoiceInputs then takes the failure's own code
+ * (ffmpeg's, or a denied or read-only folder's), else the next encoder tries, as before.
  */
 export function voiceFailureCode(reason: string): ExportErrorCode {
   if (reason === VOICE_COPY.missingMic || reason === VOICE_COPY.missingMix) return 'missing-input'
@@ -73,7 +74,8 @@ export async function cleanVoiceInputs(sound: SoundInputs, projectId: string, re
   if (!source) return sound
   const file = await cleaner.ensure(projectId, source, strength).catch((err: unknown) => {
     const reason = voiceReason(err instanceof Error ? err.message : String(err))
-    throw new ExportFailure(`${VOICE_COPY.failed} ${reason}`, voiceFailureCode(reason))
+    const code = voiceFailureCode(reason)
+    throw new ExportFailure(`${VOICE_COPY.failed} ${reason}`, code !== 'unknown' ? code : errorCodeOf(err))
   })
   const cleaned = path.join(projectDir(projectId), file)
   return source === 'mic' ? { ...sound, stems: { ...sound.stems, mic: cleaned } } : { ...sound, audioInput: cleaned }

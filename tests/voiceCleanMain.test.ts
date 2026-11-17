@@ -8,7 +8,7 @@ import { mkdirSync, promises as fsp, readdirSync, readFileSync, rmSync, utimesSy
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
-import { ffmpegPath } from '../src/main/ffmpeg'
+import { describeFfmpegError, ffmpegPath } from '../src/main/ffmpeg'
 
 const h = vi.hoisted(() => ({
   root: require('node:fs').mkdtempSync(require('node:path').join(require('node:os').tmpdir(), 'ssw-voice-')) as string,
@@ -454,9 +454,10 @@ describe('IPC and export', () => {
     expect(ensure).toHaveBeenLastCalledWith('exp', 'mix', 'normal')
   })
 
+  // The words the exporter read before error codes (test 72 keeps the same regex to compare).
+  const OLD = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
+
   it('a failed clean stops the export or lets the next encoder try by code, as its words did before codes (§9.6)', async () => {
-    // The words the exporter read before error codes (test 72 keeps the same regex to compare).
-    const OLD = /disk is full|permission|in use|another app|read-only|missing|could not be read|could not load|could not read|could not save|could not write|not chosen|invalid export|export size|no sound/i
     const mixed: SoundInputs = { job: job('normal'), audioInput: '/p/screen.mp4' }
     for (const reason of [VOICE_COPY.missingMic, VOICE_COPY.missingMix, VOICE_COPY.locked, VOICE_COPY.damagedModel, VOICE_COPY.tooLong, VOICE_COPY.engine, 'Cleaning stopped.']) {
       const ensure = vi.fn(async () => {
@@ -476,6 +477,47 @@ describe('IPC and export', () => {
     expect((missing as ExportFailure).code).toBe('missing-input')
     expect(refusedForGood(errorCodeOf(missing))).toBe(true)
   })
+
+  it.skipIf(process.platform === 'win32')('an ffmpeg failure Flown recognises stops the export or lets the next encoder try as its words did (§9.6)', async () => {
+    const logs = [
+      'av_interleaved_write_frame(): No space left on device',
+      'voice-0123456789abcdef.part.m4a: Permission denied',
+      'voice-0123456789abcdef.part.m4a: Device or resource busy',
+      'screen.mp4: No such file or directory',
+      'screen.mp4: Invalid data found when processing input',
+      'Cannot allocate memory',
+      'Conversion failed!'
+    ]
+    for (const [n, log] of logs.entries()) {
+      const id = `ffmpegfail${n}`
+      mkdirSync(projectDir(id), { recursive: true })
+      writeFileSync(path.join(projectDir(id), 'screen.mp4'), 'sound')
+      // An ffmpeg that prints this log and fails, as the real one does on a full disk or a busy file.
+      const fake = path.join(h.root, `ffmpeg-${n}.sh`)
+      writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' '${log}' >&2\nexit 1\n`, { mode: 0o755 })
+      const c = new VoiceCleaner({ projectDir, modelDir: () => modelDir, modelTexts: texts, ffmpeg: () => fake })
+      // The Audio panel shows the same words, and strips only "Error: " from them.
+      const own = await c.ensure(id, 'mix', 'normal').catch((e: unknown) => e)
+      expect(own, log).toBeInstanceOf(Error)
+      expect((own as Error).name).toBe('Error')
+      expect((own as Error).message).toBe(describeFfmpegError(log, VOICE_COPY.engine))
+      const err = await cleanVoiceInputs({ job: job('normal'), audioInput: path.join(projectDir(id), 'screen.mp4') }, id, undefined, c).catch((e: unknown) => e)
+      const message = (err as ExportFailure).message
+      expect(message).toBe(`${VOICE_COPY.failed} ${describeFfmpegError(log, VOICE_COPY.engine)}`)
+      expect({ log, stops: refusedForGood(errorCodeOf(err)) }).toEqual({ log, stops: OLD.test(message) })
+    }
+  })
+
+  it('a recording the clean cannot read stops the export, as its words did (§9.6)', async () => {
+    mkdirSync(projectDir('damaged'), { recursive: true })
+    writeFileSync(path.join(projectDir('damaged'), 'screen.mp4'), 'not a recording')
+    const { c } = cleaner()
+    const err = await cleanVoiceInputs({ job: job('normal'), audioInput: path.join(projectDir('damaged'), 'screen.mp4') }, 'damaged', undefined, c).catch((e: unknown) => e)
+    const message = (err as ExportFailure).message
+    expect(message).toBe(`${VOICE_COPY.failed} The recording could not be read (it may be damaged).`)
+    expect(errorCodeOf(err)).toBe('unreadable')
+    expect(refusedForGood(errorCodeOf(err))).toBe(OLD.test(message))
+  }, 30_000)
 
   it('leaves a job without Clean voice, or without a microphone stem, untouched', async () => {
     const ensure = vi.fn(async () => 'voice-0000000000000000.m4a')
