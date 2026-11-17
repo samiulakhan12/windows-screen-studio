@@ -330,8 +330,8 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
   for (let r = 0; r < routes.length; r++) {
     const route = routes[r]
     if (signal.aborted) throw abortError()
-    // The code main gave when it refused this route's start, if it did.
-    const refusal: StartRefusal = { code: null }
+    // The code main gave for this route's own failure, if it did.
+    const refusal: StartRefusal = { code: null, started: false }
     try {
       const sink = await prepareRoute(route, input, plan)
       if (!sink) continue
@@ -343,13 +343,8 @@ export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
       const e = cleanIpcError(err)
       const last = r === routes.length - 1
       if (last) throw e
-      // Main's code for a refused start, else for its failed finish (export:start clears it, so null is a failure of this page's own).
-      const code =
-        refusal.code ??
-        (await Promise.resolve()
-          .then(() => window.api.exportErrorCode())
-          .catch(() => null))
-      if (refusedForGood(code)) throw e
+      // Main's code for this route's refused start or failed frame or finish; null is a failure of this page's own.
+      if (refusedForGood(refusal.code)) throw e
       console.warn(`Export with ${routeLabel(route, input.settings.format)} failed, trying the next encoder:`, e)
       notice = t('export.fallback', { failed: routeName(route, input.settings.format), next: routeName(routes[r + 1], input.settings.format) })
     }
@@ -404,11 +399,22 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
   }
 }
 
+/** Main's code for the last failure of an export job, or null when it gives none. */
+const errorCode = (): Promise<ExportErrorCode | null> =>
+  Promise.resolve()
+    .then(() => window.api.exportErrorCode())
+    .catch(() => null)
+
 type SinkFactory = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, startJob: StartJob, base: JobBase) => FrameSink
 
-/** Filled when main refuses a route's export:start: the code it recorded for the refusal. */
+/**
+ * Main's code for a route's own failure (output-and-languages §9.6): read once the route asked for its
+ * job, so a code an earlier export left is never taken for this one's.
+ */
 interface StartRefusal {
   code: ExportErrorCode | null
+  /** The route asked main to start its job (export:start clears the code). */
+  started: boolean
 }
 
 /** Checks that a route can run here; returns a factory for its sink, or null to skip it. */
@@ -517,7 +523,7 @@ async function renderAll(
   route: ExportRoute,
   makeSink: SinkFactory,
   notice: string | undefined,
-  refusal: StartRefusal = { code: null }
+  refusal: StartRefusal = { code: null, started: false }
 ): Promise<Omit<ExportResult, 'encoder' | 'seconds'>> {
   const { project, settings, signal } = input
   const { width, height, fps, times, pictures, held } = plan
@@ -591,13 +597,12 @@ async function renderAll(
       outputPath: input.outputPath
     }
     const startJob: StartJob = async (job) => {
+      refusal.started = true
       try {
         await window.api.exportStart(project.id, job)
       } catch (err) {
         // export:start clears the code when it begins, so the code read now is this refusal's.
-        refusal.code = await Promise.resolve()
-          .then(() => window.api.exportErrorCode())
-          .catch(() => null)
+        refusal.code = await errorCode()
         throw err
       }
     }
@@ -711,6 +716,8 @@ async function renderAll(
     // The video is in place once the finish resolves: a cancel since then (during the stems) leaves it saved (§7.6).
     return signal.aborted ? { ...done, cancelledAfterVideo: true } : done
   } catch (err) {
+    // Main's code for a failed frame or finish of this job, read before the cancel below can record its own.
+    if (refusal.started && refusal.code === null) refusal.code = await errorCode()
     // Stops ffmpeg (also while it is finishing) and deletes the partial file.
     await window.api.exportCancel().catch(() => undefined)
     throw err

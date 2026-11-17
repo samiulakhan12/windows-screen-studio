@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createProject } from '../src/shared/engine/project'
 import type { ColorTags, ExportJob } from '../src/shared/api/export'
 import type { CodecCaps } from '../src/shared/render/codecRoutes'
@@ -19,6 +19,20 @@ const h = vi.hoisted(() => ({
   caps: undefined as CodecCaps | undefined,
   /** export:start refuses every job with this message, and export:errorCode gives `code`. */
   refuse: null as { message: string; code: string | null } | null,
+  /**
+   * Main's last error code, as export:errorCode gives it: export:start clears it and records a
+   * refusal's, a failed frame write records its own, and a cancel while a job runs leaves 'cancelled'
+   * (a frame write still waiting on the killed ffmpeg rejects with it).
+   */
+  code: null as string | null,
+  /** Main has a job running: export:start took it and no cancel came since. */
+  active: false,
+  /**
+   * How the next sink made fails, taken once: before its job starts (a WebCodecs encoder that errors
+   * before its first chunk) or after it, with the code main records for the failed frame write (none
+   * for a failure of the page's own).
+   */
+  fail: null as { at: 'before-start' | 'after-start'; message: string; code: string | null } | null,
   details: [] as (string | undefined)[]
 }))
 
@@ -32,6 +46,21 @@ class FakeSource {
   close(): void {}
 }
 const sink = { push: async () => undefined, finish: async () => ({ bytes: 1 }), close: () => undefined }
+
+/** The failure set for the next sink, taken once, as a push that fails before or after its job starts. */
+function failingSink(start: () => Promise<void>): typeof sink | null {
+  const f = h.fail
+  h.fail = null
+  if (!f) return null
+  const push = async (): Promise<undefined> => {
+    if (f.at === 'after-start') {
+      await start()
+      if (f.code) h.code = f.code
+    }
+    throw new Error(f.message)
+  }
+  return { ...sink, push }
+}
 
 vi.mock('../src/renderer/src/render/frameSource', () => ({
   openTrack: async (url: string) => ({ url, fps: 30 }),
@@ -67,12 +96,16 @@ vi.mock('../src/renderer/src/render/proEncoders', async (orig) => {
     codecCapsFor: async () => h.caps,
     rawSinkFor: (route: { encoder: string }, base: Record<string, unknown>, _canvas: unknown, _ctx: unknown, startJob: (job: unknown) => Promise<void>) => {
       h.bases.push({ route, base })
+      const start = (): Promise<void> => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat: 'yuv420p' } })
       // A refused start reaches the exporter as the raw sinks report it: on the first frame.
-      return h.refuse ? { ...sink, push: () => startJob({ ...base, video: { kind: 'raw', encoder: route.encoder, pixelFormat: 'yuv420p' } }) } : sink
+      return failingSink(start) ?? (h.refuse ? { ...sink, push: start } : sink)
     },
     proSink: (route: unknown, _canvas: unknown, fps: number, bitrate: number, startJob: (color: ColorTags) => Promise<void>, quality: unknown) => {
       h.pro.push({ route, fps, bitrate, quality })
-      void startJob({ primaries: 1, transfer: 1, matrix: 6, fullRange: false })
+      const start = (): Promise<void> => startJob({ primaries: 1, transfer: 1, matrix: 6, fullRange: false })
+      const failing = failingSink(start)
+      if (failing) return failing
+      void start()
       return sink
     }
   }
@@ -88,10 +121,18 @@ vi.stubGlobal('window', {
     exportCapabilities: async () => ({ hardwareEncoders: ['libx264'], gpuCanvas: false, overrides: { videoEncoder: 'ffmpeg' } }),
     exportStart: async (_id: string, job: ExportJob) => {
       h.started.push(job)
-      if (h.refuse) throw new Error(`Error invoking remote method 'export:start': Error: ${h.refuse.message}`)
+      h.code = null
+      if (h.refuse) {
+        h.code = h.refuse.code
+        throw new Error(`Error invoking remote method 'export:start': Error: ${h.refuse.message}`)
+      }
+      h.active = true
     },
-    exportErrorCode: async () => h.refuse?.code ?? null,
-    exportCancel: async () => undefined,
+    exportErrorCode: async () => h.code,
+    exportCancel: async () => {
+      if (h.active) h.code = 'cancelled'
+      h.active = false
+    },
     exportFinish: async () => ({ bytes: 1 })
   }
 })
@@ -123,6 +164,8 @@ async function run(settings: Partial<ExportSettings>, caps?: CodecCaps): Promise
   h.started.length = 0
   h.details.length = 0
   h.caps = caps
+  // The last export's job is over; the code it left stays, as main's does.
+  h.active = false
   const p = project()
   const path = { at: () => ({ x: 0.5, y: 0.5 }) }
   await exportVideo({
@@ -217,5 +260,40 @@ describe('the finalizing line of a size target', () => {
     await run({ codec: 'av1', targetSizeMB: 5 }, gpu)
     expect(h.bases[0].route).toEqual(ffmpeg('av1_nvenc'))
     expect(h.details).not.toContain(twoPasses)
+  })
+})
+
+describe('a route is decided by its own failure, not by what an earlier export left (output-and-languages §9.6)', () => {
+  // HEVC on this PC: WebCodecs on the graphics card first, then hevc_nvenc.
+  const caps: CodecCaps = { webcodecs: { hevc: true, av1: false }, gpu: { hevc: ['hevc_nvenc'], av1: [] }, overrides: {} }
+  const webcodecs = { video: 'webcodecs', codec: 'hevc', hardware: true }
+  const failed = "The graphics card's encoder failed: Encoder creation error."
+  afterEach(() => {
+    h.fail = null
+    h.code = null
+  })
+
+  it('a WebCodecs encoder that fails before its first chunk tries the next route, whatever code an earlier export left', async () => {
+    for (const left of [null, 'cancelled', 'disk-full']) {
+      h.code = left
+      h.fail = { at: 'before-start', message: failed, code: null }
+      await run({ codec: 'hevc' }, caps)
+      expect({ left, tried: [...h.pro.map((p) => p.route), ...h.bases.map((b) => b.route)] }).toEqual({ left, tried: [webcodecs, ffmpeg('hevc_nvenc')] })
+    }
+  })
+
+  it('a route that started tries the next one after the page’s own or an encoder’s failure, though its cancel leaves “cancelled”', async () => {
+    for (const code of [null, 'encoder']) {
+      h.fail = { at: 'after-start', message: failed, code }
+      await run({ codec: 'hevc' }, caps)
+      expect({ code, tried: [...h.pro.map((p) => p.route), ...h.bases.map((b) => b.route)] }).toEqual({ code, tried: [webcodecs, ffmpeg('hevc_nvenc')] })
+    }
+  })
+
+  it('a frame main could not write for a reason no encoder changes stops the export at that route', async () => {
+    h.fail = { at: 'after-start', message: 'The disk is full.', code: 'disk-full' }
+    await expect(run({ codec: 'hevc' }, caps)).rejects.toThrow('The disk is full.')
+    expect(h.pro.map((p) => p.route)).toEqual([webcodecs])
+    expect(h.bases).toHaveLength(0)
   })
 })

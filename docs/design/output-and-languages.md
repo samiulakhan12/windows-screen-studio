@@ -820,7 +820,7 @@ export interface ExportApi {
   // … every call as before …
   /** Working GPU encoders for a codec, best first (cached per session; §5.9). */
   probeCodec(codec: 'hevc' | 'av1'): Promise<FfmpegVideoEncoder[]>
-  /** The code of the last export:start or export:finish failure (§9.6). */
+  /** The code of the last export:start, export:frame or export:finish failure (§9.6). */
   exportErrorCode(): Promise<ExportErrorCode | null>
   writeTimeline(request: TimelineRequest): Promise<TimelineResult>
   /** Save dialog for `{defaultName}.flownpreset`; main writes the presets itself (§18.2). Resolves with the path, or null. */
@@ -1900,7 +1900,7 @@ shows exactly as today (tests 72 and 80).
 
 | Place | Today | After |
 |---|---|---|
-| `exporter.ts:86` `NOT_ENCODER_RELATED` | a regex over main's English messages decides whether the next encoder is tried | `exportErrorCode()` (§4.2): fall back unless the code is one of `disk-full`, `permission`, `in-use`, `read-only`, `missing-input`, `unreadable`, `not-chosen`, `invalid-job`, `no-sound`, `cancelled`. Main sets the code where it maps the error (`toIpcError`, `exportJob.ts:63`; `KNOWN_ERRORS`, `ffmpeg.ts:22`, whose English texts stay for the recording side) |
+| `exporter.ts:86` `NOT_ENCODER_RELATED` | a regex over main's English messages decides whether the next encoder is tried | `exportErrorCode()` (§4.2): fall back unless the code is one of `disk-full`, `permission`, `in-use`, `read-only`, `missing-input`, `unreadable`, `not-chosen`, `invalid-job`, `no-sound`, `cancelled`. Main sets the code where it maps the error (`toIpcError`, `exportJob.ts:63`; `KNOWN_ERRORS`, `ffmpeg.ts:22`, whose English texts stay for the recording side). The renderer reads it only for a route that asked for its job, and before it cancels that job: a code an earlier export left, or one the cancel itself records, is never taken for this route's, so a route that fails before its job starts (a WebCodecs encoder before its first chunk) tries the next one as before |
 | `ExportDialog.tsx:1294` | lower-cases a progress detail to put it inside a sentence | `fmt.inSentence(text)`: English lower-cases the first letter as today; other languages leave it |
 | `ExportDialog.tsx:240` `splitError` | splits message and detail on a blank line | unchanged; the checker requires translations to keep English's blank lines |
 | `captionItems.ts:187` `=== 'Cancelled.'` | compares a message with the English text | compares with `t('errors.cancelled')`, which main formats from the same catalogue, or the English text |
