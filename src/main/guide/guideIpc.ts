@@ -26,10 +26,11 @@ export const NOT_WRITTEN = (): string => t('errors.guideIpc.notWritten')
 /** Folders of Markdown guides written this session (Show in folder accepts them). */
 const guideFolders = new Set<string>()
 
-const EXTENSIONS: Record<Exclude<GuideSavePayload['format'], 'markdown'>, { ext: string; filter: string }> = {
+/** Each format's extension, and its file type's name when that is the format's own (PDF); a web page's is a message. */
+const EXTENSIONS: Record<Exclude<GuideSavePayload['format'], 'markdown'>, { ext: string; filter?: string }> = {
   pdf: { ext: 'pdf', filter: 'PDF' },
-  html: { ext: 'html', filter: 'Web page' },
-  demo: { ext: 'html', filter: 'Web page' }
+  html: { ext: 'html' },
+  demo: { ext: 'html' }
 }
 
 /** `file` ending in `.ext` (the dialog keeps what the user typed). */
@@ -56,7 +57,7 @@ async function chooseTarget(payload: GuideSavePayload): Promise<string | null> {
   const result = await dialog.showSaveDialog(main, {
     title: payload.format === 'pdf' ? t('main.guide.pdfTitle') : payload.format === 'demo' ? t('main.guide.demoTitle') : t('main.guide.htmlTitle'),
     defaultPath: path.join(documents, `${payload.name}.${kind.ext}`),
-    filters: [{ name: kind.filter, extensions: [kind.ext] }]
+    filters: [{ name: kind.filter ?? t('main.guide.filter.webPage'), extensions: [kind.ext] }]
   })
   return result.canceled || !result.filePath ? null : withExt(result.filePath, kind.ext)
 }

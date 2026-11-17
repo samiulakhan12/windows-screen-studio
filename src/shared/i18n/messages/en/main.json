@@ -43,6 +43,7 @@
   "guide.pdfTitle": "Save the guide as PDF",
   "guide.demoTitle": "Save the click-through demo",
   "guide.htmlTitle": "Save the guide as a web page",
+  "guide.filter.webPage": "Web page",
   "jobs.exporting": "Exporting",
   "jobs.makingCaptions": "Making captions",
   "jobs.reading": "Reading the recording",

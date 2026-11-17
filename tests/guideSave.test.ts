@@ -115,6 +115,23 @@ describe('test 28: guide:save', () => {
     expect(await call(app, GUIDE_CHANNELS.save, { format: 'html', name: 'X', html: '<p></p>' })).toBeNull()
   })
 
+  it('the save dialog names the file type in the UI language (PDF is the format’s own name)', async () => {
+    const { t } = await import('../src/shared/i18n/t')
+    const { uiEnglish, uiPseudo } = await import('./pseudoUi')
+    try {
+      for (const set of [uiEnglish, () => uiPseudo('en-XA')]) {
+        set()
+        h.dialogs.length = 0
+        for (const format of ['pdf', 'html', 'demo']) await call(app, GUIDE_CHANNELS.save, { format, name: 'Billing', html: '<p></p>' })
+        expect(h.dialogs.map((d) => d.options.filters)).toEqual([[{ name: 'PDF', extensions: ['pdf'] }], [{ name: t('main.guide.filter.webPage'), extensions: ['html'] }], [{ name: t('main.guide.filter.webPage'), extensions: ['html'] }]])
+      }
+      uiEnglish()
+      expect(t('main.guide.filter.webPage')).toBe('Web page')
+    } finally {
+      uiEnglish()
+    }
+  })
+
   it('Markdown makes a new folder (" (2)" when taken) with guide.md and the images it names', async () => {
     const parent = out()
     h.folder = parent

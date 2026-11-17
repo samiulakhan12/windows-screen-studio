@@ -146,6 +146,9 @@
   "guide.htmlTitle": {
     "description": "The title of the save dialog for a guide as a web page."
   },
+  "guide.filter.webPage": {
+    "description": "The guide's save dialog, the name of the file type in \"Save as type\" when the guide is saved as a web page or a click-through demo (src/main/guide/guideIpc.ts)."
+  },
   "jobs.exporting": {
     "description": "Windows taskbar: what a running export is doing."
   },
