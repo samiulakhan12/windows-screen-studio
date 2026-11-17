@@ -167,14 +167,31 @@ function sameClasses(a, b, label, points = 2) {
   }
 }
 
-/** The dialog's preview canvas pixels (straight RGBA, as getImageData gives them). */
-async function previewPixels(win) {
-  await h.sleep(1200)
-  return win.evaluate(() => {
-    const c = document.querySelector('.modal canvas.export-preview-canvas')
-    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height)
-    return { width: c.width, height: c.height, data: Array.from(d.data), alpha: c.classList.contains('alpha-preview') }
-  }).then((p) => ({ ...p, data: Buffer.from(p.data) }))
+/**
+ * The dialog's preview canvas pixels (straight RGBA, as getImageData gives them) once they are the chosen
+ * frame's. The preview seeks a video of its own and draws when the seek lands, so for a while it is empty
+ * or still shows the frame before: wait for its data-settled, then for two reads 300 ms apart that agree
+ * and are not blank (a font or an image that arrives later draws the frame again), within `timeout`.
+ */
+async function previewPixels(win, timeout = 60000) {
+  const read = () =>
+    win.evaluate(() => {
+      const c = document.querySelector('.modal canvas.export-preview-canvas[data-settled]')
+      if (!c) return null
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height)
+      return { width: c.width, height: c.height, data: Array.from(d.data), alpha: c.classList.contains('alpha-preview') }
+    })
+  const same = (a, b) => a.width === b.width && a.height === b.height && a.alpha === b.alpha && a.data.length === b.data.length && a.data.every((v, i) => v === b.data[i])
+  const t0 = Date.now()
+  let last = null
+  for (;;) {
+    const now = await read()
+    const drawn = now !== null && now.data.some((v, i) => i % 4 !== 3 && v !== 0)
+    if (drawn && last !== null && same(now, last)) return { ...now, data: Buffer.from(now.data) }
+    last = drawn ? now : null
+    h.assert(Date.now() - t0 < timeout, `the dialog preview settles on a drawn frame within ${timeout / 1000} s`)
+    await h.sleep(300)
+  }
 }
 
 /** Moves the dialog's preview (the thumbnail frame) to `seconds`. */
