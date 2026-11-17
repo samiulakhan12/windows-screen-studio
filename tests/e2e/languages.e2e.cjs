@@ -86,6 +86,30 @@ async function offline(app) {
 
 const page = (win) => win.evaluate(() => ({ lang: document.documentElement.lang, dir: document.documentElement.dir }))
 
+/**
+ * The export dialog preview's pixels once they are the chosen frame's (L13). The preview seeks a video
+ * of its own and draws when the seek lands, so for a while it is empty or still shows the frame the
+ * dialog opened at: wait for its data-settled, then for two reads 300 ms apart that agree and are not
+ * blank (a font or an image that arrives later draws the frame again).
+ */
+async function settledPreview(win, timeout = 60000) {
+  const read = () =>
+    win.evaluate(() => {
+      const c = document.querySelector('.modal canvas.export-preview-canvas[data-settled]')
+      return c ? Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data) : null
+    })
+  const t0 = Date.now()
+  let last = null
+  for (;;) {
+    const now = await read()
+    const drawn = now !== null && now.some((v, i) => i % 4 !== 3 && v !== 0)
+    if (drawn && last !== null && now.length === last.length && now.every((v, i) => v === last[i])) return now
+    last = drawn ? now : null
+    h.assert(Date.now() - t0 < timeout, `the dialog preview settles on a drawn frame within ${timeout / 1000} s`)
+    await h.sleep(300)
+  }
+}
+
 async function openSettings(win) {
   await win.click('.titlebar button[aria-label="Settings"]')
   await win.waitForSelector('.settings-modal')
@@ -324,11 +348,7 @@ async function main() {
       })
       await fx.openExportDialog(win)
       await win.locator('.modal input[aria-label="Thumbnail frame"]').fill('1.5')
-      await h.sleep(1500)
-      const preview = await win.evaluate(() => {
-        const c = document.querySelector('.modal canvas.export-preview-canvas')
-        return Array.from(c.getContext('2d').getImageData(0, 0, c.width, c.height).data)
-      })
+      const preview = await settledPreview(win)
       const png = path.join(home, `thumb-${language ?? 'en'}.png`)
       await h.mockSaveDialog(app, png)
       await win.locator('.modal button', { hasText: 'Save thumbnail' }).click()
