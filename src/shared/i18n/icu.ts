@@ -258,6 +258,21 @@ export function formatIcu<T>(nodes: readonly IcuNode[], values: Readonly<Record<
   return out
 }
 
+/** The names a message picks a branch by (plural and select): their values must stay plain strings and numbers. */
+export function selectorsOf(nodes: readonly IcuNode[]): Set<string> {
+  const names = new Set<string>()
+  const walk = (list: readonly IcuNode[]): void => {
+    for (const n of list) {
+      if (n.kind === 'plural' || n.kind === 'select') {
+        names.add(n.name)
+        for (const o of Object.values(n.options)) walk(o)
+      } else if (n.kind === 'tag') walk(n.children)
+    }
+  }
+  walk(nodes)
+  return names
+}
+
 /** The argument names a message uses (plural and select names included), for the checks. */
 export function argumentsOf(nodes: readonly IcuNode[]): Set<string> {
   const names = new Set<string>()

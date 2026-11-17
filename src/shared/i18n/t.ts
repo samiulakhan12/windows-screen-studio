@@ -12,7 +12,7 @@
  * - t() before any messages are registered throws, so text made at module scope cannot pass quietly.
  */
 import type { UiLanguage } from '../api/ui'
-import { formatIcu, parseIcu, type IcuNode, type TagFn } from './icu'
+import { formatIcu, parseIcu, selectorsOf, type IcuNode, type TagFn } from './icu'
 import { isolate } from './isolate'
 import type { MessageKey } from './keys'
 
@@ -115,6 +115,11 @@ export function tParts<T>(key: MessageKey, values: MessageValues, tags: Partial<
 export function tNodes<T>(key: MessageKey, values: Readonly<Record<string, string | number | T>>, tags: Partial<Record<RichTag, TagFn<T>>>): (string | T)[] {
   const { language, nodes } = messageOf(key)
   return formatIcu<T>(nodes, shownValues(key, values), { language, formatLocale: language === 'en' ? 'en-US' : catalogue.formatLocale }, tags)
+}
+
+/** The names `key` picks a branch by (plural and select) in the UI language: richText leaves their values plain. */
+export function selectorNames(key: MessageKey): ReadonlySet<string> {
+  return selectorsOf(messageOf(key).nodes)
 }
 
 /** The placeholders of `key` that hold the user's own text, outside English (for <T>'s <bdi>). */

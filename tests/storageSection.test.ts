@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StorageCleanupResult, StorageOverview } from '../src/shared/api/storage'
+import { fmt } from '../src/shared/i18n/fmt'
+import { setCatalogue, t } from '../src/shared/i18n/t'
 import { DEFAULT_RULES, type CleanupItem } from '../src/shared/storage/rules'
+import { uiEnglish, uiPseudo } from './pseudoUi'
 
 /*
  * Settings › Storage (F-26) without a DOM, in speechModelsSection.test.ts's way: React's hooks are
@@ -35,12 +38,14 @@ const dispatched: string[] = []
 
 const item = (id: string, action: CleanupItem['action']): CleanupItem => ({ id, name: `Rec ${id}`, action, bytes: 1000, lastUsed: 0, createdAt: '2025-01-01T00:00:00.000Z' })
 const overview: StorageOverview = { root: 'x', free: null, total: null, bytes: 0, recordings: [], rules: { ...DEFAULT_RULES, removeDays: 90 }, now: 0 }
+/** What the scan finds (`overview` unless a test says otherwise). */
+let scanned: StorageOverview = overview
 let plan: () => Promise<CleanupItem[]>
 let clean: (items: { id: string; action: CleanupItem['action'] }[]) => Promise<StorageCleanupResult>
 
 vi.stubGlobal('window', {
   api: {
-    storageScan: () => Promise.resolve(overview),
+    storageScan: () => Promise.resolve(scanned),
     storagePlan: () => plan(),
     storageClean: (items: { id: string; action: CleanupItem['action'] }[]) => clean(items),
     storageSetRules: (r: unknown) => Promise.resolve(r),
@@ -159,6 +164,8 @@ beforeEach(async () => {
   refs = new Set()
   focused.length = 0
   dispatched.length = 0
+  scanned = overview
+  uiEnglish()
   plan = () => Promise.resolve([item('a', 'remove'), item('b', 'caches')])
   clean = (items) => Promise.resolve({ moved: items.map((i) => item(i.id, i.action)), failed: [], freed: 1000 * items.length })
   render()
@@ -219,5 +226,40 @@ describe('Settings › Storage: recordings that share their media with a copy', 
     const texts = out.map((e) => textOf(e.props.children).trim())
     expect(out.some((e) => e.type === 'button' && textOf(e.props.children).trim() === 'Move 2 to the Recycle Bin (2 MB)')).toBe(true)
     expect(texts.filter((t) => t.endsWith('· 2 MB shared with a copy'))).toHaveLength(2)
+  })
+})
+
+describe('Settings › Storage: the line of the total', () => {
+  const total = (): string => textOf(render().find((e) => e.props['data-testid'] === 'storage-total')?.props.children).trim()
+  const withFree: StorageOverview = { ...overview, bytes: 95_000, free: 10_000_000_000, total: 50_000_000_000 }
+
+  async function scan(o: StorageOverview): Promise<void> {
+    for (const c of cells) c.cleanup?.()
+    cells = []
+    effects = []
+    scanned = o
+    render()
+    await flush()
+    render()
+  }
+
+  it('says the free space on the drive in English', async () => {
+    await scan(withFree)
+    expect(total()).toBe(`${t('settings.storage.line.total', { size: fmt.bytes(95_000, 'storage') })}${t('settings.storage.line.free', { free: fmt.bytes(10_000_000_000, 'storage') })}`)
+    expect(total()).toMatch(/ free on this drive$/)
+  })
+
+  it('says it in other languages too, in the whole line', async () => {
+    // The other languages' path with English words, then a pseudo-locale.
+    setCatalogue({ language: 'es', messages: {}, formatLocale: 'en-US', dir: 'ltr' })
+    for (const set of [() => undefined, () => uiPseudo('en-XA')]) {
+      set()
+      for (const o of [withFree, { ...withFree, free: null }]) {
+        await scan(o)
+        const values = { size: fmt.bytes(o.bytes, 'storage'), hasFree: o.free !== null ? 'yes' : 'no', free: o.free !== null ? fmt.bytes(o.free, 'storage') : '' }
+        expect(total()).toBe(t('settings.storage.line.whole', values))
+        expect(total().includes(fmt.bytes(10_000_000_000, 'storage'))).toBe(o.free !== null)
+      }
+    }
   })
 })
