@@ -111,6 +111,44 @@ export const Row = () => <Section hint="Only before a pause: back-to-back captio
     ])
   })
 
+  it('finds copy in lower case, one capitalised word returned or handed on, a sentence that starts "A ", an Error class’s message and a warning', () => {
+    const src = `import { AiOutputError } from '../captions/transcriptText'
+class StopError extends Error {}
+export function run(busy: boolean, on: boolean, cut: boolean, label: string): string {
+  if (cut) throw new AiOutputError(cut ? 'it was cut off' : 'no list')
+  if (!busy) throw new StopError('stopped early')
+  setSaid(\`\${label}'s screenshot \${on ? 'will be sent' : 'will not be sent'}.\`)
+  onCopy(label, 'Tags')
+  setWarning('The file could not be read.')
+  const note = 'A new version'
+  return busy ? 'Stop' : note
+}
+export const Blur = () => <Slider format={(v: number) => (v === 0 ? 'Off' : String(v))} />`
+    expect(words('src/renderer/src/editor/run.tsx', src)).toEqual([
+      'copy:it was cut off',
+      'copy:no list',
+      'copy:stopped early',
+      'copy:will be sent',
+      'copy:will not be sent',
+      'copy:Tags',
+      'copy:The file could not be read.',
+      'copy:A new version',
+      'copy:Stop',
+      'copy:Off'
+    ])
+  })
+
+  it('passes a key’s name for shortcutLabel, logs and two lower-case words that are not an Error’s message', () => {
+    const src = `export function keys(e: KeyboardEvent): string {
+  console.warn('it was cut off here')
+  warnOnce('the cache is gone now')
+  const mode = 'fit width'
+  if (e.key === 'Enter') return shortcutLabel('Delete')
+  return mode
+}`
+    expect(words('src/renderer/src/editor/keys.ts', src)).toEqual([])
+  })
+
   it('passes ids, CSS values, fonts, file-format words, paths, logs, comparisons, keys and extracted tables', () => {
     const src = `${T_IMPORT}const log = (m: string) => m
 export const DATA = [

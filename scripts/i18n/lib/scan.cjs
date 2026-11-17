@@ -350,8 +350,10 @@ function textWithHoles(node) {
 /**
  * Whether a literal reads as words a person reads. `labelLike`: it sits where a label goes (a
  * property such as `label` or `hintText`, or among other names), so one capitalised word counts.
+ * `phrase`: it is copy (returned, built or handed on), so three words count even in lower case
+ * ('it was cut off', 'will not be sent').
  */
-function readsAsWords(node, labelLike = false, wordTable = false) {
+function readsAsWords(node, labelLike = false, wordTable = false, phrase = false) {
   const { text, holes } = textWithHoles(node)
   if (!/[A-Za-z]/.test(text)) return false
   const plain = text.replace(/\u0000/g, ' ').trim()
@@ -378,8 +380,10 @@ function readsAsWords(node, labelLike = false, wordTable = false) {
     if (labelLike && (/^[A-Z][a-z]/.test(plain) || holeTokens > 0)) return true
     return holeTokens > 0 && /^[A-Z][a-z]+$/.test(wordTokens[0])
   }
+  if (phrase && real.length >= 3) return true
   const first = plain.replace(/^[("“‘'«[]+/, '')
-  const capital = /^[A-Z][a-z]/.test(first) || /^[A-Z]{2,}[a-z]/.test(first)
+  // A capital word first ('Add', 'GIFs', 'A clip', 'I see').
+  const capital = /^[A-Z][a-z]/.test(first) || /^[A-Z]{2,}[a-z]/.test(first) || /^[A-Z] [a-z]/.test(first)
   const sentenceEnd = /[.…?!]["”’)]?$/.test(plain)
   return capital || sentenceEnd || holes > 0 || labelLike
 }
@@ -390,7 +394,10 @@ const WORD_TABLE_NAME = /^[A-Z][A-Z0-9_]*(?:WORDS|NAMES|LABELS|TITLES|COPY|TEXTS
 /** True for a capitalised word or words that name something ('Fast', 'Most accurate', 'Glass Pill'). */
 const isNameLike = (node) => (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && /^[A-Z][a-z]+(?:[ '’-][A-Za-z][a-z]*)*$/.test(node.text)
 
-/** Functions and methods whose string arguments are data: logs, string tests and edits, DOM and storage lookups, IPC channels. */
+/**
+ * Functions and methods whose string arguments are data: logs, string tests and edits, DOM and
+ * storage lookups, IPC channels, and the accelerator shortcutLabel names a key by ('Delete').
+ */
 const DATA_CALLS = new Set([
   'log', 'warn', 'debug', 'info', 'trace', 'error', 'appLog', 'logLine', 'write', 'startsWith', 'endsWith', 'includes', 'indexOf', 'lastIndexOf',
   'replace', 'replaceAll', 'split', 'match', 'matchAll', 'test', 'search', 'localeCompare', 'padStart', 'padEnd', 'join', 'querySelector',
@@ -398,11 +405,15 @@ const DATA_CALLS = new Set([
   'require', 'invoke', 'handle', 'on', 'once', 'off', 'emit', 'send', 'removeListener', 'removeAllListeners', 'get', 'set', 'has', 'delete',
   'getItem', 'setItem', 'removeItem', 'postMessage', 'stringify', 'parse', 'RegExp', 'fetch', 'spawn', 'execFile', 'exec', 'fork', 'mark',
   'measure', 'time', 'timeEnd', 'assert', 'normalize', 'encode', 'decode', 'digest', 'update', 'createHash', 'Symbol', 'Buffer', 'from',
-  'TextEncoder', 'DisplayNames', 'Segmenter', 'measureText', 'fillText', 'strokeText', 'matchMedia', 'setProperty', 'getPropertyValue'
+  'TextEncoder', 'DisplayNames', 'Segmenter', 'measureText', 'fillText', 'strokeText', 'matchMedia', 'setProperty', 'getPropertyValue',
+  'shortcutLabel'
 ])
 
-/** Log helpers by their names (warnOnce, logLine, debugLog): what they are given goes to the log. */
-const LOG_NAME = /^(?:(?:log|warn|debug|trace)(?:[A-Z]\w*)?|\w+(?:Log|Warn|Warning))$/
+/** Log helpers by their names (warnOnce, logLine, debugLog): what they are given goes to the log. Not setWarning: a warning is shown. */
+const LOG_NAME = /^(?:(?:log|warn|debug|trace)(?:[A-Z]\w*)?|\w+(?:Log|Warn))$/
+
+/** An Error class by its name (Error, AiOutputError, VersionError): what `new` gives it is a message. */
+const ERROR_CLASS = /^(?:Error|\w*[a-z]Error)$/
 
 /** The name a call is made by: `log` for console.log(…), JSON.stringify(…), path.join(…) and any log helper. */
 function callName(call) {
@@ -531,6 +542,13 @@ const isDataAttribute = (name) => TEXT_ATTRIBUTES.has(name) || DATA_PROPS.has(na
 function wordFindings(sf, rules, bindings, reported) {
   const { tNames, tNamespaces, tComponents, richComponents, richFunctions } = bindings
   const out = []
+  // The file's own Error classes and the ones it imports: their messages are shown where they are caught.
+  const errorClasses = new Set()
+  for (const st of sf.statements) {
+    if (ts.isClassDeclaration(st) && st.name && st.heritageClauses?.some((h) => h.types.some((x) => ts.isIdentifier(x.expression) && ERROR_CLASS.test(x.expression.text)))) errorClasses.add(st.name.text)
+    const named = ts.isImportDeclaration(st) && !st.importClause?.isTypeOnly ? st.importClause?.namedBindings : null
+    if (named && ts.isNamedImports(named)) for (const e of named.elements) if (ERROR_CLASS.test(e.name.text)) errorClasses.add(e.name.text)
+  }
   const messages = rules.messages ?? {}
   const merge = rules.merge ?? new Set()
   const add = (node, kind, text) => out.push({ at: node.getStart(sf), kind, text })
@@ -658,7 +676,11 @@ function wordFindings(sf, rules, bindings, reported) {
     if (ts.isPropertyDeclaration(parent) && ts.isIdentifier(parent.name)) owner = parent.name.text
     if (ts.isParameter(parent) && ts.isIdentifier(parent.name)) owner = parent.name.text
     if (owner && DATA_PROPS.has(owner)) return
-    if (readsAsWords(node, owner !== null && LABEL_PROP.test(owner))) add(node, 'copy', literalText(node))
+    // Returned or handed to a call, one capitalised word is a label too ('Off', 'Tags'); so is any phrase an Error class of ours is given.
+    const handed = ts.isReturnStatement(parent) || (ts.isArrowFunction(parent) && parent.body === holder) || ts.isCallExpression(parent) || ts.isNewExpression(parent)
+    const oneLabel = handed && /^[A-Z][a-z]+$/.test(textWithHoles(node).text.trim())
+    const errorMessage = ts.isNewExpression(parent) && errorClasses.has(calleeName(parent.expression).name)
+    if (readsAsWords(node, oneLabel || errorMessage || (owner !== null && LABEL_PROP.test(owner)), false, true)) add(node, 'copy', literalText(node))
   }
 
   const visit = (node) => {

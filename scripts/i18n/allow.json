@@ -451,6 +451,77 @@
       "reason": "detect()'s failure when ffmpeg cannot start: speechOfFile only writes it to console.warn (sound levels are used instead); never shown."
     },
     {
+      "file": "src/shared/editor/versions.ts",
+      "kind": "copy",
+      "pattern": "^(?:Yes|No)$",
+      "reason": "compareSummaries' yes and no for the Start or end trimmed row stay English data (main imports versions.ts): the Versions dialog shows src/shared/editor/versionWords.ts compareSummaries, which says review.versions.yes and review.versions.no."
+    },
+    {
+      "file": "src/main/presetFiles.ts",
+      "kind": "copy",
+      "text": "Presets",
+      "reason": "The file name the preset save dialog offers when the preset's name gives none (\"Presets.flownpreset\"): a file name, English in every UI language like the export's file names (section 9.7, section 0 decision 10)."
+    },
+    {
+      "file": "src/main/share/shareStore.ts",
+      "kind": "copy",
+      "text": "Folder",
+      "reason": "addFolder's name for a folder given a blank label, which shareIpc never sends (it passes the folder's own name, or its path for a drive); stored with the folder as its name."
+    },
+    {
+      "file": "src/renderer/src/guide/GuidePanel.tsx",
+      "kind": "copy",
+      "pattern": "^(?:Letter|Step)$",
+      "reason": "defaultPage's page size id ('A4' | 'Letter'), which the page size menu shows as smart.guide.a4 and smart.guide.letter; and the title of a step added by hand, default content Flown writes into the project and the user's content in every UI language (the build report's judgements to confirm)."
+    },
+    {
+      "file": "src/renderer/src/guide/guideRun.ts",
+      "kind": "copy",
+      "text": "Guide",
+      "reason": "guideFileName's name when the guide's title gives none: the save dialog's file name, English like the rest of it (\"<Title> guide\", section 9.7, section 0 decision 10)."
+    },
+    {
+      "file": "src/renderer/src/views/Editor.tsx",
+      "kind": "copy",
+      "pattern": "^(?:Deleted|Cut|Duplicated)$",
+      "reason": "The verb ids removedNotice ('Deleted' | 'Cut', src/shared/editor/multiSelectCopy.ts) and pasteNotice ('Duplicated', src/shared/editor/groupClipboard.ts) choose their editor.multiSelect.* and paste notice messages by; never shown as they are."
+    },
+    {
+      "file": "src/shared/editor/shortcuts.ts",
+      "kind": "copy",
+      "text": "Plus",
+      "reason": "The plus key's name in an accelerator (\"Ctrl+Plus\", as Electron spells it): a key id the keymap stores and shortcutLabel shows as \"+\"."
+    },
+    {
+      "file": "src/shared/publish/queue.ts",
+      "kind": "copy",
+      "text": "Stopped",
+      "reason": "CancelledError's message: publishRun tells a stopped card by instanceof and shows no message for it."
+    },
+    {
+      "file": "src/shared/render/exportPresets.ts",
+      "kind": "copy",
+      "text": "Original",
+      "reason": "aspectFileLabel's word for the recording's own aspect in a batch file's name (\"Talk - MP4 1080p Original.mp4\"): a file name, English in every UI language (section 9.6, section 0 decision 10); the dialog names the batch item through src/renderer/src/editor/exportNames.ts itemLabel."
+    },
+    {
+      "file": "src/shared/render/fonts.ts",
+      "kind": "copy",
+      "text": "Font",
+      "reason": "fontNameFromFile's name for a font file whose name has no letters: stored in the project or the brand kit as the font's name, the user's content like the names taken from the other files."
+    },
+    {
+      "file": "src/shared/captions/stopWords.ts",
+      "kind": "copy",
+      "reason": "Stop-word lists per language, which auto emphasis, Short clips and step titles leave out when they weigh words; matched against captions, never shown."
+    },
+    {
+      "file": "src/shared/captions/emojiList.ts",
+      "kind": "copy",
+      "pattern": "^0;1f600;grinning face\\n",
+      "reason": "The generated emoji list (scripts/build-emoji-data.mjs) with Unicode's English short names, which the emoji picker searches and shows as each emoji's name: third-party data like the groups; a translated picker needs CLDR's annotations for its language (left for S5 in the build report), not catalogue messages."
+    },
+    {
       "file": "src/main/sceneScan.ts",
       "kind": "table",
       "pattern": "^(?:ffmpeg could not be started \\(\\$\\{…\\}\\)|ffmpeg could not read the video \\(exit code \\$\\{…\\}\\))$",
@@ -507,7 +578,7 @@
     {
       "file": "src/shared/captions/captionTracks.ts",
       "kind": "copy",
-      "pattern": "^(?:\\$\\{…\\} \\$\\{…\\} not translated: \\$\\{…\\} in \\$\\{…\\}|\\$\\{…\\} changed since|Bleeped words are not masked in translations|\\$\\{…\\} \\$\\{…\\} not translated into \\$\\{…\\}: \\$\\{…\\} in \\$\\{…\\}\\.)$",
+      "pattern": "^(?:\\$\\{…\\} \\$\\{…\\} not translated: \\$\\{…\\} in \\$\\{…\\}|\\$\\{…\\} changed since|Bleeped words are not masked in translations|\\$\\{…\\} \\$\\{…\\} not translated into \\$\\{…\\}: \\$\\{…\\} in \\$\\{…\\}\\.|the spoken language|on this PC)$",
       "reason": "The Languages rows' notes and the burned-in track's note as English data (main imports this file, test 86): the panels and the export dialog show captionWords.ts trackRowWords and burnedTrackWords, which give these words in English and the captions.languages.* messages in other languages."
     },
     {
@@ -709,25 +780,25 @@
     },
     {
       "file": "src/shared/render/exportBundle.ts",
-      "pattern": "^(?:Chapter \\$\\{…\\}|Part \\$\\{…\\} of \\$\\{…\\} of \\$\\{…\\}|Spoken language)$",
+      "pattern": "^(?:Chapter \\$\\{…\\}|Part \\$\\{…\\} of \\$\\{…\\} of \\$\\{…\\}|Spoken language|Chapters)$",
       "reason": "Words written into exported files: a part file's name (\"01 Chapter 2.mp4\"), the part's description file and the subtitle stream name of untitled spoken captions (section 9.7: file names, descriptions and subtitle stream names stay English; section 0 decision 10)."
     },
     {
       "file": "src/shared/share/webhooks.ts",
-      "pattern": "^(?:New video: \\$\\{…\\} \\(\\$\\{…\\}\\)|Saved to \\$\\{…\\}|Flown is connected\\. Videos you share will be posted here\\.)$",
+      "pattern": "^(?:New video: \\$\\{…\\} \\(\\$\\{…\\}\\)|Saved to \\$\\{…\\}|Flown is connected\\. Videos you share will be posted here\\.|Untitled)$",
       "reason": "The lines posted to a team's Slack, Discord or Teams channel: output read by other people in their own app, like an exported file's words, the same from every PC (section 0 decision 10). The Share settings and notifications say what was posted in the UI language (main.share.*)."
     },
     {
       "file": "src/shared/guide/stepTitles.ts",
       "kind": "copy",
-      "pattern": "^(?:type after \\$\\{…\\} near the \\$\\{…\\}|\\$\\{…\\}, \\$\\{…\\} of the screen|drag from the \\$\\{…\\} to the \\$\\{…\\} of the screen|, then press \\$\\{…\\})$",
+      "pattern": "^(?:type after \\$\\{…\\} near the \\$\\{…\\}|\\$\\{…\\}, \\$\\{…\\} of the screen|drag from the \\$\\{…\\} to the \\$\\{…\\} of the screen|, then press \\$\\{…\\}|a numbered step badge|a step added by hand)$",
       "reason": "stepAction: the step's action in English words, sent as the action of each item of Write titles' names request to the AI service (an AI prompt, section 9.7); never shown."
     },
     {
       "file": "src/renderer/src/render/gradeLayer.ts",
       "kind": "copy",
-      "text": "the self-test differed in ${…} values",
-      "reason": "Why colour grading uses the CPU: written only to the console (useCpu's console.warn); the Colour panel reads gradeBackendReason() as a flag and shows style.colourControls.copy.cpuNote. Never shown."
+      "pattern": "^(?:the self-test differed in \\$\\{…\\} values|the self-test could not run|the WebGL2 context was lost and could not be made again|chosen for this test)$",
+      "reason": "Why colour grading uses the CPU: written only to the console (useCpu's console.warn), and \"chosen for this test\" when a test forces the CPU; the Colour panel reads gradeBackendReason() as a flag and shows style.colourControls.copy.cpuNote. Never shown."
     },
     {
       "file": "src/shared/editor/stylePresets.ts",
@@ -738,7 +809,7 @@
     {
       "file": "src/shared/render/exportPlan.ts",
       "kind": "copy",
-      "pattern": "^(?:Audio only \\(WAV\\)|Audio only \\(AAC\\))$",
+      "pattern": "^(?:Audio only \\(WAV\\)|Audio only \\(AAC\\)|GIF \\(two-pass palette\\))$",
       "reason": "routeLabel's English, written only to the console when an encoder fails (exporter.ts); the export shows exportNames.ts's routeName in the UI language."
     },
     {
@@ -756,7 +827,7 @@
     {
       "file": "src/shared/render/exportBundle.ts",
       "kind": "copy",
-      "pattern": "^(?:One file per chapter works with One file|Add chapters first|\\$\\{…\\} · GIFs have no chapters, other formats keep them\\.|\\$\\{…\\}, one file each \\(the files have no chapter markers\\)\\.|\\$\\{…\\}, written into the file\\.)$",
+      "pattern": "^(?:One file per chapter works with One file|Add chapters first|\\$\\{…\\} · GIFs have no chapters, other formats keep them\\.|\\$\\{…\\}, one file each \\(the files have no chapter markers\\)\\.|\\$\\{…\\}, written into the file\\.|A freeze frame that keeps the sound playing runs across a chapter start: move it or the chapter, or export one file)$",
       "reason": "perChapterBlocked and chaptersNote keep their English for main and tests (main imports exportBundle.ts): the export dialog reads perChapterBlocked only as a yes or no and shows src/renderer/src/editor/exportNames.ts's perChapterBlockedText and chaptersNoteText."
     },
     {
@@ -780,7 +851,7 @@
     {
       "file": "src/shared/editor/versions.ts",
       "kind": "copy",
-      "pattern": "^(?:Version \\$\\{…\\}|Before Polish in one click|Before removing fillers and retakes|Before removing automatic changes|Before Make my captions great|Before making a vertical version|Before making a square version|Before opening “\\$\\{…\\}”|Before opening a version)$",
+      "pattern": "^(?:Version \\$\\{…\\}|Before Polish in one click|Before removing fillers and retakes|Before removing automatic changes|Before Make my captions great|Before making a vertical version|Before making a square version|Before opening “\\$\\{…\\}”|Before opening a version|Version)$",
       "reason": "The names Flown gives versions (defaultVersionName, autoVersionName), which main writes into the version files: a version's name is stored content that stays as it was written in every UI language (section 9.7; src/shared/editor/versionWords.ts)."
     },
     {

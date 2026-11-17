@@ -730,6 +730,10 @@ more screens). The list replaces S4's:
   language, like `UNTITLED` and the stored speaker labels; webhook post lines are output and stay
   English. The guide's cost line has its own `smart.guide.cost.what` with the same English as
   `captions.ai.what.steps` ("the steps' narration"); both are kept, one per context.
+* **Emoji names**: the Graphics tab's emoji picker searches and names each emoji by Unicode's English
+  short name, from the generated `src/shared/captions/emojiList.ts` (3,963 names, listed in
+  `allow.json` as third-party data). A translated picker wants CLDR's annotations for its language,
+  generated the same way, not catalogue messages.
 * **Not wired**: the notes window's resize drag in a right-to-left page; arrow keys following the
   visual direction (§13.2); postcss is used by X7's tools from vite's dependency, not listed in
   `package.json` (no install was run).
