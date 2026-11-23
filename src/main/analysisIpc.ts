@@ -27,6 +27,7 @@ import { stopVoiceClean } from './voice/voiceIpc'
 import { stopSoundScans } from './sounds/soundsIpc'
 import { stopFilmstrip } from './filmstrip'
 import { stopSceneScan } from './sceneScan'
+import { stopFindFor } from './privacy/findIpc'
 import { t } from '../shared/i18n/t'
 
 /** Shortest still stretch looked for: longer minimums are filtered from the same result. */
@@ -208,8 +209,8 @@ export const stopStillDetection = (id: string): Promise<void> => running.stop(id
  * have let go of them: the editor closed, or the project is about to be deleted.
  */
 export async function stopAnalyses(id: string): Promise<void> {
-  // The scene scan of smart tools (docs/design/smart-tools.md §7.2) too.
-  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id), stopTranscription(id), stopVoiceClean(id), stopSoundScans(id), stopFilmstrip(id), stopSceneScan(id)])
+  // The scene scan of smart tools (docs/design/smart-tools.md §7.2) too, and Find private info, which forgets the texts it kept (docs/design/auto-blur.md §5.1, §5.7).
+  await Promise.all([stopStillDetection(id), stopAudioAnalysisFor(id), stopTranscription(id), stopVoiceClean(id), stopSoundScans(id), stopFilmstrip(id), stopSceneScan(id), stopFindFor(id)])
 }
 
 export function registerAnalysisIpc(): void {

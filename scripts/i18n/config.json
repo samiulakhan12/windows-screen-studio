@@ -110,6 +110,16 @@
     "src/shared/privacy/vendor/libphonenumber/es6/findPhoneNumbersInText.d.ts",
     "src/shared/privacy/vendor/libphonenumber/es6/isValidPhoneNumber.d.ts",
     "src/shared/privacy/vendor/libphonenumber/es6/parsePhoneNumber.d.ts",
-    "src/shared/privacy/vendor/libphonenumber/metadata.max.json.d.ts"
+    "src/shared/privacy/vendor/libphonenumber/metadata.max.json.d.ts",
+    "src/shared/privacy/look.ts",
+    "src/shared/privacy/plan.ts",
+    "src/shared/privacy/paths.ts",
+    "src/shared/privacy/notices.ts",
+    "src/shared/privacy/found.ts",
+    "src/main/privacy/scan.ts",
+    "src/main/privacy/rulesWorker.ts",
+    "src/main/privacy/rulesHost.ts",
+    "src/main/privacy/copies.ts",
+    "src/main/privacy/lookCache.ts"
   ]
 }
