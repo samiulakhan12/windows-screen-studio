@@ -114,3 +114,27 @@ It measured the size tract adds to a Windows helper:
 | opt-level s | 11,014,656 B | 2,669,488 B |
 
 Its Windows imports are bcryptprimitives, kernel32, api-ms-win-core-synch-l1-2-0, ntdll and msvcrt.
+
+## Plans and decoding (`bench-buckets.sh`, `decode-speed.sh`)
+
+`bench-buckets.sh` builds tract plans for the reader's fixed buckets with the skeleton's `parity`
+tool (mixed profile) on zero inputs, one thread, one CPU: the tiny detector at 640x352, 960x544
+and 1920x1088, and both recognisers at the five line widths. It prints each plan's build time,
+each run's time and the process's peak memory, alone and with every bucket's plan kept.
+`results/tract-buckets.txt` (23 Nov 2026, load 1.0-1.4):
+
+| Plans kept | Build | One run | Peak memory |
+|---|---|---|---|
+| tiny det 640x352 | 127 ms | 71-77 ms | 46,680 KB |
+| tiny det 960x544 | 144 ms | 141-215 ms | 79,068 KB |
+| tiny det 1920x1088 | 150 ms | 871-909 ms | 250,896 KB |
+| tiny det, all three | 367 ms | as above | 258,564 KB |
+| small rec, 320-1280 | 533 ms | 35-160 ms | 188,260 KB |
+| tiny rec, 320-1280 | 232 ms | 8.5-54 ms | 58,144 KB |
+
+`decode-speed.sh` encodes a 20 s 1080p60 scrolling clip as Flown's proxy is (libx264, constant
+rate, a key frame every 15 frames) and times ffmpeg 6.1.1 on one thread
+(`results/decode-speed.txt`). CPU time a frame, two runs: decode only 1.77-1.86 ms; decoded and
+scaled to the look pass's 480x270 grey 2.47-2.49 ms; to the follow pass's 960x540 grey
+3.05-3.06 ms; to full-size RGB24 3.69-4.05 ms. One read made by seeking to the key frame before
+it costs 0.094-0.106 s of CPU and 0.10-0.12 s, or 0.16 s wall with the process start.

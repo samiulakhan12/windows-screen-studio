@@ -1,0 +1,32 @@
+clip: 1200 frames, 10545103 bytes
+== run 1: decode only
+bench: utime=2.151s stime=0.075s rtime=2.329s
+bench: maxrss=77768kB
+== run 1: look, 480x270 grey (area)
+bench: utime=2.815s stime=0.145s rtime=3.122s
+bench: maxrss=76332kB
+== run 1: follow, 960x540 grey (area)
+bench: utime=3.545s stime=0.114s rtime=3.785s
+bench: maxrss=80032kB
+== run 1: read, full-size RGB24
+bench: utime=4.251s stime=0.179s rtime=3.814s
+bench: maxrss=124228kB
+== run 2: decode only
+bench: utime=2.037s stime=0.085s rtime=2.178s
+bench: maxrss=78016kB
+== run 2: look, 480x270 grey (area)
+bench: utime=2.862s stime=0.128s rtime=3.122s
+bench: maxrss=76216kB
+== run 2: follow, 960x540 grey (area)
+bench: utime=3.486s stime=0.188s rtime=3.809s
+bench: maxrss=80228kB
+== run 2: read, full-size RGB24
+bench: utime=4.716s stime=0.139s rtime=4.028s
+bench: maxrss=124416kB
+== one read: seek to the key frame at 14.85 s, decode to 14.98 s, one RGB24 frame (3 runs)
+bench: utime=0.090s stime=0.016s rtime=0.124s bench: maxrss=93220kB 
+bench: utime=0.067s stime=0.036s rtime=0.105s bench: maxrss=93104kB 
+bench: utime=0.065s stime=0.029s rtime=0.098s bench: maxrss=93076kB 
+10 such reads one after another: 1609 ms wall, process start included
+ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+ 17:06:08 up  2:50,  0 user,  load average: 1.91, 1.18, 1.09

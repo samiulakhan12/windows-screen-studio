@@ -1,0 +1,35 @@
+== tiny det 640x352 alone
+{"event":"parsed","ms":16.8,"inputFact":"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32"}
+{"input":"det_640x352.f32","shapeIn":[1, 3, 352, 640],"shapeOut":[1, 1, 352, 640],"ms":[102.1, 77.0, 71.4],"out":"OUT/det_640x352.f32.concrete.tract.f32"}
+{"parseMs":16.8,"optimiseMs":126.9,"plans":1,"peakRssKb":46680}
+== tiny det 960x544 alone
+{"event":"parsed","ms":4.3,"inputFact":"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32"}
+{"input":"det_960x544.f32","shapeIn":[1, 3, 544, 960],"shapeOut":[1, 1, 544, 960],"ms":[214.8, 140.8, 165.4],"out":"OUT/det_960x544.f32.concrete.tract.f32"}
+{"parseMs":4.3,"optimiseMs":143.7,"plans":1,"peakRssKb":79068}
+== tiny det 1920x1088 alone
+{"event":"parsed","ms":5.6,"inputFact":"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32"}
+{"input":"det_1920x1088.f32","shapeIn":[1, 3, 1088, 1920],"shapeOut":[1, 1, 1088, 1920],"ms":[871.0, 909.3, 878.7],"out":"OUT/det_1920x1088.f32.concrete.tract.f32"}
+{"parseMs":5.6,"optimiseMs":150.4,"plans":1,"peakRssKb":250896}
+== tiny det, all three buckets in one process
+{"event":"parsed","ms":3.4,"inputFact":"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32"}
+{"input":"det_640x352.f32","shapeIn":[1, 3, 352, 640],"shapeOut":[1, 1, 352, 640],"ms":[77.2],"out":"OUT/det_640x352.f32.concrete.tract.f32"}
+{"input":"det_960x544.f32","shapeIn":[1, 3, 544, 960],"shapeOut":[1, 1, 544, 960],"ms":[198.3],"out":"OUT/det_960x544.f32.concrete.tract.f32"}
+{"input":"det_1920x1088.f32","shapeIn":[1, 3, 1088, 1920],"shapeOut":[1, 1, 1088, 1920],"ms":[902.3],"out":"OUT/det_1920x1088.f32.concrete.tract.f32"}
+{"parseMs":3.4,"optimiseMs":367.4,"plans":3,"peakRssKb":258564}
+== small rec, five width buckets in one process
+{"event":"parsed","ms":33.7,"inputFact":"DynamicDimension.0,3,48,DynamicDimension.1,F32"}
+{"input":"rec_320.f32","shapeIn":[1, 3, 48, 320],"shapeOut":[1, 40, 18710],"ms":[35.4, 37.4],"out":"OUT/rec_320.f32.concrete.tract.f32"}
+{"input":"rec_448.f32","shapeIn":[1, 3, 48, 448],"shapeOut":[1, 56, 18710],"ms":[51.4, 52.8],"out":"OUT/rec_448.f32.concrete.tract.f32"}
+{"input":"rec_640.f32","shapeIn":[1, 3, 48, 640],"shapeOut":[1, 80, 18710],"ms":[57.5, 58.4],"out":"OUT/rec_640.f32.concrete.tract.f32"}
+{"input":"rec_896.f32","shapeIn":[1, 3, 48, 896],"shapeOut":[1, 112, 18710],"ms":[128.7, 102.9],"out":"OUT/rec_896.f32.concrete.tract.f32"}
+{"input":"rec_1280.f32","shapeIn":[1, 3, 48, 1280],"shapeOut":[1, 160, 18710],"ms":[154.2, 159.7],"out":"OUT/rec_1280.f32.concrete.tract.f32"}
+{"parseMs":33.7,"optimiseMs":532.9,"plans":5,"peakRssKb":188260}
+== tiny rec, five width buckets in one process
+{"event":"parsed","ms":8.3,"inputFact":"DynamicDimension.0,3,48,DynamicDimension.1,F32"}
+{"input":"rec_320.f32","shapeIn":[1, 3, 48, 320],"shapeOut":[1, 40, 6906],"ms":[8.5, 8.5],"out":"OUT/rec_320.f32.concrete.tract.f32"}
+{"input":"rec_448.f32","shapeIn":[1, 3, 48, 448],"shapeOut":[1, 56, 6906],"ms":[11.3, 11.1],"out":"OUT/rec_448.f32.concrete.tract.f32"}
+{"input":"rec_640.f32","shapeIn":[1, 3, 48, 640],"shapeOut":[1, 80, 6906],"ms":[16.8, 17.2],"out":"OUT/rec_640.f32.concrete.tract.f32"}
+{"input":"rec_896.f32","shapeIn":[1, 3, 48, 896],"shapeOut":[1, 112, 6906],"ms":[24.9, 27.1],"out":"OUT/rec_896.f32.concrete.tract.f32"}
+{"input":"rec_1280.f32","shapeIn":[1, 3, 48, 1280],"shapeOut":[1, 160, 6906],"ms":[39.0, 54.1],"out":"OUT/rec_1280.f32.concrete.tract.f32"}
+{"parseMs":8.3,"optimiseMs":231.7,"plans":5,"peakRssKb":58144}
+ 17:05:22 up  2:49,  0 user,  load average: 1.35, 0.96, 1.02
