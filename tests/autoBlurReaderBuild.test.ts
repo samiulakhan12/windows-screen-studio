@@ -131,7 +131,9 @@ describe('auto-blur P2: building and shipping the reader', () => {
     // A build without it says so, in build-native and verify-dist.
     expect(read('scripts/verify-dist.mjs')).toContain('Find private info is not part of this build')
     expect(read('scripts/build-native.mjs')).toContain("const OCR_CONSEQUENCE = 'Find private info will be unavailable (the text reader cannot run).'")
-  })
+    // Brotli 11 over 4.35 MB of random bytes alone takes about 3 s on an idle build machine, so the
+    // whole test runs past vitest's 5 s default whenever other tests share the processor.
+  }, 60_000)
 
   it('87. verify-dist §4d: a release build with READER_MIRROR null fails; a binary containing readImage fails; OCR_IMPORTS is checked', () => {
     expect(packaging.readerReleaseProblems(null, true)).toEqual(['READER_MIRROR in src/shared/privacy/readerCatalog.ts is null: the text reader has no Qbexel mirror yet (a release blocker, decision 10)'])
