@@ -658,6 +658,8 @@ const pauseOf = (between: string): Pause => (!PAUSE.test(between) ? NO_PAUSE : P
 /** A word's text after its last letter, digit, mark or joiner, and the next word's before its first. */
 const AFTER_WORD = /[^\p{L}\p{N}\p{M}\p{Cf}]*$/u
 const BEFORE_WORD = /^[^\p{L}\p{N}\p{M}\p{Cf}]*/u
+/** A word of letters, digits, marks and joiners only, as most are: nothing joins it to another word and nothing follows its last letter. */
+const WORD_ONLY = /^[\p{L}\p{N}\p{M}\p{Cf}]*$/u
 
 /** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
 const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
@@ -674,6 +676,8 @@ const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKe
 function teamWordMatch(word: string, key: string, lang: string, next: string | undefined, pause: Pause): boolean {
   const r = teamRulesOf(lang)
   if (!r) return false
+  // One scan of the word in place of JOINED's and AFTER_WORD's, which try it from every letter.
+  if (WORD_ONLY.test(word)) return teamMatch(r, key, next, pause)
   if (!JOINED.test(word)) return teamMatch(r, key, next, stronger(pause, pauseOf(AFTER_WORD.exec(word)?.[0] ?? '')))
   // Each part's key and the pause after it, the text between parts kept by the split.
   const parts: { key: string; pause: Pause }[] = []
