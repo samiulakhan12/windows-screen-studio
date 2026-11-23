@@ -71,7 +71,8 @@ export const PRIVACY_COPY = {
     selected: 'privacy.cover.selected',
     oneForBox: 'privacy.cover.oneForBox',
     oneForFollow: 'privacy.cover.oneForFollow',
-    oneForEverywhere: 'privacy.cover.oneForEverywhere'
+    oneForEverywhere: 'privacy.cover.oneForEverywhere',
+    lookFor: 'privacy.cover.lookFor'
   },
   shape: {
     cover: 'privacy.shape.cover',
@@ -103,7 +104,9 @@ export const PRIVACY_COPY = {
     itemWaiting: 'privacy.track.itemWaiting',
     itemMine: 'privacy.track.itemMine',
     group: 'privacy.track.group',
-    thin: 'privacy.track.thin'
+    thin: 'privacy.track.thin',
+    only: 'privacy.track.only',
+    selectOnly: 'privacy.track.selectOnly'
   },
   find: {
     title: 'privacy.find.title',

@@ -1088,3 +1088,16 @@ describe('auto-blur P1: commands and the guide', () => {
     expect(row.indexOf("t('privacy.guide.covered')")).toBeLessThan(row.indexOf('</li>'))
   })
 })
+
+describe('auto-blur P1: a cover\'s look among other kinds', () => {
+  it('Paste look on another kind says the copied look is for covers', async () => {
+    setUp(project({ shapes: [{ ...blur('r', 1, 5), kind: 'rect' }] }))
+    const { LookButtons } = await load<{ LookButtons: Comp }>('editor/LookButtons')
+    const { lookClipboard } = await load<{ lookClipboard: { set(v: unknown): void } }>('editor/itemClipboard')
+    lookClipboard.set({ cls: 'cover', values: { 'cover.color': '#ffffff' }, label: 'Cover' })
+    const paste = byTestId(render({ type: LookButtons, props: { itemKey: 'shape:r' } }), 'paste-look')!
+    expect(paste.props.disabled).toBe(true)
+    expect(paste.props.title).toBe('The copied look is for covers')
+    expect([t('privacy.track.only' as never, { n: '3' } as never), t('privacy.track.selectOnly' as never)]).toEqual(['Only covers (3)', 'Select only the covers'])
+  })
+})
