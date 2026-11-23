@@ -47,7 +47,8 @@ export interface ScanSession {
 
 /** The text reader helper (P2's OcrHelper), started and with its models open. */
 export interface ScanHelper {
-  open(pins: ModelPin[], ffmpeg: string, reader?: 'paddle' | 'windows'): Promise<void>
+  /** Opens the reader (paddle): the Windows reader stays closed until decision 8's check (§5.13). */
+  open(pins: ModelPin[], ffmpeg: string): Promise<void>
   look(req: Bare<'look'>, onFrames: (f: LookFrame[]) => void, signal: AbortSignal): Promise<void>
   read(req: Bare<'read'>, signal: AbortSignal): Promise<{ id: number; result: ReadResult }>
   careful(readId: number, lines: readonly number[]): Promise<ReadVariant[][]>
