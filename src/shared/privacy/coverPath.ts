@@ -71,11 +71,32 @@ const POW10 = Array.from({ length: 23 }, (_v, i) => Number(`1e${i}`))
  * correct rounding, so it equals Number() of the field; a longer one goes through Number().
  */
 export function parsePath(path: string): CoverKey[] | null {
-  if (typeof path !== 'string' || !path) return null
-  const out: CoverKey[] = []
-  const f = [0, 0, 0, 0, 0]
-  let last = -Infinity
+  const n = readFlat(path)
+  if (n < 0) return null
+  const out: CoverKey[] = new Array(n)
+  for (let k = 0, j = 0; k < n; k++, j += 5) out[k] = { t: flat[j], x: flat[j + 1], y: flat[j + 2], w: flat[j + 3], h: flat[j + 4] }
+  return out
+}
+
+/**
+ * The keys of `path` read as parsePath reads them, without making an object per key: t, x, y, w and
+ * h of each key in turn, in a buffer the next call reuses (copy what is kept), or null when it is
+ * not a path. For readers that check a path and keep its text.
+ */
+export function scanPath(path: string): Float64Array | null {
+  const n = readFlat(path)
+  return n < 0 ? null : flat.subarray(0, 5 * n)
+}
+
+/** The keys parsePath and scanPath read, five numbers each; grown as a longer path needs. */
+let flat = new Float64Array(5 * 256)
+
+/** Reads `path` into `flat`: the number of keys, or -1 when it is not a path (parsePath's rules). */
+function readFlat(path: string): number {
+  if (typeof path !== 'string' || !path) return -1
   let field = 0
+  let keys = 0
+  let last = -Infinity
   const n = path.length
   let i = 0
   for (;;) {
@@ -89,7 +110,7 @@ export function parsePath(path: string): CoverKey[] | null {
       v = v * 10 + (c - 48)
       i++
     }
-    if (i === digitsFrom) return null
+    if (i === digitsFrom) return -1
     let fracDigits = 0
     if (i < n && path.charCodeAt(i) === 46) {
       const fracFrom = ++i
@@ -98,23 +119,29 @@ export function parsePath(path: string): CoverKey[] | null {
         i++
       }
       fracDigits = i - fracFrom
-      if (!fracDigits) return null
+      if (!fracDigits) return -1
     }
     const digits = i - digitsFrom - (fracDigits ? 1 : 0)
     const value = digits <= 15 ? v / POW10[fracDigits] : Number(path.slice(neg ? from + 1 : from, i))
-    f[field] = neg ? -value : value
+    if (5 * keys + field >= flat.length) {
+      const grown = new Float64Array(flat.length * 2)
+      grown.set(flat)
+      flat = grown
+    }
+    flat[5 * keys + field] = neg ? -value : value
     // A field ends at a space or a ';' (or the end, read as one).
     const sep = i < n ? path.charCodeAt(i) : 59
     if (sep === 32) {
-      if (++field > 4) return null
+      if (++field > 4) return -1
       i++
       continue
     }
-    if (sep !== 59 || field !== 4 || !(f[0] > last)) return null
-    last = f[0]
-    out.push({ t: f[0], x: f[1], y: f[2], w: f[3], h: f[4] })
+    const t = flat[5 * keys]
+    if (sep !== 59 || field !== 4 || !(t > last)) return -1
+    last = t
+    keys++
     field = 0
-    if (i >= n) return out
+    if (i >= n) return keys
     i++
   }
 }

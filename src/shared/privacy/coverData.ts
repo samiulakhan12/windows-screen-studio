@@ -6,7 +6,7 @@
  */
 import type { Bleep, Cover, FindRecord, NormRect, PrivacyPrefs, PrivateKind, Project, ProjectPrivacy, RejectedPlace, Shape } from '../types'
 import { COVER_DARK, PRIVATE_KINDS, isPrivateKind } from './kinds'
-import { MAX_KEYS_PER_COVER, coverSlack, drawnBox, keysWithin, parsePath, pathKeys, rememberKeys, simplifyKeys, unionBox, writePath, type CoverKey } from './coverPath'
+import { MAX_KEYS_PER_COVER, coverSlack, drawnBox, keysWithin, parsePath, pathKeys, scanPath, simplifyKeys, unionBox, writePath, type CoverKey } from './coverPath'
 
 /** At most this many covers in a project (§4.2). */
 export const MAX_COVERS = 2000
@@ -88,30 +88,38 @@ export function widenShort(cover: Cover, duration: number): Cover {
   return { ...cover, start, end }
 }
 
-/** One stored cover read, or null when it cannot be (no usable times or path). */
-function readCover(v: Record<string, unknown>, dur: number): Cover | null {
+/** Whether a key's box is inside the frame as clampKey keeps it (its fast check). */
+const insideFrame = (x: number, y: number, w: number, h: number): boolean =>
+  x >= 0 && y >= 0 && x <= 1 - MIN_SIDE && y <= 1 - MIN_SIDE && w >= MIN_SIDE && h >= MIN_SIDE && x + w <= 1 + 1e-9 && y + h <= 1 + 1e-9
+
+/**
+ * One stored cover read, with its number of keys, or null when it cannot be (no usable times or
+ * path). The path is checked without making its keys (scanPath); a path inside the frame within the
+ * limits is kept as written, and its keys are made when they are first drawn (pathKeys).
+ */
+function readCover(v: Record<string, unknown>, dur: number): { cover: Cover; keys: number } | null {
   if (!finite(v.start) || !finite(v.end) || !(v.start < v.end) || typeof v.path !== 'string') return null
-  const parsed = parsePath(v.path)
-  if (!parsed || !parsed.length) return null
-  let keys = parsed
-  let changed = false
-  for (let i = 0; i < parsed.length; i++) {
-    const k = clampKey(parsed[i])
-    if (k.x !== parsed[i].x || k.y !== parsed[i].y || k.w !== parsed[i].w || k.h !== parsed[i].h) {
-      if (!changed) keys = parsed.slice()
-      changed = true
-      keys[i] = k
-    }
+  const flat = scanPath(v.path)
+  if (!flat || !flat.length) return null
+  let count = flat.length / 5
+  let changed = count > MAX_KEYS_PER_COVER
+  for (let i = 0; i < flat.length && !changed; i += 5) {
+    if (insideFrame(flat[i + 1], flat[i + 2], flat[i + 3], flat[i + 4])) continue
+    const k = { t: flat[i], x: flat[i + 1], y: flat[i + 2], w: flat[i + 3], h: flat[i + 4] }
+    const c = clampKey(k)
+    if (c.x !== k.x || c.y !== k.y || c.w !== k.w || c.h !== k.h) changed = true
   }
-  if (keys.length > MAX_KEYS_PER_COVER) {
-    keys = [unionKeys(keys)]
-    changed = true
+  let path = v.path
+  // Anything clamped or joined is written again.
+  if (changed) {
+    let keys = parsePath(v.path)!.map(clampKey)
+    if (keys.length > MAX_KEYS_PER_COVER) keys = [unionKeys(keys)]
+    path = writePath(keys)
+    count = keys.length
   }
   const start = clamp(v.start, 0, dur)
   const end = clamp(v.end, 0, dur)
   if (!(end > start) && !(dur > 0)) return null
-  // A path inside the frame within the limits is kept as written; anything clamped or joined is written again.
-  const path = changed ? writePath(keys) : v.path
   let cover: Cover = {
     id: v.id as string,
     start,
@@ -126,8 +134,7 @@ function readCover(v: Record<string, unknown>, dur: number): Cover | null {
   if (v.thin === true) cover.thin = true
   if (v.missed === true) cover.missed = true
   cover = widenShort(cover, dur)
-  if (!changed) rememberKeys(cover, keys)
-  return cover
+  return { cover, keys: count }
 }
 
 /**
@@ -142,17 +149,21 @@ export function readCovers(raw: unknown, duration: number): Cover[] | undefined 
   const dur = finite(duration) && duration > 0 ? duration : 0
   const ids = new Set<string>()
   let out: Cover[] = []
+  let total = 0
   for (const v of raw) {
     if (!isObj(v) || typeof v.id !== 'string' || !ID.test(v.id) || ids.has(v.id)) continue
-    const c = readCover(v, dur)
-    if (!c) continue
-    ids.add(c.id)
-    out.push(c)
+    const r = readCover(v, dur)
+    if (!r) continue
+    ids.add(r.cover.id)
+    out.push(r.cover)
+    total += r.keys
   }
   if (!out.length) return undefined
-  if (out.length > MAX_COVERS) out = mergeCovers(out, MAX_COVERS)
-  let total = 0
-  for (const c of out) total += pathKeys(c).length
+  if (out.length > MAX_COVERS) {
+    out = mergeCovers(out, MAX_COVERS)
+    total = 0
+    for (const c of out) total += pathKeys(c).length
+  }
   if (total > MAX_KEYS) out = simplifyKeys(out, MAX_KEYS)
   return out
 }
