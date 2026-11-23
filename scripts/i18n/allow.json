@@ -960,6 +960,11 @@
       "kind": "copy",
       "pattern": "^(?:GIFs are saved alone|This video has no captions yet|This video has no chapters|Audio files have no thumbnail)$",
       "reason": "sidecarBlocked keeps its English for main and tests (main imports exportBundle.ts): the export dialog reads it only as a yes or no and shows src/renderer/src/editor/exportNames.ts's sidecarBlockedText (export.sidecar.*)."
+    },
+    {
+      "file": "src/shared/privacy/detect/tables.ts",
+      "kind": "table",
+      "reason": "The text rules' word lists (labels such as recovery codes, number words, street words, in English, Bangla, Spanish and Hindi): matched against the screen's text and the captions in main's rules worker and in said.ts, never shown (docs/design/auto-blur.md section 6, 7.2)."
     }
   ]
 }
