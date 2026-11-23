@@ -589,6 +589,12 @@ interface TeamRules {
   fold: (key: string) => string
   stems: readonly Stem[]
   compounds: readonly Stem[]
+  /**
+   * The compounds as one RegExp of code units, as indexOf reads them, and each by its key: its match
+   * is the leftmost, the longest of those there (বানচোত্, not বানচোত, which a virama there rules out).
+   */
+  compoundFirst: RegExp
+  compoundOf: ReadonlyMap<string, Stem>
   holders: readonly string[]
   everyday: ReadonlySet<string>
   whole: ReadonlySet<string>
@@ -622,10 +628,13 @@ function teamRulesOf(lang: string): TeamRules | null {
       }
       return m
     }
+    const compounds = list.compounds.map(stem)
     r = {
       fold,
       stems: list.stems.map(stem),
-      compounds: list.compounds.map(stem),
+      compounds,
+      compoundFirst: new RegExp([...compounds].sort((a, b) => b.key.length - a.key.length).map((c) => c.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')),
+      compoundOf: new Map(compounds.map((c) => [c.key, c])),
       holders: list.holders.map(keyOf),
       everyday,
       whole: new Set(list.nouns.flatMap(nounForms).map(keyOf).filter((k) => k && !everyday.has(k))),
@@ -675,6 +684,13 @@ function teamMatch(r: TeamRules, key: string, next: string | undefined, pause: P
   if (n !== undefined && r.notBefore.get(k)?.has(n) && (pause === NO_PAUSE || (pause === COMMA_PAUSE && r.listed.get(k)?.has(n)))) return false
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
+  // The leftmost compound, found by one RegExp in place of an indexOf for each: none anywhere is no
+  // match, and one there that takes no virama and is not held is a match; else every compound is
+  // tried wherever it is, as before.
+  const first = r.compoundFirst.exec(k)
+  if (!first) return false
+  const leftmost = r.compoundOf.get(first[0])
+  if (leftmost && stemAt(k, leftmost, first.index) && !heldAt(r.holders, k, leftmost, first.index)) return true
   for (const c of r.compounds) {
     for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at) && !heldAt(r.holders, k, c, at)) return true
   }
