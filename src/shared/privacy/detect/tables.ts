@@ -376,9 +376,9 @@ export const LINK_RULES: readonly LinkRule[] = Object.freeze([
 ])
 /** Webhook paths whose token is cut at the end of a line (group 1 the secret part): they start a continuation (§6.10). */
 export const LINK_HEADS: readonly LinkRule[] = Object.freeze([
-  { id: 'slack-webhook', pattern: /hooks\.slack\.com\/(?:services|workflows|triggers)\/([A-Za-z0-9+/_-]{0,400})$/, score: 0.98 },
+  { id: 'slack-webhook', pattern: /hooks\.slack\.com\/(?:services|workflows|triggers)\/([A-Za-z0-9+/_-]{1,400})$/, score: 0.98 },
   { id: 'discord-webhook', pattern: /discord(?:app)?\.com\/api(?:\/v\d{1,2})?\/webhooks\/(\d{5,30}\/?[A-Za-z0-9_-]{0,400})$/, score: 0.98 },
-  { id: 'teams-webhook', pattern: /webhook\.office\.com\/webhookb2\/([^\s"'<>]{0,600})$/, score: 0.98 }
+  { id: 'teams-webhook', pattern: /webhook\.office\.com\/webhookb2\/([^\s"'<>]{1,600})$/, score: 0.98 }
 ])
 /** Query or fragment parameters whose value is a secret: group 1 the name, group 2 the value. */
 export const SECRET_PARAM =
