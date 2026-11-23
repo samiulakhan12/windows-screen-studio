@@ -357,4 +357,15 @@ parentPort.on('message', (m) => {
   })
 })
 
+describe('auto-blur P4: test numbers', () => {
+  it('the scan’s numbered tests (136-160, 229-240) each exist exactly once', async () => {
+    const fs = await import('node:fs')
+    const numbers = [...Array.from({ length: 25 }, (_v, i) => 136 + i), ...Array.from({ length: 12 }, (_v, i) => 229 + i)]
+    const found = new Map<number, number>()
+    for (const file of fs.readdirSync(__dirname).filter((f) => /^autoBlur.*\.test\.ts$/.test(f)))
+      for (const m of fs.readFileSync(path.join(__dirname, file), 'utf8').matchAll(/\bit\(\s*(['"`])(\d+)\. /g)) found.set(Number(m[2]), (found.get(Number(m[2])) ?? 0) + 1)
+    for (const n of numbers) expect(found.get(n), `test ${n}`).toBe(1)
+  })
+})
+
 export type { FindResult }
