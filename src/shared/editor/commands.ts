@@ -176,6 +176,14 @@ const COMMAND_LIST = [
   // Output and languages (docs/design/output-and-languages.md §2.5): listed only while Settings has a Language section.
   { id: 'language', category: 'General', keywords: 'language ভাষা bangla বাংলা english español हिन्दी' },
 
+  // Auto-blur (docs/design/auto-blur.md §2.15): no default keys; each waits on WAITING_COMMANDS until its part works.
+  // Placed before the later waves' blocks, whose places in the list their tests pin.
+  { id: 'addCover', category: 'Add', keywords: 'privacy hide redact secret password solid box blur pixelate censor mask black out' },
+  { id: 'findPrivate', category: 'Add', keywords: 'privacy redact secret password email key token scan blur censor mask' },
+  { id: 'peekCovers', category: 'Effects', keywords: 'privacy show hidden covers' },
+  { id: 'coverStartHere', category: 'Edit', keywords: 'privacy cover trim start begin playhead' },
+  { id: 'coverEndHere', category: 'Edit', keywords: 'privacy cover trim end stop playhead' },
+
   // E-09 nudge, E-07 filmstrip, E-12 versions (docs/design/versions.md): the step keys nudge while items are selected (shortcuts.ts NUDGE_STEPS).
   { id: 'nudgeBack', category: 'Edit', keywords: 'nudge shift left arrow frame item selection earlier', repeat: true },
   { id: 'nudgeForward', category: 'Edit', keywords: 'nudge shift right arrow frame item selection later', repeat: true },
@@ -208,14 +216,7 @@ const COMMAND_LIST = [
   { id: 'shortClips', category: 'General', keywords: 'highlights moments shorts reels tiktok best parts copy vertical' },
   { id: 'shortVersion', category: 'General', keywords: 'short summary cut down highlights 30 60 90 seconds copy' },
   { id: 'localAi', category: 'General', keywords: 'offline local model no key download private gemma qwen' },
-  { id: 'aiService', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' },
-
-  // Auto-blur (docs/design/auto-blur.md §2.15): no default keys; each waits on WAITING_COMMANDS until its part works.
-  { id: 'addCover', category: 'Add', keywords: 'privacy hide redact secret password solid box blur pixelate censor mask black out' },
-  { id: 'findPrivate', category: 'Add', keywords: 'privacy redact secret password email key token scan blur censor mask' },
-  { id: 'peekCovers', category: 'Effects', keywords: 'privacy show hidden covers' },
-  { id: 'coverStartHere', category: 'Edit', keywords: 'privacy cover trim start begin playhead' },
-  { id: 'coverEndHere', category: 'Edit', keywords: 'privacy cover trim end stop playhead' }
+  { id: 'aiService', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']

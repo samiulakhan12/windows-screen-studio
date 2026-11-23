@@ -3474,7 +3474,8 @@ export function setPrivateNames(names: unknown): void
   dialog shows the row only once `useReaderState()` is not null, and runs the step only then; with
   nothing gathered the step is skipped as `no-reader`.
 - **Commands.** No category is named *View*, and a new one would change the palette's list, so
-  `peekCovers` is in *Effects*; `addCover` and `findPrivate` in *Add*; the two trims in *Edit*. The
+  `peekCovers` is in *Effects*; `addCover` and `findPrivate` in *Add*; the two trims in *Edit*. They
+  sit after the Language command, before the blocks whose places later waves' tests pin. The
   runner's four cover commands come from `src/renderer/src/privacy/coverCommands.ts`
   (`coverCommands({ services, cursor, scene, selection, select, reveal, notice })`, stubs that part
   P1 fills); `findPrivate` opens the `FindDialog` stub. Leaving asks `confirmLeaveFind` before the
@@ -3493,10 +3494,12 @@ export function setPrivateNames(names: unknown): void
   `scrubSecrets` and every log and diagnostics line take them out first, in any case. A job's
   `notice` is set only in main (`validOutcome` drops one sent by a page).
 - **Merging and reading paths.** `mergeCovers` keeps each round's covers in start order as arrays
-  and writes merged keys into one pool; `parsePath` reads each field's digits as it scans. Tests 3
-  and 13 time processor time.
-- **The scanner and the guard.** Every new file of §16 (77, those of later parts included) is in
-  `failFor`. `guard-delta.mjs` reads a settings capture's section as the first section heading
+  and writes merged keys into one pool; `parsePath` reads each field's digits as it scans, and
+  `readCovers` checks a path with `scanPath` without making its keys (they are made when first
+  drawn). Tests 3 and 13 time processor time, in up to five rounds, the bounds unchanged.
+- **The scanner and the guard.** Every file the contracts step made is in `failFor` (42); a later
+  part adds each of its new files in the commit that makes it, because `outputSeams.test.ts` holds
+  every `failFor` entry to an existing file (the whole tree fails the scan since step S4 anyway). `guard-delta.mjs` reads a settings capture's section as the first section heading
   below the dialog's own, its words from the accessibility tree; a moved box passes when an element
   was added before it, above it or beside it.
 - **Tracking fixtures.** `make-track-fixtures.mjs` renders ten cases (list scroll, flick, browser
