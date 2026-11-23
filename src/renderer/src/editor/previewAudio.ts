@@ -21,6 +21,7 @@ import { graphicShown } from '../render/graphicsLayer'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { createAudio, SCREEN_PROXY_FPS } from './media'
 import { voiceStems } from './voiceStems'
+import { listenedGains, listenedProject, peekNow, subscribePeek } from '../privacy/peek'
 
 /** Seconds of gain automation scheduled ahead of the playhead; more is added as playback gets there. */
 const HORIZON = 30
@@ -226,6 +227,9 @@ export class PreviewAudio {
   /** The video waits for data (waiting, stalled): the bed stops until it plays again. */
   private stalled = false
   private readonly offScreen: () => void
+  /** Listen (auto-blur §2.8): the bleep whose original sound the preview plays, and the store's unsubscribe. */
+  private listen: string | null = null
+  private readonly offPeek: () => void
 
   constructor(
     private readonly screen: HTMLVideoElement,
@@ -251,6 +255,15 @@ export class PreviewAudio {
       el.removeEventListener('stalled', stall)
       el.removeEventListener('playing', resume)
     }
+    this.listen = peekNow().listen
+    this.offPeek = subscribePeek(() => {
+      const listen = peekNow().listen
+      if (listen === this.listen) return
+      this.listen = listen
+      // The listened bleep's span opens and its tone stops (the export's sound never changes).
+      this.effects = null
+      this.apply()
+    })
     this.apply()
   }
 
@@ -734,7 +747,8 @@ export class PreviewAudio {
       length,
       m ? [m.path, m.loop, m.fadeIn, m.fadeOut, m.ducking, this.musicLength()].join() : '',
       this.ducks && this.soundRanges() ? this.activity.key : 'none',
-      this.soundSpansKey()
+      this.soundSpansKey(),
+      this.listen ?? ''
     ].join('|')
   }
 
@@ -768,7 +782,7 @@ export class PreviewAudio {
       master: fadeKeyframes(length, look.fadeIn, look.fadeOut),
       musicFade: m ? fadeKeyframes(end, m.fadeIn, m.fadeOut) : [],
       duck: duck ? duckKeyframes(duck.ranges, length, duck.shape) : [],
-      sounds: soundOutputKeyframes(soundGains(this.project), this.project.clips, this.plan)
+      sounds: soundOutputKeyframes(listenedGains(soundGains(this.project), this.project), this.project.clips, this.plan)
     }
     this.curveMemo = { key, value }
     return value
@@ -1096,12 +1110,13 @@ export class PreviewAudio {
       p.titles,
       p.soundFx,
       p.effects,
-      p.chapterBar
+      p.chapterBar,
+      this.listen
     ]
     const e = this.effects
     if (e && e.from.length === from.length && e.from.every((v, i) => v === from[i])) return e
     const startOf = (g: Parameters<typeof graphicShown>[1]): number => graphicShown(p, g).start
-    this.effects = { from, pops: popJob(p, startOf), tones: toneJob(p), sfx: sfxJob(p, startOf) }
+    this.effects = { from, pops: popJob(p, startOf), tones: toneJob(listenedProject(p)), sfx: sfxJob(p, startOf) }
     return this.effects
   }
 
@@ -1256,6 +1271,7 @@ export class PreviewAudio {
     this.disposeMusic()
     this.disposeBed()
     this.offScreen()
+    this.offPeek()
     this.stopEffects()
     void this.graph?.ctx.close()
     this.graph = null

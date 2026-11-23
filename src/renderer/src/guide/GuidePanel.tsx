@@ -49,6 +49,7 @@ import { LANGUAGE_NAMES } from '../../../shared/i18n/locale'
 import { t, uiLanguage } from '../../../shared/i18n/t'
 import { richText } from '../i18n/richText'
 import { NotCheckedNote } from '../privacy/NotCheckedNote'
+import { ringColourAt } from '../privacy/coverPick'
 
 /** Rows drawn at a time as the list scrolls (§2.1). */
 export const ROWS_AT_A_TIME = 20
@@ -593,11 +594,12 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
   const blurStep = (r: Row): void => blurAt(r.step, !!r.edit?.after)
   /** *Blur an area…* at a step's shot (or the Actual's, as a step at its time). */
   const blurAt = (step: GuideStep, after: boolean): void => {
-    blurArea(services, step, {
+    // A cover since auto-blur (§2.11, decision 12), coloured from the step's own shot frame.
+    void blurArea(services, step, {
       after,
       scale,
       onSelect: (sel) => {
-        if (sel?.kind === 'shape') group.select([itemKey('shape', sel.id)], itemKey('shape', sel.id))
+        if (sel?.kind === 'shape' || sel?.kind === 'cover') group.select([itemKey(sel.kind, sel.id)], itemKey(sel.kind, sel.id))
       }
     })
     say(blurHint())
@@ -607,7 +609,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
     const run = runs.find((x) => x.key === r.typedIn)
     if (!run) return
     const source: GuideStep = { key: run.key, t: run.t, kind: 'type', typing: { t: run.t, end: run.end, place: run.place } }
-    blurTypedText(store, source, { t: r.plan.t }, scan, scale)
+    void blurTypedText(store, source, { t: r.plan.t }, scan, scale, (at, box) => ringColourAt(store.state.id, at, box))
     say(t('smart.guide.say.blurred'))
   }
   const copyShot = async (key: string): Promise<void> => {
@@ -1148,6 +1150,8 @@ function StepRow(props: {
         )}
         <button type="button" className="btn ghost small" disabled={!props.image} onClick={props.onCopy} data-testid="guide-copy-shot">{t('smart.guide.copyShot')}</button>
       </div>
+      {/* Auto-blur (§2.11): the blur buttons add covers; their labels stay. */}
+      <p className="hint guide-covered" data-testid="guide-covered">{t('privacy.guide.covered')}</p>
     </li>
   )
 }

@@ -6,6 +6,7 @@ import { useGroup } from './groupContext'
 import { useLookClipboard } from './itemClipboard'
 import { useKeymap } from './keymapContext'
 import { t } from '../../../shared/i18n/t'
+import { PRIVACY_COPY } from '../../../shared/privacy/copy'
 
 /**
  * Copy look / Paste look for one selected item (E-06, docs/design/multi-select.md §4.12): they run
@@ -20,7 +21,7 @@ export function LookButtons({ itemKey }: { itemKey: ItemKey }): JSX.Element | nu
   const cls = lookClassOf(store.state, itemKey)
   if (!cls) return null
   const pasteKeys = commandKeys(keymap, 'pasteLook')
-  const why = !look ? t('style.lookButtons.copyFirst') : look.cls !== cls ? t('style.lookButtons.copiedLookFor', { cls: look.cls }) : null
+  const why = !look ? t('style.lookButtons.copyFirst') : look.cls !== cls ? (look.cls === 'cover' ? t(PRIVACY_COPY.cover.lookFor) : t('style.lookButtons.copiedLookFor', { cls: look.cls })) : null
   const pasteTitle = look && !why ? (pasteKeys[0] ? t('style.lookButtons.pasteLookKeys', { look: lookLabel(look), keys: shortcutLabel(pasteKeys[0]) }) : t('style.lookButtons.pasteLookOf', { look: lookLabel(look) })) : why!
   return (
     <div className="look-buttons" role="group" aria-label={t('common.label.look')}>

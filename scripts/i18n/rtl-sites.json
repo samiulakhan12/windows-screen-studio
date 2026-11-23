@@ -107,6 +107,8 @@
     { "file": "src/renderer/src/editor/zoom.css", "rule": ".zoom-link svg", "props": ["left", "transform"], "reason": "timeline" },
     { "file": "src/renderer/src/editor/zoom.css", "rule": ".region-box .region-label", "props": ["left", "transform"], "reason": "centred" },
     { "file": "src/renderer/src/editor/zoom.css", "rule": ".region-handle", "props": ["margin"], "reason": "preview" },
+    { "file": "src/renderer/src/privacy/covers.css", "rule": ".cover-handle", "props": ["margin"], "reason": "preview" },
+    { "file": "src/renderer/src/privacy/covers.css", "rule": ".cover-peek-banner", "props": ["left", "transform"], "reason": "centred" },
     { "file": "src/renderer/src/guide/guide.css", "rule": ".guide-adjust-handle", "props": ["margin"], "reason": "picture" },
     { "file": "src/renderer/src/guide/guide.css", "rule": ".guide-adjust-handle[data-handle='nw']", "props": ["left"], "reason": "picture" },
     { "file": "src/renderer/src/guide/guide.css", "rule": ".guide-adjust-handle[data-handle='n']", "props": ["left"], "reason": "picture" },

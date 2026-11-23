@@ -81,6 +81,11 @@
     "src/shared/privacy/protocol.ts",
     "src/shared/privacy/readerCatalog.ts",
     "src/shared/privacy/spoken.ts",
-    "src/shared/review/privacyReview.ts"
+    "src/shared/review/privacyReview.ts",
+    "src/shared/editor/coverEdit.ts",
+    "src/shared/render/coverColour.ts",
+    "src/renderer/src/privacy/peek.ts",
+    "src/renderer/src/privacy/coverPick.ts",
+    "src/renderer/src/privacy/followRun.ts"
   ]
 }

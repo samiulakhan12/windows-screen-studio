@@ -16,6 +16,7 @@ import { releaseTilt } from '../render/tiltLayer'
 import { openSource, prepareFrames, type ThumbnailInput } from '../editor/exporter'
 import { SCREEN_PROXY_FPS } from '../editor/media'
 import { t } from '../../../shared/i18n/t'
+import { clearPeek } from '../privacy/peek'
 
 const even = (v: number): number => Math.max(2, Math.round(v / 2) * 2)
 
@@ -84,6 +85,8 @@ export async function* renderGuideStills(
   opts: { mime: GuideImage['mime']; quality: number; maxWidth: number; signal: AbortSignal }
 ): AsyncGenerator<{ key: string; image: GuideImage }> {
   if (!shots.length || opts.signal.aborted) return
+  // Peek and Listen stop before guide shots (auto-blur §2.8); the shots' own scene never has them (forOutput).
+  clearPeek()
   const raw = input.project
   const shown = visibleSize(raw)
   const scale = Math.min(1, SHOT.maxSource / Math.max(1, shown.width))
