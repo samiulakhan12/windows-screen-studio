@@ -62,6 +62,8 @@ pub struct Crop {
     pub cos: f32,
     /// Read turned a quarter (text running down): no character ranges.
     pub vertical: bool,
+    /// The line's width in the frame (the span of each character of a line turned a quarter).
+    pub span_w: f32,
 }
 
 pub struct Variant {
@@ -455,6 +457,10 @@ fn crop_line(frame: &Frame, f: &Found) -> Option<Crop> {
         cos = f.rect.angle.cos();
     }
     let vertical = h as f32 / w.max(1) as f32 >= 1.5;
+    let span_w = {
+        let b = quad_bounds(&q);
+        b[2] - b[0]
+    };
     if vertical {
         // A quarter turn counter-clockwise (np.rot90).
         let mut r = vec![0u8; w * h * 3];
@@ -467,7 +473,7 @@ fn crop_line(frame: &Frame, f: &Found) -> Option<Crop> {
         bgr = r;
         std::mem::swap(&mut w, &mut h);
     }
-    Some(Crop { w, h, bgr, x0, cos, vertical })
+    Some(Crop { w, h, bgr, x0: if vertical { quad_bounds(&q)[0] } else { x0 }, cos, vertical, span_w })
 }
 
 /// The 2 px ring just outside the line's padded box (§8.4): its median colour and the largest
@@ -649,7 +655,8 @@ impl Engine<'_> {
                 panic!("line {} holds the marker", d.text);
             }
         }
-        let spans = if crop.vertical { vec![] } else { d.spans.iter().map(|&(a, b)| (crop.x0 + a * crop.cos, crop.x0 + b * crop.cos)).collect() };
+        // A line read turned a quarter has no x-range per character: each gets the line's width.
+        let spans = if crop.vertical { d.spans.iter().map(|_| (crop.x0, crop.x0 + crop.span_w)).collect() } else { d.spans.iter().map(|&(a, b)| (crop.x0 + a * crop.cos, crop.x0 + b * crop.cos)).collect() };
         Variant { model, text: d.text, conf: d.conf, spans }
     }
 }

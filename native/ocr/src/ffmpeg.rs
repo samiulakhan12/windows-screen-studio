@@ -110,13 +110,33 @@ fn field<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     Some(rest.split_whitespace().next().unwrap_or(""))
 }
 
-/// One showinfo line; None for any other line.
-pub fn parse_info(line: &str) -> Option<Info> {
+/// The showinfo filter a line is from, when it is one.
+fn filter_of(line: &str) -> Option<u32> {
     let at = line.find("Parsed_showinfo_")? + "Parsed_showinfo_".len();
-    let filter: u32 = line[at..].split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()?;
+    line[at..].split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()
+}
+
+/// A showinfo `config in time_base: N/D` line: its filter and time base.
+pub fn parse_time_base(line: &str) -> Option<(u32, f64)> {
+    let filter = filter_of(line)?;
+    let at = line.find("config in time_base:")? + "config in time_base:".len();
+    let (n, d) = line[at..].trim_start().split(|c: char| c == ',' || c.is_whitespace()).next()?.split_once('/')?;
+    let (n, d): (f64, f64) = (n.parse().ok()?, d.parse().ok()?);
+    (n > 0.0 && d > 0.0).then_some((filter, n / d))
+}
+
+/// One showinfo frame line; None for any other line. The time is the frame's pts times its
+/// filter's time base when that is known (`pts_time` has only six significant digits, which is a
+/// hundredth of a second past 1,000 s), else `pts_time`.
+pub fn parse_info(line: &str, time_base: Option<f64>) -> Option<Info> {
+    let filter = filter_of(line)?;
     let body = &line[line.find(']')?..];
     let n = field(body, "n")?.parse().ok()?;
-    let t = field(body, "pts_time")?.parse().ok()?;
+    let pts: Option<i64> = field(body, "pts").and_then(|v| v.parse().ok());
+    let t = match (pts, time_base) {
+        (Some(p), Some(tb)) => p as f64 * tb,
+        _ => field(body, "pts_time")?.parse().ok()?,
+    };
     let key = field(body, "iskey")? == "1";
     let (w, h) = field(body, "s")?.split_once('x')?;
     Some(Info { filter, n, t, key, w: w.parse().ok()?, h: h.parse().ok()? })
@@ -150,6 +170,7 @@ impl Run {
         std::thread::spawn(move || {
             let mut r = BufReader::new(stderr);
             let mut buf = Vec::new();
+            let mut bases: std::collections::HashMap<u32, f64> = Default::default();
             loop {
                 buf.clear();
                 match r.read_until(b'\n', &mut buf) {
@@ -158,7 +179,12 @@ impl Run {
                 }
                 // Lines can be long; only showinfo and the error kinds are looked at.
                 let line = String::from_utf8_lossy(&buf);
-                if let Some(info) = parse_info(&line) {
+                if let Some((f, tb)) = parse_time_base(&line) {
+                    bases.insert(f, tb);
+                    continue;
+                }
+                let tb = filter_of(&line).and_then(|f| bases.get(&f).copied());
+                if let Some(info) = parse_info(&line, tb) {
                     if tx.send(info).is_err() {
                         break;
                     }
@@ -228,10 +254,20 @@ mod tests {
     #[test]
     fn reads_a_showinfo_line() {
         let line = "[Parsed_showinfo_0 @ 0x5581c0a2b4c0] n:  12 pts:  12288 pts_time:0.2     duration:   1024 duration_time:0.0166667 fmt:yuv420p cl:left sar:1/1 s:1920x1080 i:P iskey:0 type:P";
-        assert_eq!(parse_info(line), Some(Info { filter: 0, n: 12, t: 0.2, key: false, w: 1920, h: 1080 }));
+        assert_eq!(parse_info(line, None), Some(Info { filter: 0, n: 12, t: 0.2, key: false, w: 1920, h: 1080 }));
         let key = "[Parsed_showinfo_2 @ 0x1] n:   0 pts:      0 pts_time:0       duration:   512 duration_time:0.0166667 fmt:gray cl:unspecified sar:1/1 s:480x270 i:P iskey:1 type:I";
-        assert_eq!(parse_info(key).map(|i| (i.filter, i.key, i.w)), Some((2, true, 480)));
-        assert_eq!(parse_info("[Parsed_showinfo_0 @ 0x1]   color_range:tv color_space:bt709"), None);
-        assert_eq!(parse_info("frame=  10 fps=0.0 q=-0.0 size=N/A"), None);
+        assert_eq!(parse_info(key, None).map(|i| (i.filter, i.key, i.w)), Some((2, true, 480)));
+        assert_eq!(parse_info("[Parsed_showinfo_0 @ 0x1]   color_range:tv color_space:bt709", None), None);
+        assert_eq!(parse_info("frame=  10 fps=0.0 q=-0.0 size=N/A", None), None);
+    }
+
+    #[test]
+    fn times_come_from_the_pts_and_the_time_base() {
+        assert_eq!(parse_time_base("[Parsed_showinfo_0 @ 0x56] config in time_base: 1/15360, frame_rate: 30/1"), Some((0, 1.0 / 15360.0)));
+        assert_eq!(parse_time_base("[Parsed_showinfo_0 @ 0x56] config out time_base: 0/0, frame_rate: 0/0"), None);
+        // 1140.333… s: pts_time reads 1140.33, a frame earlier than the frame's own time.
+        let line = "[Parsed_showinfo_0 @ 0x1] n: 5 pts: 17515520 pts_time:1140.33 duration: 512 duration_time:0.0333333 fmt:yuv420p cl:left sar:1/1 s:320x180 i:P iskey:0 type:P";
+        let t = parse_info(line, Some(1.0 / 15360.0)).unwrap().t;
+        assert!((t - 1140.0 - 1.0 / 3.0).abs() < 1e-9, "{t}");
     }
 }

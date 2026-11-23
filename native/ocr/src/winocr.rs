@@ -80,6 +80,7 @@ mod imp {
 
 /// One line from its words (x, y, w, h, text): their union box, the words joined by spaces, and
 /// each character an equal share of its word (the space between two words gets the gap).
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn line_of(words: &[(f32, f32, f32, f32, String)]) -> Option<Line> {
     if words.is_empty() {
         return None;

@@ -93,51 +93,90 @@ fn profile_scores(cur: &[f32], prev: &[f32], start: usize, max: i64) -> Vec<(i64
     out
 }
 
-/// Up to three best local maxima of `scores`, refined by a parabola through their neighbours.
-fn peaks(scores: &[(i64, f32)]) -> Vec<(f32, f32)> {
+/// The NCC of `cur` against `prev` shifted by a fraction `s`, the shifted profile read by linear
+/// interpolation.
+fn profile_score_at(cur: &[f32], prev: &[f32], start: usize, s: f32) -> f32 {
+    let mut a = Vec::with_capacity(cur.len());
+    let mut b = Vec::with_capacity(cur.len());
+    for (i, &v) in cur.iter().enumerate() {
+        let p = (start + i) as f32 - s;
+        if p < 0.0 || p > (prev.len() - 1) as f32 {
+            continue;
+        }
+        let i0 = p.floor() as usize;
+        let i1 = (i0 + 1).min(prev.len() - 1);
+        let f = p - i0 as f32;
+        a.push(v);
+        b.push(prev[i0] * (1.0 - f) + prev[i1] * f);
+    }
+    if a.len() < cur.len() / 2 {
+        return f32::MIN;
+    }
+    ncc(&a, &b)
+}
+
+/// Up to three best local maxima of `scores`, each refined to an eighth of a pixel by scoring the
+/// profile at fractional shifts around it.
+fn peaks(scores: &[(i64, f32)], cur: &[f32], prev: &[f32], start: usize) -> Vec<(f32, f32)> {
     let mut out = vec![];
     for i in 0..scores.len() {
         let v = scores[i].1;
         let left = if i > 0 { scores[i - 1].1 } else { f32::MIN };
         let right = scores.get(i + 1).map_or(f32::MIN, |s| s.1);
         if v >= left && v >= right {
-            let mut s = scores[i].0 as f32;
-            if i > 0 && i + 1 < scores.len() {
-                let d = left - 2.0 * v + right;
-                if d < 0.0 {
-                    s += (0.5 * (left - right) / d).clamp(-0.5, 0.5);
-                }
-            }
-            out.push((s, v));
+            out.push((scores[i].0 as f32, v));
         }
     }
     out.sort_by(|a, b| b.1.total_cmp(&a.1));
     out.truncate(3);
+    for p in out.iter_mut() {
+        let mut best = *p;
+        for k in -7..=7 {
+            let s = p.0 + k as f32 / 8.0;
+            let v = profile_score_at(cur, prev, start, s);
+            if v > best.1 {
+                best = (s, v);
+            }
+        }
+        *p = best;
+    }
     out
 }
 
-/// The 2-D NCC of the region's gradient against the last frame's moved by (dx, dy).
+/// The 2-D NCC of the region's gradient against the last frame's moved by (dx, dy), on every
+/// second row and column (the gradient varies over more than one look pixel).
 fn ncc2(cur: &[f32], prev: &[f32], w: usize, h: usize, r: [usize; 4], dx: i64, dy: i64) -> f32 {
     let [x0, y0, rw, rh] = r;
-    let (mut a, mut b) = (Vec::with_capacity(rw * rh), Vec::with_capacity(rw * rh));
-    for y in y0..y0 + rh {
+    let (mut n, mut sa, mut sb, mut saa, mut sbb, mut sab) = (0f64, 0f64, 0f64, 0f64, 0f64, 0f64);
+    for y in (y0..y0 + rh).step_by(2) {
         let py = y as i64 - dy;
         if py < 0 || py >= h as i64 {
             continue;
         }
-        for x in x0..x0 + rw {
+        let (row, prow) = (y * w, py as usize * w);
+        for x in (x0..x0 + rw).step_by(2) {
             let px = x as i64 - dx;
             if px < 0 || px >= w as i64 {
                 continue;
             }
-            a.push(cur[y * w + x]);
-            b.push(prev[py as usize * w + px as usize]);
+            let (a, b) = (cur[row + x] as f64, prev[prow + px as usize] as f64);
+            n += 1.0;
+            sa += a;
+            sb += b;
+            saa += a * a;
+            sbb += b * b;
+            sab += a * b;
         }
     }
-    if a.len() < rw * rh / 2 {
+    if n < (rw * rh) as f64 / 8.0 {
         return 0.0;
     }
-    ncc(&a, &b)
+    let va = saa - sa * sa / n;
+    let vb = sbb - sb * sb / n;
+    if va <= 1e-6 || vb <= 1e-6 {
+        return 0.0;
+    }
+    ((sab - sa * sb / n) / (va * vb).sqrt()) as f32
 }
 
 /// Changed tiles joined into regions (8-connected, then boxes within 2 tiles merged), in tiles.
@@ -250,8 +289,8 @@ impl Analyser {
         let prev_rows: Vec<f32> = (0..h).map(|y| row(prev, y)).collect();
         let cur_cols: Vec<f32> = (x0..x0 + rw).map(|x| col(cur, x)).collect();
         let prev_cols: Vec<f32> = (0..w).map(|x| col(prev, x)).collect();
-        let dys = peaks(&profile_scores(&cur_rows, &prev_rows, y0, (rh / 2) as i64));
-        let dxs = peaks(&profile_scores(&cur_cols, &prev_cols, x0, (rw / 2) as i64));
+        let dys = peaks(&profile_scores(&cur_rows, &prev_rows, y0, (rh / 2) as i64), &cur_rows, &prev_rows, y0);
+        let dxs = peaks(&profile_scores(&cur_cols, &prev_cols, x0, (rw / 2) as i64), &cur_cols, &prev_cols, x0);
         let mut cands: Vec<(f32, f32, f32)> = vec![];
         let push = |dx: f32, dy: f32, cands: &mut Vec<(f32, f32, f32)>| {
             if cands.iter().any(|c| (c.0 - dx).abs() < 0.5 && (c.1 - dy).abs() < 0.5) {
