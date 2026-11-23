@@ -131,7 +131,9 @@ export interface FakeScript {
   /** Overrides a read: 'fail' throws, a ReadResult answers as it is. */
   read?: (t: number, areas: readonly Box[], n: number) => ReadResult | 'fail' | undefined | Promise<ReadResult | 'fail' | undefined>
   /** Waits before answering each read (to hold Find's reads while a test acts). */
-  gate?: (t: number) => Promise<void>
+  gate?: (t: number, n: number) => Promise<void>
+  /** QR codes a read of `areas` at `t` sees (besides the planted lines). */
+  qr?: (t: number, areas: readonly Box[]) => ReadResult['qr']
 }
 
 /** The lines a read of `areas` at `t` gives over planted texts: each text at least half inside an area, its characters spread evenly. */
@@ -186,11 +188,11 @@ export class FakeHelper {
   async read(req: { t: number; areas: Box[]; key: number }, signal: AbortSignal): Promise<{ id: number; result: ReadResult }> {
     this.log.push(`read ${req.t} key ${req.key}`)
     const n = this.reads++
-    if (this.script.gate) await this.script.gate(req.t)
+    if (this.script.gate) await this.script.gate(req.t, n)
     if (signal.aborted) throw new Error('stopped')
     const over = await this.script.read?.(req.t, req.areas, n)
     if (over === 'fail') throw new Error('read')
-    return { id: ++this.next, result: over ?? { t: req.t, lines: plantedLines(this.script.planted, req.t, req.areas), qr: [] } }
+    return { id: ++this.next, result: over ?? { t: req.t, lines: plantedLines(this.script.planted, req.t, req.areas), qr: this.script.qr?.(req.t, req.areas) ?? [] } }
   }
 
   async careful(_id: number, lines: readonly number[]): Promise<ReadVariant[][]> {

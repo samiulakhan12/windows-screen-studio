@@ -74,7 +74,7 @@ function scene(over: Partial<FakeScript> = {}, seconds = 20, wrap: (h: FakeHelpe
   return { dir, log, make, project, planted, look, deps, advance: (ms: number) => (clock += ms), starts: () => starts }
 }
 
-const request = (over: Partial<FindRequest> = {}): FindRequest => ({ projectId: 'rec-1', requestId: 'r1', kinds: ['email', 'name', 'key', 'notice'], regions: ['US'], names: ['Priya Raman'], neverHide: [], ...over })
+const request = (over: Partial<FindRequest> = {}): FindRequest => ({ projectId: 'rec-1', requestId: 'r1', kinds: ['email', 'name', 'key', 'qr', 'notice'], regions: ['US'], names: ['Priya Raman'], neverHide: [], ...over })
 const never = new AbortController().signal
 const noProgress = (): void => undefined
 const holdsSecret = (v: unknown): string | null => {
@@ -90,7 +90,15 @@ const boxOf = (f: Pick<FoundCover, 'path'>, t: number): Box => {
 
 describe('auto-blur P4: the scan', () => {
   it('153. runFind with the fake helper: progress phases; the result holds no text (a JSON scan of it finds none of the planted strings)', async () => {
-    const s = scene()
+    // A secret QR code beside the text from 5 s: covered, its payload never in the result.
+    const quad: [number, number][] = [
+      [1500, 200],
+      [1700, 200],
+      [1700, 400],
+      [1500, 400]
+    ]
+    const payload = 'otpauth://totp/Acme:priya?secret=JBSWY3DPEHPK3PXP&issuer=Acme'
+    const s = scene({ qr: (t) => (t >= 5 ? [{ quad, payload }] : []) })
     const phases: FindProgress['phase'][] = []
     const r = await runFind(request(), (p) => phases[phases.length - 1] !== p.phase && phases.push(p.phase), never, s.deps)
     expect(phases).toEqual(['look', 'read', 'follow'])
@@ -106,6 +114,9 @@ describe('auto-blur P4: the scan', () => {
     expect(name.start).toBeLessThanOrEqual(5)
     expect(inside(NAME, boxOf(name, 10))).toBe(true)
     expect(holdsSecret(r)).toBeNull()
+    const qr = r.found.find((f) => f.kind === 'qr')!
+    expect(inside([1500, 200, 200, 200], boxOf(qr, 6))).toBe(true)
+    expect(JSON.stringify(r).toLowerCase()).not.toMatch(/otpauth|jbswy3|acme/)
     // The look pass ran once and was kept; a second run reads it from the cache.
     expect(s.log.filter((l) => l === 'look')).toHaveLength(1)
     await runFind(request({ requestId: 'r2' }), noProgress, never, s.deps)

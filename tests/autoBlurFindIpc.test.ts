@@ -38,8 +38,9 @@ const { registerFindIpc, setFindDeps, findRunning } = await import('../src/main/
 const { keptLines, runFind, forgetReads, underCover, coverEverywhere, followCover } = await import('../src/main/privacy/scan')
 const { stopAnalyses } = await import('../src/main/analysisIpc')
 const { foldText } = await import('../src/shared/privacy/detect/clean')
+const { answer } = await import('../src/main/privacy/rulesWorker')
 import type { FindRequest, FindResult } from '../src/shared/api/privacy'
-import type { ScanDeps, ScanHelper } from '../src/main/privacy/scan'
+import type { ScanDeps, ScanHelper, ScanRules } from '../src/main/privacy/scan'
 import type { Box } from '../src/shared/privacy/protocol'
 import { base, rng } from './autoBlurFixtures'
 import { loadReads, loadTruth } from './autoBlurRulesFixtures'
@@ -58,7 +59,20 @@ const find = (projectId: string, requestId: string): FindRequest => ({ projectId
 const call = <T>(channel: string, ...args: unknown[]): Promise<T> => Promise.resolve(h.handlers.get(channel)!(app(), ...args)) as Promise<T>
 
 /** A Find scene on the mocked project: an email from 2 s to 12 s, a listed name from 5 s to 15 s; each helper start a new fake. */
-function scene(over: Partial<FakeScript> = {}, wrap: (f: FakeHelper) => void = () => undefined) {
+/** The rules on main's own thread (no worker to start): for tests that time the helper's queue. */
+const inProcess: ScanRules = {
+  detect: async (lines, qr, options) => {
+    const a = answer({ id: 0, lines: [...lines], qr, options })
+    return 'hits' in a ? a.hits : 'timeout'
+  },
+  detectCareful: async (lines, qr, options) => {
+    const a = answer({ id: 0, lines: [...lines], qr, options, careful: true })
+    return 'hits' in a ? a : 'timeout'
+  },
+  close: () => undefined
+}
+
+function scene(over: Partial<FakeScript> = {}, wrap: (f: FakeHelper) => void = () => undefined, rules?: ScanRules) {
   h.project = base('rec-1', 20, { fps: 30 })
   rmSync(path.join(h.dir, '.cache'), { recursive: true, force: true })
   const planted: Planted[] = [
@@ -79,7 +93,8 @@ function scene(over: Partial<FakeScript> = {}, wrap: (f: FakeHelper) => void = (
     },
     now: () => clock,
     random: rng(233),
-    log: () => undefined
+    log: () => undefined,
+    ...(rules ? { rules: () => rules } : {})
   }
   setFindDeps(deps)
   return { log, deps, starts: () => starts, advance: (ms: number) => (clock += ms), now: () => clock }
@@ -151,8 +166,36 @@ describe('auto-blur P4: Find in main', () => {
     expect(closeAt).toBeGreaterThan(followAt)
     expect(s.log.slice(followAt, closeAt).filter((l) => l.startsWith('followOpen'))).toHaveLength(2)
     expect(s.log.slice(followAt, closeAt).some((l) => /^read (12|15)\.3/.test(l))).toBe(false)
-    // Everywhere waits its turn too: one at a time with Find.
-    expect(await call<{ ok: boolean; reason?: string }>(PRIVACY_CHANNELS.everywhere, { projectId: 'rec-1', requestId: 'none', remember: 'no' })).toMatchObject({ ok: false })
+    // Everywhere too: while a Find runs, its own Find of the text goes ahead of Find's reads on the one helper.
+    const g2 = gate()
+    // Find's first three reads wait for the gate; every follow session opens only after it (so Everywhere is still running when Find could go on).
+    const s2 = scene({ gate: (_t, n) => (n < 3 ? g2.wait() : Promise.resolve()) }, (f) => {
+      const open = f.followOpen.bind(f)
+      f.followOpen = async (req) => {
+        await g2.wait()
+        await new Promise((r) => setTimeout(r, 50))
+        return open(req)
+      }
+    }, inProcess)
+    const second = call<FindResult>(PRIVACY_CHANNELS.find, find('rec-1', 'b5'))
+    await waitFor(() => s2.log.filter((l) => l.startsWith('read')).length === 3)
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'b6', t: 8, box })).toMatchObject({ ok: true })
+    const everywhere = call<{ ok: boolean; found?: unknown[] }>(PRIVACY_CHANNELS.everywhere, { projectId: 'rec-1', requestId: 'b6', remember: 'no' })
+    await waitFor(() => s2.log.filter((l) => l.startsWith('read')).length >= 6)
+    // Find's three reads end now; its next ones wait for Everywhere.
+    g2.open()
+    const ev = await everywhere
+    expect(ev.ok).toBe(true)
+    expect(ev.found?.length).toBeGreaterThan(0)
+    expect((await second).ok).toBe(true)
+    expect(s2.starts()).toBe(1)
+    // Everywhere read the whole plan once (its 12.3 s read first), and its follow sessions ran before Find read on.
+    const reads12 = s2.log.flatMap((l, i) => (l.startsWith('read 12.3') ? [i] : []))
+    expect(reads12).toHaveLength(2)
+    const everywhereFollows = s2.log.indexOf('followOpen -1')
+    expect(everywhereFollows).toBeGreaterThan(reads12[0])
+    expect(reads12[1]).toBeGreaterThan(s2.log.lastIndexOf('close', reads12[1]))
+    expect(s2.log.lastIndexOf('close', reads12[1])).toBeGreaterThan(everywhereFollows)
   })
 
   it('233. No text leaves main: a JSON scan of every FindResult, FollowResult, UnderCoverResult and EverywhereResult of the e2e fixtures finds none of the planted strings, except addedName for a name-like text with remember set; the kept folded texts are gone after 10 minutes (a fake clock), on Stop, on stopAnalyses, on render-process-gone and on a new Find', async () => {

@@ -240,7 +240,8 @@ const toNormBox = (b: Box, size: Size): { x: number; y: number; w: number; h: nu
   const c = clip(b, size)
   return { x: c[0] / size.width, y: c[1] / size.height, w: c[2] / size.width, h: c[3] / size.height }
 }
-const pathOfBox = (t: number, b: Box, size: Size): string => writePath([{ t, ...toNormBox(b, size) }])
+/** The path of one box held from `t` (through stepKeys, the one writer of Find's paths). */
+const pathOfBox = (t: number, b: Box, size: Size, fps: number): string => writePath(stepKeys([{ t, box: toNormBox(b, size) }], fps))
 const randomGroup = (random: () => number): string => {
   let s = ''
   for (let i = 0; i < 12; i++) s += Math.floor(Math.min(0.999999, Math.max(0, random())) * 36).toString(36)
@@ -327,6 +328,8 @@ interface CoreRequest {
   neverHide: readonly string[]
   /** *Cover this text everywhere* without kept reads: only this text, as kind 'text' (§5.9). */
   target?: { folded: string; raw: string }
+  /** Goes ahead of a Find's reads on the shared helper (*Cover this text everywhere*). */
+  urgent?: boolean
 }
 
 type Progress = (p: FindProgress) => void
@@ -475,6 +478,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
   } catch (err) {
     return fail(err instanceof ScanUnavailable ? err.reason : 'helper')
   }
+  if (req.urgent) urgentBegin(s)
   const started = d.now()
   const rules = req.target ? null : d.rules()
   /** Set when the run lets go of the helper: its exit then is no death. */
@@ -579,8 +583,9 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
         const own = new Map<string, Found>()
         hits.forEach((h, i) => {
           const shape = hitShape(h, read)
-          const key = h.kind === 'qr' ? `qr@${Math.round(h.box[0] / 32)},${Math.round(h.box[1] / 32)}` : req.target ? req.target.folded : groupKeyOf(h, read)
-          if (!key) return
+          // A QR code's payload is forgotten (§6.9), and a hit whose text folds to nothing has no text to key on: both are keyed by where they are.
+          const at = `@${Math.round(h.box[0] / 32)},${Math.round(h.box[1] / 32)}`
+          const key = h.kind === 'qr' ? `qr${at}` : req.target ? req.target.folded : groupKeyOf(h, read) || `${h.kind}${at}`
           const block = !!h.block || h.kind === 'qr' || !!req.target
           const box = block ? h.box : hideLength(h.box, shape.cw, shape.padH, extra(key), size)
           const f: Found = { id: `${done.indexOf(slot)}:${i}`, key, own: req.target ? req.target.raw : shape.text, t: p.t, box, parts: partsOf(h.kind === 'qr' ? h.box : shape.own, shape.line[3]), line: shape.line, kind: h.kind, score: h.score, color: foundColour(shape.ring, shape.spread), lost: !!h.lost, thin: p.thin }
@@ -605,7 +610,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     }
     const worker = async (): Promise<void> => {
       while (next < jobs.length && !stopped()) {
-        await urgentDone(s)
+        if (!req.urgent) await urgentDone(s)
         if (restarting) await restarting
         if (stopped() || next >= jobs.length) break
         const job = jobs[next++]
@@ -688,7 +693,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       let box = h.box
       const at = frameNear(look, h.t)
       if (at >= 0) for (const g of regionsAt(look, at)) if (overlaps(g, box)) box = union(box, g)
-      found.push({ kind: h.kind, score: h.score, group: groupOf(h.key), start: from, end: ceilMs(duration), path: pathOfBox(from, box, size), color: h.color, lost: true, ...(h.thin ? { thin: true as const } : {}) })
+      found.push({ kind: h.kind, score: h.score, group: groupOf(h.key), start: from, end: ceilMs(duration), path: pathOfBox(from, box, size, fps), color: h.color, lost: true, ...(h.thin ? { thin: true as const } : {}) })
     }
     // 5. A failed read never drops silently: its areas covered from it until the next good read of them.
     const sorted = [...done].sort((a, b) => a.t - b.t)
@@ -698,11 +703,11 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       let box = areas[0]
       for (const a of areas) box = union(box, a)
       const nextGood = sorted.find((y) => y.t > x.t && y.done && !y.failed && coverage(y.areas, box) >= 0.95)
-      found.push({ kind: 'text', score: 0.6, group: randomGroup(d.random), start: floorMs(x.t), end: ceilMs(nextGood ? nextGood.t : duration), path: pathOfBox(floorMs(x.t), box, size), color: COVER_DARK, lost: true })
+      found.push({ kind: 'text', score: 0.6, group: randomGroup(d.random), start: floorMs(x.t), end: ceilMs(nextGood ? nextGood.t : duration), path: pathOfBox(floorMs(x.t), box, size, fps), color: COVER_DARK, lost: true })
     }
     // 6. Pop-up notifications, from the look data (§6.13).
     if (!req.target && req.kinds.includes('notice') && !stopped())
-      for (const n of findNotices(look, project)) found.push({ kind: 'notice', score: 0.7, group: randomGroup(d.random), start: floorMs(n.start), end: ceilMs(Math.min(duration, n.end)), path: pathOfBox(floorMs(n.start), n.box, size), color: COVER_DARK })
+      for (const n of findNotices(look, project)) found.push({ kind: 'notice', score: 0.7, group: randomGroup(d.random), start: floorMs(n.start), end: ceilMs(Math.min(duration, n.end)), path: pathOfBox(floorMs(n.start), n.box, size, fps), color: COVER_DARK })
     const stoppedRun = signal.aborted || crashed
     const extras = (why: PlannedRead['why']): number => plan.reads.filter((x) => x.why === why).length
     d.log(`privacy: ${req.target ? 'cover everywhere' : 'find'} read ${done.length} areas (${plan.units} units, ${extras('partial')} partial, ${extras('check')} check), ${lines} lines, ${failedReads} failed, ${found.length} covers in ${((d.now() - started) / 1000).toFixed(2)} s${stoppedRun ? ', stopped' : ''}`)
@@ -711,6 +716,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     finished = true
     unpause()
     rules?.close()
+    if (req.urgent) urgentEnd(s)
     await release(s)
   }
 }
@@ -882,7 +888,7 @@ export async function coverEverywhere(request: EverywhereRequest, onProgress: (p
   const named = request.remember !== 'no' && looksLikeName(read.text) ? { addedName: read.text } : {}
   const reads = keptFor(request.projectId, d.now())
   if (!reads) {
-    const r = await scanCore({ ...tag, kinds: [], regions: [], names: [], neverHide: [], target: { folded, raw: read.text } }, onProgress, signal, d)
+    const r = await scanCore({ ...tag, kinds: [], regions: [], names: [], neverHide: [], target: { folded, raw: read.text }, urgent: true }, onProgress, signal, d)
     if (!r.ok) return r
     const group = randomGroup(d.random)
     return { ...r, found: r.found.map((f) => ({ ...f, kind: 'text' as const, group })), ...named }

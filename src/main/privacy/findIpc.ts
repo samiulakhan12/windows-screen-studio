@@ -179,7 +179,8 @@ export function registerFindIpc(): void {
     fromApp(e)
     const request = validateEverywhereRequest(raw)
     if (!request) throw new Error('Invalid request')
-    if (following || find) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
+    // Like Follow, it goes ahead of a running Find's reads on the one helper; one of the two at a time.
+    if (following) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
     following = true
     try {
       return await other(request.projectId, e.sender, (signal) => coverEverywhere(request, sendTo(e.sender), signal, deps()))
