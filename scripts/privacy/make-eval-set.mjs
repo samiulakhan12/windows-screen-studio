@@ -9,6 +9,12 @@
 //   node scripts/privacy/make-eval-set.mjs out_dir --holdout
 //        the same scenes with other tokens (seed 5000+), dark and light swapped and the scales
 //        rotated (100->125->150->100): a check that rules tuned on the set are not tuned to it
+//   node scripts/privacy/make-eval-set.mjs out_dir --holdout --seed 9000
+//        a second held-out set with tokens from seed 9000+ (docs/design/auto-blur.md §16.0 item 2):
+//        rendered only at test time (A16 and the release check), never committed, never tuned on
+//   node scripts/privacy/make-eval-set.mjs out_dir --scale 1.5
+//        the set at a device scale: the same layout drawn at 1.5 or 2 times the pixels (2880x1620,
+//        3840x2160), every truth rectangle scaled with it (R18)
 //
 // Needs Chromium through `playwright` or `playwright-core` (CHROMIUM_PATH picks the executable),
 // and the fonts Inter, JetBrains Mono, DejaVu Sans Mono, Liberation Sans/Mono and Carlito. The
@@ -26,7 +32,25 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(here, '..', '..')
 const args = process.argv.slice(2)
 const holdout = args.includes('--holdout')
-const outDir = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(root, 'tests', 'fixtures', 'privacy-eval'))
+/** The value after a flag that takes one (`--seed 9000`), or null; a flag given without a value stops the run. */
+function flagValue(name) {
+  const i = args.indexOf(name)
+  if (i < 0) return null
+  const v = args[i + 1]
+  if (v === undefined || v.startsWith('--')) throw new Error(`make-eval-set: ${name} needs a value`)
+  return v
+}
+const VALUE_FLAGS = ['--seed', '--scale']
+const positional = args.filter((a, i) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[i - 1]))
+const seedArg = flagValue('--seed')
+const scaleArg = flagValue('--scale')
+/** The tokens' first seed: 1000 for the set, 5000 for the held-out set, or --seed. */
+const SEED = seedArg === null ? (holdout ? 5000 : 1000) : Number(seedArg)
+if (!Number.isInteger(SEED) || SEED < 0) throw new Error(`make-eval-set: --seed must be a whole number, not ${seedArg}`)
+/** The device scale every frame is drawn at (1: 1920x1080). */
+const DEVICE = scaleArg === null ? 1 : Number(scaleArg)
+if (![1, 1.5, 2].includes(DEVICE)) throw new Error(`make-eval-set: --scale must be 1, 1.5 or 2, not ${scaleArg}`)
+const outDir = path.resolve(positional[0] || path.join(root, 'tests', 'fixtures', 'privacy-eval'))
 const ROTATE = { 1: 1.25, 1.25: 1.5, 1.5: 1 }
 const require = createRequire(import.meta.url)
 
@@ -42,8 +66,11 @@ function chromiumType() {
 // Selections drawn by the browser itself over an item's parent element: [frame id, kind, nth].
 const SELECT = { 'inbox-0': ['linkToken', 0], 'chat-1': ['password', 0], 'docs-1': ['email', 0] }
 
-const W = 1920
-const H = 1080
+/** The layout's size in pixels at device scale 1, and the frames' size at DEVICE. */
+const LW = 1920
+const LH = 1080
+const W = Math.round(LW * DEVICE)
+const H = Math.round(LH * DEVICE)
 
 function pngSize(buf) {
   return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) }
@@ -60,8 +87,8 @@ async function main() {
       const theme = holdout ? (theme0 === 'dark' ? 'light' : 'dark') : theme0
       const scale = holdout ? ROTATE[scale0] : scale0
       const t = THEMES[theme]
-      const { css, html } = fn(variant, t, makeTokens((holdout ? 5000 : 1000) + i), qrs)
-      const page = await browser.newPage({ viewport: { width: Math.round(W / scale), height: Math.round(H / scale) }, deviceScaleFactor: scale })
+      const { css, html } = fn(variant, t, makeTokens(SEED + i), qrs)
+      const page = await browser.newPage({ viewport: { width: Math.round(LW / scale), height: Math.round(LH / scale) }, deviceScaleFactor: scale * DEVICE })
       await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${baseCss(t)}${css}</style></head><body>${html}</body></html>`)
       await page.evaluate(() => document.fonts.ready)
       if (SELECT[id]) {
@@ -125,8 +152,9 @@ async function main() {
         if (!it.rects.length && holdout) continue // scrolled out of view at this scale
         if (!it.rects.length) throw new Error(`${id}: item ${n} (${it.kind} ${it.text}) is not visible`)
         if (it.rects.length !== it.all && !holdout) throw new Error(`${id}: item ${n} (${it.kind} ${it.text}) is partly clipped`)
+        const px = scale * DEVICE
         const rects = it.rects.map(([x0, y0, x1, y1]) => {
-          const a = [Math.floor(x0 * scale), Math.floor(y0 * scale), Math.min(W, Math.ceil(x1 * scale)), Math.min(H, Math.ceil(y1 * scale))]
+          const a = [Math.floor(x0 * px), Math.floor(y0 * px), Math.min(W, Math.ceil(x1 * px)), Math.min(H, Math.ceil(y1 * px))]
           return [a[0], a[1], a[2] - a[0], a[3] - a[1]]
         })
         const xs = rects.flatMap(([x, , w]) => [x, x + w])
@@ -147,7 +175,7 @@ async function main() {
   for (const f of frames) for (const it of f.items) counts[it.kind] = (counts[it.kind] || 0) + 1
   const truth = {
     version: 1,
-    generator: 'scripts/privacy/make-eval-set.mjs' + (holdout ? ' --holdout' : ''),
+    generator: 'scripts/privacy/make-eval-set.mjs' + (holdout ? ' --holdout' : '') + (seedArg !== null ? ` --seed ${SEED}` : '') + (scaleArg !== null ? ` --scale ${DEVICE}` : ''),
     chromium: (await chromiumType().launch({ executablePath: process.env.CHROMIUM_PATH || undefined }).then(async (b) => [b.version(), await b.close()][0])),
     listedNames: LISTED_NAMES,
     kinds: Object.fromEntries(Object.entries(KINDS).map(([k, v]) => [k, v.on])),

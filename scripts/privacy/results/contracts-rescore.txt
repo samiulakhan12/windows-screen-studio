@@ -1,0 +1,19 @@
+# The shipped model bytes measured again by the contracts step (docs/design/auto-blur.md §16.0 item 2), 23 Nov 2026.
+# The five files of §5.12 (and the tiny detector's inference.yml, for the scorer) were downloaded from their pinned upstream
+# commits; every size and SHA-256 equals scripts/privacy/reader-models.json. Both sets were rendered again with
+# make-eval-set.mjs (Chromium 157.0.8103.78): byte-identical to the committed frames and to the held-out reference.
+# ONNX Runtime 1.32.0, one thread, score_reader.py read and score, careful_long.py. Every figure equals §5.6.
+
+## main
+tiny               lines  98.3  recall 100.0  padded99 100.0  exact  77.8/ 84.9  text-only 100.0/100.0  ord 1/255 off 0/16 stray 3  ms/frame 747 (det 358, rec 389, careful 0)  peak 676.2 MB
+careful-narrow     lines  98.3  recall 100.0  padded99 100.0  exact  82.4/ 92.5  text-only 100.0/100.0  ord 2/255 off 0/16 stray 4  ms/frame 1487 (det 366, rec 394, careful 726)  peak 893.0 MB
+careful-long       lines  98.3  recall 100.0  padded99 100.0  exact  83.3/ 94.6  text-only 100.0/100.0  ord 2/255 off 0/16 stray 4  ms/frame 1487 (det 366, rec 394, careful 726)  peak 893.0 MB
+careful            lines  98.3  recall 100.0  padded99 100.0  exact  83.3/ 94.6  text-only 100.0/100.0  ord 2/255 off 0/16 stray 4  ms/frame 2078 (det 340, rec 409, careful 1330)  peak 895.1 MB
+careful-long: lines 894, re-read 269 (30.1%), added by the long-token trigger 72
+
+## held-out
+tiny               lines  98.7  recall  99.2  padded99  98.7  exact  81.2/ 87.4  text-only  99.1/ 98.7  ord 4/255 off 0/16 stray 7  ms/frame 779 (det 351, rec 428, careful 0)  peak 649.7 MB
+careful-narrow     lines  98.7  recall  99.6  padded99  99.6  exact  84.9/ 93.7  text-only  99.6/ 99.6  ord 5/255 off 0/16 stray 11  ms/frame 1387 (det 342, rec 371, careful 674)  peak 810.3 MB
+careful-long       lines  98.7  recall 100.0  padded99 100.0  exact  85.4/ 97.5  text-only 100.0/100.0  ord 5/255 off 0/16 stray 11  ms/frame 1387 (det 342, rec 371, careful 674)  peak 810.3 MB
+careful            lines  98.7  recall 100.0  padded99 100.0  exact  85.4/ 97.5  text-only 100.0/100.0  ord 5/255 off 0/16 stray 11  ms/frame 1914 (det 308, rec 369, careful 1237)  peak 812.5 MB
+careful-long: lines 898, re-read 273 (30.4%), added by the long-token trigger 75

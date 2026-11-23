@@ -44,6 +44,13 @@ Unpack before using the Python tools:
 
     node scripts/privacy/make-eval-set.mjs                       # tests/fixtures/privacy-eval
     node scripts/privacy/make-eval-set.mjs /tmp/holdout --holdout
+    node scripts/privacy/make-eval-set.mjs /tmp/holdout2 --holdout --seed 9000
+    node scripts/privacy/make-eval-set.mjs /tmp/x2 --scale 2       # 3840x2160 (1.5: 2880x1620)
+
+`--seed` starts the tokens at another seed: `--holdout --seed 9000` is the second held-out set,
+rendered only at test time by A16 and the release check and never committed, so no rule is tuned
+on it. `--scale` draws the same layout at a device scale of 1.5 or 2, with every truth rectangle
+scaled with it (R18). Without them the output is byte for byte what it was.
 
 Needs Playwright 1.63 with Chromium 157.0.8103.78 (`CHROMIUM_PATH` picks the executable) and the
 fonts Inter, JetBrains Mono, DejaVu Sans Mono, Liberation Sans and Mono, and Carlito. A second
@@ -73,6 +80,8 @@ commits pinned in `reader-models.json`.
   trigger plus any line holding 16 or more token characters) from a careful-narrow and a careful run.
   Its frames keep careful-narrow's timings; the added re-reads cost the small recogniser's mean per
   line (66-72 ms on these frames), which the design adds by hand.
+- `results/contracts-rescore.txt`: the shipped bytes measured again from their pinned commits by the
+  build's contracts step; every figure equals the design's §5.6.
 - `results/score-main.json.gz`, `score-main-timing.json.gz`, `score-holdout.json.gz`,
   `score-careful-long-main.json.gz`, `score-careful-long-holdout.json.gz`,
   `tract-parity.json`, `tract-profiles-speed.json`: the measurements the design quotes.
