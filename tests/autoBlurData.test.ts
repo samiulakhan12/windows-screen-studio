@@ -388,7 +388,10 @@ describe('auto-blur contracts: data', () => {
     expect(t1).toBeLessThan(300 * SLOW)
     expect(t2).toBeLessThanOrEqual(2.3 * t1 + 5)
     expect(everyBoxKept(items, out)).toBe(true)
-  })
+    // Its timed rounds and the check of every box take about 3.3 s alone on the build machine, so the
+    // whole test runs past vitest's 5 s default when other tests share the processor; its own limits
+    // above are what it checks.
+  }, 60_000)
 
   it('186. Union keys at step 2: a 60 fps path placed on analysed frames moving 30 px a frame pair covers the planted box of every source frame through drawnBox; without the union keys the odd frames fail', () => {
     const fps = 60
