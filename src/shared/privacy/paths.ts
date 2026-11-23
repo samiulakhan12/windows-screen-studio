@@ -117,6 +117,8 @@ const MAX_PARTS = 3
 const MAX_SEARCH = 1200
 /** A read covers a box when this share of it lies in the read's areas. */
 const COVERED = 0.95
+/** Most check reads one walk asks for (each about 0.1 unit, §5.4); past them it waits for planned reads and stops. */
+const MAX_CHECKS = 8
 
 /** The own box cut into equal parts no wider than 6 line heights each, at most 3. */
 export function partsOf(own: Box, lineHeight: number): Box[] {
@@ -307,6 +309,7 @@ interface Walker {
   bare: boolean
   reanchors: Placed[]
   consumed: string[]
+  checks: number
 }
 
 const ident: Xf = { dx: 0, dy: 0, scale: 1 }
@@ -390,7 +393,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       unfinished: false,
       bare: false,
       reanchors: [],
-      consumed: []
+      consumed: [],
+      checks: 0
     }
   })
   if (!n || !walkers.length) return walkers.map((w) => finish(w))
@@ -656,7 +660,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       const cf = stepFrame(f)
       if (cf < 0 || cf >= n) continue
       if (changedUnder(frames[cf], look, w.box) === 0) {
-        if ((dir === -1 || reads.checkForward) && w.lost && !w.hold && w.justFailed && w.pending === null && !reads.templateOnly) checks.push(w)
+        if ((dir === -1 || reads.checkForward) && w.lost && !w.hold && w.justFailed && w.pending === null && !reads.templateOnly && w.checks < MAX_CHECKS) checks.push(w)
         w.justFailed = false
         // The typing hold ends once the burst is over and the band has been still for 1 s.
         if (dir === 1 && w.hold && t >= w.hold.until && t - w.hold.lastChange >= BAND_STILL_S) {
@@ -739,6 +743,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     // 3. Check reads (backward, and forward for Follow): a still frame right after a failed step reads the lost area alone.
     for (const w of checks) {
       if (w.done || !w.lost) continue
+      w.checks++
       const res = await m.checkRead(t, w.box)
       if (!res) continue
       const line = res.lines.find((l) => overlaps(l.box, w.box) && l.variants.some((v) => holdsText(w.start.own, v.text)))

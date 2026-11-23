@@ -305,6 +305,12 @@ describe('auto-blur P4: following', () => {
     expect(paged.start).toBeLessThanOrEqual(58 / 60 + 1 / 60)
     expect(paged.start).toBeGreaterThan(58 / 60 + 1 / 60 - 0.0011)
     expect(m2.checks.filter((c) => c.t < 1)).toEqual([])
+    // A walk asks for at most 8 check reads: a pointer passing over text the template never matches (not typing: it changes beyond the line).
+    const blink = lookOf(HD, 60, 4, (i) => (i % 3 === 0 && i > 0 ? { changed: [[384, 224, 256, 192]] } : {}))
+    const m3 = matcherOf([{ key: KEY, text: 'x', at: () => null }], { check: (t) => ({ t, lines: [{ box: T, quad: [], variants: [{ model: 'tiny', text: 'priya.raman@example.com', conf: 0.9, spans: [] }], ring: '#000000', spread: 0 }], qr: [] }) })
+    const [blinked] = await walkSpan([start(3, T)], -1, blink, readIndex(), m3, NO_HINTS, HD)
+    expect(m3.checks.length).toBe(8)
+    expect(blinked.start).toBe(0)
   })
 
   it('231. Holding the text: holdsText accepts one misread character of a 5-11 character text, a run of 4 of its characters, and a third of a longer one; it refuses an unrelated line', () => {
