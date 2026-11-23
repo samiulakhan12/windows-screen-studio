@@ -76,4 +76,26 @@ describe('ssw-ocr with main’s OcrHelper', () => {
     }
     expect(await helper.exited).toBe(0)
   }, 120_000)
+
+  it('without the reader, as Follow starts it (findIpc readerStart): opened with no files it answers model, then still looks and follows by template', async () => {
+    const { OcrHelper } = await import('../../src/main/privacy/readerHelper')
+    const { readerStart } = await import('../../src/main/privacy/findIpc')
+    const start = readerStart({ startReader: () => Promise.reject(new Error('no reader')), startHelper: () => OcrHelper.start({ path: HELPER }), ffmpeg: () => FFMPEG })
+    await expect(start(true)).rejects.toMatchObject({ reason: 'helper' })
+    const helper = await start(false)
+    try {
+      const frames: { t: number }[] = []
+      await helper.look({ video, k: 4, step: 1, from: 0, to: 10 }, (f) => frames.push(...f), new AbortController().signal)
+      expect(frames).toHaveLength(60)
+      const t = frames[20].t
+      const session = await helper.followOpen({ video, key: frames[15].t, from: t, to: frames[30].t, dir: 1 }, new AbortController().signal)
+      await session.track(1, t, [[300, 60, 600, 40]])
+      const m = await session.match(frames[21].t, [{ track: 1, parts: [0], candidates: [{ dx: 0, dy: 0, scale: 1 }] }])
+      expect(m[0].parts[0]).toBeGreaterThan(0.6)
+      await session.close()
+    } finally {
+      await helper.stop()
+    }
+    expect(await helper.exited).toBe(0)
+  }, 120_000)
 })

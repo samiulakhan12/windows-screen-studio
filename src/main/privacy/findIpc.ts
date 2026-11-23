@@ -15,13 +15,16 @@ import { PRIVACY_CHANNELS, validateCopiesRequest, validateEverywhereRequest, val
 import { fmt } from '../../shared/i18n/fmt'
 import { t } from '../../shared/i18n/t'
 import type { NotificationCopy } from '../../shared/jobs/longJobs'
+import { ffmpegPath } from '../ffmpeg'
 import { beginJob } from '../longJobs'
 import { readProject } from '../projects'
 import { isToolbarVisible } from '../recording/toolbarWindow'
 import { isAppUrl } from '../security'
 import { coverCopies, listCopies, originCovers, type CopiesDeps } from './copies'
 import { setPrivateNames } from './names'
-import { coverEverywhere, followCover, forgetReads, runFind, underCover, type ScanDeps } from './scan'
+import { HelperError, OcrHelper } from './readerHelper'
+import { recordDecodeSpeed, startReader } from './readerModels'
+import { coverEverywhere, followCover, forgetReads, runFind, ScanUnavailable, setReaderStart, underCover, type ScanDeps, type ScanHelper } from './scan'
 
 const fromApp = (e: IpcMainInvokeEvent): void => {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
@@ -48,10 +51,56 @@ export function privacyDoneNotice(count: number): NotificationCopy {
 /** Private items in a result: one a Review group (§2.12). */
 export const privateCount = (found: readonly FoundCover[]): number => new Set(found.map((f) => f.group)).size
 
+export interface ReaderStartDeps {
+  /** Checks the pinned files, starts the helper and opens them (readerModels' startReader). */
+  startReader?: (ffmpeg: string) => Promise<ScanHelper>
+  /** Starts the helper with nothing open (OcrHelper.start). */
+  startHelper?: () => Promise<ScanHelper>
+  ffmpeg?: () => string
+}
+
+/**
+ * How the scan starts the text reader (§5.1, §5.9), given to it by registerFindIpc. With `models`,
+ * the pinned files are checked and opened (startReader): files missing or refused end the run as
+ * `reader`, a helper that is missing or does not run here as `helper`. Without models (*Follow what
+ * is under it* when there is no reader), the helper is opened with no files: it then knows the
+ * bundled ffmpeg, which its look pass and follow sessions need, and holds no reader, which it
+ * answers with error `model`; that answer is expected here, and any other ends the helper.
+ */
+export function readerStart(deps: ReaderStartDeps = {}): (models: boolean) => Promise<ScanHelper> {
+  const ffmpeg = deps.ffmpeg ?? ffmpegPath
+  const withModels = deps.startReader ?? ((f: string) => startReader(f))
+  const bare = deps.startHelper ?? (() => OcrHelper.start())
+  return async (models) => {
+    if (models) {
+      try {
+        return await withModels(ffmpeg())
+      } catch (err) {
+        throw new ScanUnavailable(err instanceof HelperError && err.kind === 'model' ? 'reader' : 'helper')
+      }
+    }
+    let helper: ScanHelper
+    try {
+      helper = await bare()
+    } catch {
+      throw new ScanUnavailable('helper')
+    }
+    try {
+      await helper.open([], ffmpeg())
+    } catch (err) {
+      if (!(err instanceof HelperError && err.kind === 'model')) {
+        helper.kill()
+        throw new ScanUnavailable('helper')
+      }
+    }
+    return helper
+  }
+}
+
 let scanDeps: ScanDeps = {}
 let copiesDeps: CopiesDeps = {}
 
-/** How the scan and the copies run (tests; P2's reader reaches the scan through scan.ts's setReaderStart). */
+/** How the scan and the copies run (tests; the text reader reaches the scan through readerStart). */
 export function setFindDeps(scan: ScanDeps, copies: CopiesDeps = {}): void {
   scanDeps = scan
   copiesDeps = copies
@@ -90,7 +139,8 @@ const sendTo =
     if (sender && typeof sender.isDestroyed === 'function' && !sender.isDestroyed()) sender.send(PRIVACY_CHANNELS.findProgress, p)
   }
 
-const deps = (): ScanDeps => ({ recording: isToolbarVisible, ...scanDeps })
+/** The scan's dependencies in the app: the recording state, and this PC's decode speed kept for the next estimate (§5.11). */
+const deps = (): ScanDeps => ({ recording: isToolbarVisible, recordDecode: recordDecodeSpeed, ...scanDeps })
 
 /** Runs `work` as one of the other runs of `projectId`, stopped with Find's Stop. */
 async function other<T>(projectId: string, sender: WebContents | undefined, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -123,6 +173,7 @@ export async function stopFindFor(projectId: string): Promise<void> {
 export const findRunning = (): boolean => find !== null
 
 export function registerFindIpc(): void {
+  setReaderStart(readerStart())
   ipcMain.handle(PRIVACY_CHANNELS.find, async (e, raw: unknown): Promise<FindResult> => {
     fromApp(e)
     const request = validateFindRequest(raw)
