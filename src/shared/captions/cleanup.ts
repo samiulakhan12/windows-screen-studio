@@ -698,6 +698,15 @@ const AFTER_WORD = /[^\p{L}\p{N}\p{M}\p{Cf}]*$/u
 const BEFORE_WORD = /^[^\p{L}\p{N}\p{M}\p{Cf}]*/u
 /** A word of letters, digits, marks and joiners only, as most are: nothing joins it to another word and nothing follows its last letter. */
 const WORD_ONLY = /^[\p{L}\p{N}\p{M}\p{Cf}]*$/u
+/** Whether WORD_ONLY matches `word`, read from the unit classes (by the regex when the word holds a surrogate). */
+function wordOnly(word: string): boolean {
+  for (let i = 0; i < word.length; i++) {
+    const unit = word.charCodeAt(i)
+    if (isSurrogate(unit)) return WORD_ONLY.test(word)
+    if (!(unitClass(unit) & (UNIT_WORD | UNIT_FORMAT))) return false
+  }
+  return true
+}
 
 /** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
 const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
@@ -715,7 +724,7 @@ function teamWordMatch(word: string, key: string, lang: string, next: string | u
   const r = teamRulesOf(lang)
   if (!r) return false
   // One scan of the word in place of JOINED's and AFTER_WORD's, which try it from every letter.
-  if (WORD_ONLY.test(word)) return teamMatch(r, key, next, pause)
+  if (wordOnly(word)) return teamMatch(r, key, next, pause)
   if (!JOINED.test(word)) return teamMatch(r, key, next, stronger(pause, pauseOf(AFTER_WORD.exec(word)?.[0] ?? '')))
   // Each part's key and the pause after it, the text between parts kept by the split.
   const parts: { key: string; pause: Pause }[] = []
@@ -748,6 +757,14 @@ function strictSet(lang: string): ReadonlySet<string> {
 }
 
 const LATIN_RUN = /\p{Script=Latin}+/gu
+/** Whether `text` may hold a run LATIN_RUN finds: a unit the unit classes call Latin, or a surrogate (LATIN_RUN then decides). */
+function mayHoldLatin(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i)
+    if (isSurrogate(unit) || unitClass(unit) & UNIT_LATIN) return true
+  }
+  return false
+}
 
 /**
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
@@ -767,7 +784,7 @@ export function isSwearWord(word: string, mode: 'standard' | 'strict', language?
   }
   // An English word written together with a Bangla ending, as Banglish writes videoটা and file-টা:
   // its Latin letters are checked by the English rules, as the bare word is.
-  if (BENGALI.test(key)) for (const run of key.match(LATIN_RUN) ?? []) if (isSwearWord(run, mode, 'en')) return true
+  if (BENGALI.test(key) && mayHoldLatin(key)) for (const run of key.match(LATIN_RUN) ?? []) if (isSwearWord(run, mode, 'en')) return true
   // A word written in Bengali script is Bangla whatever the transcript's language (an English
   // transcript quoting a Bangla word, a mixed one that names no language), but in Assamese, which
   // is written in the same script.
