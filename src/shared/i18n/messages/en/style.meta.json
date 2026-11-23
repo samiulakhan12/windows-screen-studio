@@ -1953,5 +1953,14 @@
   },
   "stylePanel.defaultsLeft.whole": {
     "description": "Style tab: the notice after Save as default for new recordings when part of the look was not saved, whole; left says which part. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "groupEdit.count.cover": {
+    "description": "Selecting several items: a count of covers (solid boxes over private information) in the selection; {n} is the count as shown."
+  },
+  "groupEdit.class.cover.one": {
+    "description": "Selecting several items: the name of one cover (a solid box over private information), lower case, as Copy look and Paste look name it."
+  },
+  "groupEdit.class.cover.other": {
+    "description": "Selecting several items: the name of several covers (solid boxes over private information), lower case, as Copy look and Paste look name them."
   }
 }

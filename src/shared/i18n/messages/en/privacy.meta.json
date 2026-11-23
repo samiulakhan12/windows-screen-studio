@@ -1,0 +1,770 @@
+{
+  "section.title": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.addCover": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.addCoverMenu": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "cover.length.three": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "cover.length.toEnd": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "cover.length.whole": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.find": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.count": {
+    "description": "Auto-blur private info, Shapes tab › Private info. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "section.toCheck": {
+    "description": "Auto-blur private info, Shapes tab › Private info. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "section.review": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.readerMissing": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.showCovers": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.showCoversHint": {
+    "description": "Auto-blur private info, Shapes tab › Private info. A hint under its control."
+  },
+  "section.weak": {
+    "description": "Auto-blur private info, Shapes tab › Private info. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "section.weakTurn": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "section.notSee": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "shape.cover": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "shape.cover.title": {
+    "description": "Auto-blur private info, Shapes tab › Private info."
+  },
+  "cover.title": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour.ring": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour.dark": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour.light": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour.black": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.colour.white": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.box": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.box.left": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.box.top": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.box.width": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.box.height": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.wholePath": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.wholePathHint": {
+    "description": "Auto-blur private info, A selected cover. A hint under its control."
+  },
+  "cover.startHere": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.endHere": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.outside": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.follow": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.followHint": {
+    "description": "Auto-blur private info, A selected cover. A hint under its control."
+  },
+  "cover.following": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.followStop": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.followDone": {
+    "description": "Auto-blur private info, A selected cover. {end} is a time in the editor's clock format; {start} is a time in the editor's clock format."
+  },
+  "cover.followNone": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.everywhere": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.whole": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.keep": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.uncover": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.uncovered": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.found": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.what": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.toCheck": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.lost": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.missed": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.thin": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.timeKept": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.oneProject": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.selected": {
+    "description": "Auto-blur private info, A selected cover. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "cover.oneForBox": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.oneForFollow": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "cover.oneForEverywhere": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "weak.turnSelected": {
+    "description": "Auto-blur private info, A selected cover. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "everywhere.title": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.body": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.reading": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.noText": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.needsReader": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.remember": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.rememberNo": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.rememberThis": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.rememberAll": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.start": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "everywhere.done": {
+    "description": "Auto-blur private info, A selected cover. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "everywhere.failed": {
+    "description": "Auto-blur private info, A selected cover."
+  },
+  "track.title": {
+    "description": "Auto-blur private info, The Covers row on the timeline."
+  },
+  "track.item": {
+    "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id; {start} is a time in the editor's clock format."
+  },
+  "track.itemCheck": {
+    "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id; {start} is a time in the editor's clock format."
+  },
+  "track.itemWaiting": {
+    "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id; {start} is a time in the editor's clock format."
+  },
+  "track.itemMine": {
+    "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {start} is a time in the editor's clock format."
+  },
+  "track.group": {
+    "description": "Auto-blur private info, The Covers row on the timeline. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "track.thin": {
+    "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {start} is a time in the editor's clock format."
+  },
+  "weak.note": {
+    "description": "Auto-blur private info, Blur and pixelate: the note."
+  },
+  "weak.turn": {
+    "description": "Auto-blur private info, Blur and pixelate: the note."
+  },
+  "find.title": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.intro": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.what": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.regions": {
+    "description": "Auto-blur private info, Find private info. {regions} is the regions' names, already joined as a list."
+  },
+  "find.regionsChange": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.regionsTitle": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.regionsHint": {
+    "description": "Auto-blur private info, Find private info. A hint under its control."
+  },
+  "find.names": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.namesHint": {
+    "description": "Auto-blur private info, Find private info. A hint under its control."
+  },
+  "find.neverHide": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.neverHideHint": {
+    "description": "Auto-blur private info, Find private info. A hint under its control."
+  },
+  "find.everyVideo": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.listen": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.listenHint": {
+    "description": "Auto-blur private info, Find private info. A hint under its control."
+  },
+  "find.listenNone": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.readerNone": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.readerDownload": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.readerProgress": {
+    "description": "Auto-blur private info, Find private info. {percent} is a percentage already formatted."
+  },
+  "find.readerFailed": {
+    "description": "Auto-blur private info, Find private info. {reason} is a whole sentence saying why."
+  },
+  "find.readerRetry": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.estimate": {
+    "description": "Auto-blur private info, Find private info. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "find.again": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.start": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.startAgain": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "find.cancel": {
+    "description": "Auto-blur private info, Find private info."
+  },
+  "run.look": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {percent} is a percentage already formatted."
+  },
+  "run.read": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {done} is how many reads are done, as shown; {total} is how many reads there are, as shown."
+  },
+  "run.follow": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.left": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.stop": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.waiting": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.foundNone": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.notSeeLink": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.found": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.foundCheck": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.said": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.failedReads": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.thinned": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.suppressed": {
+    "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "run.saidFull": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.stopped": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.busy": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.tooLarge": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.readerDamaged": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.downloadAgain": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.failed.helper": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.failed.video": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.failed.crashed": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.failed.other": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "run.openReview": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "leave.body": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "leave.action": {
+    "description": "Auto-blur private info, While Find runs, and when it ends."
+  },
+  "review.title": {
+    "description": "Auto-blur private info, Review: private items. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id; {start} is a time in the editor's clock format."
+  },
+  "review.where": {
+    "description": "Auto-blur private info, Review: private items. {Bottom} is filled in by the app; {Left} is filled in by the app; {Middle} is filled in by the app; {Right} is filled in by the app; {Top} is filled in by the app; {place} selects the place on screen: topLeft, top, topRight, left, centre, right, bottomLeft, bottom or bottomRight."
+  },
+  "review.places": {
+    "description": "Auto-blur private info, Review: private items. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "review.area": {
+    "description": "Auto-blur private info, Review: private items. {percent} is a percentage already formatted; {time} is a time in the editor's clock format."
+  },
+  "review.place": {
+    "description": "Auto-blur private info, Review: private items. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {start} is a time in the editor's clock format; {where} is the place on screen (privacy.review.where)."
+  },
+  "review.check": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.said": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.lost": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.missed": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.thin": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.keep": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.uncover": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.keepRow": {
+    "description": "Auto-blur private info, Review: private items. {title} is the row's title (privacy.review.title)."
+  },
+  "review.uncoverRow": {
+    "description": "Auto-blur private info, Review: private items. {title} is the row's title (privacy.review.title)."
+  },
+  "review.uncovered": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.select": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.peek": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.peekRow": {
+    "description": "Auto-blur private info, Review: private items. {title} is the row's title (privacy.review.title)."
+  },
+  "review.peekAll": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.peekAllHint": {
+    "description": "Auto-blur private info, Review: private items. A hint under its control."
+  },
+  "review.listen": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.listenRow": {
+    "description": "Auto-blur private info, Review: private items. {title} is the row's title (privacy.review.title)."
+  },
+  "review.filter": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.filterAll": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.keepKind": {
+    "description": "Auto-blur private info, Review: private items. {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id."
+  },
+  "review.uncoverKind": {
+    "description": "Auto-blur private info, Review: private items. {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id."
+  },
+  "review.uncoverConfirm": {
+    "description": "Auto-blur private info, Review: private items. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "review.uncoverConfirmAction": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.done": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.doneConfirm": {
+    "description": "Auto-blur private info, Review: private items. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "review.doneCheck": {
+    "description": "Auto-blur private info, Review: private items. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "review.doneKeep": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.emptyKind": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.findAgain": {
+    "description": "Auto-blur private info, Review: private items."
+  },
+  "review.unfinished": {
+    "description": "Auto-blur private info, Review: private items. {time} is a time in the editor's clock format."
+  },
+  "peek.banner": {
+    "description": "Auto-blur private info, Peek and Listen."
+  },
+  "peek.stop": {
+    "description": "Auto-blur private info, Peek and Listen."
+  },
+  "peek.inset": {
+    "description": "Auto-blur private info, Peek and Listen."
+  },
+  "notSee.scripts": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.small": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.names": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.brief": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.unlabelled": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.pictures": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.added": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.off": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.said": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.length": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.folder": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "notSee.check": {
+    "description": "Auto-blur private info, What Find does not see."
+  },
+  "export.hides": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "export.toCheck": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "export.review": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.weak": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "export.weakTurn": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.notChecked": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.find": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.unfinished": {
+    "description": "Auto-blur private info, The export dialog. {time} is a time in the editor's clock format."
+  },
+  "export.thinned": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "export.saidRemoved": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "export.running": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.wait": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.stopAndExport": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.captionsChanged": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.findAgain": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.fromOriginal": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.bringOver": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.recordingsOff": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "export.recordingsSkipped": {
+    "description": "Auto-blur private info, The export dialog."
+  },
+  "copies.offer": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "copies.done": {
+    "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
+  "settings.title": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.reader": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.readerAbout": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.readerReady": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.readerNone": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.readerDamaged": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.download": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.cancel": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.remove": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.kinds": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.names": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.neverHide": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.regions": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.colour": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.withPolish": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.unavailable.helper": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "settings.unavailable.cpu": {
+    "description": "Auto-blur private info, Settings › Private info."
+  },
+  "kind.password.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.password.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.code.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.code.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.qr.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.qr.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.key.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.key.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.link.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.link.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.email.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.email.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.card.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.card.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.phone.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.phone.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.id.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.id.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.name.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.name.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.notice.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.notice.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.address.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.address.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.dots.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.dots.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.random.label": {
+    "description": "Auto-blur private info, Find private info: the kinds. The label of the kind's checkbox in the Find dialog and in Settings."
+  },
+  "kind.random.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "kind.notice.hint": {
+    "description": "Auto-blur private info, Find private info: the kinds. A hint under its control."
+  },
+  "kind.text.title": {
+    "description": "Auto-blur private info, Find private info: the kinds. A standalone noun phrase used only as a label's value or a field of a list (timeline bars, Review titles, the What it hides line), never inside a sentence."
+  },
+  "guide.covered": {
+    "description": "Auto-blur private info, The guide."
+  },
+  "guide.notChecked": {
+    "description": "Auto-blur private info, The guide."
+  },
+  "guide.unfinished": {
+    "description": "Auto-blur private info, The guide."
+  },
+  "translated.masked": {
+    "description": "Auto-blur private info, Captions, translations and transcription."
+  },
+  "transcribe.hears": {
+    "description": "Auto-blur private info, Captions, translations and transcription."
+  },
+  "publish.masked": {
+    "description": "Auto-blur private info, Captions, translations and transcription."
+  }
+}

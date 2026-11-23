@@ -510,5 +510,6 @@
   "guide.tooManyShots": "This guide has too many screenshots to save.",
   "guide.unknownPage": "Unknown page size.",
   "guide.nothingToCopy": "Nothing to copy.",
-  "guide.tooLargeToCopy": "This guide is too large to copy."
+  "guide.tooLargeToCopy": "This guide is too large to copy.",
+  "timeline.hidden": "This video hides parts of its recordings, so they were not copied."
 }

@@ -131,7 +131,7 @@ describe('the English catalogue of the contracts (§9.2, §9.3)', () => {
 
   it('has every namespace of §9.2, each with its meta file', () => {
     expect(namespaces.sort()).toEqual(
-      ['common', 'keys', 'commands', 'home', 'editor', 'timeline', 'style', 'zoom', 'camera', 'sound', 'captions', 'text', 'review', 'smart', 'export', 'settings', 'errors', 'main', 'codecs', 'alpha', 'stems', 'timelines', 'presets', 'language', 'recording'].sort()
+      ['common', 'keys', 'commands', 'home', 'editor', 'timeline', 'style', 'zoom', 'camera', 'sound', 'captions', 'text', 'review', 'smart', 'export', 'settings', 'errors', 'main', 'codecs', 'alpha', 'stems', 'timelines', 'presets', 'language', 'recording', 'privacy'].sort()
     )
     for (const ns of namespaces) expect(fs.existsSync(path.join(dir, `${ns}.meta.json`)), ns).toBe(true)
   })

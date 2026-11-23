@@ -2429,5 +2429,44 @@
   },
   "search.time.whole": {
     "description": "Home's search of every recording: a length or time said to screen readers, whole (\"1 hour 2 minutes 3 seconds\"). shape names the parts it has: h hours, m minutes, s seconds. Used only when the UI language is not English (merge group, output-and-languages §9.3): English builds the same sentence from its pieces."
+  },
+  "kind.private.chip": {
+    "description": "Review mode: the short chip on a row whose change is of this kind: private items Find private info covered or bleeped (auto-blur)."
+  },
+  "kind.private.name": {
+    "description": "Review mode: the name of this kind of change (private items: covers and bleeps over private information) inside a row's spoken description, lower case: \"Cut 2.4 s of silence, {kind}, at 0:12.4, …\"."
+  },
+  "kind.private.all": {
+    "description": "Review mode: the footer button that removes every private item still to review (it uncovers them, after a confirm)."
+  },
+  "kind.private.count": {
+    "description": "Review mode: a count of private items inside \"Removed {things}.\" and \"Removing {things}…\"; {n} is the count as shown."
+  },
+  "polish.step.privacy": {
+    "description": "Polish in one click: the row that finds private information on screen and said aloud, after Camera director."
+  },
+  "polish.hint.privacy": {
+    "description": "Polish in one click: the Find private info row's hint with its estimate; {count} is whole minutes and selects the plural, {n} the minutes as shown."
+  },
+  "polish.hint.privacyChecked": {
+    "description": "Polish in one click: the Find private info row's hint when this video's screen was already read with the same choices."
+  },
+  "polish.result.privacy": {
+    "description": "Polish in one click: the Find private info line of the summary; {n} is the count of private items as shown."
+  },
+  "polish.result.privacyCheck": {
+    "description": "Polish in one click: the Find private info line when some items are to check; {n} is the count of private items, {check} how many are to check, both as shown."
+  },
+  "polish.result.privacyListened": {
+    "description": "Polish in one click: the Find private info line when it only listened to the new captions."
+  },
+  "polish.result.privacyUnfinished": {
+    "description": "Polish in one click: the Find private info line when it stopped, could not read part of the video or ended early."
+  },
+  "polish.skip.noReader": {
+    "description": "Polish in one click: why the Find private info step was skipped."
+  },
+  "versions.area.covers": {
+    "description": "Versions: the name of a changed area in a version's list of changes, lower case: the video's covers over private information."
   }
 }

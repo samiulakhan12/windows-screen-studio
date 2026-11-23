@@ -30,6 +30,7 @@ import timelinesEn from './timelines.json'
 import presetsEn from './presets.json'
 import languageEn from './language.json'
 import recordingEn from './recording.json'
+import privacyEn from './privacy.json'
 
 registerMessages('en', {
   ...prefixed('common', commonEn),
@@ -56,5 +57,6 @@ registerMessages('en', {
   ...prefixed('timelines', timelinesEn),
   ...prefixed('presets', presetsEn),
   ...prefixed('language', languageEn),
-  ...prefixed('recording', recordingEn)
+  ...prefixed('recording', recordingEn),
+  ...prefixed('privacy', privacyEn)
 })

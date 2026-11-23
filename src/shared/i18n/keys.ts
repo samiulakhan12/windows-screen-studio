@@ -29,6 +29,7 @@ import type timelinesEn from './messages/en/timelines.json'
 import type presetsEn from './messages/en/presets.json'
 import type languageEn from './messages/en/language.json'
 import type recordingEn from './messages/en/recording.json'
+import type privacyEn from './messages/en/privacy.json'
 
 type Keys<Ns extends string, M> = `${Ns}.${keyof M & string}`
 
@@ -59,6 +60,7 @@ export type Namespace =
   | 'presets'
   | 'language'
   | 'recording'
+  | 'privacy'
 
 export type MessageKey =
   | Keys<'common', typeof commonEn>
@@ -86,3 +88,4 @@ export type MessageKey =
   | Keys<'presets', typeof presetsEn>
   | Keys<'language', typeof languageEn>
   | Keys<'recording', typeof recordingEn>
+  | Keys<'privacy', typeof privacyEn>

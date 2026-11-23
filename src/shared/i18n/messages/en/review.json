@@ -716,5 +716,18 @@
   "join.byPolish": "Polish",
   "join.byShort": "Make a shorter version",
   "join.title": "Smooth cuts at {count, plural, one {{n} cut} other {{n} cuts}}",
-  "search.time.whole": "{shape, select, hms {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} hm {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}}} hs {{hours, plural, one {{h} hour} other {{h} hours}} {seconds, plural, one {{s} second} other {{s} seconds}}} h {{hours, plural, one {{h} hour} other {{h} hours}}} ms {{minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} m {{minutes, plural, one {{m} minute} other {{m} minutes}}} other {{seconds, plural, one {{s} second} other {{s} seconds}}}}"
+  "search.time.whole": "{shape, select, hms {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} hm {{hours, plural, one {{h} hour} other {{h} hours}} {minutes, plural, one {{m} minute} other {{m} minutes}}} hs {{hours, plural, one {{h} hour} other {{h} hours}} {seconds, plural, one {{s} second} other {{s} seconds}}} h {{hours, plural, one {{h} hour} other {{h} hours}}} ms {{minutes, plural, one {{m} minute} other {{m} minutes}} {seconds, plural, one {{s} second} other {{s} seconds}}} m {{minutes, plural, one {{m} minute} other {{m} minutes}}} other {{seconds, plural, one {{s} second} other {{s} seconds}}}}",
+  "kind.private.chip": "Private",
+  "kind.private.name": "private item",
+  "kind.private.all": "Uncover all private items",
+  "kind.private.count": "{count, plural, one {{n} private item} other {{n} private items}}",
+  "polish.step.privacy": "Find private info",
+  "polish.hint.privacy": "{count, plural, =0 {Covers passwords, keys, codes and other private text, and bleeps secrets said aloud. Less than a minute on this PC.} one {Covers passwords, keys, codes and other private text, and bleeps secrets said aloud. About {n} minute on this PC.} other {Covers passwords, keys, codes and other private text, and bleeps secrets said aloud. About {n} minutes on this PC.}}",
+  "polish.hint.privacyChecked": "Already checked on screen. Listens to the new captions for secrets said aloud.",
+  "polish.result.privacy": "{count, plural, =0 {Find private info: nothing private found} one {Find private info: {n} private item} other {Find private info: {n} private items}}",
+  "polish.result.privacyCheck": "{count, plural, one {Find private info: {n} private item · {check} to check in Review} other {Find private info: {n} private items · {check} to check in Review}}",
+  "polish.result.privacyListened": "Find private info: already checked on screen; listened to the new captions",
+  "polish.result.privacyUnfinished": "Find private info did not finish. Find again before you share the video.",
+  "polish.skip.noReader": "The text reader is not downloaded.",
+  "versions.area.covers": "covers"
 }

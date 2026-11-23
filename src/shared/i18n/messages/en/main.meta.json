@@ -524,5 +524,8 @@
     "user": [
       "lead"
     ]
+  },
+  "jobs.privacyDone": {
+    "description": "The Windows notification when Find private info ends while Flown's window does not have the focus; {n} is how many private items wait in Review, as shown."
   }
 }

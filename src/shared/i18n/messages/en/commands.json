@@ -163,5 +163,10 @@
   "palette.results": "Results",
   "palette.on": "On",
   "palette.noMatch": "No commands match “{query}”",
-  "palette.help": "<kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> run <kbd>Esc</kbd> close"
+  "palette.help": "<kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> run <kbd>Esc</kbd> close",
+  "title.addCover": "Add a cover",
+  "title.findPrivate": "Find private info…",
+  "title.peekCovers": "Peek under covers",
+  "title.coverStartHere": "Start the selected cover here",
+  "title.coverEndHere": "End the selected cover here"
 }

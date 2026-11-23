@@ -535,5 +535,20 @@
       "Enter",
       "Esc"
     ]
+  },
+  "title.addCover": {
+    "description": "The name of the editor command \"addCover\" (Add), in the command palette, the shortcuts editor and notices that point to it: adds a solid box that hides private information."
+  },
+  "title.findPrivate": {
+    "description": "The name of the editor command \"findPrivate\" (Edit), in the command palette, the shortcuts editor and notices that point to it: opens the Find private info dialog."
+  },
+  "title.peekCovers": {
+    "description": "The name of the editor command \"peekCovers\" (View), in the command palette, the shortcuts editor and notices that point to it: shows what is under the covers in the preview only."
+  },
+  "title.coverStartHere": {
+    "description": "The name of the editor command \"coverStartHere\" (Edit), in the command palette, the shortcuts editor and notices that point to it: sets the selected cover's start to the playhead."
+  },
+  "title.coverEndHere": {
+    "description": "The name of the editor command \"coverEndHere\" (Edit), in the command palette, the shortcuts editor and notices that point to it: sets the selected cover's end to the playhead."
   }
 }

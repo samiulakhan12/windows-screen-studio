@@ -2024,5 +2024,8 @@
   },
   "guide.tooLargeToCopy": {
     "description": "Make a guide: why Copy guide cannot put the guide on the clipboard, the guide being too large (GUIDE_PROBLEM_KEYS)."
+  },
+  "timeline.hidden": {
+    "description": "Saving a timeline for another editor: the original recordings were refused because the video covers, blurs or bleeps part of them (auto-blur)."
   }
 }

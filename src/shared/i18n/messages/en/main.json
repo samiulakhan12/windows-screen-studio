@@ -136,5 +136,6 @@
   "jobs.more.failed": " · {count, plural, other {{n} failed}}",
   "jobs.more.stopped": " · stopped early",
   "localSpeech.testName": "On this PC",
-  "jobs.more.whole": "{lead}{failed, select, yes { · {count, plural, other {{n} failed}}} other {}}{stopped, select, yes { · stopped early} other {}}"
+  "jobs.more.whole": "{lead}{failed, select, yes { · {count, plural, other {{n} failed}}} other {}}{stopped, select, yes { · stopped early} other {}}",
+  "jobs.privacyDone": "{count, plural, =0 {Find private info is done: nothing to review.} one {Find private info is done: {n} to review.} other {Find private info is done: {n} to review.}}"
 }
