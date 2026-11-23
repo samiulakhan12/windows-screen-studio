@@ -9,6 +9,7 @@ import { SpeechModelsSection } from './SpeechModelsSection'
 import { CaptionDownloadsSection } from './CaptionDownloadsSection'
 import { MusicDownloadsSection } from './MusicDownloadsSection'
 import { LocalAiSection } from './LocalAiSection'
+import { PrivacySettings } from '../privacy/PrivacySettings'
 import { ShareSection } from '../share/ShareSection'
 import { LanguageSection } from './LanguageSection'
 import { currentUiInfo, showLanguageSection } from '../i18n/boot'
@@ -17,9 +18,10 @@ import { t } from '../../../shared/i18n/t'
 
 /**
  * 'localAi': AI on this PC (docs/design/smart-tools.md §2.5): the palette's Set up AI on this PC… and every "use AI on this PC" link.
+ * 'privacy': Find private info's choices (docs/design/auto-blur.md §2.12).
  * 'language': the language of Flown (output-and-languages §2.5), first, and only once a language other than English ships.
  */
-export type SettingsSection = 'language' | 'ai' | 'speech' | 'localAi' | 'brand' | 'about'
+export type SettingsSection = 'language' | 'ai' | 'speech' | 'localAi' | 'privacy' | 'brand' | 'about'
 
 /**
  * App settings: the AI providers (the user's own API keys for transcription and text tasks),
@@ -59,6 +61,7 @@ export function SettingsDialog({ section, onClose, onProvidersChanged }: { secti
           <AiProvidersSection onChanged={onProvidersChanged} autoFocus={section === 'ai'} />
           <SpeechModelsSection reveal={section === 'speech'} />
           <LocalAiSection reveal={section === 'localAi'} />
+          <PrivacySettings reveal={section === 'privacy'} />
           <CaptionDownloadsSection />
           {/* More music for the library (docs/design/editing-polish.md §2.6): hidden until its download source exists. */}
           <MusicDownloadsSection />

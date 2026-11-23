@@ -31,6 +31,7 @@ import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import { Rich } from '../editor/panels/Rich'
 import { blockerText, lengthOptions, publishLabel, toneOptions } from './publishWords'
+import { PublishMaskedNote } from '../privacy/PublishMaskedNote'
 
 /** A choice in the provider list: its name and model ("OpenAI · gpt-…"), or On this PC alone (smart-tools.md §20.0). */
 const providerLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
@@ -281,6 +282,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
               canWrite={!!chosen}
               youtube={youtube}
               saved={project.publish?.description ?? null}
+              project={project}
               spoken={said}
               said={notice?.kind === kind ? notice : null}
               onWrite={() => write([kind])}
@@ -393,6 +395,8 @@ interface CardProps {
   requestId?: string | null
   /** The cost line's sentence for this card's Write. */
   costId?: string
+  /** The project the text is of: a note when Find private info's masking changed it (docs/design/auto-blur.md §2.11). */
+  project?: Project
 }
 
 /** notedPieces, remembered for the last texts of each `said` (a card is drawn again on every change of the dialog). */
@@ -415,7 +419,7 @@ const statusOf = (status: PackItem['status']): string =>
 /** "Written" only for new text: a stopped run says so, and a card the user emptied is not written. */
 const statusText = (item: PackItem): string => (item.stopped ? t('review.publish.status.stopped') : item.status === 'done' && !item.text.trim() ? statusOf('idle') : statusOf(item.status))
 
-function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters, requestId = null, costId }: CardProps): JSX.Element {
+function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWrite, onStop, onEdit, onCopy, onUseForExports, onStopForExports, onRename, onFindChapters, requestId = null, costId, project }: CardProps): JSX.Element {
   const label = publishLabel(kind)
   const id = `publish-${kind}`
   const busy = isRunning(item.status)
@@ -463,6 +467,7 @@ function Card({ kind, item, stale, canWrite, youtube, saved, spoken, said, onWri
         onChange={(e) => onEdit({ text: e.target.value.slice(0, EDIT_MAX) })}
       />
       {!busy && checkNote(checks, `${id}-check`, spoken)}
+      {!busy && project && <PublishMaskedNote project={project} text={item.text} />}
       <LocalWritten show={!!item.local && !busy && !!text} />
       {isYoutube && (
         <div className="publish-youtube">

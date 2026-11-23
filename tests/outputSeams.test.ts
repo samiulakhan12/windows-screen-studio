@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
  * the scanner's config are in place, and main's English holds only main's namespaces.
  */
 
-const { COMMANDS, PALETTE_COMMANDS, LANGUAGE_COMMANDS, commandInfo } = await import('../src/shared/editor/commands')
+const { COMMANDS, PALETTE_COMMANDS, LANGUAGE_COMMANDS, WAITING_COMMANDS, commandInfo } = await import('../src/shared/editor/commands')
 const BOOT = '../src/renderer/src/i18n/boot'
 const boot = (await import(/* @vite-ignore */ BOOT)) as {
   bootLanguage(view: string): Promise<{ language: string; shipped: string[] }>
@@ -27,7 +27,8 @@ describe('the language seams with nothing shipped', () => {
     expect(commandInfo('language')).toMatchObject({ title: 'Language…', category: 'General' })
     expect(LANGUAGE_COMMANDS).toEqual(['language'])
     expect(PALETTE_COMMANDS.some((c) => c.id === 'language')).toBe(false)
-    expect(PALETTE_COMMANDS.length).toBe(COMMANDS.filter((c) => !c.hidden).length - 1)
+    // Language… and the commands waiting for their part (auto-blur §12.3) are left out.
+    expect(PALETTE_COMMANDS.length).toBe(COMMANDS.filter((c) => !c.hidden && !WAITING_COMMANDS.includes(c.id)).length - 1)
   })
 })
 

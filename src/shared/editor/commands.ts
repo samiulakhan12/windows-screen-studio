@@ -208,7 +208,14 @@ const COMMAND_LIST = [
   { id: 'shortClips', category: 'General', keywords: 'highlights moments shorts reels tiktok best parts copy vertical' },
   { id: 'shortVersion', category: 'General', keywords: 'short summary cut down highlights 30 60 90 seconds copy' },
   { id: 'localAi', category: 'General', keywords: 'offline local model no key download private gemma qwen' },
-  { id: 'aiService', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' }
+  { id: 'aiService', category: 'General', keywords: 'openrouter groq together azure ollama lm studio openai compatible api key provider model' },
+
+  // Auto-blur (docs/design/auto-blur.md §2.15): no default keys; each waits on WAITING_COMMANDS until its part works.
+  { id: 'addCover', category: 'Add', keywords: 'privacy hide redact secret password solid box blur pixelate censor mask black out' },
+  { id: 'findPrivate', category: 'Add', keywords: 'privacy redact secret password email key token scan blur censor mask' },
+  { id: 'peekCovers', category: 'Effects', keywords: 'privacy show hidden covers' },
+  { id: 'coverStartHere', category: 'Edit', keywords: 'privacy cover trim start begin playhead' },
+  { id: 'coverEndHere', category: 'Edit', keywords: 'privacy cover trim end stop playhead' }
 ] as const satisfies readonly CommandSpec[]
 
 export type CommandId = (typeof COMMAND_LIST)[number]['id']
@@ -238,8 +245,17 @@ export function categoryLabel(category: CommandCategory): string {
 /** Commands that exist only while a language other than English ships (output-and-languages §2.5): left out of the palette and the shortcuts editor until then. */
 export const LANGUAGE_COMMANDS: readonly CommandId[] = ['language']
 
+/**
+ * Commands waiting for the part that makes them work (docs/design/auto-blur.md §12.3): left out of
+ * the palette and the shortcuts editor until then. P1 empties the first line, P5 the second.
+ */
+export const WAITING_P1: readonly CommandId[] = ['addCover', 'peekCovers', 'coverStartHere', 'coverEndHere']
+
+export const WAITING_P5: readonly CommandId[] = ['findPrivate']
+export const WAITING_COMMANDS: readonly CommandId[] = [...WAITING_P1, ...WAITING_P5]
+
 /** Commands the palette offers. */
-export const PALETTE_COMMANDS: readonly CommandInfo[] = COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id))
+export const PALETTE_COMMANDS: readonly CommandInfo[] = COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id) && !WAITING_COMMANDS.includes(c.id))
 
 /** The palette's commands, with Language… only while Settings has a Language section (§2.5). */
 export function paletteCommands(languageSection: boolean): readonly CommandInfo[] {
@@ -248,7 +264,8 @@ export function paletteCommands(languageSection: boolean): readonly CommandInfo[
 
 /** The commands the shortcuts editor lists: every one, with Language… only while Settings has a Language section. */
 export function listedCommands(languageSection: boolean): readonly CommandInfo[] {
-  return languageSection ? COMMANDS : COMMANDS.filter((c) => !LANGUAGE_COMMANDS.includes(c.id))
+  const ready = COMMANDS.filter((c) => !WAITING_COMMANDS.includes(c.id))
+  return languageSection ? ready : ready.filter((c) => !LANGUAGE_COMMANDS.includes(c.id))
 }
 
 /* ---------- fuzzy search ---------- */

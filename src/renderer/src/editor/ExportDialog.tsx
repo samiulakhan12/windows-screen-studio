@@ -80,6 +80,7 @@ import { NumberField } from '../i18n/NumberField'
 import { itemLabel, presetName } from './exportNames'
 import { chaptersNoteText } from './exportNames'
 import { hidesSomething } from '../../../shared/privacy/coverData'
+import { PrivacyExportNote } from '../privacy/PrivacyExportNote'
 
 interface Props {
   project: Project
@@ -1049,6 +1050,8 @@ export function ExportDialog(props: Props): JSX.Element {
 
         {phase.kind === 'settings' && (
           <>
+            {/* What Find private info has not checked or is still checking (docs/design/auto-blur.md §2.8); part P5 wires its actions. */}
+            <PrivacyExportNote project={props.project} onReview={() => undefined} onFind={() => undefined} onWait={() => undefined} onStopAndExport={() => undefined} />
             <div className="export-body">
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>

@@ -20,6 +20,10 @@ import { itemKey } from '../../../../shared/editor/multiSelect'
 import type { Clip, Project, Shape, ShapeKind, Spotlight } from '../../../../shared/types'
 import { Icon } from '../../components/Icon'
 import { useEditor } from '../context'
+import { CoverSection } from '../../privacy/CoverSection'
+import { CoverShapeButton } from '../../privacy/CoverShapeButton'
+import { PrivacySection } from '../../privacy/PrivacySection'
+import { WeakBlurNote } from '../../privacy/WeakBlurNote'
 import { Chips, pctFmt, Section, Slider, Toggle } from '../controls'
 import type { InspectorProps } from '../Inspector'
 import { useKeymap } from '../keymapContext'
@@ -85,7 +89,10 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
 
   return (
     <>
+      {/* Auto-blur (docs/design/auto-blur.md §2.1-§2.3): the selected covers, and a blur or pixelate shape's note. */}
+      <CoverSection services={services} coverIds={selection?.kind === 'cover' ? [selection.id] : []} shapeIds={shape ? [shape.id] : []} />
       {shape && <SelectedShape project={project} shape={shape} onSelect={props.onSelect} />}
+      {shape && isPrivacyKind(shape.kind) && <WeakBlurNote services={services} shapeId={shape.id} />}
       {spot && !isMagnifier(spot) && <SelectedSpotlight project={project} spot={spot} cursorValid={cursor.valid} cursorPos={cursorPos} onSelect={props.onSelect} />}
       {/* Editing polish (docs/design/editing-polish.md §2.2, §2.3): the magnifier (a selected one's panel too), and a shape's animation. */}
       <MagnifierSection project={project} selection={selection ?? null} cursor={cursor} />
@@ -106,9 +113,11 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
               <span>{k.label}</span>
             </button>
           ))}
+          <CoverShapeButton services={services} />
         </div>
         <p className="hint">{t('text.shapesPanel.shapesStayOnThe')}</p>
       </Section>
+      <PrivacySection services={services} onFind={() => props.onCommand?.('findPrivate')} />
 
       <Section title={t('text.shapesPanel.spotlight')}>
         <div className="shape-tools two" role="group" aria-label={t('text.shapesPanel.addASpotlight')}>

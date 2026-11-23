@@ -17,12 +17,13 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { cropName, cropOk, fitCrop, nudgeCrop, nudgeRing, ringName, snapCrop } from '../../../shared/guide/adjust'
 import type { GuideImage } from '../../../shared/guide/guideDoc'
-import type { GuideStepEdit, NormRect } from '../../../shared/types'
+import type { GuideStepEdit, NormRect, Project } from '../../../shared/types'
 import { useModalFocus } from '../editor/modalFocus'
 import './guide.css'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import { Rich } from '../editor/panels/Rich'
+import { NotCheckedNote } from '../privacy/NotCheckedNote'
 
 /** What Adjust works on: the whole frame's picture, and the crop and ring as stored or as found. */
 export interface ShotAdjust {
@@ -84,6 +85,8 @@ export function ShotViewer(props: {
   onClose(result?: { send: readonly string[] }): void
   onBlur(key: string): void
   onAdjust(key: string, edit: Pick<GuideStepEdit, 'rect' | 'ring'> | null): void
+  /** The project the shots are of: the send form says what Find private info has not checked (docs/design/auto-blur.md §2.11). */
+  project?: Project
 }): JSX.Element {
   const { shots, onClose, onShown } = props
   const sending = props.mode === 'send'
@@ -279,6 +282,7 @@ export function ShotViewer(props: {
               <input type="checkbox" checked={ticks.has(shot.key)} onChange={(e) => tick(e.target.checked)} data-testid="guide-send-tick" />
               {t('smart.shot.sendOne', { label: shot.label })}
             </label>
+            {props.project && <NotCheckedNote project={props.project} place="send" />}
             {props.sendCost && (
               <p className="guide-viewer-checked guide-send-cost" id="guide-send-cost" data-testid="guide-send-cost">
                 {props.sendCost(sendKeys)}

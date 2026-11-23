@@ -75,6 +75,7 @@ import { CostLine } from '../../ai/CostLine'
 import { useCostDataRead } from '../../ai/useCost'
 import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 import { aiTextFor } from '../../ai/aiTextFor'
+import { TranscribeNote } from '../../privacy/TranscribeNote'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -725,6 +726,7 @@ function GenerateSection({
                 )}
               </div>
               <p className="hint">{t('captions.generate.sentTo', { where: chosen ? placeOf(chosen) : t('captions.generate.theProvider') })}</p>
+              <TranscribeNote project={project} place={localChosen ? 'local' : 'service'} />
               {/* What Generate captions sends to its provider, and what it costs (smart-tools.md §11.5), part P5's. */}
               {chosen && project.hasAudio && (
                 <CostLine id="captions-generate-cost" choice={choiceOf(chosen)} full actions={[{ key: 'transcribe', label: t('common.label.captions'), buttonId: 'captions-generate', request: null }]} transcribeSeconds={project.duration} />

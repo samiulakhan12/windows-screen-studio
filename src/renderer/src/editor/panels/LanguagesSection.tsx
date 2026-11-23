@@ -28,6 +28,7 @@ import { confirmRequest } from '../../ai/costConfirm'
 import { estimateFor, runCostText, useCostData } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 import { aiTextFor } from '../../ai/aiTextFor'
+import { TranslatedNote } from '../../privacy/TranslatedNote'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -338,6 +339,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
               <div key={code ?? ''} className="caption-row" data-track={code ?? ''}>
                 <div className="caption-text">
                   <strong id={name}>{words.label}</strong>
+                  {code && <TranslatedNote project={project} language={code} />}
                   {words.notes.map((n) => (
                     <span key={n} className="hint">
                       {' · '}

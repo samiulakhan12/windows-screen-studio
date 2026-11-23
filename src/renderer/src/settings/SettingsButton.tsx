@@ -23,7 +23,7 @@ export function SettingsButton(): JSX.Element {
   useEffect(() => {
     const onOpen = (e: Event): void => {
       const wanted = (e as CustomEvent<{ section?: unknown } | null>).detail?.section
-      setSection(wanted === 'about' || wanted === 'speech' || wanted === 'localAi' || wanted === 'brand' || wanted === 'language' ? wanted : 'ai')
+      setSection(wanted === 'about' || wanted === 'speech' || wanted === 'localAi' || wanted === 'privacy' || wanted === 'brand' || wanted === 'language' ? wanted : 'ai')
     }
     window.addEventListener(OPEN_SETTINGS_EVENT, onOpen)
     return () => window.removeEventListener(OPEN_SETTINGS_EVENT, onOpen)

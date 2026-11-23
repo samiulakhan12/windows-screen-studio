@@ -16,6 +16,7 @@ import {
   PALETTE_COMMANDS,
   paletteCommands,
   searchCommands,
+  WAITING_COMMANDS,
   type CommandInfo
 } from '../src/shared/editor/commands'
 import commandsEn from '../src/shared/i18n/messages/en/commands.json'
@@ -100,7 +101,8 @@ describe('test 70: the palette in the UI language and in English', () => {
     expect(paletteCommands(false)).toBe(PALETTE_COMMANDS)
     expect(paletteCommands(true).map((c) => c.id)).toEqual([...PALETTE_COMMANDS.map((c) => c.id), 'language'])
     expect(listedCommands(false).map((c) => c.id)).not.toContain('language')
-    expect(listedCommands(true)).toBe(COMMANDS)
+    // Every command but those waiting for their part (auto-blur §12.3).
+    expect(listedCommands(true)).toEqual(COMMANDS.filter((c) => !WAITING_COMMANDS.includes(c.id)))
     expect(ids('language', paletteCommands(false))).not.toContain('language')
     expect(ids('ভাষা', paletteCommands(true))[0]).toBe('language')
   })

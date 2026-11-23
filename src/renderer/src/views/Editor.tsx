@@ -46,6 +46,9 @@ import {
 import { atOutputStart, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
 import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
 import { privateView } from '../../../shared/privacy/spoken'
+import { coverCommands } from '../privacy/coverCommands'
+import { FindDialog } from '../privacy/FindDialog'
+import { confirmLeaveFind } from '../privacy/readerState'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
@@ -445,7 +448,7 @@ function EditorSession({
   const [notice, setNotice] = useState<Notice | null>(null)
   const timelineRef = useRef<TimelineHandle>(null)
   const [tab, setTab] = useState<InspectorTab>('style')
-  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'publish' | 'versions' | 'saveVersion' | 'shortVersion' | null>(null)
+  const [dialog, setDialog] = useState<'palette' | 'shortcuts' | 'polish' | 'publish' | 'versions' | 'saveVersion' | 'shortVersion' | 'findPrivate' | null>(null)
   // NW-13: the item a palette command asked the Publish dialog to write.
   const [publishRequest, setPublishRequest] = useState<{ kind: PublishKind; n: number } | null>(null)
   const [smartSpeedRequest, setSmartSpeedRequest] = useState(0)
@@ -579,6 +582,12 @@ function EditorSession({
       // makes its edit first, and what waits for it is done; then the save, so the library shows
       // the latest name and nothing is lost.
       await new Promise<void>((done) => store.whenFree(done))
+      // Find private info, while it runs, asks first and applies what it found (auto-blur §2.6).
+      if (!(await confirmLeaveFind(services))) {
+        leavingRef.current = false
+        setLeaving(false)
+        return
+      }
       const saved = await saver.flush()
       const status = saver.status
       // Asked through askConfirm (output-and-languages §9.6): window.confirm in English, main's message box in another language.
@@ -590,7 +599,7 @@ function EditorSession({
       }
       then()
     },
-    [player, saver, store]
+    [player, saver, store, services]
   )
 
   /** Opens the project this one was copied from, unless it is gone from the library. */
@@ -1565,9 +1574,13 @@ function EditorSession({
       publishLinkedin: () => writeInPublish('linkedin'),
       publishX: () => writeInPublish('xpost'),
       publishArticle: () => writeInPublish('article'),
-      publishReleaseNotes: () => writeInPublish('releaseNotes')
+      publishReleaseNotes: () => writeInPublish('releaseNotes'),
+
+      // Auto-blur (docs/design/auto-blur.md §2.15, §12.3): the cover commands (part P1's) and Find private info (part P5's dialog).
+      ...coverCommands({ services, cursor, scene: () => calloutScene.current, selection: () => latest.current.selection, select: setSelection, reveal: () => reveal('shapes'), notice: showNotice }),
+      findPrivate: () => setDialog('findPrivate')
     }
-  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection, makeCopy])
+  }, [actions, input, cursor.valid, recorded, player, data.webcamUrl, openExport, showNotice, store, cropActions, resetCrop, focusFor, selectKeys, setSelection, makeCopy, services])
   const commandsRef = useRef(commands)
   commandsRef.current = commands
   const runCommand = useCallback((id: CommandId) => commandsRef.current[id](), [])
@@ -2096,6 +2109,7 @@ function EditorSession({
         {dialog === 'shortVersion' && (
           <ShortVersionDialog project={project} cursor={recorded} vw={shown.vw} vh={shown.vh} onClose={closeDialog} onOpen={(id) => void leave(() => onOpenProject?.(id))} />
         )}
+        {dialog === 'findPrivate' && <FindDialog services={services} mode="find" onClose={closeDialog} />}
         {dialog === 'polish' && (
           <PolishDialog
             recorded={recorded}

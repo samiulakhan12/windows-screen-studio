@@ -48,6 +48,7 @@ import './guide.css'
 import { LANGUAGE_NAMES } from '../../../shared/i18n/locale'
 import { t, uiLanguage } from '../../../shared/i18n/t'
 import { richText } from '../i18n/richText'
+import { NotCheckedNote } from '../privacy/NotCheckedNote'
 
 /** Rows drawn at a time as the list scrolls (§2.1). */
 export const ROWS_AT_A_TIME = 20
@@ -917,6 +918,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           </div>
         )}
       </div>
+      <NotCheckedNote project={project} place="save" />
       <div className="guide-foot">
         {/* While a Save or Copy runs they wait with aria-disabled: disabled would send the focus, back from
             the question before it, to the panel's Close, where one more Enter closes the panel and stops it. */}
@@ -981,6 +983,7 @@ export function GuidePanel(props: { project: Project; cursor: CursorTrack; start
           mode="send"
           place={titleChoice?.place}
           ticked={sending.ticked}
+          project={project}
           onClose={(result) => void sendClosed(result)}
           sendCost={sendCost}
           onBlur={() => undefined}

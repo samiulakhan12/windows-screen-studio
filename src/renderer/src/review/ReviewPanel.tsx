@@ -62,6 +62,7 @@ import { useKeymap } from '../editor/keymapContext'
 import { playStretch } from './playStretch'
 import { pageTasks } from './tasks'
 import './review.css'
+import { FindProgressLine } from '../privacy/readerState'
 
 export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Shows a notice in the editor (said once the panel is gone). */ onNotice?: (text: string) => void }): JSX.Element {
   const { store, player } = useEditor()
@@ -572,6 +573,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
           </svg>
         </button>
       </div>
+      {/* Find private info's progress line (docs/design/auto-blur.md §2.6). */}
+      <FindProgressLine projectId={project.id} />
       {total > 0 && (
         <div className="review-progress">
           <span data-testid="review-progress">{progressText(reviewed, total)}</span>

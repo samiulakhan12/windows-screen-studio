@@ -41,6 +41,7 @@ import { clamp } from '../../../shared/engine/math'
 import { keptBounds, MIN_CLIP, setTrimEnd, setTrimStart } from '../../../shared/engine/timeline'
 import { DEFAULT_ZOOM_STYLE, dragZoomTimes, zoomDragBounds, zoomSettingsOf, zoomTargetScale, zoomTimings, type ZoomStyle } from '../../../shared/engine/zoom'
 import { itemKey, type GroupKind, type ItemTrack } from '../../../shared/editor/multiSelect'
+import { CoverTrack } from '../privacy/CoverTrack'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import type { ScrollSession } from '../../../shared/engine/scroll'
 import type { Annotation, Clip, CursorTrack, Shape, ShapeKind, Spotlight, ZoomSegment } from '../../../shared/types'
@@ -856,6 +857,7 @@ export const Timeline = memo(
               <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <GraphicsTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
+              <CoverTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
 
               <SnapGuide ref={guideRef} />

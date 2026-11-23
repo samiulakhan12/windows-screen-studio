@@ -48,6 +48,9 @@ import { followPointer } from './pointer'
 import { SafeZoneOverlay } from './SafeZoneOverlay'
 import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
 import { CalloutHandles } from './CalloutHandles'
+import { CoverHandles } from '../privacy/CoverHandles'
+import { PeekBanner } from '../privacy/PeekBanner'
+import { PeekInset } from '../privacy/PeekInset'
 import { calloutMapping, type CalloutMapping } from './calloutView'
 import { useSafeZoneChoice } from './safeZonePref'
 import type { Selection } from './selection'
@@ -163,7 +166,8 @@ function useStageView(player: PreviewPlayer, project: Project, scene: RenderScen
  * shape or spotlight.
  */
 export const PreviewStage = memo(function PreviewStage({ project, pickZoom: picking, selectedAnnotation, onTogglePlay, onExitPick, scene, selection, onSelect, cropTool }: Props): JSX.Element {
-  const { store, player } = useEditor()
+  const services = useEditor()
+  const { store, player } = services
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [box, setBox] = useState<Box>({ w: 0, h: 0 })
@@ -469,6 +473,10 @@ export const PreviewStage = memo(function PreviewStage({ project, pickZoom: pick
           {!pickZoom && !cropTool && <GraphicHandles project={drawn} box={box} out={{ w: out.width, h: out.height }} selection={selection} onSelect={onSelect} onTogglePlay={onTogglePlay} paused={!playing} />}
           {/* Step badge and speech-bubble tail handles (editing polish §2.3). */}
           {!pickZoom && !cropTool && <CalloutHandles project={drawn} selection={selection ?? null} view={sceneView} />}
+          {/* Auto-blur (docs/design/auto-blur.md §2.2, §2.7): a selected cover's handles, Peek's banner and the inset. */}
+          {!pickZoom && !cropTool && <CoverHandles project={drawn} selection={selection ?? null} view={sceneView} />}
+          <PeekBanner />
+          <PeekInset services={services} view={sceneView} />
           {!pickZoom && !cropTool && selectedAnnotation && selectedAnnotation.style !== 'badge' && selectedAnnotation.style !== 'bubble' && <AnnotationHandle annotation={selectedAnnotation} project={drawn} box={box} />}
           {!pickZoom && !cropTool && <OverlayEditor project={drawn} selection={selection} box={box} onDone={() => onSelect?.(null)} />}
           {editItem && view && mapping && <ShapeEditor edit={editItem} view={view} mapping={mapping} crop={crop} clip={slot} box={box} onDone={() => onSelect?.(null)} />}
