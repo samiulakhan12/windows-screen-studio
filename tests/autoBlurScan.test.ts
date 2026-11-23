@@ -121,6 +121,26 @@ describe('auto-blur P4: the scan', () => {
     expect(s.log.filter((l) => l === 'look')).toHaveLength(1)
     await runFind(request({ requestId: 'r2' }), noProgress, never, s.deps)
     expect(s.log.filter((l) => l === 'look')).toHaveLength(1)
+    // While Flown records, Find waits first; a recording started during it pauses the helper until it ends.
+    let recording = true
+    const g = { open: (): void => undefined }
+    const held = new Promise<void>((resolve) => (g.open = resolve))
+    const w = scene({ gate: (t) => (t > 5 ? held : Promise.resolve()) })
+    const seen: FindProgress['phase'][] = []
+    setTimeout(() => (recording = false), 60)
+    const running = runFind(request({ requestId: 'r3' }), (p) => seen[seen.length - 1] !== p.phase && seen.push(p.phase), never, { ...w.deps, recording: () => recording, recordingPollMs: 20 })
+    for (let i = 0; i < 200 && !w.log.some((l) => l.startsWith('read 5.3')); i++) await new Promise((r) => setTimeout(r, 10))
+    recording = true
+    for (let i = 0; i < 200 && !w.log.includes('pause'); i++) await new Promise((r) => setTimeout(r, 10))
+    recording = false
+    for (let i = 0; i < 200 && !w.log.includes('resume'); i++) await new Promise((r) => setTimeout(r, 10))
+    g.open()
+    expect((await running).ok).toBe(true)
+    expect(seen.slice(0, 2)).toEqual(['waiting', 'look'])
+    expect(seen).toContain('waiting')
+    expect(w.log.indexOf('pause')).toBeGreaterThan(w.log.findIndex((l) => l.startsWith('read 5.3')))
+    expect(w.log.indexOf('resume')).toBeGreaterThan(w.log.indexOf('pause'))
+    expect(seen.lastIndexOf('waiting')).toBeGreaterThan(seen.indexOf('look'))
   })
 
   it('154. runFind and a failed read: a lost area from that frame until the next good read; failedReads counted (finding 23)', async () => {

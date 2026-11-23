@@ -88,6 +88,8 @@ export interface ScanDeps {
   now?: () => number
   /** Whether Flown is recording (Find waits, and pauses the helper while it does, §5.11). */
   recording?: () => boolean
+  /** How often the recording state is read while Find runs (2 s). */
+  recordingPollMs?: number
   rules?: () => ScanRules
   random?: () => number
   /** This PC's decode speed, measured on the look pass (ms a 1080p frame, one thread). */
@@ -111,6 +113,7 @@ interface Deps {
   ffmpeg: () => string
   now: () => number
   recording: () => boolean
+  recordingPollMs: number
   rules: () => ScanRules
   random: () => number
   recordDecode: (ms: number) => void
@@ -126,6 +129,7 @@ function withDefaults(d: ScanDeps): Deps {
     ffmpeg: d.ffmpeg ?? (() => ffmpegPath()),
     now: d.now ?? Date.now,
     recording: d.recording ?? (() => false),
+    recordingPollMs: d.recordingPollMs ?? 2000,
     rules: d.rules ?? (() => new RulesHost()),
     random: d.random ?? Math.random,
     recordDecode: d.recordDecode ?? (() => undefined),
@@ -415,7 +419,7 @@ function pauseWhileRecording(s: Shared, d: Deps, onWaiting: (waiting: boolean) =
       onWaiting(false)
     }
   }
-  const timer = setInterval(check, 2000)
+  const timer = setInterval(check, d.recordingPollMs)
   timer.unref?.()
   return () => {
     clearInterval(timer)
@@ -430,7 +434,7 @@ async function notRecording(d: Deps, signal: AbortSignal, onWaiting: () => void)
   while (d.recording()) {
     if (signal.aborted) return false
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 2000)
+      const timer = setTimeout(resolve, d.recordingPollMs)
       signal.addEventListener('abort', () => {
         clearTimeout(timer)
         resolve()
