@@ -34,6 +34,8 @@ const TODAY: Record<ReviewKind, { chip: string; name: string; all: string; one: 
   bleep: { chip: 'Bleep', name: 'bleep', all: 'Remove all bleeps', one: 'bleep', plural: 'bleeps' },
   join: { chip: 'Cuts', name: 'cut style', all: 'Remove all cut styles', one: 'cut style', plural: 'cut styles' },
   colour: { chip: 'Colour', name: 'colour', all: 'Remove all colour changes', one: 'colour change', plural: 'colour changes' },
+  // Auto-blur's private items (docs/design/auto-blur.md §2.7), added by its contracts step.
+  private: { chip: 'Private', name: 'private item', all: 'Uncover all private items', one: 'private item', plural: 'private items' },
   chapter: { chip: 'Chapter', name: 'found chapter', all: 'Remove all found chapters', one: 'found chapter', plural: 'found chapters' },
   short: { chip: 'Short', name: 'shorter-version cut', all: 'Remove all shorter-version cuts', one: 'shorter-version cut', plural: 'shorter-version cuts' }
 }

@@ -51,6 +51,7 @@ describe('review copy', () => {
   })
 
   it('every kind has its words', () => {
-    for (const k of REVIEW_KINDS) expect(kindAll(k)).toMatch(/^Remove all /)
+    // Private items are uncovered, not removed (docs/design/auto-blur.md §2.7): their button says so.
+    for (const k of REVIEW_KINDS) expect(kindAll(k)).toMatch(k === 'private' ? /^Uncover all / : /^Remove all /)
   })
 })

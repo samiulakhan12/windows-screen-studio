@@ -93,9 +93,11 @@ describe('the rows (titles and statuses)', () => {
     expect(pendingCount(great)).toBe(items.length)
     // Time order, Captions Studio's kinds after the others at equal times.
     expect(items.map((i) => i.start)).toEqual([...items.map((i) => i.start)].sort((a, b) => a - b))
-    expect(REVIEW_KINDS.slice(-10, -4)).toEqual(['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep'])
-    // Editing polish's kinds come after Captions Studio's (docs/design/editing-polish.md §11), then smart tools' (smart-tools.md §13.1).
-    expect(REVIEW_KINDS.slice(-4, -2)).toEqual(['join', 'colour'])
+    expect(REVIEW_KINDS.slice(-11, -5)).toEqual(['style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep'])
+    // Editing polish's kinds come after Captions Studio's (docs/design/editing-polish.md §11), then auto-blur's
+    // private items (docs/design/auto-blur.md §14.3), then smart tools' (smart-tools.md §13.1).
+    expect(REVIEW_KINDS.slice(-5, -3)).toEqual(['join', 'colour'])
+    expect(REVIEW_KINDS.slice(-3, -2)).toEqual(['private'])
     expect(REVIEW_KINDS.slice(-2)).toEqual(['chapter', 'short'])
   })
 

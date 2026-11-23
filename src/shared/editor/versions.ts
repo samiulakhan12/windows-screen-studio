@@ -223,7 +223,9 @@ const AREAS: readonly { name: string; keys: readonly (keyof Project)[]; of?: (p:
   { name: 'progress bar', keys: ['chapterBar'] },
   // Smart tools (docs/design/smart-tools.md §4.6): the step-by-step guide's choices and edits. A found
   // chapter that only lost its `auto` (kept) makes "chapters" differ, as a kept zoom does "zooms".
-  { name: 'guide', keys: ['guide'] }
+  { name: 'guide', keys: ['guide'] },
+  // Auto-blur (docs/design/auto-blur.md §14.2): the covers and Find's choices and record.
+  { name: 'covers', keys: ['covers', 'privacy'] }
 ]
 
 /**

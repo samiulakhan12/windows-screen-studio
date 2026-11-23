@@ -525,7 +525,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     else if (key.action === 'previous') move(active - 1)
     else if (key.action === 'first') move(0)
     else if (key.action === 'last') move(list.length - 1)
-    else if (current) ask(current, key.action)
+    // V's Peek while reviewing (auto-blur §2.8) is part P5's; the list gives it only on a private row.
+    else if (current && key.action !== 'peek') ask(current, key.action)
   }
 
   const onPanelKey = (e: React.KeyboardEvent): void => {

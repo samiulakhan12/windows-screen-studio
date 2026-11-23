@@ -48,6 +48,7 @@ const AREAS: Readonly<Record<string, MessageKey>> = {
   colour: 'review.versions.area.colour',
   'progress bar': 'review.versions.area.progressBar',
   guide: 'review.versions.area.guide',
+  covers: 'review.versions.area.covers',
   clips: 'review.versions.area.clips',
   zooms: 'review.versions.area.zooms',
   'texts and titles': 'review.versions.area.textsAndTitles',

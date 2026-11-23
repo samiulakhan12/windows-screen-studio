@@ -5,8 +5,10 @@
  * is still moves on, instead of going on to the editor as Snapping. Pure.
  */
 import { eventKeyName, type KeyInput, type ShortcutIndex } from '../editor/shortcuts'
+import type { ReviewKind } from './copy'
 
-export type ListAction = 'next' | 'previous' | 'first' | 'last' | 'keep' | 'remove'
+/** 'peek': V on a private row turns Peek while reviewing on and off (docs/design/auto-blur.md §2.8). */
+export type ListAction = 'next' | 'previous' | 'first' | 'last' | 'keep' | 'remove' | 'peek'
 
 export interface ListKey {
   action: ListAction
@@ -32,9 +34,11 @@ const LIST_KEYS = new Map<string, ListKey>([
  * Polish). Shift with any other letter is the letter, as the editor reads it: Shift+N would be
  * Snapping there, so it moves on here.
  */
-export function listKey(e: KeyInput, shortcuts: ShortcutIndex): ListKey | null {
+export function listKey(e: KeyInput, shortcuts: ShortcutIndex, selected?: { kind: ReviewKind } | null): ListKey | null {
   if (e.ctrlKey || e.altKey || e.metaKey) return null
   const name = eventKeyName(e)
   if (!name || (e.shiftKey && /^[A-Z]$/.test(name) && shortcuts.has(`Shift+${name}`))) return null
+  // V peeks only on a private row; anywhere else it goes on to the editor as before.
+  if (name === 'V') return !e.shiftKey && selected?.kind === 'private' ? { action: 'peek', again: false } : null
   return LIST_KEYS.get(name) ?? null
 }

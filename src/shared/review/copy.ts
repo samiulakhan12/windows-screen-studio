@@ -12,14 +12,14 @@ import { t, type MessageKey } from '../i18n/t'
  * Review mode's own kinds, then Captions Studio's (docs/design/captions-studio.md §11.8): the look,
  * the automatic emphasis and the text fixes (one group row each), emoji, the other graphics and
  * title cards, and bleeps; then editing polish's (docs/design/editing-polish.md §11): Polish's cut
- * style and Auto colour; then smart tools' (docs/design/smart-tools.md §13.1): found chapters and
- * the shorter version's cuts.
+ * style and Auto colour; then auto-blur's (docs/design/auto-blur.md §14.3): private items, before
+ * smart tools' (docs/design/smart-tools.md §13.1): found chapters and the shorter version's cuts.
  */
-export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep' | 'join' | 'colour' | 'chapter' | 'short'
+export type ReviewKind = 'zoom' | 'camera' | 'silence' | 'idle' | 'words' | 'style' | 'emphasis' | 'text' | 'emoji' | 'graphic' | 'bleep' | 'join' | 'colour' | 'private' | 'chapter' | 'short'
 export type ReviewStatus = 'pending' | 'kept' | 'removed'
 
 /** Kinds in the order items at the same time are listed (Captions Studio's after the others). */
-export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep', 'join', 'colour', 'chapter', 'short']
+export const REVIEW_KINDS: readonly ReviewKind[] = ['camera', 'zoom', 'silence', 'idle', 'words', 'style', 'emphasis', 'text', 'emoji', 'graphic', 'bleep', 'join', 'colour', 'private', 'chapter', 'short']
 
 /** A kind's words, as message keys: its chip, its name in a sentence, its "Remove all …" and its count ("5 zooms", a plural). */
 export interface KindKeys {

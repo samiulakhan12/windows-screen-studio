@@ -12,6 +12,8 @@
  */
 import { lookOf, settleTwinRecord } from '../captions/captionAutoSettle'
 import { maskBleeped, maskWord } from '../captions/cleanup'
+import { isPrivateBleep } from '../privacy/coverData'
+import { spokenForms, type SpokenForms } from '../privacy/spoken'
 import { emojiEntry } from '../captions/emojiList'
 import { deepEqual } from '../captions/graphicRules'
 import { DEFAULT_CAPTIONS } from '../captions/settings'
@@ -109,8 +111,8 @@ const styleTitle = (r: StyleRecord): string => t('review.captions.styleTitle', {
 const markWords = (m: Pick<CaptionMark, 'from' | 'to'>): number => Math.max(1, m.to - m.from + 1)
 
 /** "Fixed “flown” → “Flown”": the words that differ between the text before and the text now, masked where bleeped. */
-export function textFixTitle(before: string, now: string | undefined, bleeps: readonly Bleep[] | undefined): string {
-  if (now === undefined) return t('review.captions.fixed', { text: short(maskBleeped(before, bleeps)) })
+export function textFixTitle(before: string, now: string | undefined, bleeps: readonly Bleep[] | undefined, forms?: SpokenForms | null): string {
+  if (now === undefined) return t('review.captions.fixed', { text: short(maskBleeped(before, bleeps, forms)) })
   const a = before.split(/\s+/).filter(Boolean)
   const b = now.split(/\s+/).filter(Boolean)
   let i = 0
@@ -119,30 +121,30 @@ export function textFixTitle(before: string, now: string | undefined, bleeps: re
   while (j < a.length - i && j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++
   const was = a.slice(i, a.length - j).join(' ')
   const is = b.slice(i, b.length - j).join(' ')
-  const show = (t: string): string => short(maskBleeped(t, bleeps))
+  const show = (t: string): string => short(maskBleeped(t, bleeps, forms))
   if (!was && !is) return t('review.captions.fixed', { text: show(now) })
   return t('review.captions.fixedTo', { was: show(was), is: show(is) })
 }
 
-function graphicTitle(g: Graphic, bleeps: readonly Bleep[] | undefined): string {
+function graphicTitle(g: Graphic, bleeps: readonly Bleep[] | undefined, forms: SpokenForms | null = null): string {
   switch (g.kind) {
     case 'keyword':
-      return t('review.captions.popUp', { text: short(maskBleeped(g.text, bleeps)) })
+      return t('review.captions.popUp', { text: short(maskBleeped(g.text, bleeps, forms)) })
     case 'emoji': {
       const e = emojiEntry(g.emoji)
       const emoji = e?.text ?? ''
-      const title = g.anchor ? t('review.captions.emojiOn', { emoji, anchor: short(maskBleeped(g.anchor.text, bleeps)) }) : t('review.captions.emoji', { emoji })
+      const title = g.anchor ? t('review.captions.emojiOn', { emoji, anchor: short(maskBleeped(g.anchor.text, bleeps, forms)) }) : t('review.captions.emoji', { emoji })
       return title.replace(/ {2,}/g, ' ')
     }
     case 'counter':
       return t('review.captions.counter', { value: `${g.prefix}${g.to.toFixed(g.decimals)}${g.suffix}` })
     case 'list':
-      return g.title?.trim() ? t('review.captions.list', { title: short(maskBleeped(g.title, bleeps)) }) : t('review.captions.listItems', counted(g.items.length))
+      return g.title?.trim() ? t('review.captions.list', { title: short(maskBleeped(g.title, bleeps, forms)) }) : t('review.captions.listItems', counted(g.items.length))
   }
 }
 
-function cardTitle(c: TitleCard, bleeps: readonly Bleep[] | undefined): string {
-  const text = short(maskBleeped(c.title, bleeps))
+function cardTitle(c: TitleCard, bleeps: readonly Bleep[] | undefined, forms: SpokenForms | null = null): string {
+  const text = short(maskBleeped(c.title, bleeps, forms))
   if (c.auto?.by === 'speaker') return t('review.captions.lowerThird', { text })
   if (c.auto?.by === 'chapter') return t('review.captions.chapterTitle', { text })
   if (c.auto?.by === 'quote') return t('review.captions.quote', { text })
@@ -171,6 +173,8 @@ export function captionReviewItems(project: Project): ReviewItem[] {
   const items: ReviewItem[] = []
   const segs = segmentsById(project)
   const bleeps = project.bleeps
+  // Secrets said aloud are masked in every title too (auto-blur §7.5); null without private bleeps.
+  const forms = spokenForms(project)
   const first = project.transcript?.segments[0]
   const style = project.captionAuto?.style
   if (style) {
@@ -182,7 +186,7 @@ export function captionReviewItems(project: Project): ReviewItem[] {
     const parts = marks.map((m): ReviewItem => {
       const seg = segs.get(m.caption)
       const at = seg?.start ?? 0
-      return { key: `emphasis:${m.id}`, kind: 'emphasis', start: at, end: seg?.end ?? at, title: t('review.captions.emphasisOn', { text: short(maskBleeped(m.text, bleeps)) }), detail: detail(), words: markWords(m) }
+      return { key: `emphasis:${m.id}`, kind: 'emphasis', start: at, end: seg?.end ?? at, title: t('review.captions.emphasisOn', { text: short(maskBleeped(m.text, bleeps, forms)) }), detail: detail(), words: markWords(m) }
     })
     items.push(group('emphasis', EMPHASIS_GROUP, parts))
   }
@@ -195,22 +199,23 @@ export function captionReviewItems(project: Project): ReviewItem[] {
       seen.add(r.caption)
       const seg = segs.get(r.caption)
       const at = seg?.start ?? 0
-      parts.push({ key: `text:${r.caption}`, kind: 'text', start: at, end: seg?.end ?? at, title: textFixTitle(r.text, seg?.text, bleeps), detail: detail(), text: r })
+      parts.push({ key: `text:${r.caption}`, kind: 'text', start: at, end: seg?.end ?? at, title: textFixTitle(r.text, seg?.text, bleeps, forms), detail: detail(), text: r })
     }
     items.push(group('text', TEXT_GROUP, parts))
   }
   for (const g of project.graphics ?? []) {
     if (!g.auto) continue
     // A pop-up with a library sound names it (editing polish §10.7): "Pop-up “Save” (with Soft pop)".
-    const title = g.sound && g.sound !== 'pop' && g.sound !== 'ding' ? t('review.captions.withSound', { title: graphicTitle(g, bleeps), sound: sfxName(g.sound.slice('sfx:'.length)) }) : graphicTitle(g, bleeps)
+    const title = g.sound && g.sound !== 'pop' && g.sound !== 'ding' ? t('review.captions.withSound', { title: graphicTitle(g, bleeps, forms), sound: sfxName(g.sound.slice('sfx:'.length)) }) : graphicTitle(g, bleeps, forms)
     items.push({ key: `graphic:${g.id}`, kind: g.kind === 'emoji' ? 'emoji' : 'graphic', start: g.start, end: g.end, title, detail: viaDetail(g.auto.via) })
   }
   for (const c of project.titles ?? []) {
     if (!c.auto) continue
-    items.push({ key: `card:${c.id}`, kind: 'graphic', start: c.start, end: c.end, title: cardTitle(c, bleeps), detail: viaDetail(c.auto.via) })
+    items.push({ key: `card:${c.id}`, kind: 'graphic', start: c.start, end: c.end, title: cardTitle(c, bleeps, forms), detail: viaDetail(c.auto.via) })
   }
+  // Private bleeps are Review's private rows, never Bleep rows (auto-blur §14.3).
   for (const b of bleeps ?? []) {
-    if (b.auto) items.push({ key: `bleep:${b.id}`, kind: 'bleep', start: b.start, end: b.end, title: t('review.captions.bleeped', { word: maskWord(b.word) }), detail: detail() })
+    if (b.auto && !isPrivateBleep(b)) items.push({ key: `bleep:${b.id}`, kind: 'bleep', start: b.start, end: b.end, title: t('review.captions.bleeped', { word: maskWord(b.word) }), detail: detail() })
   }
   return items
 }
@@ -222,7 +227,7 @@ export function captionPendingCount(project: Project): number {
   if (project.captionAuto?.text?.length) n++
   for (const g of project.graphics ?? []) if (g.auto) n++
   for (const c of project.titles ?? []) if (c.auto) n++
-  for (const b of project.bleeps ?? []) if (b.auto) n++
+  for (const b of project.bleeps ?? []) if (b.auto && !isPrivateBleep(b)) n++
   return n
 }
 
