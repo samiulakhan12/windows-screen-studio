@@ -12,7 +12,8 @@ import { MAX_OVERLAYS } from '../engine/overlayData'
 import { MIN_NEW_ZOOM, newZoomId, zoomAt } from '../engine/zoom'
 import { chapterInVideo } from '../render/chapters'
 import { MAX_GRAPHICS } from '../captions/studioData'
-import type { Annotation, Chapter, Freeze, Graphic, ImageOverlay, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import type { Annotation, Chapter, Cover, Freeze, Graphic, ImageOverlay, Project, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import { pasteCovers } from './coverEdit'
 import { newAnnotationId } from './annotations'
 import { displayTime } from './clips'
 import { freezeAtPlayhead } from './freezeEdit'
@@ -34,6 +35,8 @@ export type ClipItem =
   | { kind: 'chapter'; item: Chapter }
   | { kind: 'freeze'; item: Freeze }
   | { kind: 'graphic'; item: Graphic }
+  /** A cover as it was when copied (auto-blur §14.4, finding 18): it pastes only into its own project. */
+  | { kind: 'cover'; item: Cover }
 
 export interface ItemClipboard {
   version: 1
@@ -64,6 +67,7 @@ export type PasteSkip =
   | 'image-other-recording'
   | 'image-full'
   | 'graphic-full'
+  | 'cover-other-recording'
 
 export interface PasteResult {
   project: Project
@@ -139,9 +143,11 @@ function clipItemOf(p: Project, key: ItemKey): ClipItem | null {
       const item = copy(find(p.graphics))
       return item && { kind: 'graphic', item }
     }
-    case 'cover':
-      // Covers are copied with others from part P1 on (docs/design/auto-blur.md §14.4).
-      return null
+    case 'cover': {
+      // A snapshot of the cover now (auto-blur §14.4): a later edit of it never changes the copy.
+      const item = copy(find(p.covers))
+      return item && { kind: 'cover', item }
+    }
   }
 }
 
@@ -297,6 +303,17 @@ function place(p: Project, clip: ItemClipboard, at: number, movedBack: boolean):
         }
         break
       }
+      case 'cover': {
+        // Covers paste only into the video they were copied from (auto-blur §14.4): fresh ids, the user's, the times moved with the others.
+        const r = pasteCovers(q, { projectId: clip.projectId, at: 0, covers: [c.item] }, offset)
+        if (!r) skipped.push({ kind: c.kind, why: 'cover-other-recording' })
+        else if (c.item.end + offset > duration + 1e-9 || c.item.start + offset < -1e-9) skipped.push({ kind: c.kind, why: 'outside' })
+        else {
+          q = r.project
+          keys.push(itemKey(c.kind, r.ids[0]))
+        }
+        break
+      }
       case 'freeze': {
         if (clip.projectId !== p.id) {
           skipped.push({ kind: c.kind, why: 'freeze-other-recording' })
@@ -374,6 +391,7 @@ function skipText(kind: GroupKind, why: PasteSkip, n: number): string {
       return t('editor.paste.skip.full', { ...values, max: fmt.count(MAX_GRAPHICS) })
     case 'freeze-other-recording':
     case 'image-other-recording':
+    case 'cover-other-recording':
       return t('editor.paste.skip.otherRecording', values)
   }
 }
@@ -409,6 +427,8 @@ const NOTICE: Readonly<Record<'paste' | 'duplicate', Readonly<Record<'all' | 'al
  */
 export function pasteNotice(r: PasteResult, total: number, verb = 'Pasted'): string {
   const n = r.keys.length
+  // Only covers copied from another video: they paste only into their own (auto-blur §14.4).
+  if (n === 0 && r.skipped.length > 0 && r.skipped.every((s) => s.why === 'cover-other-recording')) return t('privacy.cover.oneProject')
   const counts = new Map<string, { kind: GroupKind; why: PasteSkip; n: number }>()
   for (const s of r.skipped) {
     const id = `${s.kind}:${s.why}`

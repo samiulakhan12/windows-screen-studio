@@ -114,7 +114,7 @@ describe('auto-blur contracts: seams', () => {
     expect(r.summary.privacy).toEqual({ found: 2, check: 0, listenedOnly: false, unfinished: false })
   })
 
-  it("36. Multi-select seam: GROUP_KINDS ends with 'cover' and LookClass has 'cover'; their words read their messages; while coverGroup.ts is the stub, validSelection drops covers and every other kind behaves as before", () => {
+  it("36. Multi-select seam: GROUP_KINDS ends with 'cover' and LookClass has 'cover'; their words read their messages; with part P1's coverGroup.ts covers are selectable, listed, deleted and restyled through it, and every other kind behaves as before", () => {
     expect(GROUP_KINDS.at(-1)).toBe('cover')
     expect(GROUP_KINDS.at(-2)).toBe('graphic')
     expect(trackOfKind('cover')).toBe('covers')
@@ -124,30 +124,32 @@ describe('auto-blur contracts: seams', () => {
     expect(LOOK_CLASS_WORDS.cover).toEqual(['cover', 'covers'])
     const c = coverOf('c1', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)])
     const p: Project = { ...covered('m', [c]), zooms: [{ id: 'z1', start: 1, end: 3, scale: 2, x: 0.5, y: 0.5, auto: false } as never] }
-    expect(selection.validSelection({ kind: 'cover', id: 'c1' }, p)).toBeNull()
+    // Part P1 filled coverGroup.ts: a cover that is there is selectable, one that is gone is not.
+    expect(selection.validSelection({ kind: 'cover', id: 'c1' }, p)).toEqual({ kind: 'cover', id: 'c1' })
+    expect(selection.validSelection({ kind: 'cover', id: 'gone' }, p)).toBeNull()
     expect(selection.validSelection({ kind: 'zoom', id: 'z1' }, p)).toEqual({ kind: 'zoom', id: 'z1' })
-    // The stubs: covers list no items, and deleting or restyling them through a group changes nothing.
-    expect(projectItems(p).some((x) => x.kind === 'cover')).toBe(false)
-    expect(deleteItems(p, ['cover:c1'])).toBe(p)
-    const look = copyLook(p, 'cover:c1', { crop: null, cursorValid: true, style: {} as never, background: {} as never })
+    // Covers are items of the Covers row; deleting them through a group removes them; a look's colour restyles them.
+    expect(projectItems(p).filter((x) => x.kind === 'cover')).toEqual([{ key: 'cover:c1', kind: 'cover', id: 'c1', track: 'covers', start: 1, end: 3 }])
+    expect(deleteItems(p, ['cover:c1']).covers).toBeUndefined()
+    expect(deleteItems(p, ['zoom:z1']).covers).toBe(p.covers)
+    const ctx = { crop: null, cursorValid: true, style: {} as never, background: {} as never }
+    const look = copyLook(p, 'cover:c1', ctx)
     expect(look?.cls).toBe('cover')
-    expect(pasteLook(p, ['cover:c1'], look!, { crop: null, cursorValid: true, style: {} as never, background: {} as never }).project).toBe(p)
-    expect(coverGroup.validCoverSelection(p, 'c1')).toBe(false)
+    expect(pasteLook(p, ['cover:c1'], look!, ctx).project).toBe(p)
+    const white = { ...look!, values: { 'cover.color': '#ffffff' } }
+    expect(pasteLook(p, ['cover:c1'], white, ctx).project.covers![0].color).toBe('#ffffff')
+    expect(coverGroup.validCoverSelection(p, 'c1')).toBe(true)
+    expect(coverGroup.validCoverSelection(p, 'gone')).toBe(false)
   })
 
-  it('37. Stubs render nothing: every mounted stub returns null, every seam stub returns its input, useReaderState and useFindProgress return null, and confirmLeaveFind resolves true', async () => {
+  it('37. Stubs render nothing: every mounted stub returns null, every seam stub returns its input, useReaderState and useFindProgress return null, and confirmLeaveFind resolves true (part P1 filled its own: they now do their work, tests 41-75 and 201-215)', async () => {
     const p = covered('s', [coverOf('c1', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)])])
     const services = { store: { state: p }, player: {} }
     const view = { screen: { x: 0, y: 0, w: 100, h: 100 } }
+    // Part P1's components (PrivacySection, CoverSection, WeakBlurNote, CoverShapeButton, CoverTrack,
+    // CoverHandles, PeekBanner, PeekInset) render their UI now: tests 63-69 and 205-214 hold them.
+    void view
     const stubs: [string, string, Record<string, unknown>][] = [
-      ['privacy/PrivacySection', 'PrivacySection', { services, onFind: () => undefined }],
-      ['privacy/CoverSection', 'CoverSection', { services, coverIds: ['c1'], shapeIds: [] }],
-      ['privacy/WeakBlurNote', 'WeakBlurNote', { services, shapeId: 'h' }],
-      ['privacy/CoverShapeButton', 'CoverShapeButton', { services }],
-      ['privacy/CoverTrack', 'CoverTrack', { px: 10, win: { start: 0, end: 20 }, duration: 20, selection: null, onSelect: () => undefined }],
-      ['privacy/CoverHandles', 'CoverHandles', { project: p, selection: { kind: 'cover', id: 'c1' }, view }],
-      ['privacy/PeekBanner', 'PeekBanner', {}],
-      ['privacy/PeekInset', 'PeekInset', { services, view }],
       ['privacy/PrivacyExportNote', 'PrivacyExportNote', { project: p, onReview: () => undefined, onFind: () => undefined, onWait: () => undefined, onStopAndExport: () => undefined }],
       ['privacy/TranscribeNote', 'TranscribeNote', { project: p, place: 'service' }],
       ['privacy/TranslatedNote', 'TranslatedNote', { project: p, language: 'es' }],
@@ -170,17 +172,22 @@ describe('auto-blur contracts: seams', () => {
     await expect(reader.confirmLeaveFind(services)).resolves.toBe(true)
     const run = await load<{ gatherPrivacy(p: Project, c: unknown, s: AbortSignal): Promise<unknown> }>('privacy/privacyRun')
     await expect(run.gatherPrivacy(p, null, new AbortController().signal)).resolves.toBeNull()
-    // Seam stubs return their input.
-    expect(coverGroup.coverItems(p)).toEqual([])
-    expect(coverGroup.moveCoversInTime(p, ['c1'], 1)).toEqual({ project: p, refused: [] })
-    expect(coverGroup.deleteCoverItems(p, ['c1'])).toBe(p)
+    // Part P1's seams do their work: the cover is an item, moves (one key), is deleted, takes a look's colour and is its own group.
+    expect(coverGroup.coverItems(p)).toEqual([{ key: 'cover:c1', kind: 'cover', id: 'c1', track: 'covers', start: 1, end: 3 }])
+    const moved = coverGroup.moveCoversInTime(p, ['c1'], 1)
+    expect(moved.refused).toEqual([])
+    expect([moved.project.covers![0].start, moved.project.covers![0].end]).toEqual([2, 4])
+    expect(coverGroup.deleteCoverItems(p, ['c1']).covers).toBeUndefined()
     expect(coverGroup.pasteCoverLook(p, ['c1'], coverGroup.coverLookOf(p.covers![0]))).toBe(p)
-    expect(coverGroup.groupCoverIds(p, 'c1')).toEqual([])
+    expect(coverGroup.groupCoverIds(p, 'c1')).toEqual(['c1'])
+    // Without a grade a cover keeps its colour; with one it is graded (test 54); with Compare it is the raw colour.
     const grade = await load<{ gradedCoverColour(c: string, g: unknown, l: unknown, compare?: boolean): string }>('render/coverGrade')
-    expect(grade.gradedCoverColour('#1c1c22', { look: 'vivid' }, null)).toBe('#1c1c22')
+    expect(grade.gradedCoverColour('#1c1c22', undefined, null)).toBe('#1c1c22')
+    expect(grade.gradedCoverColour('#1c1c22', { look: 'vivid' }, null, true)).toBe('#1c1c22')
+    // Pixels with no cover active are untouched; an active cover is filled in Dark (tests 73, 210, 211).
     const strip = await load<{ fillCoverTiles(...a: unknown[]): void; fillCoverPixels(...a: unknown[]): void }>('privacy/filmstripCovers')
     const pixels = new Uint8ClampedArray(16).fill(7)
-    strip.fillCoverPixels(pixels, 2, 2, p, 2)
+    strip.fillCoverPixels(pixels, 2, 2, p, 6)
     expect([...pixels]).toEqual(new Array(16).fill(7))
   })
 })

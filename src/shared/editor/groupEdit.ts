@@ -22,6 +22,8 @@ import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, STROKE_LIMITS
 import { TITLE_COLORS, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
 import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
 import { coverLookOf, deleteCoverItems, pasteCoverLook } from './coverGroup'
+import { setCoverColour } from './coverEdit'
+import { COVER_COLOURS } from '../privacy/kinds'
 import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
 import { readGraphicSound, readItemSound } from '../audio/soundFxData'
@@ -759,7 +761,21 @@ export const GROUP_FIELDS: readonly GroupField[] = [
       void _s
       return rest as Graphic
     }
-  })
+  }),
+  {
+    // Auto-blur (docs/design/auto-blur.md §14.4): a cover's look is its colour; a change makes it the user's.
+    id: 'cover.color',
+    cls: 'cover',
+    get label() {
+      return t('privacy.cover.colour')
+    },
+    control: { type: 'color', presets: Object.values(COVER_COLOURS) },
+    look: true,
+    applies: () => true,
+    read: (c) => (c as Cover).color,
+    eq: sameColor,
+    write: { project: (p, id, v) => setCoverColour(p, [id], v as string) }
+  }
 ]
 
 /** The kind of item a look class's items are. */
