@@ -175,6 +175,18 @@ export function addCover(project: Project, at: { t: number; box: NormRect; lengt
   return { project: withCovers(project, [...(project.covers ?? []), cover]), id }
 }
 
+/**
+ * A cover of the user's over `at.box` from `at.start` to `at.end` (the guide's *Blur an area…* and
+ * *Blur the typed text*, §2.11: the box and times their blur shape had), held inside the recording. One update.
+ */
+export function addCoverSpan(project: Project, at: { start: number; end: number; box: NormRect; color: string }, random: () => number = Math.random): { project: Project; id: string } {
+  const start = clamp(finite(at.start) ? at.start : 0, 0, project.duration)
+  const end = clamp(finite(at.end) ? at.end : project.duration, start, project.duration)
+  const id = newCoverId(random)
+  const cover = newCover(id, start, end, at.box, at.color, project.duration)
+  return { project: withCovers(project, [...(project.covers ?? []), cover]), id }
+}
+
 const isWeak = (s: Shape): boolean => s.kind === 'blur' || s.kind === 'pixelate'
 
 /** A shape's box normalised (a negative width or height turned around). */

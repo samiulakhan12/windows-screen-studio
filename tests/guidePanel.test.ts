@@ -81,8 +81,10 @@ const PNG = (w: number): Uint8Array => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0
 let stillsFail: string | null = null
 /** Holds the faked screenshots back until it settles (null: they come at once). */
 let stillsGate: Promise<void> | null = null
-/** Each pass of faked screenshots: its shots, and the blur boxes of the project it is drawn from. */
+/** Each pass of faked screenshots: its shots, and the blur boxes of the project it is drawn from (blur shapes, and the covers the guide's buttons add since auto-blur §2.11). */
 const drawn: { keys: string[]; blurs: number }[] = []
+/** The covers' colours are read from the recording (auto-blur §8.4): answered here. */
+vi.doMock('../src/renderer/src/privacy/coverPick', () => ({ ringColourAt: async () => '#123456', coverColourNow: async () => '#123456' }))
 
 mockReact()
 // P5's question before a run, with its own logic; only the dialog is answered here (no DOM).
@@ -100,7 +102,7 @@ vi.doMock('../src/renderer/src/ai/costConfirm', async (importOriginal) => {
 vi.doMock('../src/renderer/src/guide/guideStills', () => ({
   async *renderGuideStills(input: { project: Project }, shots: { key: string; rect: { w: number; h: number } }[], opts: { maxWidth: number; mime: string }) {
     if (stillsFail) throw new Error(stillsFail)
-    drawn.push({ keys: shots.map((s) => s.key), blurs: (input.project.shapes ?? []).filter((x) => x.kind === 'blur').length })
+    drawn.push({ keys: shots.map((s) => s.key), blurs: (input.project.shapes ?? []).filter((x) => x.kind === 'blur').length + (input.project.covers ?? []).length })
     if (stillsGate) await stillsGate
     for (const s of shots) {
       const w = Math.min(opts.maxWidth, Math.round(s.rect.w))
@@ -293,10 +295,12 @@ describe('typing no listed step holds (docs/design/smart-tools.md §5.5.7)', () 
     expect(row.props['aria-label']).toMatch(/, may show what you typed$/)
     expect(textOf(byTestId(els, 'guide-count'))).toContain('1 may show typing')
     click(byTestId(els, 'guide-blur-typed'))
-    els = render(panel())
+    els = await settle(panel())
     expect(said(els)).toBe('Blurred the typed text.')
-    const blur = store.state.shapes!.at(-1)!
-    expect([blur.kind, blur.start]).toEqual(['blur', 2.5])
+    // A cover since auto-blur (§2.11, decision 12): the same times; no blur shape.
+    expect(store.state.shapes ?? []).toHaveLength(0)
+    const blur = store.state.covers!.at(-1)!
+    expect(blur.start).toBe(2.5)
     expect(blur.end).toBeGreaterThan(8)
   })
 })
@@ -506,11 +510,13 @@ describe('the bug report’s Actual screenshot (docs/design/smart-tools.md §2.1
     expect(textOf(byTestId(els, 'guide-checked'))).toBe('Checked 1 of 4')
     // Blur an area… on it: a blur box covering the Actual's frame.
     click(byTestId(els, 'guide-viewer-blur'))
-    els = render(panel('bug'))
+    els = await settle(panel('bug'))
     expect(byTestId(els, 'guide-viewer')).toBeUndefined()
-    const blur = store.state.shapes!.at(-1)!
-    expect(blur.kind).toBe('blur')
-    expect(blur.start).toBeCloseTo(20 - 1 / 60, 6)
+    // A cover since auto-blur (§2.11, decision 12), from one frame before the Actual's shot.
+    expect(store.state.shapes ?? []).toHaveLength(0)
+    const blur = store.state.covers!.at(-1)!
+    expect(blur.start).toBeCloseTo(20 - 1 / 60, 2)
+    expect(blur.start).toBeLessThanOrEqual(20 - 1 / 60 + 1e-9)
     expect(calls.saved).toEqual([])
   })
 
@@ -589,13 +595,14 @@ describe('edits made while saving or copying (docs/design/smart-tools.md §5.5.6
     stillsGate = new Promise<void>((r) => (release = r))
     return { els: render(panel()), release }
   }
-  /** A new title and Blur the typed text on step 2, while the demo's pictures are made. */
-  const editMeanwhile = (els: El[]): void => {
+  /** A new title and Blur the typed text on step 2 (a cover since auto-blur §2.11), while the demo's pictures are made. */
+  const editMeanwhile = async (els: El[]): Promise<void> => {
     ;(byTestId(els, 'guide-title')!.props.onChange as (e: unknown) => void)({ target: { value: 'Billing' } })
     click(byTestId(render(panel()), 'guide-blur-typed'))
+    for (let i = 0; i < 5; i++) await Promise.resolve()
     render(panel())
     expect(store.state.guide!.title).toBe('Billing')
-    expect(store.state.shapes!.filter((x) => x.kind === 'blur')).toHaveLength(1)
+    expect(store.state.covers ?? []).toHaveLength(1)
   }
 
   it('Save demo… writes the project as it was at the click, its text and its pictures alike, and says the changes are not in it', async () => {
@@ -605,7 +612,7 @@ describe('edits made while saving or copying (docs/design/smart-tools.md §5.5.6
     click(byTestId(els, 'guide-save-anyway'))
     els = await settle(panel())
     expect(textOf(byTestId(els, 'guide-save'))).toBe('Saving…')
-    editMeanwhile(els)
+    await editMeanwhile(els)
     stillsGate = null
     release()
     for (let i = 0; i < 50 && !calls.saved.length; i++) els = await after()
@@ -623,7 +630,7 @@ describe('edits made while saving or copying (docs/design/smart-tools.md §5.5.6
     els = render(panel())
     click(byTestId(els, 'guide-save-anyway'))
     els = await settle(panel())
-    editMeanwhile(els)
+    await editMeanwhile(els)
     stillsGate = null
     release()
     for (let i = 0; i < 50 && !calls.copied.length; i++) els = await after()

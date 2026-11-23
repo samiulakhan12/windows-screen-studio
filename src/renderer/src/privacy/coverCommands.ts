@@ -43,6 +43,28 @@ export function coverLength(): CoverLength {
   return sessionLength
 }
 
+/** *Change the whole path* (§2.2): off by default, for the session; the Cover section's box fields and the preview's handles both follow it. */
+let wholePath = false
+const wholePathListeners = new Set<() => void>()
+
+/** Turns *Change the whole path* on or off. */
+export function setWholePath(on: boolean): void {
+  if (wholePath === on) return
+  wholePath = on
+  for (const l of [...wholePathListeners]) l()
+}
+
+/** Whether a move changes the whole path now. */
+export function wholePathOn(): boolean {
+  return wholePath
+}
+
+/** Calls `listener` when *Change the whole path* changes; returns the unsubscribe. */
+export function subscribeWholePath(listener: () => void): () => void {
+  wholePathListeners.add(listener)
+  return () => wholePathListeners.delete(listener)
+}
+
 /**
  * Where a new cover goes at the playhead (§2.1): the frame the preview shows, and a box 30% × 10%
  * of the picture shown, centred on the cursor there (or the picture's centre), in the whole frame.

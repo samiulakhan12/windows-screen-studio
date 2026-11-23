@@ -294,6 +294,10 @@ describe('auto-blur P1: cover edits', () => {
     }
     // Functions that make covers rather than change one: what they make is the user's.
     const makers: Record<string, (q: Project) => { project: Project; ids: string[] } | null> = {
+      addCoverSpan: (q) => {
+        const r = coverEdit.addCoverSpan(q, { start: 1, end: 4, box: { x: 0.1, y: 0.1, w: 0.3, h: 0.1 }, color: '#000000' }, seq())
+        return { project: r.project, ids: [r.id] }
+      },
       addCover: (q) => {
         const r = coverEdit.addCover(q, { t: 3, box: { x: 0.1, y: 0.1, w: 0.3, h: 0.1 }, length: 'three', color: '#000000' }, seq())
         return { project: r.project, ids: [r.id] }
