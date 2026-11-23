@@ -215,7 +215,7 @@
 .seg.cover-seg .seg-icon {
   flex: none;
   display: flex;
-  margin-left: 4px;
+  margin-inline-start: 4px;
   pointer-events: none;
 }
 
@@ -305,7 +305,7 @@
   position: absolute;
   z-index: 5;
   top: var(--space-2);
-  inset-inline-start: 50%;
+  left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
