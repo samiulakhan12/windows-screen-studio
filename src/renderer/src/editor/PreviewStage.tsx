@@ -49,6 +49,7 @@ import { SafeZoneOverlay } from './SafeZoneOverlay'
 import { GraphicHandles, PreviewLookLabel } from './GraphicHandle'
 import { CalloutHandles } from './CalloutHandles'
 import { CoverHandles } from '../privacy/CoverHandles'
+import { boxAt } from '../../../shared/privacy/coverPath'
 import { PeekBanner } from '../privacy/PeekBanner'
 import { PeekInset } from '../privacy/PeekInset'
 import { calloutMapping, type CalloutMapping } from './calloutView'
@@ -873,6 +874,11 @@ export function previewBoxes(drawn: Project, scene: RenderScene, layout: SceneLa
   for (const s of shapes) if (!isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))
   for (const s of shapes) if (isPrivacyKind(s.kind)) mapped(`shape:${s.id}`, shapeBounds(s))
   for (const s of drawn.spotlights ?? []) if (s.mode === 'region' && itemVisibleAt(s, t)) mapped(`spotlight:${s.id}`, s)
+  // Covers are in the screen picture, under everything else (auto-blur §8.1, §14.4): their box at `t`, in the view as drawn.
+  for (const c of drawn.covers ?? []) {
+    const b = c.start <= t && t < c.end ? boxAt(c, t) : null
+    if (b) mapped(`cover:${c.id}`, b)
+  }
   return out
 }
 

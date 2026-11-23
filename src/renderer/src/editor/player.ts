@@ -34,6 +34,7 @@ import { onStyleAssetsChanged } from '../render/watermarkLayer'
 import { FreezeStills } from './freezeStills'
 import { JoinStills } from './joinStills'
 import { PreviewAudio } from './previewAudio'
+import { clearPeek, peekedScene, subscribePeek } from '../privacy/peek'
 import { cancelScan } from './sounds/soundScan'
 
 /** Proxy frame rate when the project does not say (older projects: always 60 fps). */
@@ -151,6 +152,8 @@ export class PreviewPlayer {
   private readonly offCursorAssets: () => void
   private readonly offStyleAssets: () => void
   private readonly offCameraMasks: () => void
+  /** Peek and the cover outlines (auto-blur §8.5): the preview draws again when they change. */
+  private readonly offPeek: () => void
   /**
    * Freeze frames (E-11): the plan; the pause freeze being held (seconds into it, and the wall clock
    * of the last tick) and its timer; the one just left; where playback may next enter a hold (source
@@ -205,6 +208,7 @@ export class PreviewPlayer {
     this.offStyleAssets = onStyleAssetsChanged(this.invalidate)
     // The camera's background blur: a frame's person mask arrives after the frame.
     this.offCameraMasks = onCameraMasksChanged(this.invalidate)
+    this.offPeek = subscribePeek(this.invalidate)
     this.prepareStills()
     this.seek(keptBounds(project.clips).start)
   }
@@ -456,7 +460,8 @@ export class PreviewPlayer {
     const s = this.hold ? this.heldTime(this.hold.h) : t
     const p = pictureTime(this.project.clips, this.plan, s)
     const still = p !== s ? this.stills?.get(p) : null
-    const drawn = this.comparedScene(this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene)
+    // Peek and the cover outlines are set on the preview's scene only (auto-blur §8.5): no output draws them.
+    const drawn = peekedScene(this.comparedScene(this.noZoom ? this.unzoomedScene(scene) : this.flat ? this.untiltedScene(scene) : scene))
     drawFrame(
       ctx,
       canvas.width,
@@ -1232,6 +1237,9 @@ export class PreviewPlayer {
     this.offCursorAssets()
     this.offStyleAssets()
     this.offCameraMasks()
+    this.offPeek()
+    // The project closes: Peek and Listen stop (auto-blur §2.8).
+    clearPeek()
     this.listeners.clear()
     for (const v of [this.screen, this.webcam]) {
       if (!v) continue

@@ -173,6 +173,9 @@
   "cover.oneForEverywhere": {
     "description": "Auto-blur private info, A selected cover."
   },
+  "cover.lookFor": {
+    "description": "Auto-blur private info, the Selection view and the look buttons: why Paste look does nothing here, when the copied look is a cover's (its colour)."
+  },
   "weak.turnSelected": {
     "description": "Auto-blur private info, A selected cover. {count} selects the plural; {n} is the count as shown (formatted)."
   },
@@ -232,6 +235,12 @@
   },
   "track.thin": {
     "description": "Auto-blur private info, The Covers row on the timeline. A list of fields (an accessible name or a title), not a sentence: the fields may be reordered. {end} is a time in the editor's clock format; {start} is a time in the editor's clock format."
+  },
+  "track.only": {
+    "description": "Auto-blur private info, the Selection view: a button that keeps only the selected covers, beside the other kinds' Only … buttons. {n} is how many covers are selected (formatted)."
+  },
+  "track.selectOnly": {
+    "description": "Auto-blur private info, the Selection view: the tooltip of the button that keeps only the selected covers."
   },
   "weak.note": {
     "description": "Auto-blur private info, Blur and pixelate: the note."

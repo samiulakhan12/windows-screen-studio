@@ -53,6 +53,7 @@ vi.stubGlobal('Path2D', class {})
 const { cropView } = await import('../src/shared/engine/crop')
 const { SmoothedTrack } = await import('../src/shared/engine/cursor')
 const { focusPathFor } = await import('../src/shared/engine/zoom')
+const { effectiveGrade, gradePixelsCpu, gradeTable, resolveGrade } = await import('../src/shared/render/colorGrade')
 
 // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
 type Ctx = unknown
@@ -86,6 +87,15 @@ function sceneOf(p: Project, extra: Record<string, unknown> = {}): Scene {
     ...(view.crop ? { crop: view.crop } : {}),
     ...extra
   }
+}
+
+/** `color` run through the project's screen grade on one pixel with the CPU maths (no LUT loaded in a test), worked out here on its own. */
+function gradedBy(color: string, p: Project): string {
+  const g = effectiveGrade(resolveGrade(p.grade?.screen, 'screen'), null)
+  if (!g) return color
+  const px = new Uint8ClampedArray([parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16), 255])
+  gradePixelsCpu(px, g, gradeTable(g), null)
+  return `#${[px[0], px[1], px[2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`
 }
 
 const covered = (over: Partial<Project> = {}, covers: Cover[] = [coverOf('c1', 1, 5, [key(1, 0.3, 0.3, 0.1, 0.05)], { color: COLOR })]): Project => ({ ...base('d', 8), covers, ...over })
@@ -130,7 +140,9 @@ describe('auto-blur contracts: drawing', () => {
       expect(x).toBeGreaterThanOrEqual(9)
       expect(x).toBeLessThanOrEqual(11)
       expect(view.path).not.toBe(p.covers![0].path)
-      expect(fills[0].fill).toBe(COLOR)
+      // The cover's colour through the screen's grade (part P1's gradedCoverColour, §8.4): the colour itself without a grade.
+      expect(fills[0].fill).toBe(gradedBy(COLOR, p))
+      if (p.grade) expect(fills[0].fill).not.toBe(COLOR)
       expect(out.width).toBe(pw)
     }
 
