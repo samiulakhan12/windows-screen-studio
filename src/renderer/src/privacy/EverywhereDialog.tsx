@@ -34,8 +34,11 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
   const [state, setState] = useState<State>({ kind: 'reading' })
   const [remember, setRemember] = useState<EverywhereRequest['remember']>('no')
   const [download, setDownload] = useState<string | null>(null)
+  /** Main answered the download with a reader that cannot run on this PC (nothing was downloaded). */
+  const [cannotRun, setCannotRun] = useState<'helper' | 'cpu' | null>(null)
   const run = useRef<AbortController | null>(null)
   const reader = useReaderState()
+  const unavailable = reader?.status === 'unavailable' ? reader.reason : cannotRun
   const uid = `everywhere-${useId().replace(/:/g, '')}`
   const close = (): void => {
     run.current?.abort()
@@ -61,7 +64,7 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
   }, [props.coverId])
   useEffect(() => {
     if (state.kind !== 'reading') first.current?.focus()
-  }, [state.kind])
+  }, [state.kind, unavailable])
   // The reader downloaded meanwhile: read again.
   useEffect(() => {
     if (state.kind === 'reader' && reader?.status === 'ready') read()
@@ -74,6 +77,7 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
       const s = await window.api.downloadReader()
       if (s.status === 'ready') read()
       else if (s.status === 'failed') setDownload(s.reason)
+      else if (s.status === 'unavailable') setCannotRun(s.reason)
     } catch (err) {
       setDownload(err instanceof Error ? err.message : String(err))
     }
@@ -105,6 +109,16 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
       foot = closeButton(false)
       break
     case 'reader': {
+      // The reader cannot run here: say why (Settings' messages), with no Download that would do nothing.
+      if (unavailable) {
+        body = (
+          <p role="alert" data-testid="everywhere-unavailable">
+            {t(unavailable === 'cpu' ? PRIVACY_COPY.settings.unavailableCpu : PRIVACY_COPY.settings.unavailableHelper)}
+          </p>
+        )
+        foot = closeButton(true)
+        break
+      }
       const progress = reader?.status === 'downloading' ? Math.round((reader.done / Math.max(1, reader.total)) * 100) : null
       body = (
         <div data-testid="everywhere-needs-reader">

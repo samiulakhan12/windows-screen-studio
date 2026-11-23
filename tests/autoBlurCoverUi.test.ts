@@ -714,6 +714,28 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-failed'))).toBe('Flown could not cover this text everywhere. Try again, or cover its other places by hand.')
   })
+
+  it('EverywhereDialog: a reader that cannot run on this PC says why, as an alert with Done, instead of a Download that does nothing', async () => {
+    setUp(project({ covers: [email()] }))
+    const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
+    api.under = async () => ({ ok: false, reason: 'reader' })
+    // Main answers the download with the reader's state: no helper that runs here, so nothing downloads.
+    api.download = async () => ({ status: 'unavailable', reason: 'helper' })
+    let els = await settle(root)
+    click(byTestId(els, 'everywhere-download'))
+    els = await settle(root)
+    const said = byTestId(els, 'everywhere-unavailable')!
+    expect(said.props.role).toBe('alert')
+    expect(textOf(said)).toBe("The text reader cannot run on this PC. Flown's installation may be damaged; installing it again may help.")
+    expect(byTestId(els, 'everywhere-download')).toBeUndefined()
+    expect(textOf(byTestId(els, 'everywhere-close'))).toBe('Done')
+    // A processor the helper cannot run on, from the one reader state every window shares.
+    unmountAll()
+    reader.state = { status: 'unavailable', reason: 'cpu' }
+    els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-unavailable'))).toBe("The text reader cannot run on this PC's processor.")
+    expect(byTestId(els, 'everywhere-download')).toBeUndefined()
+  })
 })
 
 describe('auto-blur P1: the Covers row', () => {
