@@ -252,6 +252,7 @@ describe('auto-blur P3: the screen rules', () => {
     expect(texts('mysql -u root -p S3cr3tPassw0rd!')).toEqual(['key:auto:S3cr3tPassw0rd!'])
     expect(texts('tsc -p tsconfig.web.json')).toEqual([])
     expect(texts('docker run -p 8080:80 nginx')).toEqual([])
+    expect(texts('kubectl logs -p frontend-7d9f8c')).toEqual([])
     expect(texts('deploy --token ' + q)).toEqual(['key:auto:' + q])
   })
 
@@ -261,6 +262,7 @@ describe('auto-blur P3: the screen rules', () => {
     expect(texts(`client_secret: ${v}`)).toEqual([`key:check:${v}`])
     // The entropy rule: a value with less than 3 bits a character is skipped.
     expect(texts('api_key = "aaaabbbbaaaabbbb"')).toEqual([])
+    expect(texts('api_key = "1111222211112222"')).toEqual([])
     // Every skip: letters only, true/false/null, placeholders, reads from elsewhere, URLs, paths, env assignments of URLs.
     for (const t of ['token = "changeme"', 'secret = null', 'api_key = "<your-api-key>"', 'token: "${API_TOKEN}"', 'password = "{{password}}"', 'api_key = os.environ["API_KEY"]', 'token = process.env.GITHUB_TOKEN', 'secret = getenv("SECRET")', 'auth_url = https://login.acme.io/oauth', 'secret_path = /etc/acme/secret.pem', 'SENTRY_DSN=https://x.ingest.sentry.io'])
       expect(texts(t), t).toEqual([])
@@ -287,7 +289,7 @@ describe('auto-blur P3: the screen rules', () => {
     expect(texts('Please pass the salt shaker')).toEqual([])
     expect(texts('if (job.pass = nextValue) return')).toEqual([])
     // The not-a-password words, placeholders and code.
-    for (const t of ['Forgot password? Reset it here', 'Password must have at least 8 characters', 'Show password', 'Change your password', 'Password: ********', 'password = os.environ["PW"]'])
+    for (const t of ['Forgot password? Reset it here', 'Password must have at least 8 characters', 'Show password', 'Change your password', 'Password: ********', 'password = os.environ["PW"]', 'Password strength: Strong!', 'Reset password: 12-Nov-2026'])
       expect(texts(t), t).toEqual([])
     expect(texts('Enter your password', { above: 'Password' })).toEqual([])
     expect(texts('WPA2-Personal', { left: ['Network security key'] })).toEqual([])
