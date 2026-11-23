@@ -4,7 +4,7 @@
  * walks that matches templates against planted text moving over time, and a fake helper for runFind.
  */
 import { addLookFrames, emptyLook, lookScale, tileGrid, type LookData, type Size } from '../src/shared/privacy/look'
-import type { Box, Candidate, LookFrame, LookMove, ReadLine, ReadResult, TrackMatch } from '../src/shared/privacy/protocol'
+import type { Box, Candidate, LookFrame, LookMove, ReadLine, ReadResult, ReadVariant, TrackMatch } from '../src/shared/privacy/protocol'
 
 /** The base64 bit string of the tiles a list of boxes (video pixels) touches (look.ts's encoding). */
 export function tilesOf(size: Size, boxes: readonly Box[], k = lookScale(size.width, size.height)): string {
@@ -118,5 +118,133 @@ export class ScriptedMatcher {
       if (b && inside(b, area, 2)) lines.push({ box: b, quad: [], variants: [{ model: 'tiny', text: p.text, conf: 0.95, spans: [] }], ring: '#202020', spread: 0 })
     }
     return { t, lines, qr: [] }
+  }
+}
+
+/* ---------- a fake helper for the scan (scan.ts's ScanHelper) ---------- */
+
+export interface FakeScript {
+  /** The look pass's frames (sent in batches of 1,000). */
+  look: LookData
+  /** The planted texts on screen over time (reads and follow sessions see them). */
+  planted: readonly Planted[]
+  /** Overrides a read: 'fail' throws, a ReadResult answers as it is. */
+  read?: (t: number, areas: readonly Box[], n: number) => ReadResult | 'fail' | undefined | Promise<ReadResult | 'fail' | undefined>
+  /** Waits before answering each read (to hold Find's reads while a test acts). */
+  gate?: (t: number) => Promise<void>
+}
+
+/** The lines a read of `areas` at `t` gives over planted texts: each text at least half inside an area, its characters spread evenly. */
+export function plantedLines(planted: readonly Planted[], t: number, areas: readonly Box[]): ReadLine[] {
+  const lines: ReadLine[] = []
+  for (const p of planted) {
+    const b = p.at(t)
+    if (!b) continue
+    const half = areas.some((a) => {
+      const x0 = Math.max(a[0], b[0])
+      const y0 = Math.max(a[1], b[1])
+      const x1 = Math.min(a[0] + a[2], b[0] + b[2])
+      const y1 = Math.min(a[1] + a[3], b[1] + b[3])
+      return x1 > x0 && y1 > y0 && (x1 - x0) * (y1 - y0) >= 0.5 * b[2] * b[3]
+    })
+    if (!half) continue
+    const n = p.text.length
+    const cw = b[2] / Math.max(1, n)
+    lines.push({ box: [...b] as Box, quad: [], variants: [{ model: 'tiny', text: p.text, conf: 0.95, spans: Array.from({ length: n }, (_v, i) => [b[0] + i * cw, b[0] + (i + 1) * cw] as [number, number]) }], ring: '#202020', spread: 2 })
+  }
+  return lines
+}
+
+/** A helper that answers from a script: look frames, reads of planted texts, careful variants, follow sessions matching templates by where the texts are. */
+export class FakeHelper {
+  readonly exited: Promise<number | null>
+  private exit!: (code: number | null) => void
+  private next = 0
+  private reads = 0
+  /** `log` collects the commands of every helper a test starts, in order. */
+  constructor(
+    private readonly script: FakeScript,
+    readonly log: string[] = []
+  ) {
+    this.exited = new Promise((resolve) => (this.exit = resolve))
+  }
+
+  async open(): Promise<void> {
+    this.log.push('open')
+  }
+
+  async look(_req: unknown, onFrames: (f: LookFrame[]) => void, signal: AbortSignal): Promise<void> {
+    this.log.push('look')
+    const frames = this.script.look.frames
+    for (let i = 0; i < frames.length; i += 1000) {
+      if (signal.aborted) throw new Error('stopped')
+      onFrames(frames.slice(i, i + 1000))
+      await Promise.resolve()
+    }
+  }
+
+  async read(req: { t: number; areas: Box[]; key: number }, signal: AbortSignal): Promise<{ id: number; result: ReadResult }> {
+    this.log.push(`read ${req.t} key ${req.key}`)
+    const n = this.reads++
+    if (this.script.gate) await this.script.gate(req.t)
+    if (signal.aborted) throw new Error('stopped')
+    const over = await this.script.read?.(req.t, req.areas, n)
+    if (over === 'fail') throw new Error('read')
+    return { id: ++this.next, result: over ?? { t: req.t, lines: plantedLines(this.script.planted, req.t, req.areas), qr: [] } }
+  }
+
+  async careful(_id: number, lines: readonly number[]): Promise<ReadVariant[][]> {
+    this.log.push('careful')
+    return lines.map(() => [])
+  }
+
+  release(): void {
+    this.log.push('release')
+  }
+
+  async followOpen(req: { dir: 1 | -1; from: number }): Promise<{ track(track: number, t: number, parts: readonly Box[]): Promise<void>; match(t: number, tracks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]>; close(): Promise<void> }> {
+    this.log.push(`followOpen ${req.dir}`)
+    const keys = new Map<number, string>()
+    const planted = this.script.planted
+    // A track is the planted text under its first part when its template is cut.
+    const m = new ScriptedMatcher(planted, (track) => keys.get(track) ?? '')
+    return {
+      track: async (track, t, parts) => {
+        this.log.push('track')
+        const p = planted.find((x) => {
+          const b = x.at(t)
+          return !!b && parts.length > 0 && b[0] < parts[0][0] + parts[0][2] && parts[0][0] < b[0] + b[2] && b[1] < parts[0][1] + parts[0][3] && parts[0][1] < b[1] + b[3]
+        })
+        keys.set(track, p?.key ?? `none${track}`)
+        await m.track(track, t, parts)
+      },
+      match: async (t, tracks) => {
+        this.log.push(`match ${t}`)
+        return m.match(t, tracks)
+      },
+      close: async () => void this.log.push('close')
+    }
+  }
+
+  pause(): void {
+    this.log.push('pause')
+  }
+
+  resume(): void {
+    this.log.push('resume')
+  }
+
+  async stop(): Promise<void> {
+    this.log.push('stop')
+    this.exit(0)
+  }
+
+  kill(): void {
+    this.exit(null)
+  }
+
+  /** The process dies (a crash the read cannot catch). */
+  crash(): void {
+    this.exit(1)
   }
 }

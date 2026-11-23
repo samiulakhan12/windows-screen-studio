@@ -113,6 +113,11 @@
     "src/shared/privacy/plan.ts",
     "src/shared/privacy/paths.ts",
     "src/shared/privacy/notices.ts",
-    "src/shared/privacy/found.ts"
+    "src/shared/privacy/found.ts",
+    "src/main/privacy/scan.ts",
+    "src/main/privacy/rulesWorker.ts",
+    "src/main/privacy/rulesHost.ts",
+    "src/main/privacy/copies.ts",
+    "src/main/privacy/lookCache.ts"
   ]
 }

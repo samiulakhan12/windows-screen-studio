@@ -171,7 +171,9 @@ describe('auto-blur P4: look and plan', () => {
     // Every thinned span is recorded: the merged bursts, the thinned reveals and the periodic windows.
     const spans = spansOf(last.thinSpans)
     const within = (t: number) => spans.some(([s, e]) => t >= s - 1e-6 && t <= e + 1e-6)
-    expect(within(11) && within(16) && within(20)).toBe(true)
+    expect(within(11) && within(13) && within(20)).toBe(true)
+    // Merging never chains: a merged read reaches back less than 5 s.
+    for (const r of usual.reads.filter((x) => x.why === 'settle')) expect(last.reads.some((x) => x.t >= r.t && x.t - r.t < 5 && covers(x.areas, r.areas[0])), `settle at ${r.t}`).toBe(true)
     expect(within(45)).toBe(true)
     expect(last.reads.filter((r) => r.why === 'periodic').every((r) => within(r.t) && r.thin)).toBe(true)
   })

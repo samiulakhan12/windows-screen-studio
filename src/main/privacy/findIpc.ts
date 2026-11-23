@@ -1,18 +1,27 @@
 /**
- * Find private info's channels (docs/design/auto-blur.md §10.7): Find, Stop, Follow, the text under a
- * cover, Cover this text everywhere, the copies, and the listed names. A stub from the contracts step:
- * part P4 fills it with scan.ts. Until then every request is checked (its sender first, then its
- * fields) and answered as failed, and nothing reads a project's recording. The listed names are kept
- * for the logs already (names.ts).
+ * Find private info's channels (docs/design/auto-blur.md §5.1, §10.7): Find, Stop, Follow, the text
+ * under a cover, Cover this text everywhere, the copies, and the listed names. Every handler checks
+ * its sender first, then validates the request before main touches anything; main finds every file
+ * itself from the project id.
+ *
+ * One Find runs in Flown at a time (D25): a second, for this project or another, is answered busy.
+ * Follow and Everywhere share Find's helper and go ahead of its reads (scan.ts). Find belongs to the
+ * open editor: stopAnalyses (the editor closing, the project being deleted) and the page going away
+ * stop it and forget the texts it kept. Its job is an analysis job (Restart now waits for it), and
+ * it ends with main.jobs.privacyDone for Windows to show when Flown's window has no focus.
  */
-import { ipcMain, type IpcMainInvokeEvent } from 'electron'
-import { PRIVACY_CHANNELS, validateCopiesRequest, validateEverywhereRequest, validateFindRequest, validateFollowRequest, validateUnderCoverRequest, type CopyInfo, type EverywhereResult, type FindResult, type FollowResult, type OriginCovers, type UnderCoverResult } from '../../shared/api/privacy'
+import { ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import { PRIVACY_CHANNELS, validateCopiesRequest, validateEverywhereRequest, validateFindRequest, validateFollowRequest, validateUnderCoverRequest, type CopyInfo, type EverywhereResult, type FindProgress, type FindResult, type FollowResult, type FoundCover, type OriginCovers, type UnderCoverResult } from '../../shared/api/privacy'
 import { fmt } from '../../shared/i18n/fmt'
 import { t } from '../../shared/i18n/t'
 import type { NotificationCopy } from '../../shared/jobs/longJobs'
+import { beginJob } from '../longJobs'
 import { readProject } from '../projects'
+import { isToolbarVisible } from '../recording/toolbarWindow'
 import { isAppUrl } from '../security'
+import { coverCopies, listCopies, originCovers, type CopiesDeps } from './copies'
 import { setPrivateNames } from './names'
+import { coverEverywhere, followCover, forgetReads, runFind, underCover, type ScanDeps } from './scan'
 
 const fromApp = (e: IpcMainInvokeEvent): void => {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
@@ -36,52 +45,163 @@ export function privacyDoneNotice(count: number): NotificationCopy {
   return { title: t('main.jobs.privacyDone', { count, n: fmt.count(count) }), body: '', actions: [] }
 }
 
+/** Private items in a result: one a Review group (§2.12). */
+export const privateCount = (found: readonly FoundCover[]): number => new Set(found.map((f) => f.group)).size
+
+let scanDeps: ScanDeps = {}
+let copiesDeps: CopiesDeps = {}
+
+/** How the scan and the copies run (tests; P2's reader reaches the scan through scan.ts's setReaderStart). */
+export function setFindDeps(scan: ScanDeps, copies: CopiesDeps = {}): void {
+  scanDeps = scan
+  copiesDeps = copies
+}
+
+interface Run {
+  projectId: string
+  controller: AbortController
+  done: Promise<unknown>
+}
+
+/** The one Find in Flown, and the Follow, text-under-a-cover and Everywhere runs. */
+let find: Run | null = null
+const others = new Set<Run>()
+/** One Follow or Everywhere at a time (they share the helper with Find). */
+let following = false
+
+/** Stops `stop` when the page that asked goes away, and forgets the texts kept. */
+function watchSender(sender: WebContents | undefined, stop: () => void): () => void {
+  if (!sender || typeof sender.once !== 'function') return () => undefined
+  const gone = (): void => {
+    stop()
+    forgetReads()
+  }
+  sender.once('render-process-gone', gone)
+  sender.once('destroyed', gone)
+  return () => {
+    sender.removeListener('render-process-gone', gone)
+    sender.removeListener('destroyed', gone)
+  }
+}
+
+const sendTo =
+  (sender: WebContents | undefined) =>
+  (p: FindProgress): void => {
+    if (sender && typeof sender.isDestroyed === 'function' && !sender.isDestroyed()) sender.send(PRIVACY_CHANNELS.findProgress, p)
+  }
+
+const deps = (): ScanDeps => ({ recording: isToolbarVisible, ...scanDeps })
+
+/** Runs `work` as one of the other runs of `projectId`, stopped with Find's Stop. */
+async function other<T>(projectId: string, sender: WebContents | undefined, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController()
+  const unwatch = watchSender(sender, () => controller.abort())
+  const run: Run = { projectId, controller, done: Promise.resolve() }
+  others.add(run)
+  try {
+    const done = work(controller.signal)
+    run.done = done.catch(() => undefined)
+    return await done
+  } finally {
+    others.delete(run)
+    unwatch()
+  }
+}
+
+/**
+ * Stops Find and the other runs of a project, forgets the texts kept, and waits until they have let
+ * go (stopAnalyses: the editor closed, or the project is about to be deleted).
+ */
+export async function stopFindFor(projectId: string): Promise<void> {
+  const runs = [find, ...others].filter((r): r is Run => !!r && r.projectId === projectId)
+  for (const r of runs) r.controller.abort()
+  forgetReads()
+  await Promise.all(runs.map((r) => r.done.catch(() => undefined)))
+}
+
+/** Whether a Find runs now (tests). */
+export const findRunning = (): boolean => find !== null
+
 export function registerFindIpc(): void {
-  ipcMain.handle(PRIVACY_CHANNELS.find, (e, raw: unknown): FindResult => {
+  ipcMain.handle(PRIVACY_CHANNELS.find, async (e, raw: unknown): Promise<FindResult> => {
     fromApp(e)
     const request = validateFindRequest(raw)
     if (!request) throw new Error('Invalid request')
-    return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'failed' }
+    const tag = { projectId: request.projectId, requestId: request.requestId }
+    if (find) return { ok: false, ...tag, reason: 'busy' }
+    const controller = new AbortController()
+    const run: Run = { projectId: request.projectId, controller, done: Promise.resolve() }
+    find = run
+    const job = beginJob({ kind: 'analysis', stoppable: true, onStop: () => controller.abort() })
+    const unwatch = watchSender(e.sender, () => controller.abort())
+    try {
+      const done = runFind(request, sendTo(e.sender), controller.signal, deps())
+      run.done = done.catch(() => undefined)
+      const result = await done
+      await job.end(result.ok ? { kind: 'done', notice: privacyDoneNotice(privateCount(result.found)), ...(result.stopped ? { stopped: true } : {}) } : { kind: 'failed', message: '' }).catch(() => undefined)
+      return result
+    } catch {
+      await job.end({ kind: 'failed', message: '' }).catch(() => undefined)
+      return { ok: false, ...tag, reason: 'failed' }
+    } finally {
+      if (find === run) find = null
+      unwatch()
+    }
   })
   ipcMain.handle(PRIVACY_CHANNELS.stopFind, (e, projectId: unknown) => {
     fromApp(e)
     if (typeof projectId !== 'string' || !PROJECT_ID.test(projectId)) throw new Error('Invalid request')
+    // Stop: what Find found so far comes back through its own request; the texts it kept are forgotten.
+    for (const r of [find, ...others]) if (r && r.projectId === projectId) r.controller.abort()
+    forgetReads()
   })
   ipcMain.handle(PRIVACY_CHANNELS.follow, async (e, raw: unknown): Promise<FollowResult> => {
     fromApp(e)
     const duration = await durationOf(raw)
     const request = duration === null ? null : validateFollowRequest(raw, duration)
     if (!request) throw new Error('Invalid request')
-    return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'failed' }
+    if (following) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
+    following = true
+    try {
+      return await other(request.projectId, e.sender, (signal) => followCover(request, signal, deps()))
+    } finally {
+      following = false
+    }
   })
   ipcMain.handle(PRIVACY_CHANNELS.underCover, async (e, raw: unknown): Promise<UnderCoverResult> => {
     fromApp(e)
     const duration = await durationOf(raw)
     const request = duration === null ? null : validateUnderCoverRequest(raw, duration)
     if (!request) throw new Error('Invalid request')
-    return { ok: false, reason: 'failed' }
+    return other(request.projectId, e.sender, (signal) => underCover(request, signal, deps()))
   })
-  ipcMain.handle(PRIVACY_CHANNELS.everywhere, (e, raw: unknown): EverywhereResult => {
+  ipcMain.handle(PRIVACY_CHANNELS.everywhere, async (e, raw: unknown): Promise<EverywhereResult> => {
     fromApp(e)
     const request = validateEverywhereRequest(raw)
     if (!request) throw new Error('Invalid request')
-    return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'failed' }
+    if (following || find) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
+    following = true
+    try {
+      return await other(request.projectId, e.sender, (signal) => coverEverywhere(request, sendTo(e.sender), signal, deps()))
+    } finally {
+      following = false
+    }
   })
-  ipcMain.handle(PRIVACY_CHANNELS.copies, (e, projectId: unknown): CopyInfo[] => {
+  ipcMain.handle(PRIVACY_CHANNELS.copies, async (e, projectId: unknown): Promise<CopyInfo[]> => {
     fromApp(e)
     if (typeof projectId !== 'string' || !PROJECT_ID.test(projectId)) throw new Error('Invalid request')
-    return []
+    return listCopies(projectId, copiesDeps).catch(() => [])
   })
-  ipcMain.handle(PRIVACY_CHANNELS.coverCopies, (e, raw: unknown): { covered: number; skipped: string[] } => {
+  ipcMain.handle(PRIVACY_CHANNELS.coverCopies, async (e, raw: unknown): Promise<{ covered: number; skipped: string[] }> => {
     fromApp(e)
     const request = validateCopiesRequest(raw)
     if (!request) throw new Error('Invalid request')
-    return { covered: 0, skipped: [...request.copyIds] }
+    return coverCopies(request.projectId, request.copyIds, copiesDeps).catch(() => ({ covered: 0, skipped: [...request.copyIds] }))
   })
-  ipcMain.handle(PRIVACY_CHANNELS.originCovers, (e, projectId: unknown): OriginCovers => {
+  ipcMain.handle(PRIVACY_CHANNELS.originCovers, async (e, projectId: unknown): Promise<OriginCovers> => {
     fromApp(e)
     if (typeof projectId !== 'string' || !PROJECT_ID.test(projectId)) throw new Error('Invalid request')
-    return { missing: 0, covers: [], bleeps: [] }
+    return originCovers(projectId, copiesDeps)
   })
   ipcMain.handle(PRIVACY_CHANNELS.names, (e, names: unknown) => {
     fromApp(e)

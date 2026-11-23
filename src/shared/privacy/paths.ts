@@ -40,6 +40,8 @@ export interface Track {
   unfinished?: boolean
   /** Places a forward walk found its text again after losing it: the walk backward from each corrects the path (§5.8). */
   reanchors?: Placed[]
+  /** The hits of reads this walk found its text again in (re-anchored on): they need no walk of their own. */
+  consumed?: string[]
 }
 
 /** The helper's follow session and a check read, as a walk uses them (see the file's comment). */
@@ -83,6 +85,8 @@ export interface ReadIndex {
   reads: readonly IndexedRead[]
   /** No reader: evidence of absence is the template alone (§5.9), and every track is thin. */
   templateOnly?: boolean
+  /** Forward walks also ask for check reads (Follow, which has no plan of reads to give evidence). */
+  checkForward?: boolean
 }
 
 export interface WalkOptions {
@@ -248,7 +252,8 @@ export function joinTracks(back: Track, fwd: Track): Track {
     thin: back.thin || fwd.thin,
     lostSpans: spans,
     ...(back.unfinished || fwd.unfinished ? { unfinished: true } : {}),
-    ...(fwd.reanchors?.length ? { reanchors: fwd.reanchors } : {})
+    ...(fwd.reanchors?.length ? { reanchors: fwd.reanchors } : {}),
+    ...(back.consumed?.length || fwd.consumed?.length ? { consumed: [...(back.consumed ?? []), ...(fwd.consumed ?? [])] } : {})
   }
 }
 
@@ -301,6 +306,7 @@ interface Walker {
   /** No reader: the template search decides at this failed frame. */
   bare: boolean
   reanchors: Placed[]
+  consumed: string[]
 }
 
 const ident: Xf = { dx: 0, dy: 0, scale: 1 }
@@ -383,7 +389,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       result: null,
       unfinished: false,
       bare: false,
-      reanchors: []
+      reanchors: [],
+      consumed: []
     }
   })
   if (!n || !walkers.length) return walkers.map((w) => finish(w))
@@ -549,7 +556,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     let end = e + 1 < n ? frames[e + 1].t : duration
     if (w.holdEnd > end) end = w.holdEnd
     w.result = { start: w.start.t, end }
-    w.placements = w.placements.filter((p) => p.t < end - 1e-9)
+    w.placements = tidy(w.placements).filter((p) => p.t < end - 1e-9)
+    // At e the text is gone from every candidate: a fading glyph stays where it was, in the box held before e (never the whole lost area).
+    const te = frames[e].t
+    const at = w.placements.findIndex((p) => Math.abs(p.t - te) < 1e-9)
+    if (at > 0 && w.holdEnd <= te) w.placements[at] = { t: te, box: w.placements[at - 1].box }
     w.done = true
   }
 
@@ -559,8 +570,9 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const sorted = tidy(w.placements)
     const nextT = S + 1 < n ? frames[S + 1].t : frames[S].t
     const next = heldAt(sorted, nextT) ?? toNorm(w.box, size)
-    const then = before ? toNorm(before, size) : (heldAt(sorted, frames[S].t) ?? next)
-    w.placements = [...sorted.filter((p) => p.t > start + 1e-9), { t: start, box: normUnion(next, then) }]
+    // The text is not at S: the first source frame after it needs the box at S + 1, with the box moved back there when the text came from outside.
+    const box = before ? normUnion(next, toNorm(before, size)) : next
+    w.placements = [...sorted.filter((p) => p.t > start + 1e-9), { t: start, box }]
     w.result = { start, end: w.start.t }
     w.done = true
   }
@@ -612,7 +624,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (dir === 1) {
       if (w.C === null) w.C = f
       w.history.push([f, maxPart(r)])
-    } else w.justFailed = true
+    }
+    w.justFailed = true
     if (reads.templateOnly) w.bare = true
   }
 
@@ -633,8 +646,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     }
     const t = frames[f].t
     const live = walkers.filter((w) => w.active && !w.done && !(dir === -1 && f > w.skipTo))
-    const pendingAt = walkers.filter((w) => !w.active && !w.done && w.joined === undefined)
-    if (!live.length && !pendingAt.length) break
+    if (!walkers.some((w) => !w.done && (w.active || w.joined === undefined))) break
 
     // 1. Steps: a box holds while nothing under it changed; otherwise every candidate is matched, all tracks at once.
     const asks: { w: Walker; rel: Candidate[]; best: Candidate | null; region: Box | null; xfs: Xf[] }[] = []
@@ -644,8 +656,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       const cf = stepFrame(f)
       if (cf < 0 || cf >= n) continue
       if (changedUnder(frames[cf], look, w.box) === 0) {
-        if (dir === -1 && w.lost && w.justFailed && w.pending === null && !reads.templateOnly) checks.push(w)
-        if (dir === -1) w.justFailed = false
+        if ((dir === -1 || reads.checkForward) && w.lost && !w.hold && w.justFailed && w.pending === null && !reads.templateOnly) checks.push(w)
+        w.justFailed = false
         // The typing hold ends once the burst is over and the band has been still for 1 s.
         if (dir === 1 && w.hold && t >= w.hold.until && t - w.hold.lastChange >= BAND_STILL_S) {
           w.holdEnd = t
@@ -707,6 +719,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           const h = same.reduce((a, b) => (areaOf(intersect(a.box, w.box) ?? [0, 0, 0, 0]) >= areaOf(intersect(b.box, w.box) ?? [0, 0, 0, 0]) ? a : b))
           const other = ids.get(h.id)
           if (other !== undefined && other !== w.index && !walkers[other].active) walkers[other].joined = w.index
+          w.consumed.push(h.id)
           const wasLost = w.lost
           const held = w.box
           const since = wasLost ? w.lostFrom : w.tpl.t
@@ -717,13 +730,13 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           }
           continue
         }
-        if (!w.lost || w.hold || reads.templateOnly || coverage(r.areas, w.box) < COVERED) continue
+        if (!w.lost || w.hold || w.pending !== null || reads.templateOnly || coverage(r.areas, w.box) < COVERED) continue
         const holds = r.lines.some((l) => overlaps(l.box, w.box) && l.texts.some((x) => holdsText(w.start.own, x)))
         if (!holds && !searches.includes(w)) searches.push(w)
       }
     }
 
-    // 3. Check reads (backward): a still frame right after a failed step reads the lost area alone.
+    // 3. Check reads (backward, and forward for Follow): a still frame right after a failed step reads the lost area alone.
     for (const w of checks) {
       if (w.done || !w.lost) continue
       const res = await m.checkRead(t, w.box)
@@ -751,7 +764,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       for (const w of searches) {
         const r = res.find((x) => x.track === w.index)
         if (maxPart(r) >= ABSENT_SCORE) continue
-        if (!reads.templateOnly) w.pending = f
+        // The first evidence holds (the frame nearest the text); later evidence only waits behind it.
+        if (!reads.templateOnly) w.pending ??= f
         else if (dir === 1) endForward(w, f)
         else startBackward(w, f, null)
       }
@@ -787,6 +801,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     let first = -1
     let last = frames[R].t
     let elsewhere = false
+    let changes = 0
     const tiles: Box[] = []
     for (let j = R; j >= 1; j--) {
       const tj = frames[j].t
@@ -798,6 +813,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         if (last - tj >= BAND_STILL_S && first >= 0) break
         first = j
         last = tj
+        changes++
         tiles.push(...inBand)
         if (changed.length > inBand.length) elsewhere = true
       } else if (last - tj >= BAND_STILL_S) break
@@ -805,7 +821,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (first < 0) return
     const burst = hints.typing.find((b) => b.t <= frames[R].t + 0.3 && b.end >= frames[first].t - 0.3)
     const covered = !!burst || hints.pastes.some((p) => p >= frames[first].t - 0.3 && p <= frames[R].t) || hints.textCursor.some((s) => s.t <= frames[R].t && s.end >= frames[first].t)
-    if (elsewhere && !covered) return
+    // Without a typing hint, text that grew in its band over several changes (one change is text appearing).
+    if (!covered && (elsewhere || changes < 2)) return
     let startIndex = first - 1 >= 0 ? first - 1 : 0
     if (burst) startIndex = Math.min(startIndex, Math.max(0, frameNear(look, burst.t) - 1))
     let box = w.box
@@ -837,6 +854,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (w.joined !== undefined) out.joined = w.joined
     if (w.unfinished) out.unfinished = true
     if (w.reanchors.length) out.reanchors = w.reanchors
+    if (w.consumed.length) out.consumed = w.consumed
     return out
   }
 
@@ -911,7 +929,7 @@ export async function followAll(
     const b = back[i]
     const f = fwd[i]
     const empty = (t: Track): boolean => t.joined !== undefined
-    if (empty(b) && empty(f)) return { ...f, placements: [], start: s.t, end: s.t, joined: f.joined }
+    if (empty(b) && empty(f)) return { ...f, placements: [], start: s.t, end: s.t, joined: f.joined, consumed: [...(b.consumed ?? []), ...(f.consumed ?? [])] }
     if (empty(b)) return { ...joinTracks({ ...f, placements: [], start: s.t, end: s.t, lostSpans: '' }, f), joined: b.joined }
     if (empty(f)) return { ...joinTracks(b, { ...b, placements: [], start: s.t, end: s.t, lostSpans: '' }), joined: f.joined }
     return joinTracks(b, f)

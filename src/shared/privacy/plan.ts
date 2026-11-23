@@ -439,16 +439,20 @@ function mergeReads(reads: readonly PlannedRead[], gap: number): { reads: Planne
   // Merges further apart than the usual 1 s are thinning: their spans are recorded.
   const out: PlannedRead[] = []
   const spans: [number, number][] = []
+  // Each read's earliest merged time: a merged read never reaches back further than `gap` (no chains).
+  const earliest = new Map<PlannedRead, number>()
   for (const r of [...reads].sort((a, b) => a.t - b.t)) {
     let cur: PlannedRead = { ...r, areas: [...r.areas] }
     let from = r.t
     for (let k = out.length - 1; k >= 0; k--) {
       const o = out[k]
       if (cur.t - o.t >= gap) break
+      if (cur.t - (earliest.get(o) ?? o.t) >= gap) continue
       if (!o.areas.some((a) => cur.areas.some((b) => overlaps(a, b)))) continue
       cur = { ...cur, areas: joinAreas([...o.areas, ...cur.areas]), why: cur.why === 'typing' || o.why === 'typing' ? 'typing' : cur.why, thin: cur.thin || o.thin }
-      if (cur.t - o.t >= USUAL_MERGE_S) from = Math.min(from, o.t)
+      if (cur.t - o.t >= USUAL_MERGE_S) from = Math.min(from, earliest.get(o) ?? o.t)
       out.splice(k, 1)
+      earliest.set(cur, Math.min(earliest.get(cur) ?? cur.t, earliest.get(o) ?? o.t))
     }
     if (from < cur.t) spans.push([from, cur.t])
     out.push(cur)
