@@ -5,6 +5,8 @@
  * held in memory, as main already holds them to make requests; nothing here writes or logs one.
  */
 
+import { privateNames, redactPrivateNames } from '../privacy/names'
+
 /** Shorter values are not registered: a short "key" would take ordinary words out of every line. */
 const MIN_LENGTH = 8
 /** Most values kept (the oldest dropped): 20 providers and services, with room for edits. */
@@ -23,9 +25,9 @@ export function registerSecret(value: string): void {
   if (values.length > MAX_VALUES) values.splice(0, values.length - MAX_VALUES)
 }
 
-/** Every value registered, longest first (so a key that contains another is taken out whole). */
+/** Every value registered and every name the user listed to hide (auto-blur §10.6), longest first (so a key that contains another is taken out whole). */
 export function secretValues(): readonly string[] {
-  return [...values].sort((a, b) => b.length - a.length)
+  return [...values, ...privateNames()].sort((a, b) => b.length - a.length)
 }
 
 /** Forgets every value (tests). */
@@ -39,7 +41,8 @@ const URL_CREDENTIALS = /\b([a-z][a-z0-9+.-]*:\/\/)[^\s/?#@]+@/gi
 /** `message` with each registered value, and the credentials of any address, replaced by <secret>. */
 export function scrubSecrets(message: string, secrets: readonly string[] = secretValues()): string {
   if (typeof message !== 'string' || !message) return message
-  let out = message
+  // The listed names first: shorter than a key, and in any case (auto-blur §10.6).
+  let out = redactPrivateNames(message)
   for (const s of secrets) if (s.length >= MIN_LENGTH && out.includes(s)) out = out.split(s).join('<secret>')
   return out.replace(URL_CREDENTIALS, '$1<secret>@')
 }

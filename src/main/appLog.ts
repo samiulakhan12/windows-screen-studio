@@ -10,6 +10,7 @@ import path from 'node:path'
 import { format } from 'node:util'
 import { redactLine, type RedactRoots } from '../shared/diagnostics/redact'
 import { secretValues } from './ai/secrets'
+import { redactPrivateNames } from './privacy/names'
 
 export const LOG = {
   /** Largest size of one log file. */
@@ -54,7 +55,7 @@ export class AppLog {
       text = String(args[0])
     }
     if (text.length > this.limits.lineMax) text = `${text.slice(0, this.limits.lineMax)}…`
-    this.pending.push(`${this.now().toISOString()} ${LABEL[level]} ${redactLine(text, this.roots, this.names, secretValues())}\n`)
+    this.pending.push(`${this.now().toISOString()} ${LABEL[level]} ${redactLine(redactPrivateNames(text), this.roots, this.names, secretValues())}\n`)
     if (!this.timer) this.timer = setTimeout(() => void this.flush(), this.limits.flushMs)
   }
 
@@ -137,7 +138,7 @@ export class AppLog {
       .split('\n')
       .filter((l) => l.length > 0)
       .slice(-n)
-      .map((l) => redactLine(l.slice(0, this.limits.lineMax + 64), this.roots, this.names, secretValues()))
+      .map((l) => redactLine(redactPrivateNames(l.slice(0, this.limits.lineMax + 64)), this.roots, this.names, secretValues()))
   }
 }
 

@@ -50,6 +50,8 @@ import { initUiLanguage, registerUiIpc } from './i18n'
 import { registerCodecProbeIpc } from './codecProbe'
 import { registerTimelineIpc } from './timelineIpc'
 import { registerPresetFileIpc } from './presetFiles'
+import { registerReaderIpc } from './privacy/readerIpc'
+import { registerFindIpc } from './privacy/findIpc'
 
 // The app was called "Screen Studio for Windows" before: its userData folder moves to Flown's
 // before anything reads it, and before the single-instance lock, which lives in it.
@@ -133,6 +135,9 @@ if (!app.requestSingleInstanceLock()) {
     registerCodecProbeIpc()
     registerTimelineIpc()
     registerPresetFileIpc()
+    // Auto-blur (docs/design/auto-blur.md §10.7): the text reader and Find private info, each request checked, its sender first.
+    registerReaderIpc()
+    registerFindIpc()
     // A guide's print file that a crash or a kill left behind (§5.7).
     void sweepGuidePrint(path.join(app.getPath('userData'), PRINT_DIR)).catch((err: unknown) => console.warn('Could not sweep the guide print files:', err))
     openMainWindow()
