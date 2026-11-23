@@ -25,6 +25,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { FindFailure } from '../../shared/api/privacy'
+import { needsCareful, type Hit } from '../../shared/privacy/detect/detect'
 import { WINDOWS_READER_ALLOWED } from '../../shared/privacy/readerCatalog'
 import { isToolbarVisible } from '../recording/toolbarWindow'
 import {
@@ -523,4 +524,19 @@ export function findFailureOf(err: unknown): FindFailure {
     default:
       return 'failed'
   }
+}
+
+/**
+ * The lines of a read the careful pass reads again (careful-long, §5.6, question 16): those P3's
+ * `needsCareful` picks with the read's hits (a rule hit, a confidence under 0.9, or a run of 16
+ * or more token characters). Empty: the read is released instead.
+ */
+export function carefulLines(result: ReadResult, hits: readonly Hit[]): number[] {
+  return result.lines.flatMap((line, i) => (needsCareful(line, hits, i) ? [i] : []))
+}
+
+/** `result` with the careful pass's variants added to the lines they were asked for, in order. */
+export function withCareful(result: ReadResult, lines: readonly number[], careful: readonly ReadVariant[][]): ReadResult {
+  const extra = new Map(lines.map((l, k) => [l, careful[k] ?? []] as const))
+  return { ...result, lines: result.lines.map((line, i) => (extra.get(i)?.length ? { ...line, variants: [...line.variants, ...extra.get(i)!] } : line)) }
 }

@@ -16,7 +16,7 @@
  *   hugeLine        write a line over 16 MB after opening
  *   badLines        lines written to stdout after opening (malformed on purpose)
  *   reads           { "<n>": rule } for the n-th read received (1-based); `read` is the rule otherwise.
- *                   A rule: { lines, qr, partial, error, crash: <exit code>, stall: true, delayMs }
+ *                   A rule: { lines (texts, or whole lines), qr, partial, error, crash: <exit code>, stall: true, delayMs }
  *   crashStart      a process number (1-based, counted in SSW_OCR_LOG) from which every read crashes
  *   holdReads       answer reads only once this many have arrived, newest first
  *   look            frames answered to `look`, in two batches
@@ -80,7 +80,7 @@ function answerRead(cmd) {
   }
   const answer = rule.error
     ? { id: cmd.id, error: rule.error }
-    : { id: cmd.id, read: { t: cmd.t, lines: (rule.lines || ['hello']).map((t) => line(t)), qr: rule.qr || [], ...(rule.partial ? { partial: rule.partial } : {}) } }
+    : { id: cmd.id, read: { t: cmd.t, lines: (rule.lines || ['hello']).map((t) => (typeof t === 'string' ? line(t) : t)), qr: rule.qr || [], ...(rule.partial ? { partial: rule.partial } : {}) } }
   const go = () => {
     if (script.holdReads) {
       held.push(answer)
