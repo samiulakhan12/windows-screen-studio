@@ -36,6 +36,7 @@ pub fn set(c: &AtomicU64, n: u64) {
     c.store(n, Ordering::Relaxed);
 }
 
+#[cfg_attr(not(any(test, feature = "fixture")), allow(dead_code))]
 pub fn get(c: &AtomicU64) -> u64 {
     c.load(Ordering::Relaxed)
 }
