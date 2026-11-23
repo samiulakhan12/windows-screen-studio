@@ -1,0 +1,342 @@
+{
+ "frames": [
+  "01-editor-0-dark-100.png",
+  "11-crm-0-light-150.png",
+  "07-logs-0-dark-100.png"
+ ],
+ "det": {
+  "tiny": {
+   "ortMs": [
+    407,
+    384,
+    306
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":10.2,\"inputFact\":\"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32\"}\nError: Failed analyse for node #170 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,16,544,960\n    2: Unifying shapes DynamicDimension.0,16,(DynamicDimension.1+1)/2,(DynamicDimension.2+1)/2 and 1,16,544,960\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>"
+   },
+   "concrete": {
+    "rows": [
+     {
+      "input": "det0.f32",
+      "maxAbs": 0.0022999346256256104,
+      "meanAbs": 1.5943709286148078e-06,
+      "pixels": 2088960,
+      "flipsAt0.2": 3,
+      "boxesOrt": 70,
+      "boxesTract": 70,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       841.3
+      ]
+     },
+     {
+      "input": "det1.f32",
+      "maxAbs": 0.0013695061206817627,
+      "meanAbs": 1.1610414958340698e-06,
+      "pixels": 2088960,
+      "flipsAt0.2": 3,
+      "boxesOrt": 43,
+      "boxesTract": 43,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       989.5
+      ]
+     },
+     {
+      "input": "det2.f32",
+      "maxAbs": 0.004872381687164307,
+      "meanAbs": 3.1880394999461714e-06,
+      "pixels": 2088960,
+      "flipsAt0.2": 5,
+      "boxesOrt": 57,
+      "boxesTract": 57,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       741.6
+      ]
+     }
+    ],
+    "tract": {
+     "parseMs": 4.3,
+     "optimiseMs": 130.6,
+     "plans": 1,
+     "peakRssKb": 254068
+    },
+    "wallS": 2.8
+   }
+  },
+  "small": {
+   "ortMs": [
+    899,
+    740,
+    874
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":22.9,\"inputFact\":\"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32\"}\nError: Failed analyse for node #170 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,24,544,960\n    2: Unifying shapes DynamicDimension.0,24,(DynamicDimension.1+1)/2,(DynamicDimension.2+1)/2 and 1,24,544,960\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>"
+   },
+   "concrete": {
+    "rows": [
+     {
+      "input": "det0.f32",
+      "maxAbs": 0.00015354156494140625,
+      "meanAbs": 1.7692784126666083e-07,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 65,
+      "boxesTract": 65,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       1960.9
+      ]
+     },
+     {
+      "input": "det1.f32",
+      "maxAbs": 0.00011876225471496582,
+      "meanAbs": 1.8286191050265188e-07,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 43,
+      "boxesTract": 43,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       2084.6
+      ]
+     },
+     {
+      "input": "det2.f32",
+      "maxAbs": 0.0002308487892150879,
+      "meanAbs": 2.6526967644713295e-07,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 57,
+      "boxesTract": 57,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       2232.7
+      ]
+     }
+    ],
+    "tract": {
+     "parseMs": 13.4,
+     "optimiseMs": 126.5,
+     "plans": 1,
+     "peakRssKb": 348920
+    },
+    "wallS": 6.6
+   }
+  },
+  "medium": {
+   "ortMs": [
+    4910,
+    4587,
+    4157
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":106.1,\"inputFact\":\"DynamicDimension.0,3,DynamicDimension.1,DynamicDimension.2,F32\"}\nError: Failed analyse for node #224 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,64,544,960\n    2: Unifying shapes DynamicDimension.0,64,(DynamicDimension.1+1)/2,(DynamicDimension.2+1)/2 and 1,64,544,960\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown"
+   },
+   "concrete": {
+    "rows": [
+     {
+      "input": "det0.f32",
+      "maxAbs": 1.043081283569336e-05,
+      "meanAbs": 5.377637535275426e-08,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 70,
+      "boxesTract": 70,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       10739.5
+      ]
+     },
+     {
+      "input": "det1.f32",
+      "maxAbs": 9.000301361083984e-06,
+      "meanAbs": 4.0150275992800744e-08,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 43,
+      "boxesTract": 43,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       9810.4
+      ]
+     },
+     {
+      "input": "det2.f32",
+      "maxAbs": 5.984306335449219e-05,
+      "meanAbs": 3.413529157114681e-07,
+      "pixels": 2088960,
+      "flipsAt0.2": 0,
+      "boxesOrt": 28,
+      "boxesTract": 28,
+      "sameBoxesWithin1px": true,
+      "tractMs": [
+       10514.9
+      ]
+     }
+    ],
+    "tract": {
+     "parseMs": 89.4,
+     "optimiseMs": 270.1,
+     "plans": 1,
+     "peakRssKb": 837584
+    },
+    "wallS": 31.6
+   }
+  }
+ },
+ "rec": {
+  "tiny": {
+   "widths": [
+    320,
+    324,
+    358,
+    384,
+    451,
+    522,
+    554,
+    629,
+    670,
+    779,
+    833,
+    842,
+    850,
+    939,
+    1047,
+    1308,
+    1398,
+    1507,
+    2160,
+    4333
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":28.9,\"inputFact\":\"DynamicDimension.0,3,48,DynamicDimension.1,F32\"}\nError: Failed analyse for node #94 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,24,24,160\n    2: Unifying shapes DynamicDimension.0,24,24,(DynamicDimension.1+1)/2 and 1,24,24,160\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <u"
+   },
+   "concrete": {
+    "lines": 36,
+    "maxAbs": 4.1544437408447266e-05,
+    "sameArgmaxSteps": "3229/3229",
+    "sameText": "36/36",
+    "textDiffs": [],
+    "tractMsMean": 21.6,
+    "ortMsMean": 17.5,
+    "tract": {
+     "parseMs": 7.5,
+     "optimiseMs": 1131.7,
+     "plans": 20,
+     "peakRssKb": 182120
+    },
+    "wallS": 2.9
+   },
+   "symbolic-n1": {
+    "lines": 36,
+    "maxAbs": 3.0100345611572266e-05,
+    "sameArgmaxSteps": "3229/3229",
+    "sameText": "36/36",
+    "textDiffs": [],
+    "tractMsMean": 79.4,
+    "ortMsMean": 17.5,
+    "tract": {
+     "parseMs": 10.3,
+     "optimiseMs": 90.4,
+     "plans": 1,
+     "peakRssKb": 82188
+    },
+    "wallS": 5.9
+   }
+  },
+  "small": {
+   "widths": [
+    320,
+    324,
+    358,
+    384,
+    451,
+    522,
+    554,
+    629,
+    670,
+    779,
+    833,
+    842,
+    850,
+    939,
+    1047,
+    1308,
+    1398,
+    1507,
+    2160,
+    4333
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":58.1,\"inputFact\":\"DynamicDimension.0,3,48,DynamicDimension.1,F32\"}\nError: Failed analyse for node #168 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,48,24,160\n    2: Unifying shapes DynamicDimension.0,48,24,(DynamicDimension.1+1)/2 and 1,48,24,160\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: <"
+   },
+   "concrete": {
+    "lines": 36,
+    "maxAbs": 9.843707084655762e-05,
+    "sameArgmaxSteps": "3229/3229",
+    "sameText": "36/36",
+    "textDiffs": [],
+    "tractMsMean": 102.4,
+    "ortMsMean": 58.3,
+    "tract": {
+     "parseMs": 38.8,
+     "optimiseMs": 2636.5,
+     "plans": 20,
+     "peakRssKb": 611720
+    },
+    "wallS": 10.8
+   },
+   "symbolic-n1": {
+    "error": "{\"event\":\"parsed\",\"ms\":39.9,\"inputFact\":\"DynamicDimension.0,3,48,DynamicDimension.1,F32\"}\nError: Failed analyse for node #472 \"AveragePool.0\" SumPool\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape[3] == Div(Add([Sym(DynamicDimension.1), Val(3)]), 8)\n    2: Impossible to unify Sym(Reshape_471_o0__d2) with Div(Add([Sym(DynamicDimension.1), Val(3)]), 8).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: __lib"
+   }
+  },
+  "medium": {
+   "widths": [
+    320,
+    324,
+    358,
+    384,
+    451,
+    522,
+    554,
+    629,
+    670,
+    779,
+    833,
+    842,
+    850,
+    939,
+    1047,
+    1308,
+    1398,
+    1507,
+    2160,
+    4333
+   ],
+   "declared": {
+    "error": "{\"event\":\"parsed\",\"ms\":140.7,\"inputFact\":\"DynamicDimension.0,3,48,DynamicDimension.1,F32\"}\nError: Failed analyse for node #178 \"Conv.0\" ConvHir\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape == 1,64,24,160\n    2: Unifying shapes DynamicDimension.0,64,24,(DynamicDimension.1+1)/2 and 1,64,24,160\n    3: Impossible to unify Sym(DynamicDimension.0) with Val(1).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: "
+   },
+   "concrete": {
+    "lines": 36,
+    "maxAbs": 2.944469451904297e-05,
+    "sameArgmaxSteps": "3229/3229",
+    "sameText": "36/36",
+    "textDiffs": [],
+    "tractMsMean": 402.4,
+    "ortMsMean": 267.8,
+    "tract": {
+     "parseMs": 136.5,
+     "optimiseMs": 4868.8,
+     "plans": 20,
+     "peakRssKb": 2044508
+    },
+    "wallS": 33.1
+   },
+   "symbolic-n1": {
+    "error": "{\"event\":\"parsed\",\"ms\":119.3,\"inputFact\":\"DynamicDimension.0,3,48,DynamicDimension.1,F32\"}\nError: Failed analyse for node #509 \"AveragePool.0\" SumPool\n\nCaused by:\n    0: Infering facts\n    1: Applying rule outputs[0].shape[3] == Div(Add([Sym(DynamicDimension.1), Val(3)]), 8)\n    2: Impossible to unify Sym(Reshape_498_o0__d2) with Div(Add([Sym(DynamicDimension.1), Val(3)]), 8).\n\nStack backtrace:\n   0: <unknown>\n   1: <unknown>\n   2: <unknown>\n   3: <unknown>\n   4: <unknown>\n   5: <unknown>\n   6: <unknown>\n   7: <unknown>\n   8: <unknown>\n   9: <unknown>\n  10: <unknown>\n  11: <unknown>\n  12: __li"
+   }
+  }
+ }
+}

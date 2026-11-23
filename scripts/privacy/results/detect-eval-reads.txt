@@ -1,0 +1,15 @@
+reads=careful-narrow.json regions=US,GB,BD
+TOTAL text items n=233 found=233 (100.0%) covered=227 (97.4%)
+off items (ordinary/address/dots/random) covered >=50%: 1 of 271; hits touching no planted item: 1
+reads=careful.json regions=US,GB,BD
+TOTAL text items n=233 found=233 (100.0%) covered=227 (97.4%)
+off items (ordinary/address/dots/random) covered >=50%: 1 of 271; hits touching no planted item: 1
+reads=small.json regions=US,GB,BD
+TOTAL text items n=233 found=226 (97.0%) covered=221 (94.8%)
+off items (ordinary/address/dots/random) covered >=50%: 5 of 271; hits touching no planted item: 1
+reads=tiny.json regions=US,GB,BD
+TOTAL text items n=233 found=233 (100.0%) covered=227 (97.4%)
+off items (ordinary/address/dots/random) covered >=50%: 1 of 271; hits touching no planted item: 1
+reads=tinydet-smallrec.json regions=US,GB,BD
+TOTAL text items n=233 found=233 (100.0%) covered=228 (97.9%)
+off items (ordinary/address/dots/random) covered >=50%: 1 of 271; hits touching no planted item: 1

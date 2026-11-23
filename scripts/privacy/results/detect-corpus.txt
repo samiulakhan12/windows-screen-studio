@@ -1,0 +1,64 @@
+
+[ui] lines=5502 randomStrings=false hits=0 linesWithHits=0 per10kLines=0.0 time=819ms (148.9us/line)
+
+[ui] lines=5502 randomStrings=true hits=0 linesWithHits=0 per10kLines=0.0 time=545ms (99.0us/line)
+
+[docs] lines=35922 randomStrings=false hits=5 linesWithHits=4 per10kLines=1.4 time=8673ms (241.5us/line)
+  email: 4  e.g. ["anna.li@acme.de","anna.li@acme.de","anna.li@acme.de"]
+  labelled-assignment: 1  e.g. ["sk-e2e-polish-0001"]
+
+[docs] lines=35922 randomStrings=true hits=89 linesWithHits=88 per10kLines=24.8 time=8018ms (223.2us/line)
+  random-string: 84  e.g. ["resources/THIRD_PARTY_NOTICES","unpacked/node_module…n32-x64/","resources/THIRD_PARTY_NOTICES"]
+  email: 4  e.g. ["anna.li@acme.de","anna.li@acme.de","anna.li@acme.de"]
+  labelled-assignment: 1  e.g. ["sk-e2e-polish-0001"]
+
+[src] lines=169896 randomStrings=false hits=13 linesWithHits=11 per10kLines=0.8 time=22065ms (129.9us/line)
+  email: 11  e.g. ["juan@remolacha.biz","cody@zone38.net","info@indiantypefoundry.com"]
+  labelled-assignment: 1  e.g. ["/invalid_api_key"]
+  password-labelled: 1  e.g. ["next"]
+
+[src] lines=169896 randomStrings=true hits=75 linesWithHits=73 per10kLines=4.4 time=23089ms (135.9us/line)
+  random-string: 62  e.g. ["scale=out_color_matrix=bt601","ChildProcessWithoutNullStreams","ChildProcessWithoutNullStreams"]
+  email: 11  e.g. ["juan@remolacha.biz","cody@zone38.net","info@indiantypefoundry.com"]
+  labelled-assignment: 1  e.g. ["/invalid_api_key"]
+  password-labelled: 1  e.g. ["next"]
+
+[tests] lines=147814 randomStrings=false hits=160 linesWithHits=101 per10kLines=10.8 time=22519ms (152.3us/line)
+  email: 117  e.g. ["pw@raw.githubusercontent.com","pw@api.groq.com","billing@example.com"]
+  sk-generic: 17  e.g. ["sk-proj-THISISASECRETKEY1234abcd","sk-ant-good-claude-key-0003","sk-ant-good-claude-key-0003"]
+  labelled-assignment: 13  e.g. ["sk-ant-other-key-9876","AIzaSyFAKEFAKEFAKE0000","sk-0123456789"]
+  slack-webhook: 4  e.g. ["T0001/B0002/secretPART","T0001/B0002/secretPART","T0001/B0002/abcdEFGHijklMNOPqrstUVWX"]
+  password-labelled: 2  e.g. ["swordfish","swordfish"]
+  google: 1  e.g. ["AIzaSyTHISISAGEMINIKEY0123456789abcdef"]
+  url-param: 1  e.g. ["hello123"]
+  key-strong-label: 1  e.g. ["abc123\"}')).toBe('{\"api_key\":"]
+  jwt: 1  e.g. ["eyJhbGciOiJIUzI1.eyJ…eKKF2QT4"]
+  url-userinfo: 1  e.g. ["hunter2"]
+  phone-intl: 1  e.g. ["+ 1248 - 100 - 1700"]
+  teams-webhook: 1  e.g. ["aaaa-bbbb@cccc/IncomingWebhook/dddd/eeee"]
+
+[tests] lines=147814 randomStrings=true hits=267 linesWithHits=200 per10kLines=18.1 time=21175ms (143.3us/line)
+  email: 117  e.g. ["pw@raw.githubusercontent.com","pw@api.groq.com","billing@example.com"]
+  random-string: 107  e.g. ["sk-test-images-0123456789","AIzaTestImages0123456789","claude-test-images-0123456789"]
+  sk-generic: 17  e.g. ["sk-proj-THISISASECRETKEY1234abcd","sk-ant-good-claude-key-0003","sk-ant-good-claude-key-0003"]
+  labelled-assignment: 13  e.g. ["sk-ant-other-key-9876","AIzaSyFAKEFAKEFAKE0000","sk-0123456789"]
+  slack-webhook: 4  e.g. ["T0001/B0002/secretPART","T0001/B0002/secretPART","T0001/B0002/abcdEFGHijklMNOPqrstUVWX"]
+  password-labelled: 2  e.g. ["swordfish","swordfish"]
+  google: 1  e.g. ["AIzaSyTHISISAGEMINIKEY0123456789abcdef"]
+  url-param: 1  e.g. ["hello123"]
+  key-strong-label: 1  e.g. ["abc123\"}')).toBe('{\"api_key\":"]
+  jwt: 1  e.g. ["eyJhbGciOiJIUzI1.eyJ…eKKF2QT4"]
+  url-userinfo: 1  e.g. ["hunter2"]
+  phone-intl: 1  e.g. ["+ 1248 - 100 - 1700"]
+  teams-webhook: 1  e.g. ["aaaa-bbbb@cccc/IncomingWebhook/dddd/eeee"]
+
+[ids] lines=5000 randomStrings=false hits=0 linesWithHits=0 per10kLines=0.0 time=652ms (130.5us/line)
+
+[ids] lines=5000 randomStrings=true hits=1940 linesWithHits=1940 per10kLines=3880.0 time=557ms (111.4us/line)
+  random-string: 1940  e.g. ["sha512-eYh2Cj8EeJYYP…9t43VZ==","d91exS4K3vS6A2eb9AMg3qOi","sha512-xQeZodDCYl9QC…2s3eQy=="]
+
+[numbers] lines=5000 randomStrings=false hits=26 linesWithHits=26 per10kLines=52.0 time=500ms (100.1us/line)
+  card-luhn: 26  e.g. ["6003 2711 9896 6823","2713 8505 6713 0184","5164 8434 1743 3384"]
+
+[numbers] lines=5000 randomStrings=true hits=26 linesWithHits=26 per10kLines=52.0 time=357ms (71.5us/line)
+  card-luhn: 26  e.g. ["6003 2711 9896 6823","2713 8505 6713 0184","5164 8434 1743 3384"]

@@ -1,0 +1,2051 @@
+{
+ "version": 1,
+ "about": "Test vectors for the private-information rules in rules.md (auto-blur, F-07/LT-05). Screen vectors are one OCR line each (optional 'above' = the line directly above in the same column). Speech vectors are caption words. Every expected hit gives kind, the exact own text (the secret's own span, never padded) and tier (auto = score >= 0.85, check = 0.50-0.85). A vector with expect [] must give no hit at all. Placeholders «...» are expanded by a seeded generator so the file never holds a string that secret scanners or push protection flag: items are separated by '|'; '=x' is literal text x; a class letter and a count is generated text (A = [A-Za-z0-9], a = [a-z0-9], H = [0-9a-f], U = [A-Z2-7], D = [0-9], L = [A-Za-z], B = [A-Za-z0-9_-], S = [A-Za-z0-9/+]); the same placeholder string in one vector always expands to the same value. Defaults: regions ['US','BD'], names [], options {randomStrings:false, dots:false}.",
+ "seed": 20261123,
+ "screen": [
+  {
+   "id": "email-plain",
+   "rule": "email",
+   "text": "From: jane.doe@acme-mail.io",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "jane.doe@acme-mail.io",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "email-plus-sub",
+   "rule": "email",
+   "text": "Send to riad.hasan+billing@mail.qbexel.com.bd today",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "riad.hasan+billing@mail.qbexel.com.bd",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "email-role",
+   "rule": "email",
+   "text": "Questions? support@acme-mail.io",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "support@acme-mail.io",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "email-ocr-comma",
+   "rule": "email (OCR: '.' read as ',')",
+   "text": "riad.hasan@gmail,com",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "riad.hasan@gmail,com",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "email-ocr-copyright",
+   "rule": "email (OCR: '@' read as ©)",
+   "text": "riad.hasan©gmail.com",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "riad.hasan©gmail.com",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "email-ocr-space",
+   "rule": "email (OCR: space before the dot)",
+   "text": "jane.doe@acme-mail .io",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "jane.doe@acme-mail .io",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "email-example-domain",
+   "rule": "email: RFC 2606/6761 reserved example domain or TLD: Check, not dropped (a stand-in for a real address is still covered)",
+   "text": "user@example.com",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "user@example.com",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "email-neg-retina",
+   "rule": "email: file name with @2x",
+   "text": "icon@2x.png",
+   "expect": []
+  },
+  {
+   "id": "email-neg-scope",
+   "rule": "email: npm scope",
+   "text": "import x from '@types/node'",
+   "expect": []
+  },
+  {
+   "id": "email-neg-local",
+   "rule": "email: no TLD",
+   "text": "riad@DESKTOP-7Q2K1 MINGW64 ~/src",
+   "expect": []
+  },
+  {
+   "id": "email-neg-ssh",
+   "rule": "email: SSH remote",
+   "text": "git@github.com:qbexel/flown.git",
+   "expect": []
+  },
+  {
+   "id": "card-visa-grouped",
+   "rule": "card: Luhn + IIN + grouping",
+   "text": "Card 4917 6123 4567 8904  exp 09/28",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917 6123 4567 8904",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-visa-dashes",
+   "rule": "card",
+   "text": "4917-6123-4567-8904",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917-6123-4567-8904",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-visa-bare",
+   "rule": "card: no grouping, no label",
+   "text": "pan=4917612345678904",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917612345678904",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-amex",
+   "rule": "card: Amex 4-6-5",
+   "text": "3456 789012 34564",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "3456 789012 34564",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-mc-2series",
+   "rule": "card: Mastercard 2221-2720",
+   "text": "2223 0048 0912 3747",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "2223 0048 0912 3747",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-mir",
+   "rule": "card: Mir 2200-2204",
+   "text": "2200 1234 5678 9019",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "2200 1234 5678 9019",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-unionpay",
+   "rule": "card: UnionPay 62",
+   "text": "6228 4812 3456 7894",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "6228 4812 3456 7894",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-ocr-l",
+   "rule": "card (OCR: 1 read as l, mapped in the digit view)",
+   "text": "4917 6l23 4567 8904",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917 6l23 4567 8904",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-ocr-O",
+   "rule": "card (OCR: 0 read as O)",
+   "text": "2200 1234 5678 9O19",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "2200 1234 5678 9O19",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-misread-labelled",
+   "rule": "card: Luhn fails (one digit misread), label present",
+   "text": "Card number: 4917 6126 4567 8904",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917 6126 4567 8904",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "card-neg-misread-unlabelled",
+   "rule": "card: Luhn fails and no label: not suggested (another frame's read decides)",
+   "text": "4917 6126 4567 8904",
+   "expect": []
+  },
+  {
+   "id": "card-cvv",
+   "rule": "card: CVV next to its label",
+   "text": "CVV: 381",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "381",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "card-neg-test",
+   "rule": "card: published test number (allow list)",
+   "text": "4242 4242 4242 4242",
+   "expect": []
+  },
+  {
+   "id": "card-neg-masked",
+   "rule": "card: masked, last four only",
+   "text": "Visa •••• •••• •••• 8904",
+   "expect": []
+  },
+  {
+   "id": "card-neg-order",
+   "rule": "card: 16 digits that fail Luhn, no IIN of a major network",
+   "text": "Order 7123 4567 8901 2345 shipped",
+   "expect": []
+  },
+  {
+   "id": "card-neg-isbn",
+   "rule": "card: ISBN",
+   "text": "ISBN 978-3-16-148410-0",
+   "expect": []
+  },
+  {
+   "id": "iban-de-grouped",
+   "rule": "iban: mod 97",
+   "text": "IBAN: DE39 3705 0299 1234 5678 90",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "DE39 3705 0299 1234 5678 90",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-gb-compact",
+   "rule": "iban",
+   "text": "GB69BARC20005512345678",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "GB69BARC20005512345678",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-nl",
+   "rule": "iban",
+   "text": "Rekening NL81 RABO 0312 3456 78 t.n.v.",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "NL81 RABO 0312 3456 78",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-fr-letter-in-bban",
+   "rule": "iban",
+   "text": "FR76 3000 6000 0112 3456 7890 189",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "FR76 3000 6000 0112 3456 7890 189",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-pk",
+   "rule": "iban",
+   "text": "PK22 HABB 0000 1234 5678 9012",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "PK22 HABB 0000 1234 5678 9012",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-misread-labelled",
+   "rule": "iban: mod 97 fails, label present",
+   "text": "IBAN: DE39 3705 0299 1234 5678 91",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "DE39 3705 0299 1234 5678 91",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "iban-neg-example",
+   "rule": "iban: the standard published example (allow list)",
+   "text": "DE89 3704 0044 0532 0130 00",
+   "expect": []
+  },
+  {
+   "id": "iban-neg-country",
+   "rule": "iban: not a registry country",
+   "text": "AB12 3456 7890 1234 5678",
+   "expect": []
+  },
+  {
+   "id": "iban-neg-short",
+   "rule": "iban: too short for DE",
+   "text": "DE12 3456 7890",
+   "expect": []
+  },
+  {
+   "id": "ssn-labelled",
+   "rule": "ssn",
+   "text": "SSN: 536-22-8190",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "536-22-8190",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "ssn-format",
+   "rule": "ssn: formatted, no label",
+   "text": "536-22-8190",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "536-22-8190",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "ssn-neg-000",
+   "rule": "ssn: area 000",
+   "text": "000-12-3456",
+   "expect": []
+  },
+  {
+   "id": "ssn-neg-666",
+   "rule": "ssn: area 666",
+   "text": "666-45-6789",
+   "expect": []
+  },
+  {
+   "id": "ssn-neg-9xx",
+   "rule": "ssn: area 9xx (ITIN range)",
+   "text": "912-34-5678",
+   "expect": []
+  },
+  {
+   "id": "ssn-neg-group00",
+   "rule": "ssn: group 00",
+   "text": "536-00-8190",
+   "expect": []
+  },
+  {
+   "id": "ssn-published-sample",
+   "rule": "ssn: a published sample number is still covered (no allow list for IDs)",
+   "text": "078-05-1120",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "078-05-1120",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "nino-ok",
+   "rule": "uk-nino",
+   "text": "NI number: AB 12 34 56 C",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "AB 12 34 56 C",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "nino-neg-QQ",
+   "rule": "uk-nino: Q never used",
+   "text": "QQ 12 34 56 C",
+   "expect": []
+  },
+  {
+   "id": "nino-neg-GB",
+   "rule": "uk-nino: prefix GB not allocated",
+   "text": "GB 12 34 56 A",
+   "expect": []
+  },
+  {
+   "id": "nino-neg-suffix",
+   "rule": "uk-nino: suffix E",
+   "text": "AB 12 34 56 E",
+   "expect": []
+  },
+  {
+   "id": "nino-neg-O2",
+   "rule": "uk-nino: O as second letter",
+   "text": "AO 12 34 56 A",
+   "expect": []
+  },
+  {
+   "id": "id-account",
+   "rule": "labelled id",
+   "text": "Account number: 0123 4567 8901",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "0123 4567 8901",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "id-passport",
+   "rule": "labelled id",
+   "text": "Passport No. X12345678",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "X12345678",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "id-bn-nid",
+   "rule": "labelled id (Bangla label, Bangla digits)",
+   "text": "এনআইডি: ১৯৯০২৬৯৪৮১২৩৪৫৬৭৮",
+   "expect": [
+    {
+     "kind": "id",
+     "text": "১৯৯০২৬৯৪৮১২৩৪৫৬৭৮",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "id-neg-settings",
+   "rule": "labelled id: label without value",
+   "text": "Account number must have 10 digits",
+   "expect": []
+  },
+  {
+   "id": "id-neg-menu",
+   "rule": "labelled id: a menu",
+   "text": "Account settings",
+   "expect": []
+  },
+  {
+   "id": "licence-product-key",
+   "rule": "product key (Windows charset)",
+   "text": "Product key: BCDF2-GHJKM-PQRT3-VWXY4-6789B",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "BCDF2-GHJKM-PQRT3-VWXY4-6789B",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "licence-neg-letters",
+   "rule": "product key: letters outside the charset, no digits",
+   "text": "ABCDE-FGHIJ-KLMNO-PQRST-UVWXY",
+   "expect": []
+  },
+  {
+   "id": "phone-us-grouped",
+   "rule": "phone: grouped, valid for a region",
+   "text": "Call (213) 373-4253 today",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "(213) 373-4253",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-intl-uk",
+   "rule": "phone: +CC",
+   "text": "Office +44 20 7946 0958",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+44 20 7946 0958",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-intl-bd",
+   "rule": "phone: +880 mobile",
+   "text": "WhatsApp: +880 1712-345678",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+880 1712-345678",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-bd-national",
+   "rule": "phone: BD national grouped",
+   "text": "01712-345678",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "01712-345678",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-bd-bangla-digits",
+   "rule": "phone: Bangla digits with a Bangla label",
+   "text": "মোবাইল: ০১৭১২৩৪৫৬৭৮",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "০১৭১২৩৪৫৬৭৮",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-bd-bare-mobile",
+   "rule": "phone: bare digits, mobile range, no label",
+   "text": "01712345678",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "01712345678",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "phone-in",
+   "rule": "phone: +91",
+   "text": "+91 98765 43210",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+91 98765 43210",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-es",
+   "rule": "phone: +34 with region ES",
+   "text": "Teléfono: +34 612 34 56 78",
+   "regions": [
+    "ES"
+   ],
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+34 612 34 56 78",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-ocr-O",
+   "rule": "phone (OCR: 0 read as O)",
+   "text": "Tel: +44 2O 7946 0958",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+44 2O 7946 0958",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "phone-neg-date",
+   "rule": "phone: ISO date",
+   "text": "Updated 2024-11-23",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-date2",
+   "rule": "phone: d/m/y date",
+   "text": "Due 23/11/2024",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-ip",
+   "rule": "phone: IPv4",
+   "text": "Server 192.168.10.254",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-version",
+   "rule": "phone: version",
+   "text": "libphonenumber-js 1.13.16",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-time",
+   "rule": "phone: time",
+   "text": "10:30:45 PM",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-money",
+   "rule": "phone: money",
+   "text": "Total $1,234,567.89",
+   "expect": []
+  },
+  {
+   "id": "phone-neg-bare-us",
+   "rule": "phone: bare 10 digits, not mobile-only, no label",
+   "text": "Invoice 2133734253",
+   "regions": [
+    "US"
+   ],
+   "expect": []
+  },
+  {
+   "id": "pw-same-line",
+   "rule": "password label + value",
+   "text": "Password: Tr0ub4dor&3",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "Tr0ub4dor&3",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-below",
+   "rule": "password value on the line below its label",
+   "above": "Password",
+   "text": "hunter2!x",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "hunter2!x",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-bn",
+   "rule": "password (Bangla label)",
+   "text": "পাসওয়ার্ড: amar#Gopon9",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "amar#Gopon9",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-es",
+   "rule": "password (Spanish label)",
+   "text": "Contraseña: Sol2024!",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "Sol2024!",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-hi",
+   "rule": "password (Hindi label)",
+   "text": "पासवर्ड: Raju@1234",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "Raju@1234",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-neg-dots",
+   "rule": "password dots (off by default)",
+   "text": "Password: ••••••••",
+   "expect": []
+  },
+  {
+   "id": "pw-dots-on",
+   "rule": "password dots (option on)",
+   "text": "Password: ••••••••",
+   "options": {
+    "dots": true
+   },
+   "expect": [
+    {
+     "kind": "password",
+     "text": "••••••••",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "pw-neg-forgot",
+   "rule": "password UI text",
+   "text": "Forgot password?",
+   "expect": []
+  },
+  {
+   "id": "pw-neg-rule",
+   "rule": "password UI text",
+   "text": "Password must be at least 8 characters",
+   "expect": []
+  },
+  {
+   "id": "pw-neg-placeholder",
+   "rule": "password placeholder below label",
+   "above": "Password",
+   "text": "Enter your password",
+   "expect": []
+  },
+  {
+   "id": "pw-neg-manager",
+   "rule": "password UI text",
+   "text": "Open password manager",
+   "expect": []
+  },
+  {
+   "id": "pin-labelled",
+   "rule": "pin",
+   "text": "PIN: 4821",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "4821",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pin-neg-taskbar",
+   "rule": "pin: the verb",
+   "text": "Pin to taskbar",
+   "expect": []
+  },
+  {
+   "id": "otp-sentence",
+   "rule": "one-time code",
+   "text": "Your verification code is 482913",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "482913",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-google-sms",
+   "rule": "one-time code: G- prefix, label after",
+   "text": "G-482913 is your Google verification code.",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "G-482913",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-split",
+   "rule": "one-time code: split 3+3",
+   "text": "Code: 482 913",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "482 913",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-bn",
+   "rule": "one-time code (Bangla)",
+   "text": "আপনার ওটিপি কোড ৪৮২৯১৩",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "৪৮২৯১৩",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-device",
+   "rule": "device or pairing code",
+   "text": "Enter the code WDJB-MJ7T on your TV",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "WDJB-MJ7T",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-neg-error",
+   "rule": "code: error code",
+   "text": "Error code 404",
+   "expect": []
+  },
+  {
+   "id": "otp-neg-zip",
+   "rule": "code: ZIP code",
+   "text": "ZIP code 90210",
+   "expect": []
+  },
+  {
+   "id": "otp-neg-status",
+   "rule": "code: HTTP status",
+   "text": "Status code 200 OK",
+   "expect": []
+  },
+  {
+   "id": "otp-neg-vscode",
+   "rule": "code: product name and year",
+   "text": "Visual Studio Code 2024",
+   "expect": []
+  },
+  {
+   "id": "otp-neg-country",
+   "rule": "code: country calling code",
+   "text": "Country code +880",
+   "expect": []
+  },
+  {
+   "id": "key-github",
+   "rule": "github-pat",
+   "text": "token: «=ghp_|A36»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=ghp_|A36»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-github-ocr-space",
+   "rule": "github-pat (OCR: '_' read as space)",
+   "text": "«=ghp |A36»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=ghp |A36»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-github-fine",
+   "rule": "github-fine-grained-pat",
+   "text": "«=github_pat_|A22|=_|A59»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=github_pat_|A22|=_|A59»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-gitlab",
+   "rule": "gitlab-pat",
+   "text": "GITLAB_TOKEN=«=glpat-|B20»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=glpat-|B20»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-slack-bot",
+   "rule": "slack-bot-token",
+   "text": "«=xoxb-|D12|=-|D13|=-|A24»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=xoxb-|D12|=-|D13|=-|A24»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-aws-id",
+   "rule": "aws-access-token",
+   "text": "aws_access_key_id = «=AKIA|U16»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=AKIA|U16»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-aws-id-ocr",
+   "rule": "aws-access-token (OCR: I read as 1)",
+   "text": "«=AK1A|U16»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=AK1A|U16»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-aws-secret",
+   "rule": "labelled assignment (secret access key)",
+   "text": "aws_secret_access_key = «S40»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«S40»",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "key-aws-example",
+   "rule": "aws: the documentation example (allow list)",
+   "text": "AKIAIOSFODNN7EXAMPLE",
+   "expect": []
+  },
+  {
+   "id": "key-google",
+   "rule": "gcp-api-key",
+   "text": "key=«=AIza|B35»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=AIza|B35»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-google-ocr",
+   "rule": "gcp-api-key (OCR: I read as l)",
+   "text": "«=Alza|B35»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=Alza|B35»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-openai",
+   "rule": "openai-api-key",
+   "text": "OPENAI_API_KEY=\"«=sk-proj-|B74|=T3BlbkFJ|B74»\"",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=sk-proj-|B74|=T3BlbkFJ|B74»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-anthropic",
+   "rule": "anthropic-api-key",
+   "text": "«=sk-ant-api03-|B93|=AA»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=sk-ant-api03-|B93|=AA»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-stripe-live",
+   "rule": "stripe-access-token",
+   "text": "«=sk_live_|A24»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=sk_live_|A24»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-stripe-pk",
+   "rule": "stripe publishable key (public by design: check)",
+   "text": "«=pk_test_|A24»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=pk_test_|A24»",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "key-sendgrid",
+   "rule": "sendgrid-api-token",
+   "text": "«=SG.|B22|=.|B43»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=SG.|B22|=.|B43»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-twilio",
+   "rule": "twilio-api-key",
+   "text": "«=SK|H32»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=SK|H32»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-telegram",
+   "rule": "telegram-bot-api-token",
+   "text": "bot«D10|=:AA|B33»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«D10|=:AA|B33»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-npm",
+   "rule": "npm-access-token",
+   "text": "//registry.npmjs.org/:_authToken=«=npm_|A36»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=npm_|A36»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-hf",
+   "rule": "huggingface-access-token",
+   "text": "«=hf_|L34»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=hf_|L34»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-jwt",
+   "rule": "jwt",
+   "text": "Authorization: Bearer «=eyJ|B20|=.eyJ|B40|=.|B43»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=eyJ|B20|=.eyJ|B40|=.|B43»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-pem",
+   "rule": "private-key (the BEGIN line; the block below is covered by the block rule)",
+   "text": "-----BEGIN OPENSSH PRIVATE KEY-----",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "-----BEGIN OPENSSH PRIVATE KEY-----",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-pem-rsa",
+   "rule": "private-key",
+   "text": "-----BEGIN RSA PRIVATE KEY-----",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "-----BEGIN RSA PRIVATE KEY-----",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-neg-public",
+   "rule": "private-key: public key",
+   "text": "-----BEGIN PUBLIC KEY-----",
+   "expect": []
+  },
+  {
+   "id": "key-neg-cert",
+   "rule": "private-key: certificate",
+   "text": "-----BEGIN CERTIFICATE-----",
+   "expect": []
+  },
+  {
+   "id": "key-azure-conn",
+   "rule": "azure connection string",
+   "text": "DefaultEndpointsProtocol=https;AccountName=acme;AccountKey=«S86|===»;EndpointSuffix=core.windows.net",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "AccountKey=«S86|===»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-assign-hex",
+   "rule": "labelled assignment (gitleaks generic-api-key, entropy >= 3)",
+   "text": "const apiKey = \"«H32»\"",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«H32»",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "key-ui-label-above",
+   "rule": "strong label above a value",
+   "above": "API key",
+   "text": "«A28»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«A28»",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "key-neg-env",
+   "rule": "labelled assignment: reads the environment",
+   "text": "password = os.environ[\"DB_PASSWORD\"]",
+   "expect": []
+  },
+  {
+   "id": "key-neg-template",
+   "rule": "labelled assignment: template",
+   "text": "api_key: ${API_KEY}",
+   "expect": []
+  },
+  {
+   "id": "key-neg-placeholder",
+   "rule": "labelled assignment: placeholder",
+   "text": "token = \"your_token_here\"",
+   "expect": []
+  },
+  {
+   "id": "key-neg-words",
+   "rule": "labelled assignment: letters only",
+   "text": "secret_name = \"production-database-password\"",
+   "expect": []
+  },
+  {
+   "id": "key-neg-prose",
+   "rule": "prefix named in prose",
+   "text": "GitHub tokens start with ghp_ and are 40 characters long",
+   "expect": []
+  },
+  {
+   "id": "key-neg-sklearn",
+   "rule": "sk- in prose",
+   "text": "pip install scikit-learn (sk-learn)",
+   "expect": []
+  },
+  {
+   "id": "key-neg-sha",
+   "rule": "git commit hash (random strings off)",
+   "text": "commit 9fceb02d0ae598e95dc970b74767f19372d61af8",
+   "expect": []
+  },
+  {
+   "id": "key-neg-uuid",
+   "rule": "UUID (random strings off)",
+   "text": "id: 123e4567-e89b-12d3-a456-426614174000",
+   "expect": []
+  },
+  {
+   "id": "key-random-on",
+   "rule": "unlabelled random string (option on)",
+   "text": "«A40»",
+   "options": {
+    "randomStrings": true
+   },
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«A40»",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "url-reset-token",
+   "rule": "token in a query string",
+   "text": "https://app.acme-mail.io/reset?token=«H32»&lang=en",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«H32»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-s3-presigned",
+   "rule": "tokens in a query string (S3 presigned)",
+   "text": "https://b.s3.amazonaws.com/f.png?X-Amz-Credential=«=AKIA|U16|=%2F20261123»&X-Amz-Signature=«H64»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=AKIA|U16|=%2F20261123»",
+     "tier": "auto"
+    },
+    {
+     "kind": "key",
+     "text": "«H64»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-fragment-token",
+   "rule": "token in a fragment",
+   "text": "https://acme-mail.io/cb#access_token=«B40»&expires_in=3600",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«B40»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-userinfo",
+   "rule": "password in a connection URL",
+   "text": "postgres://admin:S3cr3tPa55@db.internal:5432/app",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "S3cr3tPa55",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-slack-webhook",
+   "rule": "slack-webhook-url",
+   "text": "https://hooks.slack.com/services/«=T0|A8|=/B0|A8|=/|A24»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=T0|A8|=/B0|A8|=/|A24»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-discord-webhook",
+   "rule": "discord webhook",
+   "text": "https://discord.com/api/webhooks/«D18|=/|B68»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«D18|=/|B68»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-neg-youtube",
+   "rule": "ordinary query string",
+   "text": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s",
+   "expect": []
+  },
+  {
+   "id": "url-neg-paging",
+   "rule": "ordinary query string",
+   "text": "https://acme-mail.io/list?page=2&sort=desc&key=name",
+   "expect": []
+  },
+  {
+   "id": "url-neg-plain",
+   "rule": "plain link",
+   "text": "https://github.com/qbexel/flown/pull/42",
+   "expect": []
+  },
+  {
+   "id": "name-exact",
+   "rule": "listed name",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "Signed in as Riad Hasan",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "Riad Hasan",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "name-ocr-digit",
+   "rule": "listed name (OCR: i read as 1)",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "R1ad Hasan",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "R1ad Hasan",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "name-ocr-joined",
+   "rule": "listed name (OCR joined the words)",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "RiadHasan shared a file",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "RiadHasan",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "name-ocr-rn",
+   "rule": "listed name (OCR: m read as rn)",
+   "names": [
+    "Emma Stone"
+   ],
+   "text": "Ernma Stone",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "Ernma Stone",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "name-fuzzy",
+   "rule": "listed name, one letter wrong",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "Riad Hasen",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "Riad Hasen",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "name-wildcard",
+   "rule": "listed name with a wildcard",
+   "names": [
+    "Acme*"
+   ],
+   "text": "AcmeCorp Ltd invoice",
+   "expect": [
+    {
+     "kind": "name",
+     "text": "AcmeCorp",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "name-neg-city",
+   "rule": "listed name: a different word",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "Flights to Riyadh",
+   "expect": []
+  },
+  {
+   "id": "name-neg-part",
+   "rule": "listed name: one word of it only",
+   "names": [
+    "Riad Hasan"
+   ],
+   "text": "Hasan Ali",
+   "expect": []
+  },
+  {
+   "id": "name-neg-short",
+   "rule": "listed name: short names need exact letters",
+   "names": [
+    "Ana"
+   ],
+   "text": "Ann",
+   "expect": []
+  },
+  {
+   "id": "reg-pass-prose",
+   "rule": "password: 'pass' in prose (corpus regression)",
+   "text": "keeps its place in the pass: once ready, a sound plays",
+   "expect": []
+  },
+  {
+   "id": "reg-pass-code",
+   "rule": "password: 'pass' as a code variable",
+   "text": "const pass = format === 'demo' ? demoShots : shots",
+   "expect": []
+  },
+  {
+   "id": "reg-pass-credentials",
+   "rule": "password: 'pass' after a user field",
+   "text": "user: admin  pass: hunter2x",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "hunter2x",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "reg-svg-path",
+   "rule": "phone: SVG path decimals",
+   "text": "d=\"M 0 1.5-.8 1.5-1.5 0-1.2\"",
+   "expect": []
+  },
+  {
+   "id": "reg-card-ref",
+   "rule": "card: Luhn-valid number under a reference label is Check",
+   "text": "Ref 6003 2711 9896 6823",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "6003 2711 9896 6823",
+     "tier": "check"
+    }
+   ]
+  },
+  {
+   "id": "reg-sas",
+   "rule": "url params: only the SAS signature is secret",
+   "text": "https://acct.blob.core.windows.net/c/f.mp4?sv=2024-11-04&se=2026-11-30&sp=r&sig=«S43|=%3D»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«S43|=%3D»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "reg-nino-lower",
+   "rule": "uk-nino: lower case hex is not an NI number",
+   "text": "at 044018d",
+   "expect": []
+  },
+  {
+   "id": "reg-regex-literal",
+   "rule": "key label: a regex literal in code",
+   "text": "const BASIC = /\\b(Basic)\\s+[A-Za-z0-9+/=]{8,}/gi",
+   "expect": []
+  },
+  {
+   "id": "email-dot-separator",
+   "rule": "email followed by a middle dot and more text (strict form first)",
+   "text": "Security reports: security@acme-cloud.io · Sales: +1 415 555 0100",
+   "expect": [
+    {
+     "kind": "email",
+     "text": "security@acme-cloud.io",
+     "tier": "check"
+    },
+    {
+     "kind": "phone",
+     "text": "+1 415 555 0100",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-discord-space",
+   "rule": "webhook token with '_' read as a space, then a full stop",
+   "text": "delivered https://discord.com/api/webhooks/«D19»/«A8» «A60».",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«D19»/«A8» «A60»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-slashed-zero",
+   "rule": "slashed zero read as θ inside a key",
+   "text": "«=ghp_|A10»θ«A25»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«=ghp_|A10»θ«A25»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-pem-ocr-dashes",
+   "rule": "PEM marker with OCR-spaced dashes",
+   "text": "\"PrivateKey\": \" - - --BEGIN PRIVATE KEY-- - - -\\n",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "\"PrivateKey\": \" - - --BEGIN PRIVATE KEY-- - - -\\n",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-json",
+   "rule": "password in JSON (quotes around key and value)",
+   "text": "\"PASSWORD\":\"Hn8$wQ4z-Lk2\"",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "Hn8$wQ4z-Lk2",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pin-is-later",
+   "rule": "PIN with words before 'is'",
+   "text": "PIN for the shared phone is 2580, card ends 4242",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "2580",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-azure-secret",
+   "rule": "azure-ad-client-secret in a CLI line",
+   "text": "az login --service-principal -u 5b1c9e2a-3d4f-4e8a-9b6c-0d1e2f3a4b5c -p «A3»7Q~«B32»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«A3»7Q~«B32»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-dsn",
+   "rule": "key in a DSN's user part",
+   "text": "SENTRY_DSN=https://«H32»@o4507.ingest.sentry.io/4507",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«H32»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "url-ticket",
+   "rule": "ticket parameter",
+   "text": "set a new password at https://sso.northwind.test/first-login?ticket=«H24»",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "«H24»",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "key-neg-placeholder-x",
+   "rule": "token placeholder XXXX",
+   "text": "SLACK_BOT_TOKEN=xoxb-XXXXXXXXXXXX",
+   "expect": []
+  },
+  {
+   "id": "iban-neg-placeholder",
+   "rule": "IBAN placeholder",
+   "text": "IBAN: GB00 XXXX 0000 0000 0000 00",
+   "expect": []
+  },
+  {
+   "id": "phone-possible-plus",
+   "rule": "+CC number of a possible length that the region marks unallocated (drama range): still covered",
+   "text": "Sms: +44 7700 900461",
+   "expect": [
+    {
+     "kind": "phone",
+     "text": "+44 7700 900461",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "code-under-sentence",
+   "rule": "code alone on its line under a sentence naming a code",
+   "above": "Use this code to finish signing in. It expires in 10 minutes.",
+   "text": "739204",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "739204",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "otp-secret-under",
+   "rule": "authenticator setup key under its label",
+   "above": "Or type this key",
+   "text": "JBSW Y3DP EHPK 3PXP",
+   "expect": [
+    {
+     "kind": "key",
+     "text": "JBSW Y3DP EHPK 3PXP",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-beside",
+   "rule": "password beside its label on the row (a type box between)",
+   "left": [
+    "Network security key",
+    "WPA2-Personal"
+   ],
+   "text": "Plum-0rchard-4418",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "Plum-0rchard-4418",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-neg-beside-type",
+   "rule": "the security type is not the password",
+   "left": [
+    "Network security key"
+   ],
+   "text": "WPA2-Personal",
+   "expect": []
+  },
+  {
+   "id": "recovery-line",
+   "rule": "a line of codes in a recovery-codes block",
+   "recovery": true,
+   "text": "8f3k-2m9q ×7p4-c1zt h9w2-r6bd",
+   "expect": [
+    {
+     "kind": "code",
+     "text": "8f3k-2m9q",
+     "tier": "auto"
+    },
+    {
+     "kind": "code",
+     "text": "×7p4-c1zt",
+     "tier": "auto"
+    },
+    {
+     "kind": "code",
+     "text": "h9w2-r6bd",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "recovery-neg-prose",
+   "rule": "a sentence in a recovery block is not codes",
+   "recovery": true,
+   "text": "Each code works once. Generated 23 Nov 2026.",
+   "expect": []
+  },
+  {
+   "id": "card-merged-groups",
+   "rule": "card: OCR dropped a space between groups (4-8-4)",
+   "text": "4917 61234567 8904",
+   "expect": [
+    {
+     "kind": "card",
+     "text": "4917 61234567 8904",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "pw-label-zeros",
+   "rule": "password: the label read with zeros",
+   "text": "EMAIL_H0ST_PASSW0RD = \"smtp-9QxT4vB2\"",
+   "expect": [
+    {
+     "kind": "password",
+     "text": "smtp-9QxT4vB2",
+     "tier": "auto"
+    }
+   ]
+  },
+  {
+   "id": "iban-repaired",
+   "rule": "iban: O read as 0 in the BBAN, repaired by one swap",
+   "text": "FR76 3000 6000 0112 3456 7890 189",
+   "expect": [
+    {
+     "kind": "bank",
+     "text": "FR76 3000 6000 0112 3456 7890 189",
+     "tier": "auto"
+    }
+   ]
+  }
+ ],
+ "speech": [
+  {
+   "id": "say-card-across-segments",
+   "rule": "card said across two captions",
+   "words": "my card number is 4917 6123 || 4567 8904 thanks",
+   "expect": [
+    {
+     "kind": "card",
+     "words": "4917 6123 4567 8904"
+    }
+   ]
+  },
+  {
+   "id": "say-card-mixed-words",
+   "rule": "digits then number words (review finding 10)",
+   "words": "it's 4917 6123 4567 eight nine zero four",
+   "expect": [
+    {
+     "kind": "card",
+     "words": "4917 6123 4567 eight nine zero four"
+    }
+   ]
+  },
+  {
+   "id": "say-card-words",
+   "rule": "card said as words, no label (Luhn + IIN)",
+   "words": "four nine one seven six one two three four five six seven eight nine zero four",
+   "expect": [
+    {
+     "kind": "card",
+     "words": "four nine one seven six one two three four five six seven eight nine zero four"
+    }
+   ]
+  },
+  {
+   "id": "say-card-sentences",
+   "rule": "card split by a full stop",
+   "words": "the card is 4917 6123. || 4567 8904.",
+   "expect": [
+    {
+     "kind": "card",
+     "words": "4917 6123. 4567 8904."
+    }
+   ]
+  },
+  {
+   "id": "say-phone-bd-en",
+   "rule": "phone (BD mobile) in English digit words",
+   "words": "call me on zero one seven one two, three four five six seven eight",
+   "expect": [
+    {
+     "kind": "phone",
+     "words": "zero one seven one two, three four five six seven eight"
+    }
+   ]
+  },
+  {
+   "id": "say-phone-bd-loan",
+   "rule": "phone in English digits written in Bangla script",
+   "words": "আমার নম্বর জিরো ওয়ান সেভেন ওয়ান টু থ্রি ফোর ফাইভ সিক্স সেভেন এইট",
+   "expect": [
+    {
+     "kind": "phone",
+     "words": "জিরো ওয়ান সেভেন ওয়ান টু থ্রি ফোর ফাইভ সিক্স সেভেন এইট"
+    }
+   ]
+  },
+  {
+   "id": "say-phone-double",
+   "rule": "double and triple",
+   "words": "my number is double five triple one two three four five",
+   "expect": [
+    {
+     "kind": "phone",
+     "words": "double five triple one two three four five"
+    }
+   ]
+  },
+  {
+   "id": "say-phone-es",
+   "rule": "phone in Spanish",
+   "words": "mi número es seis uno dos tres cuatro cinco seis siete ocho",
+   "expect": [
+    {
+     "kind": "phone",
+     "words": "seis uno dos tres cuatro cinco seis siete ocho"
+    }
+   ]
+  },
+  {
+   "id": "say-code-bn",
+   "rule": "one-time code in Bangla words",
+   "words": "কোড হলো চার আট দুই নয় এক তিন",
+   "expect": [
+    {
+     "kind": "code",
+     "words": "চার আট দুই নয় এক তিন"
+    }
+   ]
+  },
+  {
+   "id": "say-code-bn-digits",
+   "rule": "one-time code in Bangla digits",
+   "words": "ওটিপি ৪৮২৯১৩",
+   "expect": [
+    {
+     "kind": "code",
+     "words": "৪৮২৯১৩"
+    }
+   ]
+  },
+  {
+   "id": "say-code-pause",
+   "rule": "a pause under 2 s keeps the run",
+   "words": "the code is four eight two <pause 1.5> nine one three",
+   "expect": [
+    {
+     "kind": "code",
+     "words": "four eight two nine one three"
+    }
+   ]
+  },
+  {
+   "id": "say-code-label-previous-caption",
+   "rule": "label in the caption before",
+   "words": "your verification code || is 4 8 2 9 1 3",
+   "expect": [
+    {
+     "kind": "code",
+     "words": "4 8 2 9 1 3"
+    }
+   ]
+  },
+  {
+   "id": "say-email",
+   "rule": "email said aloud",
+   "words": "email me at jane dot doe at gmail dot com",
+   "expect": [
+    {
+     "kind": "email",
+     "words": "jane dot doe at gmail dot com"
+    }
+   ]
+  },
+  {
+   "id": "say-email-at-the-rate",
+   "rule": "email said with 'at the rate'",
+   "words": "write to riad at the rate gmail dot com",
+   "expect": [
+    {
+     "kind": "email",
+     "words": "riad at the rate gmail dot com"
+    }
+   ]
+  },
+  {
+   "id": "say-email-bn",
+   "rule": "email said in Bangla",
+   "words": "আমার ইমেইল riad অ্যাট gmail ডট কম",
+   "expect": [
+    {
+     "kind": "email",
+     "words": "riad অ্যাট gmail ডট কম"
+    }
+   ]
+  },
+  {
+   "id": "say-password",
+   "rule": "password said after its label",
+   "words": "the password is hunter two exclamation. Then click save",
+   "expect": [
+    {
+     "kind": "password",
+     "words": "hunter two exclamation."
+    }
+   ]
+  },
+  {
+   "id": "say-password-bn",
+   "rule": "password said in Bangla",
+   "words": "পাসওয়ার্ড হলো amar gopon nine",
+   "expect": [
+    {
+     "kind": "password",
+     "words": "amar gopon nine"
+    }
+   ]
+  },
+  {
+   "id": "say-neg-counting",
+   "rule": "small numbers in speech",
+   "words": "I have two cats and three dogs",
+   "expect": []
+  },
+  {
+   "id": "say-neg-steps",
+   "rule": "step numbers",
+   "words": "in step one two and three we set it up",
+   "expect": []
+  },
+  {
+   "id": "say-neg-pause-split",
+   "rule": "a pause over 2 s ends the run",
+   "words": "the code is four eight two <pause 3> nine one three",
+   "expect": []
+  },
+  {
+   "id": "say-neg-year",
+   "rule": "a year",
+   "words": "back in 2024 we shipped it",
+   "expect": []
+  },
+  {
+   "id": "reg-say-quantities",
+   "rule": "'and' never joins numbers (corpus regression)",
+   "words": "content clicks at 400, 300 and 1500, 800",
+   "expect": []
+  },
+  {
+   "id": "reg-say-password-noun",
+   "rule": "spoken password needs 'is' after the label",
+   "words": "it skips password boxes in the form",
+   "expect": []
+  },
+  {
+   "id": "reg-say-version",
+   "rule": "a version is not a code",
+   "words": "built with electron 44.9.3 and code signing",
+   "expect": []
+  },
+  {
+   "id": "reg-say-year-code",
+   "rule": "a year is not a code",
+   "words": "the code shipped in 2023 and 2024",
+   "expect": []
+  }
+ ]
+}

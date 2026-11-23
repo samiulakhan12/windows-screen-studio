@@ -1,0 +1,29 @@
+{
+ "release": {
+  "det_tiny_best_ms": 963.4,
+  "rec_tiny_mean_ms": 17.2,
+  "rec_tiny_optimise_ms_per_plan": 48.2,
+  "det_small_best_ms": 1985.4,
+  "rec_small_mean_ms": 97.3,
+  "rec_small_optimise_ms_per_plan": 139.1,
+  "load": "3.32"
+ },
+ "release-s": {
+  "det_tiny_best_ms": 1219.5,
+  "rec_tiny_mean_ms": 20.3,
+  "rec_tiny_optimise_ms_per_plan": 60.2,
+  "det_small_best_ms": 2329.9,
+  "rec_small_mean_ms": 98.3,
+  "rec_small_optimise_ms_per_plan": 137.2,
+  "load": "3.91"
+ },
+ "release-mixed": {
+  "det_tiny_best_ms": 1136.4,
+  "rec_tiny_mean_ms": 19.6,
+  "rec_tiny_optimise_ms_per_plan": 50.8,
+  "det_small_best_ms": 2086.7,
+  "rec_small_mean_ms": 95.6,
+  "rec_small_optimise_ms_per_plan": 132.4,
+  "load": "2.98"
+ }
+}

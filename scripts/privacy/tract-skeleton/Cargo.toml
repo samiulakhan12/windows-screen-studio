@@ -1,0 +1,42 @@
+[package]
+name = "ocr-tract-check"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.91"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "skeleton"
+path = "src/main.rs"
+
+[[bin]]
+name = "parity"
+path = "src/bin/parity.rs"
+
+[dependencies]
+tract-onnx = { version = "=0.23.10", default-features = false }
+sha2 = "0.10"
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.release-s]
+inherits = "release"
+opt-level = "s"
+
+# opt-level "s" everywhere except tract's kernels and core ops.
+[profile.release-mixed]
+inherits = "release-s"
+
+[profile.release-mixed.package.tract-linalg]
+opt-level = 3
+
+[profile.release-mixed.package.tract-core]
+opt-level = 3

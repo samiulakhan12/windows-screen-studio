@@ -1,0 +1,4 @@
+# Unpacked copies of the gzip-compressed files (see scripts/privacy/README.md).
+truth.json
+holdout-truth.json
+reads/*.json

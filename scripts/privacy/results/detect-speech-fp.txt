@@ -1,0 +1,5 @@
+paragraphs=5076 words=455764 time=849ms
+  spoken-id: 3 (0.07 per 10k words) e.g. ["text with \"Copyright © 1991-2026","whisper.cpp project · huggingface.co/ggerganov/whisper.cpp 5359861","words The other account's §9.5 22 398 310"]
+  spoken-card: 1 (0.02 per 10k words) e.g. ["every one of them \"nineteen ninety nine\", \"twenty twenty four\", \"five six seven eight\", \"এ"]
+  spoken-code: 2 (0.04 per 10k words) e.g. ["tip and body = ±0.12, −0.10","300; - beeps at 0, 1, 2, 3, 4, 5"]
+  spoken-phone: 2 (0.04 per 10k words) e.g. ["number height: number rotation: 0 90 180 270","sequence is identical tests 12, 13, 41, 47, 53"]
