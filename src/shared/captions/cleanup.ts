@@ -354,13 +354,51 @@ const KEEP_TWO = new Set(['b', 'e', 'o', 'l', 's', 'g'])
 const BENGALI = /\p{Script=Bengali}/u
 
 /**
+ * The classes of each UTF-16 code unit but the surrogates, as these Unicode property regexes give
+ * them, found the first time a word holds it (0: not yet): a letter, digit or mark; a format
+ * character (ZWJ, ZWNJ); Latin. Every word is bleep-checked, so its letters are classed by reading
+ * this table, not by a regex that looks each letter up in Unicode's ranges; a surrogate, half of a
+ * code point outside the Basic Multilingual Plane, sends the word to the regex.
+ */
+const UNIT_SEEN = 1
+const UNIT_WORD = 2
+const UNIT_FORMAT = 4
+const UNIT_LATIN = 8
+const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u
+const FORMAT_CHAR = /\p{Cf}/u
+const LATIN_CHAR = /\p{Script=Latin}/u
+const unitClasses = new Uint8Array(0x10000)
+function unitClass(unit: number): number {
+  let c = unitClasses[unit]
+  if (!c) {
+    const ch = String.fromCharCode(unit)
+    c = UNIT_SEEN | (WORD_CHAR.test(ch) ? UNIT_WORD : 0) | (FORMAT_CHAR.test(ch) ? UNIT_FORMAT : 0) | (LATIN_CHAR.test(ch) ? UNIT_LATIN : 0)
+    unitClasses[unit] = c
+  }
+  return c
+}
+const isSurrogate = (unit: number): boolean => unit >= 0xd800 && unit <= 0xdfff
+
+/** Whether `text` is its own key: letters, digits and marks of the Basic Multilingual Plane only, none right after itself (most words). */
+function ownKey(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i)
+    if (isSurrogate(unit) || !(unitClass(unit) & UNIT_WORD) || unit === text.charCodeAt(i - 1)) return false
+  }
+  return true
+}
+
+/**
  * A word as the bleep lists match it: in NFC (a cloud transcript or typed text may write য় as one
  * code point or ো in two parts), lower case, punctuation removed, repeated letters collapsed but
  * Bengali ones: a Bangla word writes a letter twice as its spelling (বালককে, "to the boy", is no
  * বালকে), not to draw it out.
  */
 export function bleepKey(word: string): string {
-  const bare = word.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '')
+  const text = word.normalize('NFC').toLowerCase()
+  // Nothing to remove and no letter twice in a row: the text is its key, as the steps below give it.
+  if (ownKey(text)) return text
+  const bare = text.replace(/[^\p{L}\p{N}\p{M}]/gu, '')
   let out = ''
   let run = 0
   for (const ch of bare) {
