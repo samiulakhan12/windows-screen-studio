@@ -115,6 +115,7 @@ const TAB_FOR: Record<NonNullable<Selection>['kind'], Tab> = {
   freeze: 'clip',
   overlay: 'images',
   graphic: 'graphics',
+  cover: 'shapes',
   click: 'zoom'
 }
 

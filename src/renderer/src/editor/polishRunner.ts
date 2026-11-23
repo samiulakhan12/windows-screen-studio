@@ -21,6 +21,8 @@ import { t } from '../../../shared/i18n/t'
 import { effectiveTrack } from '../../../shared/engine/inputTrack'
 import { cropOf } from '../../../shared/engine/crop'
 import type { SceneScan } from '../../../shared/api/projects'
+import type { PrivacyGathered } from '../../../shared/api/privacy'
+import { gatherPrivacy } from '../privacy/privacyRun'
 import { faceSampleTimes, type FramingOutcome } from '../../../shared/render/faceFraming'
 import type { CursorTrack, Project } from '../../../shared/types'
 import { loadAudioAnalysis } from './audioAnalysis'
@@ -194,6 +196,14 @@ export function runPolish(
       setRow('captions', { phase: 'skipped', text: polishSkipText('captions', 'cancelled') })
     }
 
+    // Find private info (docs/design/auto-blur.md §14.5): after this run's captions, which it listens to.
+    let privacy: PrivacyGathered | null = null
+    if (runs('privacy')) {
+      privacy = await until(gatherPrivacy(start, transcript ?? start.transcript ?? null, run.signal))
+      if (run.signal.aborted) return null
+      if (!privacy) blocked.privacy = 'no-reader'
+    }
+
     // 2. The director's speech: from the levels measured above (asked for again if they failed), refined
     // by this run's transcript.
     let speech: DirectorSpeech | null = null
@@ -219,7 +229,8 @@ export function runPolish(
       // The saved caption choices and brand look (Captions Studio §11.6, §11.8).
       ...(options.captionLook || options.captions ? { captionLook: await loadGreatInputs() } : {}),
       // The screen's changes for Find chapters (smart-tools.md §13.3).
-      ...(runs('chapters') ? { scan } : {})
+      ...(runs('chapters') ? { scan } : {}),
+      ...(privacy ? { privacy } : {})
     }
     const framing = await until(measureFace(gathered, speech))
     if (!framing || run.signal.aborted) return null

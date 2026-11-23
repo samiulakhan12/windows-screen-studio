@@ -23,7 +23,8 @@ const STEP_LABEL: Record<PolishStep, MessageKey> = {
   captions: 'review.polish.step.captions',
   chapters: 'review.polish.step.chapters',
   captionLook: 'review.polish.step.captionLook',
-  director: 'review.polish.step.director'
+  director: 'review.polish.step.director',
+  privacy: 'review.polish.step.privacy'
 }
 
 /** A row's name in the dialog. */
@@ -83,7 +84,16 @@ const minSilence = (): string => `${fmt.number(SILENCE_LENGTH.default, { max: 1 
 export function polishHint(
   step: PolishStep,
   /** `bangla`: On this PC makes the captions with the Bangla model (Bengali chosen in the Captions tab). */
-  state: { silenceAction: SmartSpeedAction; autoZoomOn: boolean; provider: Pick<AiProviderInfo, 'label' | 'kind'> | null; local?: boolean; bangla?: boolean; wide?: boolean }
+  state: {
+    silenceAction: SmartSpeedAction
+    autoZoomOn: boolean
+    provider: Pick<AiProviderInfo, 'label' | 'kind'> | null
+    local?: boolean
+    bangla?: boolean
+    wide?: boolean
+    /** Find private info: its estimate in whole minutes, and whether the screen is already checked (docs/design/auto-blur.md §2.10). */
+    privacy?: { minutes: number; checked: boolean }
+  }
 ): string {
   switch (step) {
     case 'style':
@@ -106,6 +116,8 @@ export function polishHint(
       return state.wide ? t('review.polish.hint.captionLookWide') : t('review.polish.hint.captionLook')
     case 'director':
       return t('review.polish.hint.director')
+    case 'privacy':
+      return state.privacy?.checked ? t('review.polish.hint.privacyChecked') : t('review.polish.hint.privacy', counted(state.privacy?.minutes ?? 0))
   }
 }
 
@@ -129,7 +141,8 @@ const SKIP_TEXT: Record<Exclude<PolishSkip, 'off' | 'failed'>, MessageKey> = {
   cancelled: 'review.polish.skip.cancelled',
   'no-camera': 'review.polish.skip.noCamera',
   'camera-hidden': 'review.polish.skip.cameraHidden',
-  'no-preset': 'review.polish.skip.noPreset'
+  'no-preset': 'review.polish.skip.noPreset',
+  'no-reader': 'review.polish.skip.noReader'
 }
 
 /** Why a row is disabled or a step was skipped ("This recording has no sound", …). */
@@ -227,6 +240,13 @@ function resultText(summary: PolishSummary, r: PolishStepResult): string {
       // Why the face was not framed (not found, unavailable); nothing when it was not asked for.
       const why = f && f.status !== 'framed' ? framingLine(f, false)?.text : null
       return why ? t('review.polish.result.cameraWhy', { body, why }) : t('review.polish.result.camera', { body })
+    }
+    case 'privacy': {
+      const f = summary.privacy
+      if (!f) return t('review.polish.result.privacy', counted(0))
+      if (f.unfinished) return t('review.polish.result.privacyUnfinished')
+      if (f.listenedOnly && !f.found) return t('review.polish.result.privacyListened')
+      return f.check ? t('review.polish.result.privacyCheck', { ...counted(f.found), check: fmt.count(f.check) }) : t('review.polish.result.privacy', counted(f.found))
     }
   }
 }

@@ -12,7 +12,7 @@ import { FREEZE } from '../engine/freeze'
 import { MAX_TRANSITION, MIN_TRANSITION, ZOOM_MAX_SCALE, ZOOM_MIN_SCALE, zoomEasing, zoomTargetScale, zoomTransition, type ZoomStyle } from '../engine/zoom'
 import { OVERLAY_LIMITS } from '../engine/overlayData'
 import { captionsOf } from '../captions/settings'
-import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, SfxRef, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
+import type { Annotation, Background, CalloutMotion, CalloutMotionKind, Chapter, Cover, Freeze, Graphic, ImageOverlay, ItemMotion, NormRect, Project, SfxRef, Shape, Spotlight, TitleCard, ZoomSegment } from '../types'
 import { ANNOTATION_SIZE } from './annotations'
 import { setZoomLevelInView } from './cropEdit'
 import { removeFreeze, setFreezeLength, setFreezeSound } from './freezeEdit'
@@ -21,6 +21,7 @@ import { sizeForAspect } from './overlays'
 import { hasStroke, HIGHLIGHT_COLORS, isPrivacyKind, SHAPE_COLORS, STROKE_LIMITS } from './shapes'
 import { TITLE_COLORS, TITLE_TEXT_COLORS, titleColorOf, titleTextColorOf } from './titles'
 import { annotationItem, CALLOUT_ALLOWED, calloutOf, shapeItem, type CalloutItem } from '../render/calloutData'
+import { coverLookOf, deleteCoverItems, pasteCoverLook } from './coverGroup'
 import { BADGE_FILL, BUBBLE_FILL } from '../render/callouts'
 import { SOUND_EFFECTS } from '../audio/soundLibrary'
 import { readGraphicSound, readItemSound } from '../audio/soundFxData'
@@ -33,10 +34,10 @@ import { choice, type Choice } from './choice'
 import { shapeName, stickerName, TITLE_BACKGROUND_CHOICES, TITLE_STYLE_CHOICES } from './itemNames'
 
 /** Items that share a look: shapes split into marks and privacy shapes; chapters have none. */
-export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic'
+export type LookClass = 'zoom' | 'text' | 'mark' | 'privacy' | 'spotlight' | 'image' | 'title' | 'freeze' | 'graphic' | 'cover'
 
 /** The order sections and looks come in. */
-export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'image', 'title', 'freeze', 'graphic']
+export const LOOK_CLASSES: readonly LookClass[] = ['zoom', 'text', 'mark', 'privacy', 'spotlight', 'image', 'title', 'freeze', 'graphic', 'cover']
 
 /** What reads and writes need besides the project: the crop (levels and points are in its view), the zoom style, the background. */
 export interface FieldCtx {
@@ -771,7 +772,8 @@ const KIND_OF: Readonly<Record<LookClass, GroupKind>> = {
   image: 'overlay',
   title: 'title',
   freeze: 'freeze',
-  graphic: 'graphic'
+  graphic: 'graphic',
+  cover: 'cover'
 }
 
 /** The item list of `kind`. */
@@ -795,6 +797,8 @@ function listOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.freezes ?? []
     case 'graphic':
       return p.graphics ?? []
+    case 'cover':
+      return p.covers ?? []
   }
 }
 
@@ -831,6 +835,8 @@ const classOfItem = (kind: GroupKind, item: unknown): LookClass | null => {
       return 'freeze'
     case 'graphic':
       return 'graphic'
+    case 'cover':
+      return 'cover'
     case 'chapter':
       return null
   }
@@ -916,6 +922,13 @@ function withList(p: Project, kind: GroupKind, list: unknown[]): Project {
       void _g
       return rest
     }
+    case 'cover': {
+      // No empty key: a project without covers has none.
+      if (list.length) return { ...p, covers: list as Cover[] }
+      const { covers: _c, ...rest } = p
+      void _c
+      return rest
+    }
   }
 }
 
@@ -992,6 +1005,10 @@ export function deleteItems(p: Project, keys: readonly ItemKey[]): Project {
       for (const id of set) q = removeFreeze(q, id)
       continue
     }
+    if (kind === 'cover') {
+      q = deleteCoverItems(q, [...set])
+      continue
+    }
     const list = listOf(q, kind)
     const rest = list.filter((x) => !set.has(x.id))
     if (rest.length !== list.length) q = withList(q, kind, rest)
@@ -1022,6 +1039,8 @@ function lookName(kind: GroupKind, item: unknown): string {
       return GRAPHIC_NAMES[(item as Graphic).kind]
     case 'chapter':
       return t('style.groupEdit.name.chapter')
+    case 'cover':
+      return t('privacy.cover.title')
   }
 }
 
@@ -1048,6 +1067,7 @@ export function copyLook(p: Project, key: ItemKey, ctx: FieldCtx): Look | null {
   if (!k || !item) return null
   const cls = classOfItem(k.kind, item)
   if (!cls) return null
+  if (cls === 'cover') return { ...coverLookOf(item as Cover), label: lookName(k.kind, item) }
   const values: Record<string, unknown> = {}
   for (const f of GROUP_FIELDS) if (f.cls === cls && f.look && f.applies(item, p)) values[f.id] = f.read(item, p, ctx)
   return { cls, values, label: lookName(k.kind, item) }
@@ -1061,6 +1081,7 @@ export function copyLook(p: Project, key: ItemKey, ctx: FieldCtx): Look | null {
 export function pasteLook(p: Project, keys: readonly ItemKey[], look: Look, ctx: FieldCtx): { project: Project; applied: number; other: number } {
   const items = itemsOf(p, keys)
   const targets = [...items].filter(([key, item]) => classOfItem(parseItemKey(key)!.kind, item) === look.cls).map(([key]) => key)
+  if (look.cls === 'cover') return { project: pasteCoverLook(p, targets.map((key) => parseItemKey(key)!.id), look), applied: targets.length, other: items.size - targets.length }
   let q = p
   for (const f of GROUP_FIELDS) {
     if (f.cls !== look.cls || !f.look || !(f.id in look.values)) continue
@@ -1142,5 +1163,8 @@ export const LOOK_CLASS_WORDS: Readonly<Record<LookClass, readonly [string, stri
   },
   get graphic() {
     return [t('style.groupEdit.class.graphic.one'), t('style.groupEdit.class.graphic.other')] as const
+  },
+  get cover() {
+    return [t('style.groupEdit.class.cover.one'), t('style.groupEdit.class.cover.other')] as const
   }
 }

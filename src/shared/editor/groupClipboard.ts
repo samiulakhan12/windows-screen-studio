@@ -139,6 +139,9 @@ function clipItemOf(p: Project, key: ItemKey): ClipItem | null {
       const item = copy(find(p.graphics))
       return item && { kind: 'graphic', item }
     }
+    case 'cover':
+      // Covers are copied with others from part P1 on (docs/design/auto-blur.md §14.4).
+      return null
   }
 }
 

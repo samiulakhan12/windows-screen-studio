@@ -85,8 +85,9 @@ describe('the graphic kind', () => {
     expect(selection.groupKeyOf({ kind: 'graphic', id: 'g1' })).toBe('graphic:g1')
   })
 
-  it('is the last group kind, on its own Graphics row', () => {
-    expect(GROUP_KINDS.at(-1)).toBe('graphic')
+  it('is the last group kind before covers, on its own Graphics row', () => {
+    expect(GROUP_KINDS.at(-2)).toBe('graphic')
+    expect(GROUP_KINDS.at(-1)).toBe('cover')
     expect(trackOfKind('graphic')).toBe('graphics')
     const items = projectItems(withGraphics([counter('g2', 6, 9), keyword('g1', 2, 4)]))
     expect(items.filter((x) => x.kind === 'graphic').map((x) => [x.key, x.track, x.start, x.end])).toEqual([

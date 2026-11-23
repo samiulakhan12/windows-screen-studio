@@ -3,6 +3,7 @@ import { shortcutLabel } from '../../../shared/editor/shortcuts'
 import type { ClickRow } from '../../../shared/engine/inputData'
 import { isZoomClick } from '../../../shared/engine/zoom'
 import { isGroupKind, parseItemKey, type ItemKey } from '../../../shared/editor/multiSelect'
+import { validCoverSelection } from '../../../shared/editor/coverGroup'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t, type MessageKey } from '../../../shared/i18n/t'
 import type { ClickEvent, Project, StrayReason } from '../../../shared/types'
@@ -22,6 +23,8 @@ export type Selection =
   | { kind: 'overlay'; id: string }
   /** A motion graphic made from captions (Captions Studio §2.11). */
   | { kind: 'graphic'; id: string }
+  /** A cover (docs/design/auto-blur.md §14.4). */
+  | { kind: 'cover'; id: string }
   | { kind: 'gap'; start: number; end: number }
   | { kind: 'range'; start: number; end: number }
   /** A recorded click, by its key (clickKey: its time in whole milliseconds). */
@@ -56,6 +59,9 @@ export function validSelection(sel: Selection, project: Project): Selection {
       return (project.overlays ?? []).some((o) => o.id === sel.id) ? sel : null
     case 'graphic':
       return (project.graphics ?? []).some((g) => g.id === sel.id) ? sel : null
+    case 'cover':
+      // Covers are not selectable until part P1 fills coverGroup.ts.
+      return validCoverSelection(project, sel.id) ? sel : null
     case 'gap':
       return timelineGaps(project.clips, project.duration).some((g) => Math.abs(g.start - sel.start) < 1e-6 && Math.abs(g.end - sel.end) < 1e-6)
         ? sel

@@ -12,6 +12,7 @@ import { clipIndexAt } from '../engine/timeline'
 import { dragZoomTimes, zoomDragBounds } from '../engine/zoom'
 import type { Graphic, Project } from '../types'
 import { dragAnnotationTimes } from './annotations'
+import { moveCoversInTime } from './coverGroup'
 import { canMoveFreeze, moveFreeze } from './freezeEdit'
 import { parseItemKey, type GroupKind, type ItemKey } from './multiSelect'
 import { dragShapeTimes } from './shapes'
@@ -63,6 +64,8 @@ function listOf(p: Project, kind: GroupKind): readonly Timed[] {
       return (p.freezes ?? []).map((f) => ({ id: f.id, start: f.at, end: f.at }))
     case 'graphic':
       return p.graphics ?? []
+    case 'cover':
+      return p.covers ?? []
   }
 }
 
@@ -322,6 +325,11 @@ export function moveGroup(p: Project, plan: GroupMovePlan, delta: number, exact?
     })
     if (changed) q = { ...q, graphics: next }
   }
+  const covers = to.get('cover')
+  if (covers && q.covers) {
+    // Only covers with one key move; a followed cover stays (coverGroup.ts, docs/design/auto-blur.md §14.4).
+    q = moveCoversInTime(q, [...covers.keys()], delta).project
+  }
   const chapters = to.get('chapter')
   if (chapters && q.chapters) {
     let changed = false
@@ -386,7 +394,8 @@ export function setGroupLength(p: Project, keys: readonly ItemKey[], length: num
   let clamped = 0
   for (const key of keys) {
     const k = parseItemKey(key)
-    if (!k || k.kind === 'chapter' || k.kind === 'freeze') continue
+    // Covers keep their length here (part P1 of docs/design/auto-blur.md §14.4).
+    if (!k || k.kind === 'chapter' || k.kind === 'freeze' || k.kind === 'cover') continue
     const item = listOf(q, k.kind).find((x) => x.id === k.id)
     if (!item) continue
     const initial = { start: item.start, end: item.end }

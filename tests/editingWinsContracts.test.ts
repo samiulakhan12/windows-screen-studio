@@ -389,13 +389,14 @@ describe('the polish preference', () => {
     // Captions Studio's Caption look runs between Captions and the director (docs/design/captions-studio.md §11.8).
     // Editing polish's Smooth cuts runs after Remove silences (docs/design/editing-polish.md §11).
     // Smart tools' Find chapters runs after Captions and before Caption look (docs/design/smart-tools.md §13.3).
-    expect(POLISH_STEPS).toEqual(['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'chapters', 'captionLook', 'director'])
+    // Auto-blur's Find private info runs last (docs/design/auto-blur.md §14.5).
+    expect(POLISH_STEPS).toEqual(['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'chapters', 'captionLook', 'director', 'privacy'])
     for (const bad of [undefined, null, 'x', [], 3]) expect(readPolishOptions(bad)).toEqual(DEFAULT_POLISH_OPTIONS)
     const raw = { styleId: 'studio', zoom: false, silences: 'yes', silenceAction: 4, captions: false, captionsProvider: '', director: false, extra: 1 }
     const read = readPolishOptions(raw)
-    // Saved before Smooth cuts existed: it reads as off, as Caption look does, and Find chapters (smart-tools.md §13.3).
-    expect(read).toEqual({ styleId: 'studio', zoom: false, silences: true, silenceAction: 4, smoothCuts: false, captions: false, captionsProvider: null, chapters: false, captionLook: false, director: false })
+    // Saved before Smooth cuts existed: it reads as off, as Caption look does, and Find chapters (smart-tools.md §13.3), and Find private info (auto-blur §14.5).
+    expect(read).toEqual({ styleId: 'studio', zoom: false, silences: true, silenceAction: 4, smoothCuts: false, captions: false, captionsProvider: null, chapters: false, captionLook: false, director: false, privacy: false })
     expect(readPolishOptions(read)).toEqual(read)
-    expect(readPolishOptions({ silenceAction: 3, styleId: 'x'.repeat(65) })).toEqual({ ...DEFAULT_POLISH_OPTIONS, captionLook: false, smoothCuts: false, chapters: false })
+    expect(readPolishOptions({ silenceAction: 3, styleId: 'x'.repeat(65) })).toEqual({ ...DEFAULT_POLISH_OPTIONS, captionLook: false, smoothCuts: false, chapters: false, privacy: false })
   })
 })

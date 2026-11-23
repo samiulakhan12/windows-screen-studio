@@ -39,7 +39,8 @@ const CLASS_TITLE: Readonly<Record<LookClass, MessageKey>> = {
   image: 'style.selectionPanel.class.image',
   title: 'style.selectionPanel.class.title',
   freeze: 'style.selectionPanel.class.freeze',
-  graphic: 'style.selectionPanel.class.graphic'
+  graphic: 'style.selectionPanel.class.graphic',
+  cover: 'privacy.track.title'
 }
 
 /** Kinds with a start and an end (Length applies to them). */
@@ -90,6 +91,8 @@ function itemName(p: Project, e: ItemEntry): string {
       const g = p.graphics?.find((x) => x.id === e.id)
       return g ? graphicLabel(g) : t('style.selectionPanel.popUp')
     }
+    case 'cover':
+      return t('privacy.cover.title')
   }
 }
 

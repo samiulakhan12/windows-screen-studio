@@ -34,6 +34,7 @@ import { applyPreset, presetMatches, type PresetLook } from './stylePresets'
 import { recordAutoCuts } from '../review/autoCuts'
 import { cutCount, cutsWithoutOwnStyle } from './joinsEdit'
 import type { SceneScan } from '../api/projects'
+import type { PrivacyGathered } from '../api/privacy'
 import { polishChapters } from '../chapters/chapterAuto'
 import { userChapters } from '../chapters/pending'
 
@@ -44,9 +45,9 @@ import { userChapters } from '../chapters/pending'
  * 'chapters': Find chapters, offline (docs/design/smart-tools.md §13.3), after the captions (the
  * transcript and the cuts are final) and before the caption look.
  */
-export type PolishStep = 'style' | 'zoom' | 'silences' | 'smoothCuts' | 'captions' | 'chapters' | 'captionLook' | 'director'
-/** Run order (decision 2); the dialog lists rows in this order too. */
-export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'chapters', 'captionLook', 'director']
+export type PolishStep = 'style' | 'zoom' | 'silences' | 'smoothCuts' | 'captions' | 'chapters' | 'captionLook' | 'director' | 'privacy'
+/** Run order (decision 2); the dialog lists rows in this order too. 'privacy' (Find private info, docs/design/auto-blur.md §14.5) comes last. */
+export const POLISH_STEPS: readonly PolishStep[] = ['style', 'zoom', 'silences', 'smoothCuts', 'captions', 'chapters', 'captionLook', 'director', 'privacy']
 
 /** Videos shorter than this (video seconds) get no chapters from Polish (smart-tools.md §13.3). */
 export const POLISH_CHAPTERS_MIN = 120
@@ -68,6 +69,8 @@ export interface PolishOptions {
   /** Find chapters (smart-tools.md §13.3, §0 decision 8): on for new options; saved options without it read false. */
   chapters: boolean
   director: boolean
+  /** Find private info (docs/design/auto-blur.md §14.5): on for new options; saved options without it read false. */
+  privacy: boolean
 }
 
 export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
@@ -80,7 +83,8 @@ export const DEFAULT_POLISH_OPTIONS: Readonly<PolishOptions> = Object.freeze({
   captionsProvider: null,
   captionLook: true,
   chapters: true,
-  director: true
+  director: true,
+  privacy: true
 })
 
 /** Why a step did not run. */
@@ -127,6 +131,8 @@ export type PolishSkip =
   | 'short-video'
   /** Find chapters: no captions to name chapters from, or every name would be a number (so nothing is added) */
   | 'no-speech'
+  /** Find private info: the text reader is not downloaded, or found nothing to apply (PolishInput.privacy null) */
+  | 'no-reader'
 
 export interface PolishInput {
   project: Project
@@ -158,6 +164,8 @@ export interface PolishInput {
   captionLook?: { great: GreatOptions; cleanup: CleanupChoices; words: readonly WordListEntry[]; brand?: CaptionStudio | null }
   /** The scene scan for Find chapters (smart-tools.md §7.2), fetched with the other analyses; null or absent: none (pauses and words only). */
   scan?: SceneScan | null
+  /** What Find private info gathered (gatherPrivacy, docs/design/auto-blur.md §14.5); null or absent: nothing (the step is skipped). */
+  privacy?: PrivacyGathered | null
 }
 
 export interface PolishStepResult {
@@ -182,6 +190,8 @@ export interface PolishSummary {
   smoothCuts?: number
   /** Chapters Find chapters found ("Found 6 chapters"); absent or 0 unless the step changed the project. */
   chapters?: number
+  /** What Find private info found (docs/design/auto-blur.md §2.10, §14.5); absent unless the step ran. */
+  privacy?: Pick<PrivacyGathered, 'found' | 'check' | 'listenedOnly' | 'unfinished'>
   /** Zooms after polishing: automatic ones, and the user's (auto: false). */
   zooms: { auto: number; kept: number }
   /** The director's parts after polishing (DirectorPlan.parts, by kind). */
@@ -213,6 +223,8 @@ export interface PolishContext {
   transcribing: boolean
   /** On this PC is the choice but no speech model is downloaded (polishTranscriber): captions are skipped. */
   localNotReady?: boolean
+  /** The text reader is known not to be downloaded (docs/design/auto-blur.md §14.5); absent: not known yet. */
+  readerMissing?: boolean
 }
 
 /** The Clip panel's Remove silences defaults: pauses of 1.0 s or more, 0.25 s kept next to the sound. */
@@ -377,9 +389,35 @@ export function* planPolishSteps(input: PolishInput, options: PolishOptions): Ge
     ran('director', applyDirectorPlan(p, plan, input.framing))
   }
 
+  // Find private info, last (docs/design/auto-blur.md §14.5): what the runner gathered, in this same update.
+  if (!options.privacy) skip('privacy', 'off')
+  else if (input.blocked?.privacy) skip('privacy', input.blocked.privacy)
+  else if (!input.privacy) skip('privacy', 'no-reader')
+  else {
+    const g = input.privacy
+    summary.privacy = { found: g.found, check: g.check, listenedOnly: g.listenedOnly, unfinished: g.unfinished }
+    ran('privacy', withGathered(p, g))
+  }
+
   summary.zooms = { auto: p.zooms.filter((z) => z.auto).length, kept: p.zooms.filter((z) => !z.auto).length }
   summary.saved = Math.max(0, videoDuration(base.clips, planOf(base)) - videoDuration(p.clips, planOf(p)))
   return { project: p, summary, directorPlan }
+}
+
+/**
+ * `p` with what Find private info gathered (docs/design/auto-blur.md §14.5): its covers (the
+ * project's after Find's merge), the private bleeps it does not have yet, and the run's record.
+ */
+function withGathered(p: Project, g: PrivacyGathered): Project {
+  const have = new Set((p.bleeps ?? []).map((b) => b.id))
+  const said = g.said.filter((b) => !have.has(b.id))
+  if (g.covers === p.covers && !said.length && g.privacy === p.privacy) return p
+  const { covers: _covers, ...rest } = p
+  void _covers
+  const out: Project = g.covers?.length ? { ...rest, covers: g.covers } : rest
+  if (said.length) out.bleeps = [...(p.bleeps ?? []), ...said].sort((a, b) => a.start - b.start)
+  out.privacy = g.privacy
+  return out
 }
 
 const MAX_ID = 64
@@ -408,7 +446,9 @@ export function readPolishOptions(raw: unknown): PolishOptions {
     captionLook: flag(o.captionLook, false),
     // Saved before the step existed: off (smart-tools.md §13.3).
     chapters: flag(o.chapters, false),
-    director: flag(o.director, D.director)
+    director: flag(o.director, D.director),
+    // Saved before the step existed: off, so a saved Polish does what it did (docs/design/auto-blur.md §14.5).
+    privacy: flag(o.privacy, false)
   }
 }
 
@@ -446,7 +486,8 @@ export function polishAvailability(project: Project, recorded: CursorTrack, ctx:
           : 'no-speech',
     // It styles the captions there are, or the ones the captions step makes in the same run.
     captionLook: project.transcript?.segments.length || captions() === null ? null : 'no-captions',
-    director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null
+    director: !ctx.hasCameraFile || !project.hasWebcam ? 'no-camera' : !project.webcam.show ? 'camera-hidden' : null,
+    privacy: ctx.readerMissing ? 'no-reader' : null
   }
 }
 

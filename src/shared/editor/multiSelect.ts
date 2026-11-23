@@ -7,9 +7,10 @@
 import type { Project } from '../types'
 import { fmt } from '../i18n/fmt'
 import { t, type MessageKey } from '../i18n/t'
+import { coverItems } from './coverGroup'
 
 /** Kinds of items that can be selected together; captions, layouts, clips and clicks stay one at a time (§3). */
-export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze', 'graphic'] as const
+export const GROUP_KINDS = ['zoom', 'annotation', 'shape', 'spotlight', 'overlay', 'title', 'chapter', 'freeze', 'graphic', 'cover'] as const
 export type GroupKind = (typeof GROUP_KINDS)[number]
 /** `${kind}:${id}`: the snapping owner key, and what selectionKey() gives for the same item. */
 export type ItemKey = `${GroupKind}:${string}`
@@ -26,7 +27,7 @@ export interface ItemGroup {
 export const NO_GROUP: ItemGroup = Object.freeze({ keys: Object.freeze([]) as readonly ItemKey[], anchor: null, stamp: 0 })
 
 /** The timeline row an item sits on (shapes and spotlights share one). */
-export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'images' | 'titles' | 'chapters' | 'freezes' | 'graphics'
+export type ItemTrack = 'zoom' | 'text' | 'shapes' | 'images' | 'titles' | 'chapters' | 'freezes' | 'graphics' | 'covers'
 
 /** One groupable item: points (chapters, freezes) have start === end (a freeze's `at`). */
 export interface ItemEntry {
@@ -60,7 +61,8 @@ const TRACK_OF: Readonly<Record<GroupKind, ItemTrack>> = {
   title: 'titles',
   chapter: 'chapters',
   freeze: 'freezes',
-  graphic: 'graphics'
+  graphic: 'graphics',
+  cover: 'covers'
 }
 
 export const trackOfKind = (k: GroupKind): ItemTrack => TRACK_OF[k]
@@ -82,6 +84,7 @@ export function projectItems(p: Project): ItemEntry[] {
   add('graphic', p.graphics)
   for (const c of p.chapters ?? []) out.push({ key: itemKey('chapter', c.id), kind: 'chapter', id: c.id, track: 'chapters', start: c.t, end: c.t })
   for (const f of p.freezes ?? []) out.push({ key: itemKey('freeze', f.id), kind: 'freeze', id: f.id, track: 'freezes', start: f.at, end: f.at })
+  out.push(...coverItems(p))
   return out.sort(byTime)
 }
 
@@ -106,6 +109,8 @@ function idsOf(p: Project, kind: GroupKind): readonly { id: string }[] {
       return p.freezes ?? []
     case 'graphic':
       return p.graphics ?? []
+    case 'cover':
+      return p.covers ?? []
   }
 }
 
@@ -245,7 +250,8 @@ export const KIND_WORDS: Readonly<Record<GroupKind, MessageKey>> = {
   title: 'style.groupEdit.count.title',
   chapter: 'style.groupEdit.count.chapter',
   freeze: 'style.groupEdit.count.freeze',
-  graphic: 'style.groupEdit.count.graphic'
+  graphic: 'style.groupEdit.count.graphic',
+  cover: 'style.groupEdit.count.cover'
 }
 
 /** "3 zooms", "1 text item". */

@@ -41,6 +41,7 @@ import { availableState, onSpeechRead, spokenLanguage, useSpeechState } from './
 import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
 import { keepVersionBefore } from '../versions/autoVersion'
+import { useReaderState } from '../privacy/readerState'
 
 /** The Polish button: the Captions step's cost line holds its click to ask before a paid run (smart-tools.md §11.5). */
 const POLISH_START = 'polish-start'
@@ -130,9 +131,12 @@ export function PolishDialog(props: {
   const presets = [...BUILT_IN_PRESETS, ...(userPresets ?? [])]
   const styleFound = !!options?.styleId && presets.some((p) => p.id === options.styleId)
   const ready = !!options && providers !== null && userPresets !== null && speech.status !== 'loading'
+  // Find private info's row shows once the text reader's state is known (docs/design/auto-blur.md §14.5, part P5).
+  const reader = useReaderState()
+  const steps = POLISH_STEPS.filter((step) => step !== 'privacy' || reader !== null)
   /** Whether a row is on: chosen and able to run (a row that cannot run shows unchecked; the remembered option stays). */
-  const isOn = (step: PolishStep): boolean => !!options && (step === 'style' ? styleFound : options[step] && !available[step])
-  const anything = POLISH_STEPS.some(isOn)
+  const isOn = (step: PolishStep): boolean => !!options && steps.includes(step) && (step === 'style' ? styleFound : options[step] && !available[step])
+  const anything = steps.some(isOn)
 
   // The view's main button takes the focus; the panel itself while that button is disabled (the
   // options are read, or no step can run), as a disabled button does not take it.
@@ -153,7 +157,7 @@ export function PolishDialog(props: {
     const run = runPolish(
       services,
       recorded,
-      chosen,
+      { ...chosen, privacy: isOn('privacy') },
       { hasCameraFile, providerId: make?.providerId ?? null, ...(make?.model ? { model: make.model } : {}), ...(make?.language ? { language: make.language } : {}), userPresets: userPresets ?? [] },
       (rows) => setView({ kind: 'running', rows })
     )
@@ -306,7 +310,7 @@ export function PolishDialog(props: {
     body = (
       <>
         <p className="hint">{polishLead()}</p>
-        <ul className="polish-rows">{POLISH_STEPS.map(optionRow)}</ul>
+        <ul className="polish-rows">{steps.map(optionRow)}</ul>
       </>
     )
     foot = (
@@ -328,7 +332,7 @@ export function PolishDialog(props: {
       </>
     )
   } else if (view.kind === 'running') {
-    body = <ul className="polish-rows">{POLISH_STEPS.map((step) => runningRow(step, view.rows[step]))}</ul>
+    body = <ul className="polish-rows">{steps.map((step) => runningRow(step, view.rows[step]))}</ul>
     foot = (
       <button ref={mainRef} className="btn" onClick={cancel}>
         {t('common.action.cancel')}
@@ -343,12 +347,14 @@ export function PolishDialog(props: {
           {polishHeadline(view.result.summary, changed)}
         </p>
         <ul className="polish-rows">
-          {polishResultLines(view.result.summary).map((line) => (
-            <li key={line.step} className="polish-row result" data-testid={`polish-line-${line.step}`} data-status={line.status}>
-              <RowMark phase={line.status} />
-              <span className="polish-text">{line.text}</span>
-            </li>
-          ))}
+          {polishResultLines(view.result.summary)
+            .filter((line) => steps.includes(line.step))
+            .map((line) => (
+              <li key={line.step} className="polish-row result" data-testid={`polish-line-${line.step}`} data-status={line.status}>
+                <RowMark phase={line.status} />
+                <span className="polish-text">{line.text}</span>
+              </li>
+            ))}
         </ul>
         {changed && <p className="hint">{polishFootnote()}</p>}
       </div>

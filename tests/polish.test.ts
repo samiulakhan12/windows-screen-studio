@@ -43,7 +43,7 @@ const SOUND = [
   { start: 7.5, end: 11.9 }
 ]
 /** Every step off: tests turn on the ones they look at. */
-const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, smoothCuts: false, captions: false, chapters: false, captionLook: false, director: false }
+const NONE: PolishOptions = { ...DEFAULT_POLISH_OPTIONS, styleId: null, zoom: false, silences: false, smoothCuts: false, captions: false, chapters: false, captionLook: false, director: false, privacy: false }
 
 function counter(prefix = 'a'): () => string {
   let n = 0
@@ -386,7 +386,9 @@ describe('planPolish: the whole run', () => {
       ['chapters', 'skipped'],
       // Caption look (Captions Studio §11.8): style, emphasis and tidy on the new captions.
       ['captionLook', 'changed'],
-      ['director', 'changed']
+      ['director', 'changed'],
+      // Find private info (auto-blur §14.5): nothing was gathered for this run.
+      ['privacy', 'skipped']
     ])
     expect(r.summary.saved).toBeCloseTo(outputDuration(base.project.clips) - outputDuration(r.project.clips), 6)
   })
@@ -452,8 +454,8 @@ describe('readPolishOptions', () => {
     const read = readPolishOptions({ styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', director: false })
     // Saved before Caption look existed: it reads as off, so a saved Polish does what it did.
     // Smooth cuts too (editing polish §11, §0 decision 3).
-    // Find chapters too (smart-tools.md §13.3).
-    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', captionLook: false, smoothCuts: false, chapters: false, director: false })
+    // Find chapters too (smart-tools.md §13.3), and Find private info (auto-blur §14.5).
+    expect(read).toEqual({ ...DEFAULT_POLISH_OPTIONS, styleId: 'u1', zoom: false, silenceAction: 8, captionsProvider: 'p1', captionLook: false, smoothCuts: false, chapters: false, director: false, privacy: false })
     expect(readPolishOptions(read)).toEqual(read)
     expect(readPolishOptions({ captionLook: true }).captionLook).toBe(true)
     expect(DEFAULT_POLISH_OPTIONS.captionLook).toBe(true)
@@ -471,7 +473,7 @@ describe('polishAvailability', () => {
   it('offers every step of a recording that has everything', () => {
     // Smooth cuts (editing polish §11): offered, since Remove silences can make cuts to smooth.
     // Find chapters (smart-tools.md §13.3) is the one row a 48 s video cannot have: it is under 2 minutes.
-    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, smoothCuts: null, captions: null, chapters: 'short-video', captionLook: null, director: null })
+    expect(polishAvailability(e2eProject(), recorded, ctx)).toEqual({ style: null, zoom: null, silences: null, smoothCuts: null, captions: null, chapters: 'short-video', captionLook: null, director: null, privacy: null })
   })
 
   it('says why a row is disabled', () => {
