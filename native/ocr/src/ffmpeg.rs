@@ -3,7 +3,8 @@
 //! `-threads 1` (2 for the look pass), below-normal priority, no window, and on Windows inside a
 //! job object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so the helper's end ends them all. Frames
 //! come raw on stdout; `showinfo` lines on stderr give each frame's time and whether it is a key
-//! frame. stderr is otherwise read only to tell a broken video from a stop; it is never passed on.
+//! frame. Nothing else of stderr is kept, and none of it is ever passed on: a run that ends early
+//! (a broken or cut video, the time limit) is `video`.
 
 use crate::control;
 use crate::protocol::Failure;
@@ -97,9 +98,7 @@ pub struct Run {
     child: Child,
     stdout: ChildStdout,
     infos: Receiver<Info>,
-    broken: Arc<AtomicBool>,
     done: Arc<AtomicBool>,
-    timed_out: Arc<AtomicBool>,
 }
 
 /// The value of ` key:` in a showinfo line (spaces after the colon skipped).
@@ -165,8 +164,6 @@ impl Run {
         let stdout = child.stdout.take().ok_or(Failure::Video)?;
         let stderr = child.stderr.take().ok_or(Failure::Video)?;
         let (tx, infos) = channel();
-        let broken = Arc::new(AtomicBool::new(false));
-        let b2 = broken.clone();
         std::thread::spawn(move || {
             let mut r = BufReader::new(stderr);
             let mut buf = Vec::new();
@@ -188,26 +185,22 @@ impl Run {
                     if tx.send(info).is_err() {
                         break;
                     }
-                } else if line.contains("Invalid data found") || line.contains("moov atom not found") || line.contains("No such file") || line.contains("Error opening input") || line.contains("could not find codec") {
-                    b2.store(true, Ordering::SeqCst);
                 }
             }
         });
         let done = Arc::new(AtomicBool::new(false));
-        let timed_out = Arc::new(AtomicBool::new(false));
-        let (d2, t2, pid) = (done.clone(), timed_out.clone(), child.id());
+        let (d2, pid) = (done.clone(), child.id());
         std::thread::spawn(move || {
             let start = Instant::now();
             while !d2.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_millis(200));
                 if start.elapsed() > limit && !d2.load(Ordering::SeqCst) {
-                    t2.store(true, Ordering::SeqCst);
                     kill_pid(pid);
                     break;
                 }
             }
         });
-        Ok(Run { key, child, stdout, infos, broken, done, timed_out })
+        Ok(Run { key, child, stdout, infos, done })
     }
 
     /// The next showinfo line, waiting at most `wait`; None when ffmpeg ended or took too long.
@@ -224,9 +217,8 @@ impl Run {
         self.stdout.read_exact(buf).map_err(|_| self.failure())
     }
 
-    /// Why the run ended early: a broken or cut video, or the time limit; all are `video`.
+    /// Why the run ended early: a broken or cut video, or the time limit.
     pub fn failure(&self) -> Failure {
-        let _ = (self.timed_out.load(Ordering::SeqCst), self.broken.load(Ordering::SeqCst));
         Failure::Video
     }
 }

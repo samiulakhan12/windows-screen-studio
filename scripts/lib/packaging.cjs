@@ -260,8 +260,13 @@ function unexpectedOcrImports(names) {
   return names.filter((n) => !allowed.includes(n.toLowerCase()))
 }
 
-/** The text reader helper's budget, bytes: brotli-compressed (quality 11, 16 MB window) and installed (§16.2). */
-const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }
+/**
+ * The text reader helper's budget, bytes: brotli-compressed (quality 11, 16 MB window) and installed
+ * (§16.2). Measured on 23 Nov 2026 with tract, rqrr and the Windows reader's WinRT bindings: 4,083,315
+ * B compressed and 16,323,072 B installed (the mixed profile; opt-level "z" made it larger), each
+ * limit about 5% over that and under decision 1's 5 MB line.
+ */
+const OCR_BUDGET = { compressed: 4.3e6, installed: 17.2e6 }
 
 /**
  * Strings only the test build of the helper holds (its `fixture` feature: reading PNG files,

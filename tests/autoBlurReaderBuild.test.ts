@@ -112,10 +112,12 @@ describe('auto-blur P2: building and shipping the reader', () => {
     expect(packaging.ocrHelperProblems(exeFile(fakeExe([...RUST, ...WINRT])))).toEqual([])
     expect(packaging.ocrHelperProblems(exeFile(fakeExe([...RUST, 'wer.dll'])))).toEqual([`imports wer.dll; only ${packaging.OCR_IMPORTS.join(', ')} are allowed`])
     // The budget: installed bytes, and brotli quality 11 with a 16 MB window.
-    expect(packaging.OCR_BUDGET).toEqual({ compressed: 3.9e6, installed: 16e6 })
-    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 16e6 + 1 })))).toEqual([`is ${16e6 + 1} B installed, over its budget of 16000000 B`])
-    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 3.95e6, padding: 'random' }))).join('; ')).toMatch(/B compressed, over its budget of 3900000 B$/)
-    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 3.95e6, padding: 'zero' })))).toEqual([])
+    // Decision 1's line is 5 MB compressed; the measured helper is 4.09 MB (native/ocr/README.md).
+    expect(packaging.OCR_BUDGET).toEqual({ compressed: 4.3e6, installed: 17.2e6 })
+    expect(packaging.OCR_BUDGET.compressed).toBeLessThan(5e6)
+    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 17.2e6 + 1 })))).toEqual([`is ${17.2e6 + 1} B installed, over its budget of 17200000 B`])
+    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 4.35e6, padding: 'random' }))).join('; ')).toMatch(/B compressed, over its budget of 4300000 B$/)
+    expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST, { size: 4.35e6, padding: 'zero' })))).toEqual([])
     expect(packaging.ocrHelperProblems(exeFile(fakeExe(RUST)), { signedBuild: true })).toEqual(['is not signed in a signed build'])
     // It rides the speech helpers' directory-form entry, so it is signed with them.
     const root = tmpDir()

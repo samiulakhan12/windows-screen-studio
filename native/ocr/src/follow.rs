@@ -169,8 +169,7 @@ impl Session {
     fn keep(&mut self, img: Vec<u8>, t: f64, w: usize, h: usize) -> Arc<Gray> {
         self.decoded += 1;
         stats::add(&stats::FOLLOW_FRAMES, 1);
-        let g = Arc::new(Gray { t, w, h, grad: sobel(&img, w, h) });
-        g
+        Arc::new(Gray { t, w, h, grad: sobel(&img, w, h) })
     }
 
     fn pull_forward(&mut self) -> Result<Option<Arc<Gray>>, Failure> {

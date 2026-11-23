@@ -147,5 +147,11 @@ build (`SSW_OCR_HELPER_TEST`, or native/bin/ssw-ocr) with the models in `SSW_OCR
 - **Open**: 1.4 s with every plan built. A whole 1080p frame reads in 1.2-1.9 s with the tiny
   recogniser, and its careful re-reads add about 0.15 s a line.
 
+**The Windows build** (MinGW, the mixed profile, 23 Nov 2026): 16,323,072 bytes, 4,083,315 bytes
+brotli-compressed (quality 11, 16 MB window), under decision 1's 5 MB line; the tract skeleton alone
+was 3,336,375. Its imports are exactly `OCR_IMPORTS`. `opt-level = "z"` for everything but tract's
+kernels and this crate made it larger (21.5 MB, 4.74 MB compressed). Under wine it starts, answers
+`opened` with every plan built in about 2 s, and ends when its stdin closes.
+
 The reference PC measures speed and memory again at 1080p, 4K and 7680×2160 before release
 (decision 8), with the Windows build.
