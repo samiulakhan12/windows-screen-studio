@@ -379,13 +379,25 @@ function unitClass(unit: number): number {
 }
 const isSurrogate = (unit: number): boolean => unit >= 0xd800 && unit <= 0xdfff
 
-/** Whether `text` is its own key: letters, digits and marks of the Basic Multilingual Plane only, none right after itself (most words). */
-function ownKey(text: string): boolean {
+/**
+ * The key of `text` (in NFC and lower case) when it is of the Basic Multilingual Plane and, once
+ * what is not a letter, digit or mark is removed, has no letter twice in a row (most words): the
+ * text without those; else undefined, and bleepKey takes its steps.
+ */
+function plainKey(text: string): string | undefined {
+  let out = ''
+  let from = 0
+  let last = -1
   for (let i = 0; i < text.length; i++) {
     const unit = text.charCodeAt(i)
-    if (isSurrogate(unit) || !(unitClass(unit) & UNIT_WORD) || unit === text.charCodeAt(i - 1)) return false
+    if (isSurrogate(unit)) return undefined
+    if (!(unitClass(unit) & UNIT_WORD)) {
+      out += text.slice(from, i)
+      from = i + 1
+    } else if (unit === last) return undefined
+    else last = unit
   }
-  return true
+  return from ? out + text.slice(from) : text
 }
 
 /**
@@ -396,8 +408,9 @@ function ownKey(text: string): boolean {
  */
 export function bleepKey(word: string): string {
   const text = word.normalize('NFC').toLowerCase()
-  // Nothing to remove and no letter twice in a row: the text is its key, as the steps below give it.
-  if (ownKey(text)) return text
+  // No letter twice in a row once the rest is removed: nothing to collapse, the key the steps below give.
+  const plain = plainKey(text)
+  if (plain !== undefined) return plain
   const bare = text.replace(/[^\p{L}\p{N}\p{M}]/gu, '')
   let out = ''
   let run = 0
