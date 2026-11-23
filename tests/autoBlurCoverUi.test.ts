@@ -922,6 +922,10 @@ describe('auto-blur P1: the preview', () => {
   it('68. CoverHandles: a drag moves the box at the playhead in one undo step', () => {
     const p = project({ covers: [cover('c', 1, 5, [key(1, 0.25, 0.5, 0.2, 0.05)])] })
     setUp(p, [], 'cover:c')
+    // A slow drag: seconds between moves, past the undo merge window; the gesture still makes one step.
+    let clock = 0
+    store = new EditStore<Project>(p, 200, 800, () => (clock += 2000))
+    contexts.editor = services()
     paused(p)
     const root = { type: CoverHandles, props: { project: p, selection: { kind: 'cover', id: 'c' }, view } }
     const els = render(root)

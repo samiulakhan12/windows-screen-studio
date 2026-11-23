@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   addCover,
@@ -339,7 +340,9 @@ describe('auto-blur P1: cover edits', () => {
       cover('c', 7, 9, [key(7, 0.3, 0.3, 0.2, 0.05)], { kind: 'phone', group: 'g3' })
     ]
     const bleeps = [{ id: 'pb', start: 10, end: 11, word: ':card:k3v9q2m8xa', sound: 'tone' as const, auto: true as const }]
-    // The editor's store with its own settle chain (Editor.tsx).
+    // The editor's store with its own settle chain (Editor.tsx: exactly these steps, none for covers).
+    const editor = fs.readFileSync('src/renderer/src/views/Editor.tsx', 'utf8')
+    expect(editor).toContain('settleChapters(settleGrade(settleJoins(settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev), prev), prev), prev)')
     const store = new EditStore<Project>(start, undefined, undefined, undefined, (next, prev) =>
       settleChapters(settleGrade(settleJoins(settleAutoCuts(settleCaptionAuto(settleDeletedWords(next, prev), prev), prev), prev), prev), prev)
     )
