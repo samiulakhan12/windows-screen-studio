@@ -102,8 +102,9 @@ describe('auto-blur contracts: main', () => {
       await expect(Promise.resolve().then(() => fn(app, ...args)), c).resolves.not.toThrow()
       if (args.length) await expect(Promise.resolve().then(() => fn(app, { bad: true })), c).rejects.toThrow('Invalid request')
     }
-    // The download starts nothing before the reader's part exists.
-    await expect(Promise.resolve().then(() => h.handlers.get(PRIVACY_CHANNELS.downloadReader)!(app))).rejects.toThrow()
+    // The download starts nothing when this build has no helper that runs here (part P2's readerModels).
+    await expect(Promise.resolve().then(() => h.handlers.get(PRIVACY_CHANNELS.downloadReader)!(app))).resolves.toEqual({ status: 'unavailable', reason: 'helper' })
+    await expect(Promise.resolve().then(() => h.handlers.get(PRIVACY_CHANNELS.downloadReader)!(app, { bad: true }))).rejects.toThrow('Not allowed')
   })
 
   it('35. Names in logs: with "Priya Raman" listed, a log line holding it is written with <secret>; *Acme redacts "Acme"; a two-letter entry is not used; diagnostics hold no name', async () => {

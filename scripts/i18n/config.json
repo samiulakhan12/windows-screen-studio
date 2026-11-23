@@ -43,6 +43,8 @@
     "src/main/privacy/findIpc.ts",
     "src/main/privacy/names.ts",
     "src/main/privacy/readerIpc.ts",
+    "src/main/privacy/readerHelper.ts",
+    "src/main/privacy/readerModels.ts",
     "src/main/projectFile.ts",
     "src/preload/privacy.ts",
     "src/renderer/src/ai/aiTextFor.ts",
