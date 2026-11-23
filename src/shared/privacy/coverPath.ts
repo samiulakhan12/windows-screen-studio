@@ -59,25 +59,16 @@ function unitsText(u: number, digits: number): string {
   return text
 }
 
-/** Whether path[a, b) is a plain decimal: an optional '-', digits, then optionally '.' and digits. */
-function plainDecimal(path: string, a: number, b: number): boolean {
-  let i = a
-  if (path.charCodeAt(i) === 45) i++
-  const digitsFrom = i
-  while (i < b && path.charCodeAt(i) >= 48 && path.charCodeAt(i) <= 57) i++
-  if (i === digitsFrom) return false
-  if (i === b) return true
-  if (path.charCodeAt(i) !== 46) return false
-  i++
-  const fracFrom = i
-  while (i < b && path.charCodeAt(i) >= 48 && path.charCodeAt(i) <= 57) i++
-  return i === b && i > fracFrom
-}
+/** 10^0 … 10^22, each exact in a double. */
+const POW10 = Array.from({ length: 23 }, (_v, i) => Number(`1e${i}`))
 
 /**
  * The keys of `path`, or null when it is not a path: empty keys, a field that is not a plain
- * decimal (exponents, NaN, Infinity, a leading '+' or '.'), not five fields, or times that do not
- * strictly increase. Any number of keys is accepted here; the readers apply the limits. One pass.
+ * decimal (an optional '-', digits, then optionally '.' and digits: no exponents, NaN, Infinity,
+ * leading '+' or '.'), not five fields, or times that do not strictly increase. Any number of keys
+ * is accepted here; the readers apply the limits. One pass over the characters: a field of at most
+ * 15 digits is its digits as an integer divided by a power of ten, which a double divides with
+ * correct rounding, so it equals Number() of the field; a longer one goes through Number().
  */
 export function parsePath(path: string): CoverKey[] | null {
   if (typeof path !== 'string' || !path) return null
@@ -85,25 +76,47 @@ export function parsePath(path: string): CoverKey[] | null {
   const f = [0, 0, 0, 0, 0]
   let last = -Infinity
   let field = 0
-  let from = 0
   const n = path.length
-  for (let i = 0; i <= n; i++) {
-    const c = i < n ? path.charCodeAt(i) : 59
-    if (c !== 32 && c !== 59) continue
+  let i = 0
+  for (;;) {
+    const from = i
+    const neg = path.charCodeAt(i) === 45
+    if (neg) i++
+    const digitsFrom = i
+    let v = 0
+    let c = 0
+    while (i < n && (c = path.charCodeAt(i)) >= 48 && c <= 57) {
+      v = v * 10 + (c - 48)
+      i++
+    }
+    if (i === digitsFrom) return null
+    let fracDigits = 0
+    if (i < n && path.charCodeAt(i) === 46) {
+      const fracFrom = ++i
+      while (i < n && (c = path.charCodeAt(i)) >= 48 && c <= 57) {
+        v = v * 10 + (c - 48)
+        i++
+      }
+      fracDigits = i - fracFrom
+      if (!fracDigits) return null
+    }
+    const digits = i - digitsFrom - (fracDigits ? 1 : 0)
+    const value = digits <= 15 ? v / POW10[fracDigits] : Number(path.slice(neg ? from + 1 : from, i))
+    f[field] = neg ? -value : value
     // A field ends at a space or a ';' (or the end, read as one).
-    if (!plainDecimal(path, from, i)) return null
-    f[field] = Number(path.slice(from, i))
-    from = i + 1
-    if (c === 32) {
+    const sep = i < n ? path.charCodeAt(i) : 59
+    if (sep === 32) {
       if (++field > 4) return null
+      i++
       continue
     }
-    if (field !== 4 || !(f[0] > last)) return null
+    if (sep !== 59 || field !== 4 || !(f[0] > last)) return null
     last = f[0]
     out.push({ t: f[0], x: f[1], y: f[2], w: f[3], h: f[4] })
     field = 0
+    if (i >= n) return out
+    i++
   }
-  return out
 }
 
 /**

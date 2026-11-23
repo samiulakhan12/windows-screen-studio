@@ -427,139 +427,280 @@ export function withoutLegacyShapes(shapes: unknown): unknown {
 
 /* ---------- merging (§5.10) ---------- */
 
-/** A cover while merging: its keys in effect, kept in memory until the end. */
-interface Merging {
-  cover: Cover
-  /** Its keys in effect, flat: t, x, y, w, h for each. */
-  k: Float64Array
-  merged: boolean
-}
-
-const flatKeys = (keys: readonly CoverKey[]): Float64Array => {
-  const out = new Float64Array(keys.length * 5)
-  keys.forEach((k, i) => {
-    out[i * 5] = k.t
-    out[i * 5 + 1] = k.x
-    out[i * 5 + 2] = k.y
-    out[i * 5 + 3] = k.w
-    out[i * 5 + 4] = k.h
-  })
-  return out
-}
-
-const keysOfFlat = (f: Float64Array): CoverKey[] => {
-  const out: CoverKey[] = []
-  for (let i = 0; i < f.length; i += 5) out.push({ t: f[i], x: f[i + 1], y: f[i + 2], w: f[i + 3], h: f[i + 4] })
-  return out
-}
-
-let scratch = new Float64Array(1024)
-
-/** One cover holding both: whose drawn box contains each one's at every time (§5.10). Linear in their keys. */
-function mergeTwo(a: Merging, b: Merging): Merging {
-  const ka = a.k
-  const kb = b.k
-  const na = ka.length
-  const nb = kb.length
-  if (scratch.length < na + nb) scratch = new Float64Array(2 * (na + nb))
-  const out = scratch
-  let n = 0
-  let i = 0
-  let j = 0
-  const ca = a.cover
-  const cb = b.cover
-  // Walk both key lists in time order, each holding its last key.
-  while (i < na || j < nb) {
-    const t = j >= nb || (i < na && ka[i] <= kb[j]) ? ka[i] : kb[j]
-    while (i < na && ka[i] <= t) i += 5
-    while (j < nb && kb[j] <= t) j += 5
-    const hasA = i > 0 && t >= ca.start && t < ca.end
-    const hasB = j > 0 && t >= cb.start && t < cb.end
-    if (!hasA && !hasB) continue
-    let x0: number, y0: number, x1: number, y1: number
-    if (hasA && hasB) {
-      x0 = Math.min(ka[i - 4], kb[j - 4])
-      y0 = Math.min(ka[i - 3], kb[j - 3])
-      x1 = Math.max(ka[i - 4] + ka[i - 2], kb[j - 4] + kb[j - 2])
-      y1 = Math.max(ka[i - 3] + ka[i - 1], kb[j - 3] + kb[j - 1])
-    } else {
-      const s = hasA ? ka : kb
-      const e = hasA ? i : j
-      x0 = s[e - 4]
-      y0 = s[e - 3]
-      x1 = x0 + s[e - 2]
-      y1 = y0 + s[e - 1]
-    }
-    const w = x1 - x0
-    const h = y1 - y0
-    if (n && out[n - 4] === x0 && out[n - 3] === y0 && out[n - 2] === w && out[n - 1] === h) continue
-    out[n] = t
-    out[n + 1] = x0
-    out[n + 2] = y0
-    out[n + 3] = w
-    out[n + 4] = h
-    n += 5
-  }
-  const first = ca.start <= cb.start ? ca : cb
-  const cover: Cover = { id: first.id, start: Math.min(ca.start, cb.start), end: Math.max(ca.end, cb.end), path: '', color: first.color }
-  // A cover the user owns stays the user's; otherwise the stricter tier wins.
-  if (ca.found && cb.found) cover.found = ca.found === 'check' || cb.found === 'check' ? 'check' : 'auto'
-  if (ca.kind && ca.kind === cb.kind) cover.kind = ca.kind
-  else if (ca.kind && cb.kind && ca.found && cb.found) cover.kind = first.kind
-  if (first.group) cover.group = first.group
-  if (ca.lost || cb.lost) cover.lost = true
-  if (ca.thin || cb.thin) cover.thin = true
-  if (ca.missed && cb.missed) cover.missed = true
-  return { cover, k: out.slice(0, n), merged: true }
-}
-
 const GRID = 8
 /** Each cover's candidates: its nearest neighbours by start time among covers sharing a cell. */
 const NEIGHBOURS = 8
+const LOST = 1
+const THIN = 2
+const MISSED = 4
 
-interface Item {
-  m: Merging
-  /** Its envelope's edges. */
-  x0: number
-  y0: number
-  x1: number
-  y1: number
+/**
+ * The covers while merging, in start order (ties by rank), as arrays: a merge makes no object, and
+ * covers close in time sit close in memory, where their merges read them.
+ */
+interface Merging {
+  n: number
+  /** The input cover whose id, colour and group a cover keeps: its first member. */
+  owner: Int32Array
   /** The first of its members in the input: survivors keep the input's order. */
-  rank: number
+  rank: Int32Array
+  start: Float64Array
+  end: Float64Array
+  /** Its envelope's edges. */
+  x0: Float64Array
+  y0: Float64Array
+  x1: Float64Array
+  y1: Float64Array
+  /** 0: the user's; 1: 'auto'; 2: 'check'. */
+  found: Uint8Array
+  /** 1 + its kind's place in `kinds`; 0: none. */
+  kind: Int32Array
+  /** LOST, THIN and MISSED. */
+  flags: Uint8Array
+  merged: Uint8Array
+  /** Its keys in effect in `pool`, flat (t, x, y, w, h each): `keyLen[i]` numbers from `keyAt[i]`. */
+  keyAt: Int32Array
+  keyLen: Int32Array
+  pool: Float64Array
+  /** The first free place in `pool`. */
+  top: number
 }
 
-/** The grid cells (8 × 8 over the frame) a box touches. */
-function cellsOf(b: NormRect): number[] {
-  const x0 = clamp(Math.floor(b.x * GRID), 0, GRID - 1)
-  const x1 = clamp(Math.floor((b.x + b.w) * GRID - 1e-9), 0, GRID - 1)
-  const y0 = clamp(Math.floor(b.y * GRID), 0, GRID - 1)
-  const y1 = clamp(Math.floor((b.y + b.h) * GRID - 1e-9), 0, GRID - 1)
-  const out: number[] = []
-  for (let y = y0; y <= y1; y++) for (let x = Math.max(0, x0); x <= x1; x++) out.push(y * GRID + x)
-  return out
+function newMerging(n: number, poolSize: number): Merging {
+  return {
+    n,
+    owner: new Int32Array(n),
+    rank: new Int32Array(n),
+    start: new Float64Array(n),
+    end: new Float64Array(n),
+    x0: new Float64Array(n),
+    y0: new Float64Array(n),
+    x1: new Float64Array(n),
+    y1: new Float64Array(n),
+    found: new Uint8Array(n),
+    kind: new Int32Array(n),
+    flags: new Uint8Array(n),
+    merged: new Uint8Array(n),
+    keyAt: new Int32Array(n),
+    keyLen: new Int32Array(n),
+    pool: new Float64Array(Math.max(16, poolSize)),
+    top: 0
+  }
+}
+
+/** Copies cover `i` of `from` to place `p` of `to`, its keys to the end of `to`'s pool. */
+function copyMerging(from: Merging, i: number, to: Merging, p: number): void {
+  to.owner[p] = from.owner[i]
+  to.rank[p] = from.rank[i]
+  to.start[p] = from.start[i]
+  to.end[p] = from.end[i]
+  to.x0[p] = from.x0[i]
+  to.y0[p] = from.y0[i]
+  to.x1[p] = from.x1[i]
+  to.y1[p] = from.y1[i]
+  to.found[p] = from.found[i]
+  to.kind[p] = from.kind[i]
+  to.flags[p] = from.flags[i]
+  to.merged[p] = from.merged[i]
+  const len = from.keyLen[i]
+  to.pool.set(from.pool.subarray(from.keyAt[i], from.keyAt[i] + len), to.top)
+  to.keyAt[p] = to.top
+  to.keyLen[p] = len
+  to.top += len
 }
 
 /**
- * One round of merging: each cover's candidates are its 8 nearest by start among the covers sharing
- * an 8 × 8 grid cell with it; the pairs come off a heap cheapest first, each cover at most once a
- * round, until `need` merges are made. The next round looks again around the merged covers. Returns
- * the covers after the round (a merged one in place of its first member).
+ * Places 0 … n−1 ordered by start, then rank: a native sort of the starts with each place in the
+ * low bits (which can only swap near-ties), then an insertion pass that puts those right.
  */
-function mergeRound(items: Item[], need: number): Item[] {
-  const n = items.length
-  const starts = new Float64Array(n)
-  for (let i = 0; i < n; i++) starts[i] = items[i].m.cover.start
-  const byStart = Array.from({ length: n }, (_v, i) => i).sort((x, y) => starts[x] - starts[y] || x - y)
+function orderByStart(start: Float64Array, rank: Int32Array): Int32Array {
+  const n = start.length
+  const order = new Int32Array(n)
+  const before = (a: number, b: number): boolean => start[a] < start[b] || (start[a] === start[b] && rank[a] < rank[b])
+  if (n >= 1 << 22) {
+    const idx = Array.from({ length: n }, (_v, i) => i).sort((a, b) => start[a] - start[b] || rank[a] - rank[b])
+    for (let i = 0; i < n; i++) order[i] = idx[i]
+    return order
+  }
+  const packed = new Float64Array(n)
+  const words = new Uint32Array(packed.buffer)
+  for (let i = 0; i < n; i++) {
+    packed[i] = start[i]
+    words[2 * i] = (words[2 * i] & ~0x3fffff) | i
+  }
+  packed.sort()
+  for (let i = 0; i < n; i++) order[i] = words[2 * i] & 0x3fffff
+  for (let i = 1; i < n; i++) {
+    const v = order[i]
+    let j = i - 1
+    while (j >= 0 && before(v, order[j])) {
+      order[j + 1] = order[j]
+      j--
+    }
+    order[j + 1] = v
+  }
+  return order
+}
+
+/** The covers in start order, each with its keys in effect and their envelope. */
+function startMerging(covers: readonly Cover[], kinds: string[]): Merging {
+  const n = covers.length
+  const start = new Float64Array(n)
+  const rank = new Int32Array(n)
+  for (let i = 0; i < n; i++) {
+    start[i] = covers[i].start
+    rank[i] = i
+  }
+  const order = orderByStart(start, rank)
+  const keyLists: CoverKey[][] = new Array(n)
+  let total = 0
+  for (let p = 0; p < n; p++) {
+    keyLists[p] = activeKeys(covers[order[p]])
+    total += keyLists[p].length * 5
+  }
+  // Room for the keys, and for a round's merges after them (a merge writes at most both members' keys).
+  const s = newMerging(n, 2 * total)
+  const kindIds = new Map<string, number>()
+  for (let p = 0; p < n; p++) {
+    const i = order[p]
+    const c = covers[i]
+    const keys = keyLists[p]
+    s.owner[p] = i
+    s.rank[p] = i
+    s.start[p] = c.start
+    s.end[p] = c.end
+    let x0 = keys.length ? Infinity : 0
+    let y0 = keys.length ? Infinity : 0
+    let x1 = keys.length ? -Infinity : 1
+    let y1 = keys.length ? -Infinity : 1
+    s.keyAt[p] = s.top
+    for (const k of keys) {
+      x0 = Math.min(x0, k.x)
+      y0 = Math.min(y0, k.y)
+      x1 = Math.max(x1, k.x + k.w)
+      y1 = Math.max(y1, k.y + k.h)
+      s.pool[s.top++] = k.t
+      s.pool[s.top++] = k.x
+      s.pool[s.top++] = k.y
+      s.pool[s.top++] = k.w
+      s.pool[s.top++] = k.h
+    }
+    s.keyLen[p] = s.top - s.keyAt[p]
+    s.x0[p] = x0
+    s.y0[p] = y0
+    s.x1[p] = x1
+    s.y1[p] = y1
+    s.found[p] = c.found === 'check' ? 2 : c.found ? 1 : 0
+    if (c.kind) {
+      let id = kindIds.get(c.kind)
+      if (id === undefined) {
+        kinds.push(c.kind)
+        kindIds.set(c.kind, (id = kinds.length))
+      }
+      s.kind[p] = id
+    }
+    s.flags[p] = (c.lost ? LOST : 0) | (c.thin ? THIN : 0) | (c.missed ? MISSED : 0)
+  }
+  return s
+}
+
+/**
+ * Cover `y` merged into cover `x` (x before y in start order, so x is the first member): one cover
+ * whose drawn box contains each one's at every time (§5.10). Linear in their keys; the merged keys
+ * go to the end of the pool.
+ */
+function mergeInto(s: Merging, x: number, y: number): void {
+  const pool = s.pool
+  const ia = s.keyAt[x]
+  const na = ia + s.keyLen[x]
+  const ib = s.keyAt[y]
+  const nb = ib + s.keyLen[y]
+  const sa = s.start[x]
+  const ea = s.end[x]
+  const sb = s.start[y]
+  const eb = s.end[y]
+  const at = s.top
+  let n = at
+  let i = ia
+  let j = ib
+  // Walk both key lists in time order, each holding its last key.
+  while (i < na || j < nb) {
+    const t = j >= nb || (i < na && pool[i] <= pool[j]) ? pool[i] : pool[j]
+    while (i < na && pool[i] <= t) i += 5
+    while (j < nb && pool[j] <= t) j += 5
+    const hasA = i > ia && t >= sa && t < ea
+    const hasB = j > ib && t >= sb && t < eb
+    if (!hasA && !hasB) continue
+    let x0: number, y0: number, x1: number, y1: number
+    if (hasA && hasB) {
+      x0 = Math.min(pool[i - 4], pool[j - 4])
+      y0 = Math.min(pool[i - 3], pool[j - 3])
+      x1 = Math.max(pool[i - 4] + pool[i - 2], pool[j - 4] + pool[j - 2])
+      y1 = Math.max(pool[i - 3] + pool[i - 1], pool[j - 3] + pool[j - 1])
+    } else {
+      const e = hasA ? i : j
+      x0 = pool[e - 4]
+      y0 = pool[e - 3]
+      x1 = x0 + pool[e - 2]
+      y1 = y0 + pool[e - 1]
+    }
+    const w = x1 - x0
+    const h = y1 - y0
+    if (n > at && pool[n - 4] === x0 && pool[n - 3] === y0 && pool[n - 2] === w && pool[n - 1] === h) continue
+    pool[n] = t
+    pool[n + 1] = x0
+    pool[n + 2] = y0
+    pool[n + 3] = w
+    pool[n + 4] = h
+    n += 5
+  }
+  s.keyAt[x] = at
+  s.keyLen[x] = n - at
+  s.top = n
+  // A cover the user owns stays the user's; otherwise the stricter tier wins.
+  const fx = s.found[x]
+  const fy = s.found[y]
+  const kx = s.kind[x]
+  const ky = s.kind[y]
+  s.found[x] = fx && fy ? Math.max(fx, fy) : 0
+  s.kind[x] = kx && (kx === ky || (ky && fx && fy)) ? kx : 0
+  s.flags[x] = ((s.flags[x] | s.flags[y]) & (LOST | THIN)) | (s.flags[x] & s.flags[y] & MISSED)
+  s.start[x] = Math.min(sa, sb)
+  s.end[x] = Math.max(ea, eb)
+  s.x0[x] = Math.min(s.x0[x], s.x0[y])
+  s.y0[x] = Math.min(s.y0[x], s.y0[y])
+  s.x1[x] = Math.max(s.x1[x], s.x1[y])
+  s.y1[x] = Math.max(s.y1[x], s.y1[y])
+  s.rank[x] = Math.min(s.rank[x], s.rank[y])
+  s.merged[x] = 1
+}
+
+/** The first and last of the 8 grid columns (or rows) across the frame that a span from `lo` to `hi` touches. */
+const cellSpan = (lo: number, hi: number): [number, number] => [clamp(Math.floor(lo * GRID), 0, GRID - 1), clamp(Math.floor(hi * GRID - 1e-9), 0, GRID - 1)]
+
+/**
+ * One round of merging: each cover's candidates are its 8 nearest by start among the covers sharing
+ * an 8 × 8 grid cell with it; the pairs are taken cheapest first, each cover at most once a round,
+ * until `need` merges are made. The next round looks again around the merged covers. Returns the
+ * covers after the round (a merged one in place of its first member), in start order.
+ */
+function mergeRound(s: Merging, need: number): Merging {
+  const n = s.n
+  const { start: starts, end: ends, x0, y0, x1, y1 } = s
   // The cells of each cover, flat: cellsAt[cellFrom[i] .. cellFrom[i + 1]).
   const cellFrom = new Int32Array(n + 1)
-  const cellList: number[] = []
   for (let i = 0; i < n; i++) {
-    cellFrom[i] = cellList.length
-    const it = items[i]
-    for (const c of cellsOf({ x: it.x0, y: it.y0, w: it.x1 - it.x0, h: it.y1 - it.y0 })) cellList.push(c)
+    const [cx0, cx1] = cellSpan(x0[i], x1[i])
+    const [cy0, cy1] = cellSpan(y0[i], y1[i])
+    cellFrom[i + 1] = cellFrom[i] + Math.max(0, cx1 - cx0 + 1) * Math.max(0, cy1 - cy0 + 1)
   }
-  cellFrom[n] = cellList.length
-  const cellsAt = Int32Array.from(cellList)
+  const cellsAt = new Int32Array(cellFrom[n])
+  for (let i = 0; i < n; i++) {
+    const [cx0, cx1] = cellSpan(x0[i], x1[i])
+    const [cy0, cy1] = cellSpan(y0[i], y1[i])
+    let q = cellFrom[i]
+    for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) cellsAt[q++] = cy * GRID + cx
+  }
   // Each cell's covers in start order, flat (perCell offsets), and where each cover sits in each of its cells.
   const perCell = new Int32Array(GRID * GRID + 1)
   for (let q = 0; q < cellsAt.length; q++) perCell[cellsAt[q] + 1]++
@@ -567,42 +708,25 @@ function mergeRound(items: Item[], need: number): Item[] {
   const fill = perCell.slice(0, GRID * GRID)
   const lists = new Int32Array(cellsAt.length)
   const placeAt = new Int32Array(cellsAt.length)
-  for (const i of byStart)
+  for (let i = 0; i < n; i++)
     for (let q = cellFrom[i]; q < cellFrom[i + 1]; q++) {
       const c = cellsAt[q]
       placeAt[q] = fill[c]
       lists[fill[c]++] = i
     }
-  // Each cover's envelope edges, times, value (area × time) and kind class, for costing pairs.
-  // Single precision is enough to order pairs by cost, and keeps these arrays small.
-  const x0 = new Float32Array(n)
-  const y0 = new Float32Array(n)
-  const x1 = new Float32Array(n)
-  const y1 = new Float32Array(n)
-  const ends = new Float32Array(n)
-  const worth = new Float32Array(n)
-  const kindOf = new Int32Array(n)
-  const kinds = new Map<string, number>()
+  // Each cover's value (area × time) and class (kind and tier), for costing pairs.
+  const worth = new Float64Array(n)
+  const classOf = new Int32Array(n)
   for (let i = 0; i < n; i++) {
-    const it = items[i]
-    const c = it.m.cover
-    x0[i] = it.x0
-    y0[i] = it.y0
-    x1[i] = it.x1
-    y1[i] = it.y1
-    ends[i] = c.end
-    worth[i] = (it.x1 - it.x0) * (it.y1 - it.y0) * (c.end - c.start)
-    const kind = `${c.kind ?? ''}:${c.found ? 1 : 0}`
-    let id = kinds.get(kind)
-    if (id === undefined) kinds.set(kind, (id = kinds.size))
-    kindOf[i] = id
+    worth[i] = (x1[i] - x0[i]) * (y1[i] - y0[i]) * (ends[i] - starts[i])
+    classOf[i] = s.kind[i] * 2 + (s.found[i] ? 1 : 0)
   }
-  // A pair's order: any kind after the same kind (by 10^6, more than any area × time), then the added area × time.
+  // A pair's order: another class after the same class (by 10^6, more than any area × time), then the added area × time.
   const costOf = (a: number, b: number): number => {
     const w = Math.max(x1[a], x1[b]) - Math.min(x0[a], x0[b])
     const h = Math.max(y1[a], y1[b]) - Math.min(y0[a], y0[b])
-    const t = Math.max(ends[a], ends[b]) - Math.fround(Math.min(starts[a], starts[b]))
-    return (kindOf[a] === kindOf[b] ? 0 : 1e6) + w * h * t - worth[a] - worth[b]
+    const t = Math.max(ends[a], ends[b]) - Math.min(starts[a], starts[b])
+    return (classOf[a] === classOf[b] ? 0 : 1e6) + w * h * t - worth[a] - worth[b]
   }
   // The pairs: cost and both covers.
   let cap = Math.max(16, n * NEIGHBOURS)
@@ -693,7 +817,7 @@ function mergeRound(items: Item[], need: number): Item[] {
     }
   }
   // No two covers share a cell: the neighbours by start time, wherever they are.
-  if (!m) for (let k = 0; k + 1 < byStart.length; k++) addPair(byStart[k], byStart[k + 1])
+  if (!m) for (let k = 0; k + 1 < n; k++) addPair(k, k + 1)
   // The pairs cheapest first: sorted natively with each pair's index in the low bits of its cost
   // (a change of at most 2^-30 of the cost, so only near-ties can swap), or by a comparator past 2^22 pairs.
   const order = new Int32Array(m)
@@ -711,7 +835,7 @@ function mergeRound(items: Item[], need: number): Item[] {
     for (let k = 0; k < m; k++) order[k] = idx[k]
   }
   const used = new Uint8Array(n)
-  const out: (Item | null)[] = items.slice()
+  const gone = new Uint8Array(n)
   let made = 0
   for (let q = 0; q < m && made < need; q++) {
     const k = order[q]
@@ -720,13 +844,25 @@ function mergeRound(items: Item[], need: number): Item[] {
     if (used[x] || used[y]) continue
     used[x] = 1
     used[y] = 1
-    const ix = items[x]
-    const iy = items[y]
-    out[x] = { m: mergeTwo(ix.m, iy.m), x0: Math.min(ix.x0, iy.x0), y0: Math.min(ix.y0, iy.y0), x1: Math.max(ix.x1, iy.x1), y1: Math.max(ix.y1, iy.y1), rank: Math.min(ix.rank, iy.rank) }
-    out[y] = null
+    mergeInto(s, x, y)
+    gone[y] = 1
     made++
   }
-  return out.filter((it): it is Item => it !== null)
+  // The survivors, kept in start order with their keys side by side, and room for the next round's merges.
+  let keys = 0
+  for (let i = 0; i < n; i++) if (!gone[i]) keys += s.keyLen[i]
+  const next = newMerging(n - made, 2 * keys)
+  let p = 0
+  for (let i = 0; i < n; i++) if (!gone[i]) copyMerging(s, i, next, p++)
+  // A merged cover keeps its first member's start, so the order holds unless ranks swapped among equal starts.
+  for (let i = 1; i < next.n; i++) {
+    if (next.start[i - 1] < next.start[i] || (next.start[i - 1] === next.start[i] && next.rank[i - 1] < next.rank[i])) continue
+    const again = orderByStart(next.start, next.rank)
+    const sortedNext = newMerging(next.n, next.pool.length)
+    for (let r = 0; r < next.n; r++) copyMerging(next, again[r], sortedNext, r)
+    return sortedNext
+  }
+  return next
 }
 
 /**
@@ -738,26 +874,32 @@ function mergeRound(items: Item[], need: number): Item[] {
  */
 export function mergeCovers(covers: readonly Cover[], max: number): Cover[] {
   if (covers.length <= max) return [...covers]
-  let items: Item[] = covers.map((c, i) => {
-    const keys = activeKeys(c)
-    let x0 = keys.length ? Infinity : 0
-    let y0 = keys.length ? Infinity : 0
-    let x1 = keys.length ? -Infinity : 1
-    let y1 = keys.length ? -Infinity : 1
-    for (const k of keys) {
-      x0 = Math.min(x0, k.x)
-      y0 = Math.min(y0, k.y)
-      x1 = Math.max(x1, k.x + k.w)
-      y1 = Math.max(y1, k.y + k.h)
-    }
-    return { m: { cover: c, k: flatKeys(keys), merged: false }, x0, y0, x1, y1, rank: i }
-  })
-  while (items.length > Math.max(1, max)) {
-    const before = items.length
-    items = mergeRound(items, before - max)
-    if (items.length === before) break
+  const kinds: string[] = []
+  let s = startMerging(covers, kinds)
+  while (s.n > Math.max(1, max)) {
+    const before = s.n
+    s = mergeRound(s, before - max)
+    if (s.n === before) break
   }
-  return items.sort((p, q) => p.rank - q.rank).map((it) => (it.m.merged ? { ...it.m.cover, path: writePath(keysWithin(keysOfFlat(it.m.k), MAX_KEYS_PER_COVER)) } : it.m.cover))
+  const out: { rank: number; cover: Cover }[] = []
+  for (let i = 0; i < s.n; i++) {
+    const own = covers[s.owner[i]]
+    if (!s.merged[i]) {
+      out.push({ rank: s.rank[i], cover: own })
+      continue
+    }
+    const keys: CoverKey[] = []
+    for (let k = s.keyAt[i]; k < s.keyAt[i] + s.keyLen[i]; k += 5) keys.push({ t: s.pool[k], x: s.pool[k + 1], y: s.pool[k + 2], w: s.pool[k + 3], h: s.pool[k + 4] })
+    const cover: Cover = { id: own.id, start: s.start[i], end: s.end[i], path: writePath(keysWithin(keys, MAX_KEYS_PER_COVER)), color: own.color }
+    if (s.found[i]) cover.found = s.found[i] === 2 ? 'check' : 'auto'
+    if (s.kind[i]) cover.kind = kinds[s.kind[i] - 1] as PrivateKind
+    if (own.group) cover.group = own.group
+    if (s.flags[i] & LOST) cover.lost = true
+    if (s.flags[i] & THIN) cover.thin = true
+    if (s.flags[i] & MISSED) cover.missed = true
+    out.push({ rank: s.rank[i], cover })
+  }
+  return out.sort((p, q) => p.rank - q.rank).map((o) => o.cover)
 }
 
 /* ---------- Home thumbnails and hiding (§9 rows 10 and 17) ---------- */

@@ -41,14 +41,21 @@ import { base, coverOf, inside, key, oldFixtures, rng, seededCovers, words } fro
 /** On a shared machine timings are noisy: CI multiplies the budgets by 6 (§13.1). */
 const SLOW = process.env.CI ? 6 : 1
 
-/** The fastest of `n` runs of `fn`, in ms. */
+/**
+ * The processor time `fn` takes in this process, in ms: the work itself, which another test file
+ * running beside this one on the shared machine does not stretch as it stretches the wall clock.
+ */
+function cpuMs(fn: () => void): number {
+  const t0 = process.cpuUsage()
+  fn()
+  const d = process.cpuUsage(t0)
+  return (d.user + d.system) / 1000
+}
+
+/** The fastest of `n` runs of `fn`, in ms of processor time. */
 function fastest(n: number, fn: () => void): number {
   let best = Infinity
-  for (let i = 0; i < n; i++) {
-    const t0 = performance.now()
-    fn()
-    best = Math.min(best, performance.now() - t0)
-  }
+  for (let i = 0; i < n; i++) best = Math.min(best, cpuMs(fn))
   return best
 }
 
@@ -59,12 +66,8 @@ function paired(runs: number, small: () => void, large: () => void): [number, nu
   let a = Infinity
   let b = Infinity
   for (let i = 0; i < runs; i++) {
-    let t0 = performance.now()
-    small()
-    a = Math.min(a, performance.now() - t0)
-    t0 = performance.now()
-    large()
-    b = Math.min(b, performance.now() - t0)
+    a = Math.min(a, cpuMs(small))
+    b = Math.min(b, cpuMs(large))
   }
   return [a, b]
 }
