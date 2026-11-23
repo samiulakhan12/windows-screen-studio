@@ -295,7 +295,8 @@ function settleReads(data: LookData, scale: number): PlannedRead[] {
     const areas = tileBoxes(b.tiles, data).map((a) => pad(a, SETTLE_PAD * scale, data.size))
     out.push(read(frames[Math.max(i, b.lastIndex)].t, joinAreas(areas), 'settle'))
   }
-  for (let i = 0; i < frames.length; i++) {
+  // The first analysed frame has every tile changed (nothing came before it): the first read reads it.
+  for (let i = 1; i < frames.length; i++) {
     const t = frames[i].t
     for (let k = open.length - 1; k >= 0; k--) if (t - open[k].last >= SETTLE_S) close(open.splice(k, 1)[0])
     for (const region of regionsAt(data, i)) {

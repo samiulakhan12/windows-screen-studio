@@ -111,6 +111,8 @@
     "src/shared/privacy/vendor/libphonenumber/metadata.max.json.d.ts",
     "src/shared/privacy/look.ts",
     "src/shared/privacy/plan.ts",
-    "src/shared/privacy/paths.ts"
+    "src/shared/privacy/paths.ts",
+    "src/shared/privacy/notices.ts",
+    "src/shared/privacy/found.ts"
   ]
 }
