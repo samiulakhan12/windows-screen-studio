@@ -8,7 +8,7 @@ import type { AiTextRequest, TextChoice } from '../../../shared/api/ai'
 import { GUIDE_PROBLEM_KEYS, guideCopyProblem, guidePayloadProblem, type GuideFormat, type GuideProblem } from '../../../shared/api/guide'
 import type { EditStore } from '../../../shared/editor/editStore'
 import { ACTUAL_KEY, buildGuideDoc, type GuideDoc, type GuideImage } from '../../../shared/guide/guideDoc'
-import { withAiNotes, withAiTitles, withTypedBlur } from '../../../shared/guide/guideEdit'
+import { withAiNotes, withAiTitles } from '../../../shared/guide/guideEdit'
 import { EMBEDDED_FAMILY, guideFontWeights, guideHtml, guideText } from '../../../shared/guide/guideHtml'
 import { guideMarkdown } from '../../../shared/guide/guideMarkdown'
 import { blurBoxes, shotTime } from '../../../shared/guide/shots'
@@ -16,9 +16,14 @@ import type { GuideStep } from '../../../shared/guide/steps'
 import { namesRequestForSteps } from '../../../shared/guide/stepTitles'
 import { screenChanges } from '../../../shared/smart/screenChanges'
 import type { SceneScan } from '../../../shared/api/projects'
-import type { AiProviderKind, Project, Shape } from '../../../shared/types'
+import type { AiProviderKind, NormRect, Project } from '../../../shared/types'
 import type { EditorServices } from '../editor/context'
-import { addShapeAt } from '../editor/playheadItems'
+import { addCoverSpan } from '../../../shared/editor/coverEdit'
+import { displayTime } from '../../../shared/editor/clips'
+import { newShapeForPlayhead } from '../../../shared/editor/calloutsEdit'
+import { cropProject } from '../../../shared/engine/crop'
+import { speedAt } from '../../../shared/render/overlays'
+import { ringColourAt } from '../privacy/coverPick'
 import type { Selection } from '../editor/selection'
 import { BUNDLED_FONT_URLS } from '../render/catalogFonts'
 import { encodeImage } from './guideStills'
@@ -227,32 +232,47 @@ export async function tidyNotes(deps: { store: EditStore<Project>; steps: readon
 }
 
 /**
- * *Blur an area…* (§5.5.8): a blur shape over a box 30% × 10% of the frame on the step's place,
- * starting one frame before the step's shot (so the privacy layer always covers the shot's frame),
- * selected so the user drags it over what to hide; the playhead goes to the shot's time. One update.
+ * *Blur an area…* (§5.5.8; auto-blur §2.11, decision 12): a cover (no longer a blur shape) over a box
+ * 30% × 10% of the frame on the step's place, with the times the blur had (starting one frame before
+ * the step's shot, its default length), coloured from the step's own shot frame (never whatever
+ * frame is paused, finding F); selected so the user drags it over what to hide; the playhead goes to
+ * the shot's time. One update. Resolves to the cover's id.
  */
-export function blurArea(services: EditorServices, step: GuideStep, opts: { after: boolean; scale: number; onSelect(sel: Selection): void }): Shape {
+export async function blurArea(services: EditorServices, step: GuideStep, opts: { after: boolean; scale: number; onSelect(sel: Selection): void }): Promise<string> {
   const p = services.store.state
   const fps = p.capture?.fps ?? 60
   const t = shotTime(step, p.clips, fps, opts.after)
   const { area } = blurBoxes(step, { w: p.width, h: p.height }, opts.scale)
-  const shape = addShapeAt(services, 'blur', null, { at: t - 1 / fps, box: area, onSelect: opts.onSelect })
+  // The blur shape's times, as addShapeAt placed it: one frame before the shot, on the frame the preview shows there.
+  const at = displayTime(p.clips, t - 1 / fps)
+  const times = newShapeForPlayhead('blur', at, cropProject(p), null, speedAt(p.clips, at))
+  const color = await ringColourAt(p.id, t, area)
+  let id = ''
+  services.store.update((q) => {
+    const r = addCoverSpan(q, { start: times.start, end: times.end, box: area, color })
+    id = r.id
+    return r.project
+  })
+  opts.onSelect({ kind: 'cover', id })
   services.player.seek(t)
-  return shape
+  return id
 }
 
 /**
- * *Blur the typed text* (§5.5.8): one blur over the typing place of `typing`'s step, from its
- * typing's start to the next settled page change after the marked step's shot (or the end of the
- * video). One update.
+ * *Blur the typed text* (§5.5.8; auto-blur §2.11): one cover over the typing place of `typing`'s
+ * step, from its typing's start to the next settled page change after the marked step's shot (or the
+ * end of the video), coloured from the marked step's own shot frame (`colourAt`). One update.
  */
-export function blurTypedText(store: EditStore<Project>, typing: GuideStep, marked: { t: number }, scan: SceneScan | null, scale: number): void {
+export async function blurTypedText(store: EditStore<Project>, typing: GuideStep, marked: { t: number }, scan: SceneScan | null, scale: number, colourAt: (t: number, box: NormRect) => Promise<string>): Promise<void> {
   const p = store.state
   const { typed } = blurBoxes(typing, { w: p.width, h: p.height }, scale)
   if (!typed) return
   const page = scan ? screenChanges(scan).find((c) => c.page && c.t > marked.t) : undefined
   const until = page ? page.t : p.duration
-  store.update((q) => withTypedBlur(q, typing, until, typed))
+  const color = await colourAt(marked.t, typed)
+  const start = Math.max(0, typing.typing?.t ?? typing.t)
+  const end = Math.min(p.duration, Math.max(start + 0.1, until))
+  store.update((q) => addCoverSpan(q, { start, end, box: typed, color }).project)
 }
 
 /** The key of the bug report's Actual screenshot among the images. */

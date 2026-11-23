@@ -108,11 +108,24 @@ h.run('guides: steps, screenshots, PDF, Markdown, HTML, demo and Copy guide', as
   console.log('step 5 black pixels before the blur', typedAfter)
   h.assert(typedAfter > 1000, `step 5's shot shows the typed text (${typedAfter})`)
 
-  // Blur the typed text: one shape, and step 5's shot is made again without the text.
-  const shapesBefore = h.readProject(home, 'rec-guide').shapes?.length ?? 0
-  await win.locator('[data-testid="guide-step"]').nth(4).locator('[data-testid="guide-blur-typed"]').click()
-  await waitFor(async () => (await typedIn(win, 4)) < 200, 'step 5 made again with the blur', 30000)
-  await waitFor(async () => (h.readProject(home, 'rec-guide').shapes?.length ?? 0) === shapesBefore + 1, 'the blur saved', 10000)
+  // Blur the typed text: one cover since auto-blur (docs/design/auto-blur.md §2.11, decision 12), its
+  // label kept and the hint saying what it does, and step 5's shot is made again without the text.
+  // The saved file also holds the cover's legacy shapes ('~cover:' ids, §4.6), which are not the user's.
+  const userShapes = (p) => (p.shapes ?? []).filter((s) => !String(s.id).startsWith('~cover:'))
+  const before = h.readProject(home, 'rec-guide')
+  const shapesBefore = userShapes(before).length
+  const coversBefore = before.covers?.length ?? 0
+  const blurTyped = win.locator('[data-testid="guide-step"]').nth(4).locator('[data-testid="guide-blur-typed"]')
+  h.assert((await blurTyped.innerText()).trim() === 'Blur the typed text', `the button keeps its label: ${await blurTyped.innerText()}`)
+  const hint = await win.locator('[data-testid="guide-step"]').nth(4).locator('[data-testid="guide-covered"]').innerText()
+  h.assert(hint === 'The area is covered with a solid box in the video and in every screenshot.', `the hint: ${hint}`)
+  await blurTyped.click()
+  await waitFor(async () => (await typedIn(win, 4)) < 200, 'step 5 made again with the cover', 30000)
+  await waitFor(async () => (h.readProject(home, 'rec-guide').covers?.length ?? 0) === coversBefore + 1, 'the cover saved', 10000)
+  const afterBlur = h.readProject(home, 'rec-guide')
+  h.assert(userShapes(afterBlur).length === shapesBefore, `no blur shape is added (${userShapes(afterBlur).length} against ${shapesBefore})`)
+  const cover = afterBlur.covers[afterBlur.covers.length - 1]
+  h.assert(cover.end > cover.start && /^#[0-9a-f]{6}$/i.test(cover.color), `one cover with its times and a colour: ${JSON.stringify({ start: cover.start, end: cover.end, color: cover.color })}`)
 
   // Keyboard: a title typed, Esc closes and the focus is on the Guide button; reopening keeps it.
   const title3 = win.locator('[data-testid="guide-step-title"]').nth(2)

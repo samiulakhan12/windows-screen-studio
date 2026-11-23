@@ -1,1 +1,372 @@
-/* Covers in the editor (docs/design/auto-blur.md §2.1-2.3): part P1's styles. The contracts step adds none. */
+/* Covers in the editor (docs/design/auto-blur.md §2.1-2.4, §2.8, §11): part P1's styles, with the tokens of styles.css only. */
+
+/* ---------- Shapes tab › Private info ---------- */
+
+.cover-section-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.cover-add {
+  position: relative;
+  display: flex;
+  gap: 2px;
+}
+
+.cover-add .cover-add-more {
+  padding-inline: 6px;
+}
+
+.cover-add-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  inset-inline-start: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.cover-add-menu [role='menuitemradio'] {
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-1);
+  text-align: start;
+  cursor: pointer;
+}
+
+.cover-add-menu [role='menuitemradio'][aria-checked='true'] {
+  font-weight: 600;
+}
+
+.cover-add-menu [role='menuitemradio']:hover,
+.cover-add-menu [role='menuitemradio']:focus-visible {
+  background: var(--surface-4);
+}
+
+.cover-count,
+.cover-weak-line {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.cover-not-see-head {
+  padding: 0;
+}
+
+.cover-not-see {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  color: var(--text-2);
+}
+
+.cover-weak-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin-block: var(--space-2);
+}
+
+.shape-tool.cover-tool .icon {
+  color: var(--text-1);
+}
+
+/* ---------- a selected cover ---------- */
+
+.cover-section h3:focus-visible,
+.cover-status:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.cover-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-2);
+}
+
+.cover-lines .hint,
+.cover-what {
+  margin: 0;
+}
+
+.cover-what {
+  color: var(--text-1);
+}
+
+.cover-check-line {
+  color: var(--warning);
+}
+
+.cover-colours .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cover-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+}
+
+.cover-box {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-2) 0;
+  padding: 0;
+  border: none;
+}
+
+.cover-box legend {
+  margin-bottom: var(--space-1);
+  color: var(--text-2);
+}
+
+.cover-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-2);
+}
+
+.cover-field input {
+  width: 100%;
+}
+
+.cover-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block: var(--space-1);
+}
+
+.cover-status {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.cover-status:empty {
+  display: none;
+}
+
+.cover-following {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+}
+
+/* ---------- the Covers row ---------- */
+
+.tl-track.cover-track {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
+  cursor: col-resize;
+}
+
+.tl-track.cover-track:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* A solid box, as on the video; the text-3 edge shows on the dark track. */
+.seg.cover-seg {
+  justify-content: flex-start;
+  gap: 4px;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid var(--text-3);
+}
+
+/* Waiting for review: a dashed edge (a shape, not only a colour). */
+.seg.cover-seg.waiting {
+  border-style: dashed;
+}
+
+/* To check: the warning colour on the dashed edge, beside the text of its name. */
+.seg.cover-seg.check {
+  border-color: var(--warning);
+}
+
+/* Covers an area where Flown could not place the text. */
+.seg.cover-seg.lost {
+  background: repeating-linear-gradient(135deg, var(--surface-2) 0 4px, var(--surface-4) 4px 8px);
+}
+
+.seg.cover-seg:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.seg.cover-seg .seg-icon {
+  flex: none;
+  display: flex;
+  margin-inline-start: 4px;
+  pointer-events: none;
+}
+
+.cover-count-badge {
+  flex: none;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-4);
+  color: var(--text-1);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.cover-key-mark {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 4px;
+  background: var(--text-3);
+  pointer-events: none;
+}
+
+.cover-thin-mark {
+  position: absolute;
+  bottom: 0;
+  height: 4px;
+  background: repeating-linear-gradient(135deg, var(--text-3) 0 2px, transparent 2px 4px);
+  cursor: pointer;
+}
+
+.cover-thin-mark:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tl-labels .tl-label.cover-label {
+  --kind: var(--text-2);
+}
+
+/* ---------- the preview ---------- */
+
+.cover-handles {
+  position: absolute;
+  z-index: 3;
+  outline: 1px solid var(--focus-ring);
+  outline-offset: 1px;
+  cursor: move;
+}
+
+.cover-handles:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.cover-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 3px;
+  background: var(--text-1);
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.cover-handle[data-handle='nw'],
+.cover-handle[data-handle='se'] {
+  cursor: nwse-resize;
+}
+
+.cover-handle[data-handle='ne'],
+.cover-handle[data-handle='sw'] {
+  cursor: nesw-resize;
+}
+
+.cover-handle[data-handle='n'],
+.cover-handle[data-handle='s'] {
+  cursor: ns-resize;
+}
+
+.cover-handle[data-handle='e'],
+.cover-handle[data-handle='w'] {
+  cursor: ew-resize;
+}
+
+.cover-peek-banner {
+  position: absolute;
+  z-index: 5;
+  top: var(--space-2);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  color: var(--text-1);
+}
+
+.cover-peek-inset {
+  position: absolute;
+  z-index: 5;
+  top: calc(var(--space-2) + 40px);
+  inset-inline-start: var(--space-2);
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-overlay);
+}
+
+.cover-peek-inset canvas {
+  display: block;
+  max-width: 60vw;
+  height: auto;
+}
+
+/* ---------- Cover this text everywhere ---------- */
+
+.cover-everywhere {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text-1);
+}
+
+.cover-remember {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.cover-remember legend {
+  margin-bottom: var(--space-1);
+  color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cover-peek-banner,
+  .cover-peek-inset {
+    transition: none;
+  }
+}

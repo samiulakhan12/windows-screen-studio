@@ -328,7 +328,17 @@ export function moveGroup(p: Project, plan: GroupMovePlan, delta: number, exact?
   const covers = to.get('cover')
   if (covers && q.covers) {
     // Only covers with one key move; a followed cover stays (coverGroup.ts, docs/design/auto-blur.md §14.4).
-    q = moveCoversInTime(q, [...covers.keys()], delta).project
+    // Each from its press times, as the other kinds: a drag's moves never add up.
+    const now = new Map(q.covers.map((c) => [c.id, c.start]))
+    const byDelta = new Map<number, string[]>()
+    for (const [id, init] of covers) {
+      const at = now.get(id)
+      if (at === undefined) continue
+      const dt = placedStart(init, delta, exact) - at
+      if (dt === 0) continue
+      byDelta.set(dt, [...(byDelta.get(dt) ?? []), id])
+    }
+    for (const [dt, ids] of byDelta) q = moveCoversInTime(q, ids, dt).project
   }
   const chapters = to.get('chapter')
   if (chapters && q.chapters) {

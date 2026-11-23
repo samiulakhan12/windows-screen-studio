@@ -47,6 +47,7 @@ import { atOutputStart, nextPreviewSpeed, type ShuttleKey } from '../../../share
 import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
 import { privateView } from '../../../shared/privacy/spoken'
 import { coverCommands } from '../privacy/coverCommands'
+import { deleteCovers } from '../../../shared/editor/coverEdit'
 import { FindDialog } from '../privacy/FindDialog'
 import { confirmLeaveFind } from '../privacy/readerState'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
@@ -938,7 +939,11 @@ function EditorSession({
           store.update((p) => (p.transcript ? { ...p, transcript: { ...p.transcript, segments: p.transcript.segments.filter((s) => s.id !== sel.id) } } : p))
         else if (sel.kind === 'freeze') store.update((p) => removeFreeze(p, sel.id))
         else if (sel.kind === 'overlay') store.update((p) => ({ ...p, overlays: (p.overlays ?? []).filter((o) => o.id !== sel.id) }))
-        else if (sel.kind === 'clip') return deleteClip(sel.id)
+        else if (sel.kind === 'cover') {
+          // Auto-blur (§2.2, §14.4): Uncover, a suggestion's place remembered in the same step.
+          store.update((p) => deleteCovers(p, [sel.id]))
+          showNotice(t('privacy.cover.uncovered'))
+        } else if (sel.kind === 'clip') return deleteClip(sel.id)
         else if (sel.kind === 'range') return cut(sel.start, sel.end)
         else if (sel.kind === 'click') {
           // Delete on a click ignores it; the click stays selected, so the Zoom panel shows its new state.

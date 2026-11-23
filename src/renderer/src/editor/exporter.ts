@@ -47,6 +47,7 @@ import { releaseScratch, composeJoinStill, scratchTarget } from '../render/joinL
 import { ExportJoins } from './joinExport'
 import { t } from '../../../shared/i18n/t'
 import { routeName } from './exportNames'
+import { clearPeek } from '../privacy/peek'
 
 export { exportDimensions, GIF_FPS, GIF_MAX_HEIGHT } from '../../../shared/render/exportPlan'
 
@@ -321,6 +322,8 @@ async function planJob(input: ExportInput): Promise<JobPlan> {
  * Audio-only formats render nothing.
  */
 export async function exportVideo(raw: ExportInput): Promise<ExportResult> {
+  // Peek and Listen stop before any export (auto-blur §2.8); the export's own scene never has them (forOutput).
+  clearPeek()
   const input = withAlpha(await prepare(raw))
   const { signal } = input
   if (isAudioOnly(input.settings.format)) return exportAudio(input)

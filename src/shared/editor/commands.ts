@@ -250,7 +250,7 @@ export const LANGUAGE_COMMANDS: readonly CommandId[] = ['language']
  * Commands waiting for the part that makes them work (docs/design/auto-blur.md §12.3): left out of
  * the palette and the shortcuts editor until then. P1 empties the first line, P5 the second.
  */
-export const WAITING_P1: readonly CommandId[] = ['addCover', 'peekCovers', 'coverStartHere', 'coverEndHere']
+export const WAITING_P1: readonly CommandId[] = []
 
 export const WAITING_P5: readonly CommandId[] = ['findPrivate']
 export const WAITING_COMMANDS: readonly CommandId[] = [...WAITING_P1, ...WAITING_P5]

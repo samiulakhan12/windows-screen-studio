@@ -24,6 +24,8 @@ import {
   type KeyRect
 } from '../../../shared/editor/multiSelect'
 import { REFUSAL_TEXT, stopNotice, type RefusedKind } from '../../../shared/editor/multiSelectCopy'
+import { followsText } from '../../../shared/editor/coverGroup'
+import { t } from '../../../shared/i18n/t'
 import type { DragMode } from '../../../shared/editor/snapping'
 import { useEditor, type EditorServices } from './context'
 import { releaseFocus } from './focus'
@@ -83,7 +85,8 @@ const BLOCKS: readonly [attr: string, kind: Parameters<typeof trackOfKind>[0]][]
   ['title', 'title'],
   ['chapter', 'chapter'],
   ['freeze', 'freeze'],
-  ['graphic', 'graphic']
+  ['graphic', 'graphic'],
+  ['cover', 'cover']
 ]
 const BLOCK_SELECTOR = BLOCKS.map(([a]) => `[data-${a}]`).join(', ')
 
@@ -149,6 +152,12 @@ function plainClick({ store, player }: EditorServices, key: ItemKey): void {
       if (g) showGraphic(player, p, g)
       return
     }
+    case 'cover': {
+      // Auto-blur (§2.3): the playhead goes into the cover when it is outside it.
+      const c = p.covers?.find((x) => x.id === k.id)
+      if (c && (player.time < c.start || player.time >= c.end)) player.seek(c.start + Math.min(0.5, (c.end - c.start) / 2))
+      return
+    }
     case 'zoom':
       return
   }
@@ -180,6 +189,12 @@ function createMultiSelect(get: () => Current): MultiSelect {
     const mergeKey = `group-move:${++drags}`
     let accepted = 0
     let warned = false
+    // Covers that follow moving text keep their times (auto-blur §2.3): said once, on the first move.
+    let kept = keys.some((k) => {
+      const parsed = parseItemKey(k)
+      const c = parsed?.kind === 'cover' ? p0.covers?.find((x) => x.id === parsed.id) : undefined
+      return !!c && followsText(c)
+    })
     store.beginGesture()
     return {
       move(ev: PointerEvent): void {
@@ -199,6 +214,9 @@ function createMultiSelect(get: () => Current): MultiSelect {
         if (held && !warned) {
           warned = true
           group.notice(stopNotice(held))
+        } else if (kept && delta !== 0) {
+          kept = false
+          group.notice(t('privacy.cover.timeKept'))
         }
         store.update((q) => moveGroup(q, plan, delta, exact), mergeKey)
       },

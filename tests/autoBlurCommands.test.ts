@@ -28,18 +28,22 @@ describe('auto-blur contracts: commands', () => {
   it('30. Commands: the five are in COMMAND_LIST, left out of the palette and the shortcuts editor by WAITING_COMMANDS (WAITING_P1 and WAITING_P5 on lines of their own), have no default key, and each has its runner case in Editor.tsx', async () => {
     const ids = COMMANDS.map((c) => c.id)
     for (const id of FIVE) expect(ids as string[], id).toContain(id)
-    expect([...WAITING_P1].sort()).toEqual(['addCover', 'coverEndHere', 'coverStartHere', 'peekCovers'])
+    // Part P1 emptied its line: its four commands work and are listed (test 74); findPrivate waits for P5.
+    const P1 = ['addCover', 'coverEndHere', 'coverStartHere', 'peekCovers']
+    expect([...WAITING_P1]).toEqual([])
     expect(WAITING_P5).toEqual(['findPrivate'])
-    expect([...WAITING_COMMANDS].sort()).toEqual([...FIVE].sort())
+    expect([...WAITING_COMMANDS].sort()).toEqual([...WAITING_P1, ...WAITING_P5].sort())
     for (const id of FIVE) {
-      expect(PALETTE_COMMANDS.map((c) => c.id as string), id).not.toContain(id)
-      expect(listedCommands(true).map((c) => c.id as string), id).not.toContain(id)
-      expect(listedCommands(false).map((c) => c.id as string), id).not.toContain(id)
+      const waits = (WAITING_COMMANDS as readonly string[]).includes(id)
+      expect(PALETTE_COMMANDS.map((c) => c.id as string).includes(id), id).toBe(!waits)
+      expect(listedCommands(true).map((c) => c.id as string).includes(id), id).toBe(!waits)
+      expect(listedCommands(false).map((c) => c.id as string).includes(id), id).toBe(!waits)
       expect(DEFAULT_KEYMAP[id as keyof typeof DEFAULT_KEYMAP], id).toEqual([])
     }
+    for (const id of P1) expect(PALETTE_COMMANDS.map((c) => c.id as string), id).toContain(id)
     // Every other command is listed as before.
-    expect(listedCommands(true).length).toBe(COMMANDS.length - FIVE.length)
-    expect(PALETTE_COMMANDS.length).toBe(COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id)).length - FIVE.length)
+    expect(listedCommands(true).length).toBe(COMMANDS.length - WAITING_COMMANDS.length)
+    expect(PALETTE_COMMANDS.length).toBe(COMMANDS.filter((c) => !c.hidden && !LANGUAGE_COMMANDS.includes(c.id)).length - WAITING_COMMANDS.length)
     // Each part edits one line of commands.ts: the arrays sit on lines of their own, a blank line between them.
     const source = read('src/shared/editor/commands.ts')
     expect(source).toMatch(/\nexport const WAITING_P1: readonly CommandId\[\] = \[[^\n]*\]\n\nexport const WAITING_P5: readonly CommandId\[\] = \[[^\n]*\]\n/)
@@ -51,9 +55,9 @@ describe('auto-blur contracts: commands', () => {
     // Renderer code: imported at run time so the Node typecheck of tests/ does not follow it.
     const COVER_COMMANDS = '../src/renderer/src/privacy/coverCommands'
     const { coverCommands } = (await import(/* @vite-ignore */ COVER_COMMANDS)) as { coverCommands(d: unknown): Record<string, () => void> }
+    // The runner's four cover commands (part P1's, run from the palette in test 74).
     const run = coverCommands({})
-    expect(Object.keys(run).sort()).toEqual([...WAITING_P1].sort())
-    for (const id of WAITING_P1) expect(() => run[id]()).not.toThrow()
+    expect(Object.keys(run).sort()).toEqual(P1)
   })
 
   it('31. One AI chokepoint: no file under src/renderer but aiTextFor.ts contains window.api.aiText(; each of the 9 call sites calls aiTextFor', () => {

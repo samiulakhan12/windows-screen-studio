@@ -28,6 +28,7 @@ import { overlayLabel } from '../../../../shared/editor/overlays'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { graphicLabel } from './GraphicsPanel'
 import { t, uiLanguage, type MessageKey } from '../../../../shared/i18n/t'
+import { PRIVACY_COPY } from '../../../../shared/privacy/copy'
 
 /** Section titles of the look classes, in their order (§4.9 item 5). */
 const CLASS_TITLE: Readonly<Record<LookClass, MessageKey>> = {
@@ -185,7 +186,7 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
   }
 
   const pasteLookWhy =
-    !look ? copyLookFirst(commandKeys(keymap, 'copyLook').map(shortcutLabel)[0] ?? null) : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : t('style.lookButtons.copiedLookFor', { cls: look.cls })
+    !look ? copyLookFirst(commandKeys(keymap, 'copyLook').map(shortcutLabel)[0] ?? null) : keys.some((k) => lookClassOf(project, k) === look.cls) ? null : look.cls === 'cover' ? t(PRIVACY_COPY.cover.lookFor) : t('style.lookButtons.copiedLookFor', { cls: look.cls })
   const autoZooms = keys.filter((k) => k.startsWith('zoom:') && project.zooms.find((z) => `zoom:${z.id}` === k)?.auto).length
 
   return (
@@ -201,13 +202,13 @@ export function SelectionPanel(props: InspectorProps & { onCommand: (id: Command
                 <button
                   key={kind}
                   className="btn ghost"
-                  title={t('style.selectionPanel.selectOnlyThe', { kind })}
+                  title={kind === 'cover' ? t(PRIVACY_COPY.track.selectOnly) : t('style.selectionPanel.selectOnlyThe', { kind })}
                   onClick={() => {
                     const only = keys.filter((k) => k.startsWith(`${kind}:`))
                     narrowTo(only, only.includes(G.group.anchor as ItemKey) ? G.group.anchor : only[0])
                   }}
                 >
-                  {t('style.selectionPanel.onlyKind', { kind, n: fmt.count(counts[kind] ?? 0) })}
+                  {kind === 'cover' ? t(PRIVACY_COPY.track.only, { n: fmt.count(counts[kind] ?? 0) }) : t('style.selectionPanel.onlyKind', { kind, n: fmt.count(counts[kind] ?? 0) })}
                 </button>
               ))}
             </div>
