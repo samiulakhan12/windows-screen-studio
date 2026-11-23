@@ -690,6 +690,11 @@ function teamWordMatch(word: string, key: string, lang: string, next: string | u
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
+/**
+ * The Standard patterns as one RegExp, an alternation of them all: a key it does not match (every
+ * Bangla word, most English ones) matches none of them, and skips testing them one by one.
+ */
+const standardAny = new RegExp(STANDARD_WORDS.flatMap((w) => w.patterns.map((p) => `(?:${p})`)).join('|'), 'u')
 const strictSets = new Map<string, ReadonlySet<string>>()
 function strictSet(lang: string): ReadonlySet<string> {
   let s = strictSets.get(lang)
@@ -713,7 +718,7 @@ const LATIN_RUN = /\p{Script=Latin}+/gu
 export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string, apart = false): boolean {
   const key = bleepKey(word)
   if (!key) return false
-  for (const w of standardRes) {
+  if (standardAny.test(key)) for (const w of standardRes) {
     if (!w.res.some((re) => re.test(key))) continue
     if (w.safe.some((s) => s && key.includes(s))) continue
     return true
