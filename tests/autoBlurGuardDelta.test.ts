@@ -40,7 +40,7 @@ function settings(name: string, sections: string[], at: number): Screen {
     title: 'Flown',
     text: ['Settings', ...sections].join('\n'),
     attrs: [],
-    boxes: [el('div>h2', 'h2', 20, 0, { box: [0, 20, 100, 30] }), ...sections.map((s, j) => el(`div>section:${j + 1}>h3`, 'h3', 60 + (j - at) * 300))],
+    boxes: [el('div>h2', 'h2', 20, 0, { box: [0, 20, 100, 30] }), ...sections.map((_s, j) => el(`div>section:${j + 1}>h3`, 'h3', 60 + (j - at) * 300))],
     aria: ['- dialog "Settings":', '  - heading "Settings" [level=2]', ...sections.map((s) => `  - region "${s}":\n    - heading "${s}" [level=3]`)].join('\n'),
     main: []
   }
