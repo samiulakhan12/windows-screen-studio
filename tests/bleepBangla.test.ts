@@ -307,14 +307,20 @@ describe('Bangla bleeping: stems, compounds and every generated form', () => {
   })
 
   it('bleeps them written another way: য় as one code point, ো in two parts (a joiner between or not), ী for ি, ূ for ু, decomposed', () => {
-    const variants = RUDE.flatMap((w) => [
-      w.replaceAll('\u09AF\u09BC', '\u09DF'),
-      w.replaceAll('\u09CB', '\u09C7\u09BE'),
-      w.replaceAll('\u09CB', '\u09C7\u200D\u09BE'),
-      w.replaceAll('ি', 'ী'),
-      w.replaceAll('ু', 'ূ'),
-      w.normalize('NFD')
-    ])
+    // Each spelling once: where a word has nothing a change changes (no য়, ো, ি or ু; nothing NFD
+    // splits), that change gives the word itself again.
+    const variants = [
+      ...new Set(
+        RUDE.flatMap((w) => [
+          w.replaceAll('\u09AF\u09BC', '\u09DF'),
+          w.replaceAll('\u09CB', '\u09C7\u09BE'),
+          w.replaceAll('\u09CB', '\u09C7\u200D\u09BE'),
+          w.replaceAll('ি', 'ী'),
+          w.replaceAll('ু', 'ূ'),
+          w.normalize('NFD')
+        ])
+      )
+    ]
     for (const [mode, lang] of MODES) expect(variants.filter((w) => !isSwearWord(w, mode, lang)), `${mode} ${lang}`).toEqual([])
   })
 
