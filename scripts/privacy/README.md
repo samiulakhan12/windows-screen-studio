@@ -18,8 +18,8 @@ between configurations are the reliable part.
 - `truth.json.gz`: every planted item (510: 240 to cover by default, 16 off by default, 255
   ordinary texts that must stay visible) with its kind, text and pixel rectangles, read back from
   the rendered page. `holdout-truth.json.gz`: the same for the held-out set (below).
-- `reads/*.json.gz`: the PP-OCRv6 reads of both sets (`tiny` and `careful-narrow`), as
-  `score_reader.py read` wrote them: each line's quad, box, text, confidence and the x-range of
+- `reads/*.json.gz`: the PP-OCRv6 reads of both sets (`tiny`, `careful-narrow`, and `careful-long`
+  built by `careful_long.py`), as `score_reader.py read` wrote them: each line's quad, box, text, confidence and the x-range of
   every character. The text rules can be scored on these without the models.
 - `rule-vectors.json`: 178 screen and 25 speech vectors for the text rules. Token-shaped values
   are seeded placeholders (`«=ghp_|A36»`), expanded by `detect/runVectors.mjs`.
@@ -71,6 +71,8 @@ commits pinned in `reader-models.json`.
   on the detector maps and the recognisers' CTC steps.
 - `careful_long.py`: builds the reads of the careful pass this design ships (careful-narrow's
   trigger plus any line holding 16 or more token characters) from a careful-narrow and a careful run.
+  Its frames keep careful-narrow's timings; the added re-reads cost the small recogniser's mean per
+  line (66-72 ms on these frames), which the design adds by hand.
 - `results/score-main.json.gz`, `score-main-timing.json.gz`, `score-holdout.json.gz`,
   `score-careful-long-main.json.gz`, `score-careful-long-holdout.json.gz`,
   `tract-parity.json`, `tract-profiles-speed.json`: the measurements the design quotes.
