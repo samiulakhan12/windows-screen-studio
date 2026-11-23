@@ -237,16 +237,115 @@ function llmHelperProblems(buf, { signedBuild = false } = {}) {
 }
 
 /**
+ * The text reader helper of Find private info (scripts/build-native.mjs --ocr,
+ * docs/design/auto-blur.md §16.2). `to` is where src/main/privacy/readerHelper.ts looks:
+ * process.resourcesPath/native/ssw-ocr.exe.
+ */
+function ocrHelper() {
+  return { from: 'native/bin/ssw-ocr.exe', to: 'native/ssw-ocr.exe' }
+}
+
+/**
+ * The DLLs the text reader helper may import: system DLLs only. KERNEL32 (with WerSetFlags,
+ * SetErrorMode and the unhandled-exception filter, §10.5: never wer.dll), ntdll, msvcrt,
+ * api-ms-win-core-synch-l1-2-0 and bcryptprimitives from Rust's standard library; combase, oleaut32
+ * and api-ms-win-core-winrt-l1-1-0 for the Windows reader (§5.13, Windows.Media.Ocr). Compared
+ * without case.
+ */
+const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']
+
+/** The imports of `names` that are not on OCR_IMPORTS. */
+function unexpectedOcrImports(names) {
+  const allowed = OCR_IMPORTS.map((n) => n.toLowerCase())
+  return names.filter((n) => !allowed.includes(n.toLowerCase()))
+}
+
+/** The text reader helper's budget, bytes: brotli-compressed (quality 11, 16 MB window) and installed (§16.2). */
+const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }
+
+/**
+ * Strings only the test build of the helper holds (its `fixture` feature: reading PNG files,
+ * counters, a forced panic). A helper holding one must never ship.
+ */
+const OCR_TEST_ONLY = ['readImage', 'panicOn']
+
+/**
+ * Whether the text reader helper can be bundled, like llmHelperStatus: a complete x64 Windows
+ * executable. A build without it leaves it out (Find private info then says the text reader
+ * cannot run on this PC), never fatal; verify-dist checks the imports, the budget and the
+ * signature of one that ships.
+ * @returns {{ from: string, to: string, bundle: boolean, present: boolean, reason?: string, size?: number }}
+ */
+function ocrHelperStatus(rootDir = ROOT) {
+  const h = ocrHelper()
+  const file = path.join(rootDir, h.from)
+  if (!fs.existsSync(file)) return { ...h, bundle: false, present: false }
+  const check = checkWindowsExe(file)
+  return check.ok ? { ...h, bundle: true, present: true, size: check.size } : { ...h, bundle: false, present: true, reason: check.reason }
+}
+
+/**
+ * What is wrong with the text reader helper at `file` that would ship (empty: fine): a complete
+ * x64 Windows executable importing only OCR_IMPORTS, holding none of the test build's strings,
+ * within OCR_BUDGET installed and brotli-compressed (quality 11, 16 MB window, as llmHelperProblems
+ * measures), and, in a signed build, itself signed.
+ * @returns {string[]}
+ */
+function ocrHelperProblems(file, { signedBuild = false } = {}) {
+  const { parsePe, readImports } = require('./pe.cjs')
+  let buf
+  try {
+    buf = fs.readFileSync(file)
+  } catch {
+    return ['is missing']
+  }
+  const problems = []
+  let info = null
+  try {
+    info = parsePe(buf)
+  } catch (err) {
+    problems.push(`is not a Windows executable (${err instanceof Error ? err.message : String(err)})`)
+  }
+  if (info) {
+    if (info.machine !== 'x64') problems.push(`is built for ${info.machine}, not x64`)
+    if (info.truncated) problems.push('is cut short')
+    const bad = unexpectedOcrImports(readImports(buf, info))
+    if (bad.length) problems.push(`imports ${bad.join(', ')}; only ${OCR_IMPORTS.join(', ')} are allowed`)
+    if (signedBuild && !info.signed) problems.push('is not signed in a signed build')
+  }
+  const test = OCR_TEST_ONLY.filter((t) => buf.includes(Buffer.from(t, 'latin1')))
+  if (test.length) problems.push(`is the test build (it holds ${test.join(', ')})`)
+  const zlib = require('node:zlib')
+  const compressed = zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_LGWIN]: 24, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: buf.length } }).length
+  if (buf.length > OCR_BUDGET.installed) problems.push(`is ${buf.length} B installed, over its budget of ${OCR_BUDGET.installed} B`)
+  if (compressed > OCR_BUDGET.compressed) problems.push(`is ${compressed} B compressed, over its budget of ${OCR_BUDGET.compressed} B`)
+  return problems
+}
+
+/**
+ * What a release build (FLOWN_RELEASE=1) may not ship with (docs/design/auto-blur.md §5.12, decision
+ * 10): the text reader's files must have Qbexel's mirror, so READER_MIRROR may not be null.
+ * `mirror` is readerCatalog.ts's READER_MIRROR. Empty: fine.
+ * @returns {string[]}
+ */
+function readerReleaseProblems(mirror, release = process.env.FLOWN_RELEASE === '1') {
+  if (!release) return []
+  return mirror && typeof mirror.repo === 'string' && typeof mirror.commit === 'string' && mirror.repo && mirror.commit ? [] : ['READER_MIRROR in src/shared/privacy/readerCatalog.ts is null: the text reader has no Qbexel mirror yet (a release blocker, decision 10)']
+}
+
+/**
  * The extraResources entries of the speech feature, in directory form (so the signing
  * transformer applies to the helpers): the usable helpers next to the capture helper, and the
- * speech detector model with its MODEL.md. The text helper of AI on this PC (§9.1) rides the same
- * directory-form entry: a single-file `from` would be copied without the signing transformer.
+ * speech detector model with its MODEL.md. The text helper of AI on this PC (§9.1) and the text
+ * reader helper of Find private info (docs/design/auto-blur.md §16.2) ride the same directory-form
+ * entry: a single-file `from` would be copied without the signing transformer.
  */
 function speechResources(rootDir = ROOT) {
   const helpers = speechHelperStatus(rootDir).filter((h) => h.bundle)
   const llm = llmHelperStatus(rootDir).bundle ? [path.posix.basename(llmHelper().from)] : []
+  const ocr = ocrHelperStatus(rootDir).bundle ? [path.posix.basename(ocrHelper().from)] : []
   const out = []
-  if (helpers.length || llm.length) out.push({ from: 'native/bin', to: 'native', filter: [...helpers.map((h) => path.posix.basename(h.from)), ...llm] })
+  if (helpers.length || llm.length || ocr.length) out.push({ from: 'native/bin', to: 'native', filter: [...helpers.map((h) => path.posix.basename(h.from)), ...llm, ...ocr] })
   out.push({ from: 'resources/speech', to: 'speech', filter: ['ggml-silero-v6.2.0.bin', 'MODEL.md'] })
   return out
 }
@@ -454,6 +553,14 @@ module.exports = {
   LLM_BUDGET,
   unexpectedLlmImports,
   llmHelperProblems,
+  ocrHelper,
+  ocrHelperStatus,
+  OCR_IMPORTS,
+  OCR_BUDGET,
+  OCR_TEST_ONLY,
+  unexpectedOcrImports,
+  ocrHelperProblems,
+  readerReleaseProblems,
   noticesResource,
   soundLibraryResource,
   SOUND_LIBRARY_BUDGET,

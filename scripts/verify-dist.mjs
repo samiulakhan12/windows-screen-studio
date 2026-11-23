@@ -28,6 +28,10 @@ const {
   nativeHelper,
   nativeHelperStatus,
   noticesProblems,
+  ocrHelper,
+  ocrHelperProblems,
+  ocrHelperStatus,
+  readerReleaseProblems,
   runtimePackages,
   signedFiles,
   SPEECH_BUDGET,
@@ -294,6 +298,31 @@ else {
     if (r.problems.length) fail(`resources/${h.to} ${r.problems.join('; ')}`)
     else ok(`text helper: resources/${h.to} (${r.size} B installed, ${r.compressed} B brotli), imports ${r.imports.join(', ')}`)
   }
+}
+
+// 4d. The text reader helper of Find private info (docs/design/auto-blur.md §16.2): optional; when
+// it ships, an x64 executable importing OCR_IMPORTS only (never wer.dll), not the test build (no
+// `readImage`), within OCR_BUDGET, and signed in a signed build. A release build (FLOWN_RELEASE=1)
+// also needs the text reader's mirror (READER_MIRROR, decision 10): null is a release blocker.
+{
+  const h = ocrHelperStatus()
+  const out = path.join(resources, ocrHelper().to)
+  if (!existsSync(out)) {
+    if (h.bundle) fail(`${h.from} is usable but resources/${h.to} was not packaged`)
+    else note(`text reader helper resources/${h.to} not bundled${h.present ? ` (${h.from}: ${h.reason})` : ''}: Find private info is not part of this build`)
+  } else {
+    let signedBuild = process.env.SSW_REQUIRE_SIGNING === '1'
+    try {
+      signedBuild ||= parsePe(readFileSync(path.join(unpacked, `${pkg.productName}.exe`))).signed
+    } catch {
+      // No app exe: section 5 reports it.
+    }
+    const problems = ocrHelperProblems(out, { signedBuild })
+    if (problems.length) fail(`resources/${h.to} ${problems.join('; ')}`)
+    else ok(`text reader helper: resources/${h.to} (${statSync(out).size} B installed), imports ${readImports(readFileSync(out)).join(', ')}`)
+  }
+  const { READER_MIRROR } = await import(new URL('../src/shared/privacy/readerCatalog.ts', import.meta.url).href)
+  for (const p of readerReleaseProblems(READER_MIRROR)) fail(p)
 }
 
 // 5. Our icon is embedded in the app exe and the installer (F33).

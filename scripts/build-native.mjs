@@ -8,12 +8,18 @@
 //     x64 processor). docs/design/offline-captions.md §2.4 and §6.1;
 //   - the text helper (native/llm, Rust + llama.cpp through llama-cpp-2 0.1.161, --locked) once for
 //     Windows x64: native/bin/ssw-llm.exe, static MinGW, CPU only, ggml with SSE4.2, AVX, AVX2, FMA
-//     and F16C forced on (one AVX2 build). docs/design/smart-tools.md §9.1.
+//     and F16C forced on (one AVX2 build). docs/design/smart-tools.md §9.1;
+//   - the text reader helper (native/ocr, Rust + tract, --locked) once for Windows x64:
+//     native/bin/ssw-ocr.exe, MinGW, the mixed profile (size first, speed for tract's kernels), its
+//     imports and size checked. docs/design/auto-blur.md §16.2.
 //
 //   node scripts/build-native.mjs                # warn and exit 0 when a helper cannot be built
 //   node scripts/build-native.mjs --require      # fail instead (release builds/CI); also SSW_REQUIRE_NATIVE=1
 //   node scripts/build-native.mjs --speech-host  # only the speech helper for this machine -> native/bin/ssw-speech
 //                                                # (development and the tests; npm run build:speech-host); fails when it cannot
+//   node scripts/build-native.mjs --ocr          # only the text reader helper for Windows -> native/bin/ssw-ocr.exe
+//   node scripts/build-native.mjs --ocr-host     # only the text reader helper for this machine -> native/bin/ssw-ocr
+//                                                # (the end-to-end runs); fails when it cannot
 //
 // Windows builds for the host toolchain (x86_64-pc-windows-msvc, or -gnu); Linux and macOS
 // cross-compile for x86_64-pc-windows-gnu, which needs `rustup target add x86_64-pc-windows-gnu`
@@ -32,7 +38,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { checkWindowsExe, readImports } = require('./lib/pe.cjs')
-const { LLM_BUDGET, LLM_GGML_FLAGS, LLM_IMPORTS, llmHelperStatus, speechHelpers, speechHelperStatus, unexpectedLlmImports } = require('./lib/packaging.cjs')
+const { LLM_BUDGET, LLM_GGML_FLAGS, LLM_IMPORTS, llmHelperStatus, ocrHelper, ocrHelperProblems, ocrHelperStatus, speechHelpers, speechHelperStatus, unexpectedLlmImports } = require('./lib/packaging.cjs')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const crate = path.join(root, 'native')
@@ -43,6 +49,9 @@ const speechHostOnly = process.argv.includes('--speech-host')
 const llmHostOnly = process.argv.includes('--llm-host')
 const llmOnly = process.argv.includes('--llm')
 const llmCrate = path.join(crate, 'llm')
+const ocrOnly = process.argv.includes('--ocr')
+const ocrHostOnly = process.argv.includes('--ocr-host')
+const ocrCrate = path.join(crate, 'ocr')
 const WIN_TARGET = 'x86_64-pc-windows-gnu'
 
 function run(cmd, args, opts = {}) {
@@ -55,7 +64,7 @@ const problems = []
 function skip(what, reason, hint, consequence) {
   const lines = [`build-native: ${what}: ${reason}`]
   if (hint) lines.push(`build-native: ${hint}`)
-  if (required || speechHostOnly || llmHostOnly) {
+  if (required || speechHostOnly || llmHostOnly || ocrHostOnly) {
     console.error(lines.join('\n'))
     problems.push(`${what}: ${reason}`)
   } else {
@@ -304,16 +313,77 @@ function buildLlmHost() {
   copyOut(path.join(llmCrate, 'target', 'host', 'release', exe), path.join(binDir, exe))
 }
 
+// -------------------------------------------------------------------- text reader helper
+
+const OCR_CONSEQUENCE = 'Find private info will be unavailable (the text reader cannot run).'
+
+/** One cargo build of native/ocr into its own target folder, always with the lock file, never with the test-only `fixture` feature. */
+function cargoOcr(label, targetDir, args, env) {
+  console.log(`build-native: cargo build --release --locked ${args.join(' ')} (native/ocr, ${label})`)
+  const r = run('cargo', ['build', '--release', '--locked', ...args, '--manifest-path', path.join(ocrCrate, 'Cargo.toml')], {
+    stdio: 'inherit',
+    env: { ...process.env, CARGO_TARGET_DIR: path.join(ocrCrate, 'target', targetDir), ...env }
+  })
+  return r.error || r.status !== 0 ? `cargo build failed (${r.error?.message ?? `exit code ${r.status}`})` : null
+}
+
+/**
+ * The text reader helper for Windows x64 (docs/design/auto-blur.md §16.2): cross-compiled with the
+ * POSIX-thread MinGW, the mixed release profile of native/ocr/Cargo.toml. Its imports must be
+ * OCR_IMPORTS (system DLLs, with the WinRT three of the Windows reader), its size within
+ * OCR_BUDGET (brotli 11, 16 MB window), and it must not hold the test build's `readImage`.
+ */
+function buildOcrWindows() {
+  const what = 'the text reader helper (ssw-ocr.exe)'
+  const { from } = ocrHelper()
+  if (process.platform === 'win32') {
+    const status = ocrHelperStatus(root)
+    if (status.bundle) {
+      console.warn(`build-native: WARNING: the text reader helper is cross-compiled from Linux or macOS only; reusing the prebuilt ${from} (not rebuilt now).`)
+      return
+    }
+    return skip(what, `it is cross-compiled from Linux or macOS only, and ${from} is ${status.present ? `unusable (${status.reason})` : 'missing'}.`, 'Build it on Linux (see native/ocr/README.md) and copy it to native/bin.', OCR_CONSEQUENCE)
+  }
+  if (!haveCargo(what, OCR_CONSEQUENCE) || !haveTarget(what, WIN_TARGET, OCR_CONSEQUENCE)) return
+  const linker = 'x86_64-w64-mingw32-gcc-posix'
+  const r = run(linker, ['--version'])
+  if (r.error || r.status !== 0) return skip(what, `the POSIX-thread MinGW (${linker}) is missing.`, 'Install mingw-w64 (apt install mingw-w64).', OCR_CONSEQUENCE)
+  const failed = cargoOcr('windows', 'win', ['--target', WIN_TARGET], { CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER: linker, CC_x86_64_pc_windows_gnu: linker })
+  if (failed) return skip(what, `${failed}.`, undefined, OCR_CONSEQUENCE)
+  const built = path.join(ocrCrate, 'target', 'win', WIN_TARGET, 'release', 'ssw-ocr.exe')
+  const check = checkWindowsExe(built)
+  if (!check.ok) return skip(what, `the build is not a usable x64 executable (${check.reason}).`, undefined, OCR_CONSEQUENCE)
+  const problems = ocrHelperProblems(built)
+  if (problems.length) return skip(what, `the build ${problems.join('; ')}.`, undefined, OCR_CONSEQUENCE)
+  copyOut(built, path.join(root, from))
+  console.log(`build-native: ssw-ocr.exe imports ${readImports(readFileSync(built)).join(', ')}`)
+}
+
+/** The text reader helper for this machine (the end-to-end runs): native/bin/ssw-ocr[.exe]. */
+function buildOcrHost() {
+  const what = 'the host text reader helper (native/bin/ssw-ocr)'
+  if (!haveCargo(what, OCR_CONSEQUENCE)) return
+  const failed = cargoOcr('host', 'host', [], {})
+  if (failed) return skip(what, `${failed}.`, undefined, OCR_CONSEQUENCE)
+  const exe = process.platform === 'win32' ? 'ssw-ocr.exe' : 'ssw-ocr'
+  copyOut(path.join(ocrCrate, 'target', 'host', 'release', exe), path.join(binDir, exe))
+}
+
 if (speechHostOnly) {
   buildSpeechHost()
 } else if (llmHostOnly) {
   buildLlmHost()
 } else if (llmOnly) {
   buildLlmWindows()
+} else if (ocrHostOnly) {
+  buildOcrHost()
+} else if (ocrOnly) {
+  buildOcrWindows()
 } else {
   buildCapture()
   buildSpeechWindows()
   buildLlmWindows()
+  buildOcrWindows()
 }
 if (problems.length) {
   console.error(`build-native: ${problems.length} helper(s) could not be built${required ? ' and --require / SSW_REQUIRE_NATIVE=1 is set' : ''}; failing.`)
