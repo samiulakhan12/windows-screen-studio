@@ -1,0 +1,29 @@
+# detect/evalReads.mjs on the held-out set's reads (rules frozen; tuned on the main set's tiny reads)
+reads=tiny.json regions=US,GB,BD
+  password    n= 17 found=17 covered=17
+  key         n= 42 found=40 covered=40
+  email       n= 32 found=32 covered=32
+  phone       n= 28 found=28 covered=28
+  name        n= 37 found=37 covered=37
+  jwt         n=  5 found=3 covered=2
+  privateKey  n= 10 found=10 covered=7
+  linkToken   n= 10 found=10 covered=9
+  code        n= 22 found=22 covered=22
+  card        n=  9 found=9 covered=9
+  iban        n= 12 found=12 covered=12
+  id          n=  9 found=9 covered=9
+TOTAL text items n=233 found=229 (98.3%) covered=224 (96.1%)
+off items (ordinary/address/dots/random) covered >=50%: 2 of 271; hits touching no planted item: 2
+MISSES:
+  key editor-0/9 cov=0.20 "sk-proj-6PwpyBNRwfDaS9f1s-qLM0ugGZI59uQEncCSPBuWA7"
+  privateKey editor-small-0/9 cov=0.92 "-----END PRIVATE KEY-----"
+  key editor-small-1/4 cov=0.17 "github_pat_1181FA6L6INGL33Y1T3PT0_QIDmJjleMTbxZZJp"
+  jwt editor-small-1/6 cov=0.82 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzd"
+  privateKey terminal-0/11 cov=0.89 "-----BEGIN OPENSSH PRIVATE KEY-----"
+  privateKey terminal-0/15 cov=0.93 "-----END OPENSSH PRIVATE KEY-----"
+  jwt logs-0/22 cov=0.02 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1X"
+  jwt dashboard-1/7 cov=0.00 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqZ"
+  linkToken dashboard-1/8 cov=0.92 "7434005229561938664/R7-Q-I55Fb_APcIGvB7-nY2fZz93cN"
+FALSE HITS:
+  h07-logs-0-light-125.png email/check "noreply@contoso.example"
+  h09-dashboard-0-dark-125.png stripe-pk/check "pk_live_51vqzhs4Er8P2Df90xRrTXVFmXY1YVal"

@@ -69,7 +69,10 @@ commits pinned in `reader-models.json`.
   (those are `detect/rules.mjs`, the prototype of `src/shared/privacy/detect`).
 - `tract_parity.py`: compares tract (through `tract-skeleton`'s `parity` tool) with ONNX Runtime
   on the detector maps and the recognisers' CTC steps.
+- `careful_long.py`: builds the reads of the careful pass this design ships (careful-narrow's
+  trigger plus any line holding 16 or more token characters) from a careful-narrow and a careful run.
 - `results/score-main.json.gz`, `score-main-timing.json.gz`, `score-holdout.json.gz`,
+  `score-careful-long-main.json.gz`, `score-careful-long-holdout.json.gz`,
   `tract-parity.json`, `tract-profiles-speed.json`: the measurements the design quotes.
 
 ## The text rules prototype (`detect/`)
@@ -86,7 +89,8 @@ prototype of every rule. With `src/shared/publish/tlds.ts` and libphonenumber-js
     node scripts/privacy/detect/speechFp.mjs .
 
 Results: all 203 vectors pass; on the tiny reads 233 of 233 text items found and 227 fully covered
-(`results/detect-eval-reads.txt`); false hits per corpus in `results/detect-corpus.txt` and
+(`results/detect-eval-reads.txt`), and on the held-out reads 229 found and 224 covered
+(`results/detect-eval-reads-holdout.txt`: wrapped JWTs and tokens, a key read with a space); false hits per corpus in `results/detect-corpus.txt` and
 `results/detect-speech-fp.txt`. `phone_rate.py` measures how many random digit strings a
 country's phone metadata accepts; `gl_extract.py` prints gitleaks rules from its `gitleaks.toml`
 (v8.30.1, MIT); `closure.mjs` lists the files a vendored ES module reaches; `gen.mjs` and
