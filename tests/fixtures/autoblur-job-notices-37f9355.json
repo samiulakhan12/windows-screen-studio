@@ -1,0 +1,2387 @@
+{
+ "commit": "37f9355",
+ "cases": [
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "2 files exported",
+    "body": "Videos",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "2 files exported",
+    "body": "Videos",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "2 files exported",
+    "body": "Videos",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "2 files exported",
+    "body": "Videos",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB · 2 failed · stopped early",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export finished",
+    "body": "a.mp4 · 12.3 MB · 2 failed · stopped early",
+    "actions": [
+     "open",
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "2 files exported",
+    "body": "Videos · 2 failed · stopped early",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "2 files exported",
+    "body": "Videos · 2 failed · stopped early",
+    "actions": [
+     "show"
+    ]
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "export",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Export failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Captions are ready",
+    "body": "Your recording has captions now.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions are ready",
+    "body": "Billing demo",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Disk full",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "captions",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   {
+    "title": "Captions failed",
+    "body": "Something went wrong.",
+    "actions": []
+   }
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "analysis",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "files": [
+     "C:\\Videos\\a.mp4"
+    ]
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "done",
+    "failed": 2,
+    "stopped": true
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "cancelled"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": "Disk full\nmore"
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 12345678
+    }
+   ],
+   "Billing demo",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "",
+   null
+  ],
+  [
+   "ai",
+   {
+    "kind": "failed",
+    "message": ""
+   },
+   [
+    {
+     "path": "C:\\Videos\\a.mp4",
+     "bytes": 1000
+    },
+    {
+     "path": "C:\\Videos\\b.mp4",
+     "bytes": 2000
+    }
+   ],
+   "Billing demo",
+   null
+  ]
+ ]
+}
