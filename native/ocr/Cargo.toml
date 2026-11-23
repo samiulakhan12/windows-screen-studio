@@ -1,0 +1,71 @@
+[package]
+name = "ssw-ocr"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.91"
+license = "MIT"
+description = "Flown text reader helper: reads text on screen in a recording with PaddlePaddle's PP-OCRv6 models (tract), on this PC, one JSON line per command."
+publish = false
+
+# Its own workspace root: native/Cargo.toml (ssw-capture), native/speech and native/llm are separate packages.
+[workspace]
+
+[[bin]]
+name = "ssw-ocr"
+path = "src/main.rs"
+
+[features]
+# Test builds only (native/ocr/tests/cli.rs): `readImage` for the evaluation PNGs, `stats` for the
+# counters and `panicAt` to force a panic. Release builds never contain them (verify-dist checks).
+fixture = ["dep:png"]
+
+[dependencies]
+# MIT OR Apache-2.0. default-features = false: no ONNX file loading from paths through `std::fs`
+# helpers the helper does not use; models are read once, hashed and parsed from that buffer.
+tract-onnx = { version = "=0.23.10", default-features = false }
+# (MIT OR Apache-2.0) AND ISC. default-features = false: no `image` crate.
+rqrr = { version = "=0.11.0", default-features = false }
+sha2 = "0.10"
+serde_json = "1"
+png = { version = "0.18", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_ErrorReporting",
+  "Win32_System_Kernel",
+] }
+# The Windows reader (docs/design/auto-blur.md §5.13), closed by WINDOWS_READER_ALLOWED in the app.
+windows = { version = "0.62", features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Storage_Streams", "Win32_System_WinRT"] }
+
+[dev-dependencies]
+png = "0.18"
+serde_json = "1"
+sha2 = "0.10"
+
+# The mixed profile (docs/design/auto-blur.md §16.2): size first everywhere, speed for tract's
+# kernels and core operators. panic = "unwind": each read runs inside catch_unwind (§5.6).
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "unwind"
+
+[profile.release.package.tract-linalg]
+opt-level = 3
+
+[profile.release.package.tract-core]
+opt-level = 3
+
+# The tests run the helper built in this profile: the debug profile reads a frame many times slower.
+[profile.test-fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+strip = false
+debug = false

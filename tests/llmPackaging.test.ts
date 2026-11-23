@@ -158,10 +158,10 @@ describe('packaging ssw-llm.exe (test 131)', () => {
   const cargo = spawnSync('cargo', ['--version'], { encoding: 'utf8' })
   it.runIf(!cargo.error && cargo.status === 0)('`npm run notices -- --check` passes the committed file and fails without the helper’s crates', () => {
     const root = tmpDir()
-    for (const p of ['scripts/notices.mjs', 'scripts/lib', 'resources/notices', 'resources/THIRD_PARTY_NOTICES.txt', 'package.json', 'native/Cargo.toml', 'native/Cargo.lock', 'native/speech/Cargo.toml', 'native/speech/Cargo.lock', 'native/llm/Cargo.toml', 'native/llm/Cargo.lock']) {
+    for (const p of ['scripts/notices.mjs', 'scripts/lib', 'resources/notices', 'resources/THIRD_PARTY_NOTICES.txt', 'package.json', 'native/Cargo.toml', 'native/Cargo.lock', 'native/speech/Cargo.toml', 'native/speech/Cargo.lock', 'native/llm/Cargo.toml', 'native/llm/Cargo.lock', 'native/ocr/Cargo.toml', 'native/ocr/Cargo.lock']) {
       cpSync(path.join(ROOT, p), path.join(root, p), { recursive: true })
     }
-    for (const crate of ['native', 'native/speech', 'native/llm']) {
+    for (const crate of ['native', 'native/speech', 'native/llm', 'native/ocr']) {
       mkdirSync(path.join(root, crate, 'src'), { recursive: true })
       writeFileSync(path.join(root, crate, 'src', 'main.rs'), 'fn main() {}\n')
     }

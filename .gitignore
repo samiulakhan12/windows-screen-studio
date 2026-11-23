@@ -19,3 +19,4 @@ electron-builder.env
 # The speech and text helper crates build into their own target folders.
 native/speech/target/
 native/llm/target/
+native/ocr/target/

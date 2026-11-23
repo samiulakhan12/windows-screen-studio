@@ -40,6 +40,14 @@
   FunctionEnd
 !macroend
 
+; Find private info's text reader (docs/design/auto-blur.md §10.5, question 14 (a)): a crash dump
+; of ssw-ocr.exe would hold frames with secrets, so Windows Error Reporting leaves it out. One DWORD
+; named after Flown's own helper, written where the install is (HKLM for every user, HKCU for this
+; user; $installMode is "all" or "CurrentUser") and removed from the same place on uninstall. The
+; helper also asks Windows itself to leave its heap out of any report and ends without one.
+!define FLOWN_WER_EXCLUDED "Microsoft\Windows\Windows Error Reporting\ExcludedApplications"
+!define FLOWN_WER_HELPER "ssw-ocr.exe"
+
 ; The old uninstaller removes its shortcuts; this covers one that failed or was skipped.
 !macro customInstall
   ${if} ${FileExists} "$DESKTOP\${FLOWN_LEGACY_SHORTCUT}.lnk"
@@ -47,5 +55,19 @@
   ${endIf}
   ${if} ${FileExists} "$SMPROGRAMS\${FLOWN_LEGACY_SHORTCUT}.lnk"
     Delete "$SMPROGRAMS\${FLOWN_LEGACY_SHORTCUT}.lnk"
+  ${endIf}
+  ${if} $installMode == "all"
+    WriteRegDWORD HKLM "SOFTWARE\${FLOWN_WER_EXCLUDED}" "${FLOWN_WER_HELPER}" 1
+  ${else}
+    WriteRegDWORD HKCU "Software\${FLOWN_WER_EXCLUDED}" "${FLOWN_WER_HELPER}" 1
+  ${endIf}
+!macroend
+
+; The uninstaller removes the value from where the install wrote it.
+!macro customUnInstall
+  ${if} $installMode == "all"
+    DeleteRegValue HKLM "SOFTWARE\${FLOWN_WER_EXCLUDED}" "${FLOWN_WER_HELPER}"
+  ${else}
+    DeleteRegValue HKCU "Software\${FLOWN_WER_EXCLUDED}" "${FLOWN_WER_HELPER}"
   ${endIf}
 !macroend

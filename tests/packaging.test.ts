@@ -772,10 +772,13 @@ describe('speech packaging (docs/design/offline-captions.md §6)', () => {
     for (const h of packaging.speechHelpers()) writeFileSync(path.join(root, h.from), current)
     // The text helper of AI on this PC (smart-tools.md §9.1) is cross-compiled too: a usable prebuilt one is reused.
     writeFileSync(path.join(root, 'native', 'bin', 'ssw-llm.exe'), fakePe({}))
+    // So is the text reader helper of Find private info (auto-blur.md §16.2).
+    writeFileSync(path.join(root, 'native', 'bin', 'ssw-ocr.exe'), fakePe({}))
     const plain = build()
     expect(plain.status, plain.stderr).toBe(0)
     expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-speech.exe and native/bin/ssw-speech-compat.exe (not rebuilt now)')
     expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-llm.exe (not rebuilt now)')
+    expect(plain.stderr).toContain('reusing the prebuilt native/bin/ssw-ocr.exe (not rebuilt now)')
     expect(plain.stderr).not.toContain('captions on this PC will be unavailable')
     // Required: only the capture helper fails here.
     const required = build({ SSW_REQUIRE_NATIVE: '1' })
