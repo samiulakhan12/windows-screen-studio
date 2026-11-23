@@ -23,13 +23,15 @@ import { checkTimelinePlan } from '../shared/interchange/planCheck'
 import type { TimelineMedia, TimelinePlan, TimelineSource } from '../shared/interchange/timelinePlan'
 import { xmeml } from '../shared/interchange/xmeml'
 import { STEM_FILE_WORDS } from '../shared/render/stems'
-import type { VoiceStrength } from '../shared/types'
+import type { Project, VoiceStrength } from '../shared/types'
+import { hidesSomething } from '../shared/privacy/coverData'
 import { removeWithRetries } from './exportCleanup'
 import { exportJobOf } from './exportedJobs'
 import { isExportedFile, onExportCancel } from './exportIpc'
 import { freeBatchPath, moveIntoPlace, partialPath } from './exportJob'
 import { ffmpegPath, startFfmpeg } from './ffmpeg'
 import { projectDir } from './projects'
+import { migrateProject } from '../shared/engine/project'
 import { isAppUrl } from './security'
 import { renderStems } from './stemsRun'
 import { voiceCleaner } from './voice/voiceIpc'
@@ -51,6 +53,8 @@ export interface TimelineDeps {
   /** Clean voice's cleaned file (absolute path) of the microphone or the mixed track. */
   cleanVoice?: (projectId: string, source: 'mic' | 'mix', strength: VoiceStrength) => Promise<string>
   renderStems?: typeof renderStems
+  /** The project as saved (auto-blur §9 row 10: main reads what the user sees, whatever the request says). */
+  readProject?: (id: string) => Promise<Project>
 }
 
 /** The files of "The original recordings" in the media folder (§2.3), English on every PC (§0 decision 10). */
@@ -123,7 +127,8 @@ const defaults = (): Required<TimelineDeps> => ({
   projectDir,
   freeBytes: (dir) => fs.statfs(dir).then((s) => Number(s.bavail) * Number(s.bsize), () => null),
   cleanVoice: async (projectId, source, strength) => path.join(projectDir(projectId), await voiceCleaner.ensure(projectId, source, strength)),
-  renderStems
+  renderStems,
+  readProject: async (id) => migrateProject(JSON.parse(await fs.readFile(path.join(projectDir(id), 'project.json'), 'utf8')))
 })
 
 /**
@@ -316,6 +321,18 @@ export async function writeTimeline(request: TimelineRequest, deps?: TimelineDep
   // The plan's media fit its mode: the video and the stems written with it, or the recordings.
   const fits = exportMode ? media.includes('video') && media.every((m) => m === 'video' || fromStem(m)) : media.includes('screen') && !media.includes('video')
   if (!fits) return failed(t('errors.timeline.invalid'))
+  // The original recordings are never copied while the video hides part of them (auto-blur §9 row 10,
+  // §0 decision 4): a cover, a blur or pixelate shape or a bleep, read from project.json itself.
+  if (!exportMode) {
+    let saved: Project
+    try {
+      // The project.json beside the recordings it would copy (in the folder projectDir gives).
+      saved = deps?.readProject ? await deps.readProject(projectId) : migrateProject(JSON.parse(await fs.readFile(path.join(d.projectDir(projectId), 'project.json'), 'utf8')))
+    } catch {
+      return failed(t('errors.timeline.media'))
+    }
+    if (hidesSomething(saved)) return failed(t('errors.timeline.hidden'))
+  }
 
   // Each media's file now, probed against what the plan says of it.
   const sources = new Map<TimelineMedia, string>()

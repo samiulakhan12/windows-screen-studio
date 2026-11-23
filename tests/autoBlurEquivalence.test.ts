@@ -873,14 +873,16 @@ describe("test 20: Home's summaries", () => {
     }
     const list = await listProjects()
     expect(list.map((s) => s.createdAt)).toEqual(list.map((s) => s.createdAt).sort().reverse())
-    // The one field auto-blur adds (§9 row 17): the boxes Home fills over a thumbnail, present only for a
-    // project with a cover or a blur or pixelate shape about the thumbnail's time (min(1 s, 15%)). Every
-    // field of today is compared without it.
+    // The two fields auto-blur adds (§9 row 17): the boxes Home fills over a thumbnail, present only for a
+    // project with a cover or a blur or pixelate shape about the thumbnail's time (min(1 s, 15%)), and the
+    // crop it is drawn through (question 13 (a)), only for a cropped project. Every field of today is
+    // compared without them.
     for (const s of list) {
       const p = PROJECTS.find((x) => x.project.id === s.id)!.project
       const t = Math.min(1, p.duration * 0.15)
       const shaped = (p.shapes ?? []).some((h) => (h.kind === 'blur' || h.kind === 'pixelate') && h.start <= t + 0.1 && h.end > t - 0.1)
       expect('thumbCovers' in s, s.id).toBe(shaped || !!p.covers?.length)
+      expect((s as { thumbCrop?: unknown }).thumbCrop, s.id).toEqual(p.crop)
     }
     // Summaries with the same creation time come in folder order: compared by id.
     pinned(
@@ -888,8 +890,9 @@ describe("test 20: Home's summaries", () => {
       'listProjects',
       list
         .map((s) => {
-          const { thumbCovers: _boxes, ...today } = s as typeof s & { thumbCovers?: unknown }
+          const { thumbCovers: _boxes, thumbCrop: _crop, ...today } = s as typeof s & { thumbCovers?: unknown; thumbCrop?: unknown }
           void _boxes
+          void _crop
           return { ...today, dir: path.relative(ROOT, s.dir).split(path.sep).join('/') }
         })
         .sort((a, b) => a.id.localeCompare(b.id))

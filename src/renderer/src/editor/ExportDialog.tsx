@@ -79,6 +79,7 @@ import { richText } from '../i18n/richText'
 import { NumberField } from '../i18n/NumberField'
 import { itemLabel, presetName } from './exportNames'
 import { chaptersNoteText } from './exportNames'
+import { hidesSomething } from '../../../shared/privacy/coverData'
 
 interface Props {
   project: Project
@@ -89,6 +90,8 @@ interface Props {
   onClose: () => void
   /** Closes the dialog and opens the Short clips panel (smart-tools.md §2.4: the done view's link). */
   onShortClips?: () => void
+  /** Writes the project to project.json at once (the editor's saver); called before a timeline is asked of main (auto-blur §9 row 10). */
+  flush?: () => void
 }
 
 type Phase =
@@ -755,7 +758,7 @@ export function ExportDialog(props: Props): JSX.Element {
         timeline = { request: { projectId: project.id, videoPath: outputPath, editors, media, stems }, exported: { fps: shown.fps, frames, width: shown.width, height: shown.height } }
         setPhase((p) => (p.kind === 'running' ? { ...p, progress: p.progress ? { ...p.progress, phase: 'finalizing', detail: undefined } : p.progress, step: 'timeline' } : p))
       }
-      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline, signal: controller.signal } : {}) })
+      const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline, signal: controller.signal, ...(props.flush ? { flush: props.flush } : {}) } : {}) })
       // Cancel export after the video (the timeline's step) keeps the video and starts no share.
       if (!controller.signal.aborted) await share.begin(outputPath, { title: project.name, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
@@ -1452,7 +1455,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       chapterCount={parts.length}
                       pendingChapters={pendingChapters(project).length}
                       savedDescription={!!project.publish?.description}
-                      alsoSave={{ options: effective, hasSound, stems: stemList, seconds: length, notEvened }}
+                      alsoSave={{ options: effective, hasSound, stems: stemList, seconds: length, notEvened, hides: hidesSomething(project) }}
                     />
                     <ShareAfterExport share={share} single={mode === 'single' && !perChapter} />
                   </div>

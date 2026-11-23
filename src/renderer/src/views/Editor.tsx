@@ -45,6 +45,7 @@ import {
 } from '../../../shared/editor/shortcuts'
 import { atOutputStart, nextPreviewSpeed, type ShuttleKey } from '../../../shared/editor/shuttle'
 import { clampIntoCrop, cropOf, cropView, fromCrop, FULL_FRAME, type CropView } from '../../../shared/engine/crop'
+import { privateView } from '../../../shared/privacy/spoken'
 import { SmoothedTrack } from '../../../shared/engine/cursor'
 import { clamp } from '../../../shared/engine/math'
 import { NO_PATHS, planCursorPath } from '../../../shared/engine/cursorPath'
@@ -504,9 +505,10 @@ function EditorSession({
   // What is drawn: the project and input as shown (cropView: positions relative to the crop, its
   // pixel size). While the crop tool is open, the whole recording without the camera (nor camera
   // layouts) and without following the action; setNoZoom below leaves zooms and the tilt out.
+  // Texts made from captions are drawn from the private view (auto-blur §7.5): the stored project itself without private bleeps.
   const drawn = useMemo((): CropView<Project> => {
-    if (!cropping) return cropView(project, cursor)
-    const { crop: _crop, ...whole } = project
+    if (!cropping) return cropView(privateView(project), cursor)
+    const { crop: _crop, ...whole } = privateView(project)
     return { project: withoutFollow({ ...whole, webcam: { ...project.webcam, show: false } }), cursor, crop: null }
   }, [cropping, project, cursor])
   const cursorPath = useMemo(() => new SmoothedTrack(drawn.cursor.samples, project.duration, project.cursor.smoothing), [drawn.cursor.samples, project.duration, project.cursor.smoothing])
@@ -2046,6 +2048,7 @@ function EditorSession({
             webcamUrl={data.webcamUrl}
             background={background}
             onClose={() => setExporting(false)}
+            flush={() => saver.flushSync()}
             onShortClips={() => {
               setExporting(false)
               openClips()

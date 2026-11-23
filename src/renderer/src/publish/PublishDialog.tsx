@@ -128,6 +128,7 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   const contextFor = (c: TextChoice): WriteContext => {
     const chapters = chapterTitles
     return {
+      project,
       providerId: c.id,
       segments,
       tone: prefs.tone,

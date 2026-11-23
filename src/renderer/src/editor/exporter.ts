@@ -12,6 +12,8 @@ import { exportDimensions, exportProject, exportRoutes, failureCode, isAudioOnly
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Graphic, Project, VoiceStrength } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
+import { forOutput } from '../render/coverLayer'
+import { privateView } from '../../../shared/privacy/spoken'
 import { releaseTilt } from '../render/tiltLayer'
 import { releaseGrade } from '../render/gradeLayer'
 import { prepareCursorAssets } from '../render/cursorLayer'
@@ -117,7 +119,9 @@ const abortError = (): DOMException => new DOMException(t('export.cancelledAbort
 async function prepare<T extends ExportSource & { settings: Pick<ExportOptions, 'aspect'> }>(input: T): Promise<T> {
   const project = exportProject(input.project, input.settings)
   const drawn = input.scene.project === input.project ? project : exportProject(input.scene.project, input.settings)
-  const scene = drawn === input.scene.project ? input.scene : { ...input.scene, project: drawn }
+  // Never the preview's Peek or cover outlines (auto-blur §8.5): every export, thumbnail and guide shot starts here.
+  const given = forOutput(input.scene)
+  const scene = drawn === given.project ? given : { ...given, project: drawn }
   await prepareCursorAssets(project, projectMediaUrl(project.id))
   await prepareStyleAssets(project, projectMediaUrl(project.id))
   // Image overlays decoded (a GIF's every frame) and the fonts text uses loaded, before the first
@@ -307,7 +311,7 @@ async function planJob(input: ExportInput): Promise<JobPlan> {
   const { times, pictures, held } = videoFrames(input.project.clips, planOf(input.project), fps)
   const sound = await soundOf(input, input.settings.format)
   const rate = rateOf(input.settings, times.length, { width, height, fps }, hasSound(sound))
-  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(input.project, input.settings.format), subtitles: subtitlesOf(input), windows: joinPlan(input.project) }
+  return { width, height, fps, times, pictures, held, sound, rate, chapters: chaptersOf(privateView(input.project), input.settings.format), subtitles: subtitlesOf(input), windows: joinPlan(input.project) }
 }
 
 /**
@@ -382,7 +386,7 @@ async function exportAudio(input: ExportInput): Promise<ExportResult> {
       video: { kind: 'none' },
       ...sound,
       ...rateOf(settings, frames, { width: 0, height: 0, fps: AUDIO_ONLY_FPS }, true),
-      ...chaptersOf(project, settings.format),
+      ...chaptersOf(privateView(project), settings.format),
       outputPath: input.outputPath
     }
     await window.api.exportStart(project.id, job)

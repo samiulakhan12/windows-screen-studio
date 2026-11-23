@@ -32,18 +32,29 @@ interface Track {
   stills: FreezeStills | null
 }
 
-/** A composed A* and what it was drawn with: the project, Compare, and each grade's LUT as it was then (null while loading). */
+/** A composed A* and what it was drawn with: the project, Compare, Peek and the cover outlines, and each grade's LUT as it was then (null while loading). */
 interface Composed {
   canvas: HTMLCanvasElement
   project: Project
   compare: boolean
+  /** The preview's Peek and Show where covers are when it was composed (auto-blur §8.5). */
+  peek: string
+  marks: boolean
   screenLut: CubeLut | null
   cameraLut: CubeLut | null
 }
 
 /** Whether `c` looks as `scene` draws now (Compare turned on or off, or a LUT ready since, make it again). */
 const fresh = (c: Composed, scene: RenderScene): boolean =>
-  c.project === scene.project && c.compare === !!scene.compare && c.screenLut === lutFor(scene.project, 'screen') && c.cameraLut === lutFor(scene.project, 'camera')
+  c.project === scene.project &&
+  c.compare === !!scene.compare &&
+  c.peek === peekKey(scene) &&
+  c.marks === !!scene.coverMarks &&
+  c.screenLut === lutFor(scene.project, 'screen') &&
+  c.cameraLut === lutFor(scene.project, 'camera')
+
+/** The Peek a scene asks for, as one comparable string ('' for none). */
+const peekKey = (scene: RenderScene): string => (!scene.peek ? '' : scene.peek.ids === 'all' ? '*' : scene.peek.ids.join(','))
 
 export class JoinStills {
   private screen: Track | null = null
@@ -116,7 +127,8 @@ export class JoinStills {
       this.wanted = [window, ...this.wanted.filter((x) => x !== window)].slice(0, WANT)
       this.schedule()
     }
-    return c && scene && c.project === scene.project ? c.canvas : null
+    // A still of another Peek or cover outlines is never given (auto-blur §8.5): a hard cut until it is made again.
+    return c && scene && c.project === scene.project && c.peek === peekKey(scene) && c.marks === !!scene.coverMarks ? c.canvas : null
   }
 
   /** Composes in a task of its own, outside any frame callback. */
@@ -151,7 +163,7 @@ export class JoinStills {
       const out = was?.canvas ?? document.createElement('canvas')
       composeJoinStill(scratchTarget('gpu', w, h), out, w, h, win, scene, { screen: shot, camera: cam }, background)
       this.composed.delete(key)
-      this.composed.set(key, { canvas: out, project, compare: !!scene.compare, screenLut: lutFor(project, 'screen'), cameraLut: lutFor(project, 'camera') })
+      this.composed.set(key, { canvas: out, project, compare: !!scene.compare, peek: peekKey(scene), marks: !!scene.coverMarks, screenLut: lutFor(project, 'screen'), cameraLut: lutFor(project, 'camera') })
       made = true
     }
     // The oldest go first.

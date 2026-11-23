@@ -27,6 +27,7 @@ import { CostLine } from '../../ai/CostLine'
 import { confirmRequest } from '../../ai/costConfirm'
 import { estimateFor, runCostText, useCostData } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
+import { aiTextFor } from '../../ai/aiTextFor'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -225,7 +226,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setStatus('')
     let result: AiTextResult & { model?: string }
     try {
-      result = await window.api.aiText(provider.id, request, mine.id)
+      result = await aiTextFor(store.state, provider.id, request, mine.id)
     } catch (err) {
       if (!mine.cancelled && live.current) setError(t('captions.languages.failedError', { reason: ipcMessage(err).replace(/\.?$/, '.') }))
       return

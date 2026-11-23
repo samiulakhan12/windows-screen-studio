@@ -10,6 +10,7 @@ import type { ExportFormat } from '../../../shared/types'
 import { Icon } from '../components/Icon'
 import { fmt } from '../../../shared/i18n/fmt'
 import { perChapterBlockedText, sidecarBlockedText, sidecarLabel } from './exportNames'
+import { PRIVACY_COPY } from '../../../shared/privacy/copy'
 
 const TITLES: Partial<Record<SidecarKind, MessageKey>> = {
   chapters: 'export.also.chaptersTitle',
@@ -136,6 +137,8 @@ export interface AlsoSaveContext {
   seconds: number
   /** Even out loudness is on and a recording stem is written: the stems are not evened out like the video. */
   notEvened: boolean
+  /** The project hides part of its recordings (hidesSomething, auto-blur §9 row 10): the original recordings are not offered. */
+  hides?: boolean
 }
 
 interface AlsoState {
@@ -310,9 +313,22 @@ function TimelineRows({ value, onChange, also }: { value: BundleOptions; onChang
           {(['export', 'recordings'] as const).map((m) => (
             <div key={m}>
               <label>
-                <input type="radio" name="export-timeline-media" value={m} checked={also.media === m} onChange={() => setMedia(m)} data-media={m} />
+                <input
+                  type="radio"
+                  name="export-timeline-media"
+                  value={m}
+                  checked={also.media === m}
+                  onChange={() => setMedia(m)}
+                  data-media={m}
+                  {...(m === 'recordings' && also.ctx.hides ? { disabled: true, 'aria-describedby': 'export-recordings-off' } : {})}
+                />
                 {t(m === 'export' ? 'timelines.uses.export.label' : 'timelines.uses.recordings.label')}
               </label>
+              {m === 'recordings' && also.ctx.hides && (
+                <p className="hint" id="export-recordings-off" data-testid="export-recordings-off">
+                  {t(PRIVACY_COPY.export.recordingsOff)}
+                </p>
+              )}
               {also.media === m && <p className="hint">{t(m === 'export' ? 'timelines.uses.export.hint' : 'timelines.uses.recordings.hint')}</p>}
             </div>
           ))}

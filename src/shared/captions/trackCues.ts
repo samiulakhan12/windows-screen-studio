@@ -12,6 +12,7 @@ import { editToVideo, planOf } from '../engine/freeze'
 import type { Project } from '../types'
 import { trackOf } from './captionTracks'
 import { maskedSegments } from './cleanup'
+import { trackText } from '../privacy/spoken'
 import { outputCues, toVtt, type Cue } from './subtitles'
 
 /** The cues of the track in `language` (the spoken one when the project has no such track), in the exported video's time. */
@@ -21,7 +22,8 @@ export function trackCues(project: Project, language: string): Cue[] {
   let cues: Cue[]
   if (!track || (project.transcript?.language && project.transcript.language.toLowerCase() === language.toLowerCase())) cues = outputCues(segments, project.clips)
   else {
-    const text = new Map(track.segments.map((s) => [s.id, s.text]))
+    // A translation over a secret said aloud reads •••• until it is translated again from the masked text (auto-blur §7.4).
+    const text = new Map(track.segments.map((s) => [s.id, trackText(project, s)]))
     cues = []
     for (const seg of segments) {
       // The spoken cue's times (none when every word is cut), with the translation's text.

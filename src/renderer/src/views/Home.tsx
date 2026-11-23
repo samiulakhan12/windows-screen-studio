@@ -6,7 +6,9 @@ import { PROJECTS_CHANGED_EVENT } from '../settings/StorageSection'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ProcessingProgress, RegionSelection, UnfinishedRecording, WindowCaptureSupport } from '../../../shared/api/recording'
 import { mediaUrl } from '../../../shared/mediaUrl'
-import type { CaptureSource, ProjectSummary } from '../../../shared/types'
+import type { CaptureSource, NormRect, ProjectSummary } from '../../../shared/types'
+import { thumbTime } from '../../../shared/privacy/coverData'
+import { COVER_DARK } from '../../../shared/privacy/kinds'
 import { Icon } from '../components/Icon'
 import { runRecording, type RecordingPhase } from '../recorder/controller'
 import { cameras, listInputDevices, meterMicrophone, microphones, onDevicesChanged, type InputDevices } from '../recorder/devices'
@@ -198,7 +200,21 @@ const thumbnailQueue: string[] = []
 let thumbnailBusy: { id: string; done: Promise<void> } | null = null
 const THUMB_WIDTH = 384
 
-function captureThumbnail(id: string): Promise<string | null> {
+/** What a thumbnail is drawn with (auto-blur §9 row 17): its time from the project's length, the boxes filled over it and the crop it is drawn through. */
+interface ThumbView {
+  id: string
+  duration: number
+  boxes: readonly NormRect[]
+  crop: NormRect | null
+}
+
+/** The cache key of a thumbnail: the id alone, as before, unless boxes or a crop change what it shows. */
+const thumbKey = (v: ThumbView): string => (v.boxes.length || v.crop ? `${v.id}|${JSON.stringify([v.boxes, v.crop])}` : v.id)
+
+const viewOf = (p: Pick<ProjectSummary, 'id' | 'duration' | 'thumbCovers' | 'thumbCrop'>): ThumbView => ({ id: p.id, duration: p.duration, boxes: p.thumbCovers ?? [], crop: p.thumbCrop ?? null })
+
+function captureThumbnail(view: ThumbView): Promise<string | null> {
+  const { id, boxes, crop } = view
   return new Promise((resolve) => {
     // createElementNS: a detached element made outside document.createElement, so code that
     // watches the editor's <video> elements never sees it.
@@ -218,17 +234,35 @@ function captureThumbnail(id: string): Promise<string | null> {
     video.crossOrigin = 'anonymous'
     video.onerror = () => finish(null)
     video.onloadedmetadata = () => {
-      video.currentTime = Math.min(1, (video.duration || 0) * 0.15)
+      // The one time main also takes the covers' boxes at (thumbTime of the project's length).
+      video.currentTime = thumbTime(view.duration || video.duration || 0)
     }
     video.onseeked = () => {
       try {
-        const w = Math.min(THUMB_WIDTH, video.videoWidth)
-        const h = Math.round((w / video.videoWidth) * video.videoHeight)
+        // Through the crop (question 13 (a)): the part of the frame the video shows.
+        const part = crop ?? { x: 0, y: 0, w: 1, h: 1 }
+        const sw = video.videoWidth * part.w
+        const sh = video.videoHeight * part.h
+        const w = Math.round(Math.min(THUMB_WIDTH, sw))
+        const h = Math.round((w / sw) * sh)
         if (!w || !h) return finish(null)
         const canvas = document.createElement('canvas')
         canvas.width = w
         canvas.height = h
-        canvas.getContext('2d')?.drawImage(video, 0, 0, w, h)
+        const ctx = canvas.getContext('2d')
+        if (crop) ctx?.drawImage(video, video.videoWidth * part.x, video.videoHeight * part.y, sw, sh, 0, 0, w, h)
+        else ctx?.drawImage(video, 0, 0, w, h)
+        // Covers, blur and pixelate shapes about that time, filled in Dark before the picture is kept (auto-blur §9 row 17).
+        if (ctx && boxes.length) {
+          ctx.fillStyle = COVER_DARK
+          for (const b of boxes) {
+            const x0 = Math.floor(((b.x - part.x) / part.w) * w)
+            const y0 = Math.floor(((b.y - part.y) / part.h) * h)
+            const x1 = Math.ceil(((b.x + b.w - part.x) / part.w) * w)
+            const y1 = Math.ceil(((b.y + b.h - part.y) / part.h) * h)
+            ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+          }
+        }
         finish(canvas.toDataURL('image/jpeg', 0.78))
       } catch {
         finish(null)
@@ -238,11 +272,15 @@ function captureThumbnail(id: string): Promise<string | null> {
   })
 }
 
+/** What each queued key is drawn with. */
+const thumbnailViews = new Map<string, ThumbView>()
+
 function pumpThumbnails(): void {
   if (thumbnailBusy) return
   const id = thumbnailQueue.shift()
   if (!id) return
-  const done = captureThumbnail(id).then((url) => {
+  const view = thumbnailViews.get(id) ?? { id, duration: 0, boxes: [], crop: null }
+  const done = captureThumbnail(view).then((url) => {
     thumbnails.set(id, url)
     for (const w of thumbnailWaiters.get(id) ?? []) w(url)
     thumbnailWaiters.delete(id)
@@ -252,7 +290,9 @@ function pumpThumbnails(): void {
   thumbnailBusy = { id, done }
 }
 
-function requestThumbnail(id: string, onReady: (url: string | null) => void): () => void {
+function requestThumbnail(view: ThumbView, onReady: (url: string | null) => void): () => void {
+  const id = thumbKey(view)
+  thumbnailViews.set(id, view)
   const waiters = thumbnailWaiters.get(id) ?? []
   waiters.push(onReady)
   thumbnailWaiters.set(id, waiters)
@@ -271,20 +311,24 @@ function requestThumbnail(id: string, onReady: (url: string | null) => void): ()
 
 /** Waits until the project's video is not being read for a thumbnail (before deleting it). */
 async function releaseThumbnail(id: string): Promise<void> {
-  const i = thumbnailQueue.indexOf(id)
-  if (i >= 0) thumbnailQueue.splice(i, 1)
-  if (thumbnailBusy?.id === id) await thumbnailBusy.done
-  thumbnails.delete(id)
+  // A thumbnail's key is its project's id, with what it draws after a '|' when it fills covers or a crop.
+  const of = (key: string): boolean => key === id || key.startsWith(`${id}|`)
+  for (let i = thumbnailQueue.length - 1; i >= 0; i--) if (of(thumbnailQueue[i])) thumbnailQueue.splice(i, 1)
+  if (thumbnailBusy && of(thumbnailBusy.id)) await thumbnailBusy.done
+  for (const key of [...thumbnails.keys()]) if (of(key)) thumbnails.delete(key)
 }
 
-function useProjectThumbnail(id: string): string | null {
+function useProjectThumbnail(project: Pick<ProjectSummary, 'id' | 'duration' | 'thumbCovers' | 'thumbCrop'>): string | null {
+  const view = viewOf(project)
+  const id = thumbKey(view)
   const [url, setUrl] = useState<string | null>(() => thumbnails.get(id) ?? null)
   useEffect(() => {
     if (thumbnails.has(id)) {
       setUrl(thumbnails.get(id) ?? null)
       return
     }
-    return requestThumbnail(id, setUrl)
+    return requestThumbnail(view, setUrl)
+    // The key holds everything the view draws.
   }, [id])
   return url
 }
@@ -315,7 +359,7 @@ function ProjectCard({
   onOpen: () => void
   onDelete: () => Promise<void>
 }): JSX.Element {
-  const thumb = useProjectThumbnail(project.id)
+  const thumb = useProjectThumbnail(project)
   return (
     <li className="project-card">
       <button className="project-open" onClick={onOpen} disabled={disabled}>

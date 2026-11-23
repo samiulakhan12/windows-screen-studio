@@ -159,7 +159,7 @@ export async function listProjects(): Promise<ProjectSummary[]> {
       // The boxes Home fills over the thumbnail (auto-blur §9 row 17): covers and blur and pixelate shapes about its time; absent when none.
       const t = thumbTime(p.duration)
       const boxes = thumbCovers(p, t - THUMB_WINDOW, t + THUMB_WINDOW)
-      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name), ...(p.copyOf ? { copyOf: p.copyOf } : {}), ...(p.clipOf ? { clip: true as const } : {}), ...(boxes.length ? { thumbCovers: boxes } : {}) })
+      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name), ...(p.copyOf ? { copyOf: p.copyOf } : {}), ...(p.clipOf ? { clip: true as const } : {}), ...(boxes.length ? { thumbCovers: boxes } : {}), ...(p.crop ? { thumbCrop: p.crop } : {}) })
     } catch {
       // Not a finished project; unfinished recordings are listed by listUnfinished().
     }

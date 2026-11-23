@@ -25,6 +25,8 @@ import { encodeImage } from './guideStills'
 import { namesWithPictures, pictureBatches } from './visionTitles'
 import { t } from '../../../shared/i18n/t'
 import { fmt } from '../../../shared/i18n/fmt'
+import { aiTextFor } from '../ai/aiTextFor'
+import { privateView } from '../../../shared/privacy/spoken'
 
 /** What each format's pictures are (§5.5.5): JPEG 0.9 for the PDF, WebP 0.85 for HTML and the demo, PNG for Markdown. */
 export const FORMAT_IMAGES: Record<GuideFormat, { mime: GuideImage['mime']; quality: number; maxWidth: number }> = {
@@ -117,7 +119,8 @@ export async function saveGuide(
   const kind = deps.smaller && (format === 'html' || format === 'demo') ? SMALLER : FORMAT_IMAGES[format]
   const images = await convertImages(deps.images, kind, deps.signal)
   if (deps.signal.aborted) return null
-  const doc = buildGuideDoc(deps.project, deps.steps, images, await guideBrand(deps.project), deps.scale)
+  // The guide's words leave Flown from the private view (auto-blur §7.5).
+  const doc = buildGuideDoc(privateView(deps.project), deps.steps, images, await guideBrand(deps.project), deps.scale)
   const name = guideFileName(deps.project, format)
   if (format === 'markdown') {
     const md = guideMarkdown(doc)
@@ -137,7 +140,7 @@ export async function saveGuide(
 /** *Copy guide* (§5.8): the guide's HTML (PNG pictures at most 1200 px wide, no script, no fonts) and plain text on the clipboard; how many pictures went. */
 export async function copyGuide(deps: { project: Project; steps: readonly GuideStep[]; images: ReadonlyMap<string, GuideImage> }): Promise<{ images: number }> {
   const images = await convertImages(deps.images, COPY_IMAGES)
-  const doc = buildGuideDoc(deps.project, deps.steps, images, null)
+  const doc = buildGuideDoc(privateView(deps.project), deps.steps, images, null)
   const clip = { html: guideHtml(doc, { demo: false, print: false, clipboard: true, fonts: [] }), text: guideText(doc) }
   refuse(guideCopyProblem(clip))
   await window.api.copyGuide(clip)
@@ -148,11 +151,11 @@ export async function copyGuide(deps: { project: Project; steps: readonly GuideS
 const viaOf = (choice: TextChoice): AiProviderKind | 'local' => choice.kind
 
 /** The `names` request sent, the run named so Stop (`signal`) stops the provider's own request (cancelAiText). */
-async function askNames(choice: TextChoice, request: AiTextRequest, signal: AbortSignal, requestId: string): Promise<{ id: string; name: string }[]> {
+async function askNames(project: Project, choice: TextChoice, request: AiTextRequest, signal: AbortSignal, requestId: string): Promise<{ id: string; name: string }[]> {
   const stop = (): void => void window.api.cancelAiText(requestId).catch(() => undefined)
   signal.addEventListener('abort', stop)
   try {
-    const result = await window.api.aiText(choice.id, { ...request, requestId }, requestId)
+    const result = await aiTextFor(project, choice.id, { ...request, requestId }, requestId)
     if (result.task !== 'names') throw new Error(t('smart.guide.otherTask'))
     return result.names
   } finally {
@@ -179,7 +182,7 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
   let failed: unknown = null
   for (const batch of pictureBatches(names)) {
     try {
-      answer.push(...(await askNames(deps.choice, { task: 'names', segments: [], names: batch }, deps.signal, deps.requestId)))
+      answer.push(...(await askNames(deps.store.state, deps.choice, { task: 'names', segments: [], names: batch }, deps.signal, deps.requestId)))
     } catch (err) {
       // A later request failing keeps what the earlier ones wrote; the first failing fails the run.
       if (deps.signal.aborted || !answer.length) throw err
@@ -210,7 +213,7 @@ export async function writeStepTitles(deps: { store: EditStore<Project>; steps: 
 export async function tidyNotes(deps: { store: EditStore<Project>; steps: readonly GuideStep[]; choice: TextChoice; signal: AbortSignal; requestId: string }): Promise<{ notice: string; wrote?: true }> {
   const names = namesRequestForSteps(deps.store.state, deps.steps, 'note')
   if (!names.items.length) return { notice: t('smart.guide.run.nothingForNotes') }
-  const answer = await askNames(deps.choice, { task: 'names', segments: [], names }, deps.signal, deps.requestId)
+  const answer = await askNames(deps.store.state, deps.choice, { task: 'names', segments: [], names }, deps.signal, deps.requestId)
   if (deps.signal.aborted) return { notice: t('smart.guide.run.stopped') }
   const before = new Map((deps.store.state.guide?.steps ?? []).map((e) => [e.key, e]))
   const notes = answer.filter((n) => {

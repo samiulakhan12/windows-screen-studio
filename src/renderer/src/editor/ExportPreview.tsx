@@ -3,6 +3,7 @@ import { exportPreviewSize, exportProject, exportSize } from '../../../shared/re
 import type { ExportOptions } from '../../../shared/render/exportPresets'
 import type { Project } from '../../../shared/types'
 import { drawFrame, type FrameImage, type RenderScene } from '../render/compositor'
+import { forOutput } from '../render/coverLayer'
 import { CameraMaskPreparer, onCameraMasksChanged } from '../render/segmentation/cameraMasks'
 import { webcamLook } from '../../../shared/engine/webcamData'
 import { onStyleAssetsChanged } from '../render/watermarkLayer'
@@ -106,7 +107,9 @@ export function ExportPreview(props: Props): JSX.Element {
   // A transparent export's see-through background, as the exporter sets it on its scene (§6.5).
   const alpha = alphaOf(props.options)
   const scene = useMemo(() => {
-    const shaped = drawn === props.scene.project ? props.scene : { ...props.scene, project: drawn }
+    // The export's frames: never the preview's Peek or cover outlines (auto-blur §8.5).
+    const given = forOutput(props.scene)
+    const shaped = drawn === given.project ? given : { ...given, project: drawn }
     return alpha ? { ...shaped, alpha } : shaped
   }, [drawn, props.scene, alpha])
   const size = exportSize(project, props.options)

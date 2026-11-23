@@ -14,6 +14,7 @@ import type { BatchExtras } from './exporter'
 import type { TimelineRequest } from '../../../shared/api/export'
 import { writeTimelineStep } from './timelineRun'
 import { t } from '../../../shared/i18n/t'
+import { privateView } from '../../../shared/privacy/spoken'
 
 /**
  * What one file per chapter exports for `part`: the part's project (its clips and freezes give the
@@ -54,6 +55,8 @@ export interface BundleRequest {
   timeline?: { request: Omit<TimelineRequest, 'plan'>; exported: { fps: number; frames: number; width: number; height: number } }
   /** Cancel export: stops the timeline (and main's copies of the recordings, §2.4); the video and the files before it stay. */
   signal?: AbortSignal
+  /** Writes the editor's project to project.json now, before the timeline asks main (auto-blur §9 row 10: main reads what the user sees). */
+  flush?: () => void
 }
 
 const baseName = (file: string): string => file.split(/[\\/]/).pop() ?? file
@@ -63,7 +66,8 @@ const baseName = (file: string): string => file.split(/[\\/]/).pop() ?? file
  * bleeped words masked, or the translated track of `language` (Captions Studio §11.10).
  */
 export function sidecarText(kind: SidecarKind, req: BundleRequest, language?: string): string | null {
-  const { project } = req
+  // Chapters, the description and subtitles leave Flown from the private view (auto-blur §7.5).
+  const project = privateView(req.project)
   const plan = planOf(project)
   const length = videoDuration(project.clips, plan)
   if (kind === 'srt' || kind === 'vtt') return languageSubtitleFile(project, language && language !== spokenLanguage(project) ? language : null, kind)
@@ -100,6 +104,8 @@ export async function writeBundle(anchor: string, req: BundleRequest): Promise<B
     const stop = (): void => void window.api.exportCancel()
     signal?.addEventListener('abort', stop)
     try {
+      // project.json as the user sees it, before main reads it to decide on the original recordings.
+      req.flush?.()
       const result = signal?.aborted ? { files: [], problem: t('errors.timeline.cancelled') } : await writeTimelineStep(req.project, req.timeline.request, req.timeline.exported, { signal })
       // Resolve and Final Cut Pro share one FCPXML file: each file is listed once.
       for (const f of result.files) if (!saved.includes(f.path)) saved.push(f.path)

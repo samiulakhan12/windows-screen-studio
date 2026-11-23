@@ -33,6 +33,7 @@ import './clips.css'
 import { ClipCopyError, CLIPS_WORDS, clipsFor, copySpace, ipcMessage, madeFrom, makeClipCopies, namesRequestForMoments, readScreen, settledFlush, textMeasure, withAiTitles } from './clipsRun'
 import { t } from '../../../shared/i18n/t'
 import { Rich } from '../editor/panels/Rich'
+import { aiTextFor } from '../ai/aiTextFor'
 
 const lengths = (): readonly { value: MomentLength; label: string }[] => [
   { value: 'any', label: t('smart.clips.length.any') },
@@ -305,7 +306,7 @@ export function ShortClipsPanel(props: { project: Project; cursor: CursorTrack; 
           ctrl.signal.addEventListener('abort', cancel, { once: true })
           try {
             setStatus(CLIPS_WORDS.naming(namesChoice.place))
-            const answer = await window.api.aiText(namesChoice.id, { task: 'names', names: request, segments: [], requestId }, requestId)
+            const answer = await aiTextFor(store.state, namesChoice.id, { task: 'names', names: request, segments: [], requestId }, requestId)
             if (ctrl.signal.aborted) {
               if (live.current) setStatus(null)
               return

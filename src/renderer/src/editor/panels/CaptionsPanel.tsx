@@ -74,6 +74,7 @@ import { captionLanguageName, subtitleFormats } from '../captionWords'
 import { CostLine } from '../../ai/CostLine'
 import { useCostDataRead } from '../../ai/useCost'
 import { LocalNote, LocalProgress, LocalWritten } from '../../ai/LocalProgress'
+import { aiTextFor } from '../../ai/aiTextFor'
 
 /* ---------- Captions and transcript ---------- */
 
@@ -1141,7 +1142,7 @@ function AiToolsSection({
     const request: AiTextRequest = { task, segments: [...spokenSegments(store.state)], requestId }
     let result: AiTextResult
     try {
-      result = await window.api.aiText(chosen.id, request, requestId)
+      result = await aiTextFor(store.state, chosen.id, request, requestId)
     } catch (err) {
       if (live.current) {
         setBusy(null)

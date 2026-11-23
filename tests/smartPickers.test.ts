@@ -165,6 +165,13 @@ describe('every text tool can be followed and stopped (test 102)', () => {
         expect(args.length, `${path.relative(ROOT, file)}: aiText(${args.join(', ')})`).toBe(3)
         expect(args[2], path.relative(ROOT, file)).not.toMatch(/^(undefined|null)$/)
       }
+      // Every AI text request goes through aiTextFor (auto-blur §7.6), its request id the fourth argument.
+      for (const args of callArgs(text, 'aiTextFor(')) {
+        if (/^project: Project/.test(args[0])) continue
+        found.push(path.relative(ROOT, file))
+        expect(args.length, `${path.relative(ROOT, file)}: aiTextFor(${args.join(', ')})`).toBe(4)
+        expect(args[3], path.relative(ROOT, file)).not.toMatch(/^(undefined|null)$/)
+      }
       for (const args of callArgs(text, 'window.api.draftScript(')) {
         found.push(path.relative(ROOT, file))
         expect(args[1], path.relative(ROOT, file)).toMatch(/requestId/)
@@ -181,7 +188,8 @@ describe('every text tool can be followed and stopped (test 102)', () => {
         'src/renderer/src/editor/greatRun.ts',
         'src/renderer/src/publish/publishRun.ts',
         'src/renderer/src/notes/DraftScript.tsx',
-        'src/renderer/src/guide/guideRun.ts'
+        'src/renderer/src/guide/guideRun.ts',
+        'src/renderer/src/ai/aiTextFor.ts'
       ])
     )
   })

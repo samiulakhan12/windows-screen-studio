@@ -11,6 +11,7 @@ import type { Rect } from '../engine/layout'
 import { isPrivacyKind } from '../editor/shapes'
 import type { Clip, GuideStepEdit, NormRect, Project, Shape } from '../types'
 import type { GuideStep } from './steps'
+import { coverSlack, drawnBox } from '../privacy/coverPath'
 
 export const SHOT = { cropBase: 950, maxWidth: 1600, maxSource: 3840, ringAt: 960, ringDiameter: 44, ringWidth: 4, halo: 3, arrowHead: 16, ring: '#0060df', send: 768, copy: 1200 } as const
 
@@ -275,9 +276,21 @@ export function planShot(step: GuideStep, project: Project, edit: GuideStepEdit 
   return { key: step.key, t, rect, whole: whole || outside, outside, ring, arrow, sig: shotSig(project, t, rect, ring, arrow) }
 }
 
+/**
+ * The covers that draw over a shot at `t` (auto-blur §9 row 12): each one's id, colour and drawn box,
+ * and that shots are never peeked. Absent from the signature without one, so older shots keep theirs.
+ */
+function coversAt(project: Pick<Project, 'covers' | 'capture'>, t: number): { covers: [string, string, NormRect | null][]; peek: false } | null {
+  const slack = coverSlack(project.capture?.fps ?? 60)
+  const active = (project.covers ?? []).filter((c) => c.start <= t + slack && c.end > t - slack)
+  return active.length ? { covers: active.map((c) => [c.id, c.color, drawnBox(c, t, slack)]), peek: false } : null
+}
+
 /** What a shot's picture depends on (ShotPlan.sig). */
 function shotSig(project: Project, t: number, rect: Rect, ring: ShotPlan['ring'], arrow: ShotPlan['arrow']): string {
+  const covers = coversAt(project, t)
   return JSON.stringify({
+    ...(covers ? { covers } : {}),
     t,
     rect,
     ring,
@@ -306,6 +319,7 @@ export function planActual(project: Project, actualAt: number): ShotPlan {
   const frame = { w: project.width, h: project.height }
   const rect = visibleRect(frame, project.crop ?? null)
   const t = Math.min(Math.max(0, actualAt), project.duration)
-  const sig = JSON.stringify({ t, rect, privacy: privacyAt(project, t).map((s) => [s.id, s.start, s.end, s.x, s.y, s.w, s.h, s.strength]), grade: project.grade?.screen ?? null, cursor: [project.cursor.show, project.cursor.size] })
+  const covers = coversAt(project, t)
+  const sig = JSON.stringify({ ...(covers ? { covers } : {}), t, rect, privacy: privacyAt(project, t).map((s) => [s.id, s.start, s.end, s.x, s.y, s.w, s.h, s.strength]), grade: project.grade?.screen ?? null, cursor: [project.cursor.show, project.cursor.size] })
   return { key: 'actual', t, rect, whole: true, outside: false, ring: null, arrow: null, sig }
 }

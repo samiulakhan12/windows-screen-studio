@@ -3,12 +3,13 @@ import { timelineGaps, type Gap } from '../../../shared/editor/clips'
 import { filmstripTiles, tileSource, type FilmstripMeta } from '../../../shared/editor/filmstrip'
 import { overlaps } from '../../../shared/editor/timelineScale'
 import { cropOf, visibleSize } from '../../../shared/engine/crop'
-import type { Clip, NormRect } from '../../../shared/types'
+import type { Clip, NormRect, Project } from '../../../shared/types'
 import { useEditor } from './context'
 import { useDevicePixelRatio } from './devicePixelRatio'
 import { useFilmstripShown } from './filmstripPref'
 import { useWaveformShown } from './waveformPref'
 import './filmstrip.css'
+import { fillCoverTiles } from '../privacy/filmstripCovers'
 
 /**
  * Frames of the recording on the clip track (E-07, docs/design/versions.md §3.2): one canvas over
@@ -85,6 +86,8 @@ interface Scene {
   clips: readonly Clip[]
   alpha: number
   dpr: number
+  /** The project, for its covers over the tiles (auto-blur §9 row 18), and its frame rate. */
+  project: Project
 }
 
 function draw(canvas: HTMLCanvasElement, s: Scene): void {
@@ -100,6 +103,7 @@ function draw(canvas: HTMLCanvasElement, s: Scene): void {
   const left = s.win.start * s.px
   const end = s.duration * s.px - left
   ctx.globalAlpha = s.alpha
+  const tiles: { t: number; x: number; y: number; w: number; h: number }[] = []
   for (const t of filmstripTiles(s.sheet.meta, s.win, s.px, s.tileW, s.duration)) {
     const src = tileSource(s.sheet.meta, t.frame, s.crop)
     const x = t.x - left
@@ -107,8 +111,11 @@ function draw(canvas: HTMLCanvasElement, s: Scene): void {
     const w = Math.min(s.tileW - 1, end - x)
     if (w <= 0) continue
     ctx.drawImage(s.sheet.image, src.sx, src.sy, src.sw * (w / (s.tileW - 1)), src.sh, x, 0, w, cssH)
+    tiles.push({ t: t.frame * s.sheet.meta.interval, x, y: 0, w, h: cssH })
   }
   ctx.globalAlpha = 1
+  // Covers over the frames they hide (auto-blur §9 row 18): nothing without one.
+  if (s.project.covers?.length) fillCoverTiles(ctx, s.project, s.project.capture?.fps ?? 60, tiles)
 
   // Cuts and trims keep fainter frames over their hatching: what restoring them brings back.
   ctx.globalCompositeOperation = 'destination-out'
@@ -168,12 +175,14 @@ export const Filmstrip = memo(function Filmstrip({ px, win, duration }: { px: nu
   const dpr = useDevicePixelRatio()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const draws = useRef(0)
+  // The covers drawn over the tiles: a change of them draws the strip again.
+  const covers = useSyncExternalStore(store.subscribe, () => store.state.covers)
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || state !== 'ready' || !sheet) return
-    draw(canvas, { px, win, duration, sheet, tileW, crop, gaps, clips, alpha: waveShown ? ALPHA.withWave : ALPHA.alone, dpr })
+    draw(canvas, { px, win, duration, sheet, tileW, crop, gaps, clips, alpha: waveShown ? ALPHA.withWave : ALPHA.alone, dpr, project: store.state })
     canvas.dataset.draws = String(++draws.current)
-  }, [px, win, duration, sheet, tileW, crop, gaps, clips, waveShown, dpr, state])
+  }, [px, win, duration, sheet, tileW, crop, gaps, clips, waveShown, dpr, state, covers, store])
 
   if (state !== 'ready') return state === 'none' ? null : <span hidden data-testid="clip-filmstrip" data-state={state} />
   return (

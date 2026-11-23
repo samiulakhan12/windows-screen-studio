@@ -19,6 +19,7 @@ import { useTextChoiceList } from '../../ai/textChoices'
 import { CostLine } from '../../ai/CostLine'
 import { runCostText } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
+import { aiTextFor } from '../../ai/aiTextFor'
 
 const digitOptions = (): { value: CleanupChoices['digits']; label: string }[] => [
   { value: 'above-ten', label: t('captions.cleanup.digits.aboveTen') },
@@ -194,7 +195,7 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
       setBusy(true)
       setRunning(mine.id)
       try {
-        const result = await window.api.aiText(chosen.id, { task: 'cleanup', segments: asked }, mine.id)
+        const result = await aiTextFor(store.state, chosen.id, { task: 'cleanup', segments: asked }, mine.id)
         if (mine.cancelled || !live.current) return
         // What the run cost, for the notice (smart-tools.md §11.6).
         cost = runCostText(result.usage, chosen)

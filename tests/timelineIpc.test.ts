@@ -13,6 +13,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ExportJob, TimelineRequest } from '../src/shared/api/export'
+import type { Project } from '../src/shared/types'
 import { t } from '../src/shared/i18n/t'
 import { PLAN_LIMITS } from '../src/shared/interchange/planCheck'
 import { exportTimeline, recordingsTimeline, type TimelinePlan } from '../src/shared/interchange/timelinePlan'
@@ -81,6 +82,8 @@ interface Calls {
 function depsFor(dir: string, calls: Calls, over: Record<string, unknown> = {}) {
   return {
     projectDir: () => dir,
+    // The project as saved hides nothing, so its recordings may be copied (auto-blur §9 row 10).
+    readProject: async (id: string) => ({ id, shapes: [] }) as unknown as Project,
     probe: async (file: string) => probe(file),
     ffmpeg: async (args: string[]) => {
       calls.ffmpeg.push(args)
@@ -383,6 +386,8 @@ describe('test 44: writeTimeline', () => {
 
   it('export:cancel stops a timeline the app page asked for, before its copies begin', async () => {
     projectFolder('p44i')
+    // The project as saved, which main reads before copying the recordings (auto-blur §9 row 10): it hides nothing.
+    writeFileSync(path.join(root, 'projects', 'p44i', 'project.json'), JSON.stringify({ ...project, id: 'p44i' }))
     main.projects = path.join(root, 'projects')
     main.exported.add(videoPath)
     registerTimelineIpc()

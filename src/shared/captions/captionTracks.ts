@@ -9,6 +9,7 @@ import { spokenLanguage, UNKNOWN_SPOKEN, UNKNOWN_SPOKEN_NAME } from '../render/e
 import type { CaptionSegment, CaptionSettings, CaptionTrack, Project } from '../types'
 import { CAPTION_MAX_CHARS, cleanCaptionText } from './captionData'
 import { maskedSegments } from './cleanup'
+import { maskedForOf, trackText } from '../privacy/spoken'
 import { captionsOf } from './settings'
 import { applyTextResult } from './edit'
 import { MAX_TRACKS, readHost } from './studioData'
@@ -148,7 +149,9 @@ export function withTranslation(
   checked.forEach((s, i) => {
     const sent = t.sent[i]
     const text = cleanCaptionText(s.text).slice(0, CAPTION_MAX_CHARS)
-    if (now.get(sent.id)?.text === sent.text && text && cleanCaptionText(sent.text)) fresh.set(sent.id, { id: sent.id, text, src: textHash(sent.text) })
+    // Sent through aiTextFor, a caption under private bleeps went masked: its translation says so (auto-blur §7.4, §7.6).
+    const maskedFor = maskedForOf(project, sent.id)
+    if (now.get(sent.id)?.text === sent.text && text && cleanCaptionText(sent.text)) fresh.set(sent.id, { id: sent.id, text, src: textHash(sent.text), ...(maskedFor ? { maskedFor } : {}) })
   })
   const kept = new Map((trackOf(project, t.language)?.segments ?? []).map((s) => [s.id, s]))
   const segments = project.transcript.segments.flatMap((s) => {
@@ -277,7 +280,8 @@ export function burnedSegments(project: Project): readonly CaptionSegment[] {
   const track = shownTrack(project)
   let out = masked
   if (track) {
-    const text = new Map(track.segments.map((s) => [s.id, s.text]))
+    // A translation over a secret said aloud reads •••• until it is translated again from the masked text (auto-blur §7.4).
+    const text = new Map(track.segments.map((s) => [s.id, trackText(project, s)]))
     out = masked.map((seg) => {
       const t = text.get(seg.id)
       if (t === undefined) return seg

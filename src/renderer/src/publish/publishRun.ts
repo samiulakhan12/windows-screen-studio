@@ -10,7 +10,8 @@ import { CancelledError, createQueue } from '../../../shared/publish/queue'
 import { plainText } from '../../../shared/publish/text'
 import { tagsText } from '../../../shared/publish/youtube'
 import { t } from '../../../shared/i18n/t'
-import type { CaptionSegment } from '../../../shared/types'
+import type { CaptionSegment, Project } from '../../../shared/types'
+import { aiTextFor } from '../ai/aiTextFor'
 import { ipcMessage } from '../editor/captionItems'
 
 export type ItemStatus = 'idle' | 'waiting' | 'writing' | 'done' | 'error'
@@ -84,6 +85,8 @@ export function usePackItems(projectId: string): PackItems {
 
 /** What a run sends besides the item: the provider, the captions and the choices. */
 export interface WriteContext {
+  /** The project the text is written for: the request is masked for its secrets said aloud (aiTextFor). */
+  project: Project
   providerId: string
   segments: CaptionSegment[]
   tone: PublishTone
@@ -155,7 +158,7 @@ export function writeItem(projectId: string, kind: PublishKind, ctx: WriteContex
       run: (signal) => {
         if (mine()) patch(projectId, kind, { status: 'writing' })
         signal.addEventListener('abort', () => void window.api.cancelAiText(id).catch(() => undefined))
-        return window.api.aiText(ctx.providerId, request, id)
+        return aiTextFor(ctx.project, ctx.providerId, request, id)
       }
     })
     .then(

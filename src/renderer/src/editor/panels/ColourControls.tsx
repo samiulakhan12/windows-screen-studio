@@ -30,6 +30,7 @@ import { useGroup } from '../groupContext'
 import './colour.css'
 import { t } from '../../../../shared/i18n/t'
 import { fmt } from '../../../../shared/i18n/fmt'
+import { fillCoverPixels } from '../../privacy/filmstripCovers'
 
 type Which = 'screen' | 'camera'
 export type ColourSliderKey = 'temperature' | 'tint' | 'brightness' | 'contrast' | 'saturation' | 'highlights' | 'shadows' | 'vibrance' | 'exposure'
@@ -154,7 +155,7 @@ function thumbPixels(video: HTMLVideoElement): Uint8ClampedArray | null {
 
 /** A look's chip picture: the playhead's frame graded with it, by the same maths as the video. */
 function LookThumb({ which, look }: { which: Which; look: LookId | null }): JSX.Element {
-  const { player } = useEditor()
+  const { player, store } = useEditor()
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const c = canvas.current
@@ -164,12 +165,14 @@ function LookThumb({ which, look }: { which: Which; look: LookId | null }): JSX.
     const src = thumbPixels(video)
     if (!src) return
     const px = new Uint8ClampedArray(src)
+    // The screen's covers at the playhead, before grading (auto-blur §9 row 28): nothing without one.
+    if (which === 'screen' && store.state.covers?.length) fillCoverPixels(px, THUMB_W, THUMB_H, store.state, player.time)
     const g = look ? resolveGrade({ look }, which) : null
     if (g) gradePixelsCpu(px, g, gradeTable(g), null)
     const img = ctx.createImageData(THUMB_W, THUMB_H)
     img.data.set(px)
     ctx.putImageData(img, 0, 0)
-  }, [which, look, player])
+  }, [which, look, player, store])
   return <canvas ref={canvas} className="colour-look-thumb" width={THUMB_W} height={THUMB_H} aria-hidden="true" />
 }
 

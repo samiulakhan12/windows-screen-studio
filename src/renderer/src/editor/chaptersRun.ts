@@ -24,6 +24,7 @@ import { choiceOf, LOCAL_CHOICE } from '../ai/textChoices'
 import { loadAudioAnalysis } from './audioAnalysis'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
+import { aiTextFor } from '../ai/aiTextFor'
 
 export interface FindChapterOptions {
   density: 'fewer' | 'normal' | 'more'
@@ -179,7 +180,7 @@ export async function runFindChapters(deps: {
     if (options.split) {
       splitChoice = await choiceFor(options.split)
       onProgress(FIND_WORDS.asking(splitChoice.place), null)
-      const result = await window.api.aiText(options.split, { task: 'chapters', segments: [...spokenSegments(store.state)], requestId }, requestId)
+      const result = await aiTextFor(store.state, options.split, { task: 'chapters', segments: [...spokenSegments(store.state)], requestId }, requestId)
       check()
       ai = result.task === 'chapters' ? result.chapters : []
     }
@@ -214,7 +215,7 @@ export async function runFindChapters(deps: {
       )
       if (request.items.length) {
         onProgress(FIND_WORDS.naming(namesChoice.place), null)
-        const result = await window.api.aiText(options.names, { task: 'names', names: request, segments: [], requestId }, requestId)
+        const result = await aiTextFor(project, options.names, { task: 'names', names: request, segments: [], requestId }, requestId)
         check()
         if (result.task === 'names') answer = result.names
       }

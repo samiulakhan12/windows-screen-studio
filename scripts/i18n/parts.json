@@ -382,6 +382,7 @@
         "src/renderer/src/i18n/language.css",
         "src/renderer/src/import/import.css",
         "src/renderer/src/notes/notes.css",
+        "src/renderer/src/privacy/covers.css",
         "src/renderer/src/publish/publish.css",
         "src/renderer/src/review/review.css",
         "src/renderer/src/search/search.css",

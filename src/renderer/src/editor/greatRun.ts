@@ -17,6 +17,7 @@ import type { EditStore } from '../../../shared/editor/editStore'
 import { t } from '../../../shared/i18n/t'
 import type { CaptionStudio, Project } from '../../../shared/types'
 import { keepVersionBefore } from '../versions/autoVersion'
+import { aiTextFor } from '../ai/aiTextFor'
 
 /** The saved choices the caption automation uses. */
 export interface GreatInputs {
@@ -121,7 +122,7 @@ async function requestMarks(project: Project, provider: string, tidy: { cleanup:
   const stop = (): void => void window.api.cancelAiText(id).catch(() => undefined)
   signal.addEventListener('abort', stop)
   try {
-    const result = await window.api.aiText(provider, request, id)
+    const result = await aiTextFor(project, provider, request, id)
     if (result.task !== 'marks') throw new Error(t('captions.ai.wrongTask'))
     return { answer: result.answer, sent }
   } finally {

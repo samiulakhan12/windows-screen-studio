@@ -11,6 +11,7 @@
  */
 import { joinPose, type JoinWindow } from '../../../shared/render/joins'
 import { drawFramePicture, type FrameExtras, type FrameImage, type RenderScene } from './compositor'
+import { forOutput } from './coverLayer'
 import { releaseGrade } from './gradeLayer'
 import { releaseTilt } from './tiltLayer'
 import { t } from '../../../shared/i18n/t'
@@ -151,7 +152,9 @@ export function composeJoinStill(
   const soundTime = a ? a.end - 1e-6 : still.screen
   placeholder ??= document.createElement('video')
   const target = alpha ? scratchTarget(rasterOf(scratch), w, h, true) : scratch
-  const drawn = scene.alpha === alpha ? scene : { ...scene, alpha }
+  // A* holds the covers filled and never the preview's Peek or cover outlines (auto-blur §8.5).
+  const output = forOutput(scene)
+  const drawn = output.alpha === alpha ? output : { ...output, alpha }
   drawFramePicture(target, w, h, still.screen, drawn, { screen: placeholder, webcam: null, background, screenFrame: stills.screen, webcamFrame: stills.camera }, { blurSamples: 1 }, soundTime)
   // drawFramePicture leaves the context saved once.
   target.restore()

@@ -18,6 +18,8 @@ import { textHash, transcriptLanguage } from './captionTracks'
 import { MAX_BLEEPS } from './studioData'
 import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
+import { isPrivateBleep } from '../privacy/coverData'
+import { maskChars, maskPrivate, type SpokenForms } from '../privacy/spoken'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
 export interface CleanupChoices {
@@ -863,8 +865,10 @@ const bleepWords = new WeakMap<readonly Bleep[], ReadonlySet<string>>()
  * caption words (pop-ups, list cards, counter labels, quote cards) never reads a bleeped word,
  * also when it was made before the bleep (§11.7). `text` itself when it has none.
  */
-export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined): string {
+export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined, forms?: SpokenForms | null): string {
   if (!bleeps?.length || !text) return text
+  // The forms of secrets said aloud too (auto-blur §7.5), when the caller knows the project's.
+  if (forms) text = maskPrivate(text, forms)
   let words = bleepWords.get(bleeps)
   if (!words) {
     words = new Set(bleeps.map((b) => b.word))
@@ -884,12 +888,55 @@ export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined):
 /** The share of [a, b] inside [s, e]. */
 const inside = (a: number, b: number, s: number, e: number): number => (b - a <= 0 ? (a >= s && a <= e ? 1 : 0) : Math.max(0, Math.min(b, e) - Math.max(a, s)) / (b - a))
 
+/**
+ * A caption under private bleeps (docs/design/auto-blur.md §7.4): every word at least half inside one
+ * masked by time with '•' for each letter and digit; when its word times and its words do not line up,
+ * the text from the first to the last word whose time touches one; with no word times, all of it.
+ * null when no private bleep touches it.
+ */
+function maskedPrivately(seg: CaptionSegment, near: readonly Bleep[]): CaptionSegment | null {
+  const own = near.filter(isPrivateBleep)
+  if (!own.length) return null
+  const texts = seg.text.split(/\s+/).filter(Boolean)
+  if (!seg.words?.length) {
+    const { words: _w, ...rest } = seg
+    void _w
+    return { ...rest, text: maskChars(seg.text) }
+  }
+  const times = captionWordTimes(seg)
+  const mask = new Set<number>()
+  if (times.length === texts.length) {
+    for (const b of own) times.forEach((w, i) => inside(w.start, w.end, b.start, b.end) >= 0.5 && mask.add(i))
+  } else {
+    const touching = times.map((w, i) => (own.some((b) => w.end > b.start && w.start < b.end) ? i : -1)).filter((i) => i >= 0)
+    if (!touching.length) return null
+    // The words of the text over the same share of the caption, rounded outward.
+    const from = Math.floor((touching[0] * texts.length) / times.length)
+    const to = Math.min(texts.length - 1, Math.ceil(((touching[touching.length - 1] + 1) * texts.length) / times.length) - 1)
+    for (let i = from; i <= to; i++) mask.add(i)
+  }
+  if (!mask.size) return null
+  const text = texts.map((t, i) => (mask.has(i) ? maskChars(t) : t)).join(' ')
+  const lined = times.length === texts.length ? times : null
+  const words = lined?.map((w, i) => (mask.has(i) ? { ...w, text: maskChars(texts[i]) } : w))
+  if (words) return { ...seg, text, words }
+  const { words: _w, ...rest } = seg
+  void _w
+  return { ...rest, text }
+}
+
 /** The captions with bleeped words masked by time; the same array without bleeps. */
 export function maskedSegments(segments: readonly CaptionSegment[], bleeps: readonly Bleep[] | undefined): readonly CaptionSegment[] {
   if (!bleeps?.length) return segments
   let changed = false
   const out = segments.map((seg) => {
-    const near = bleeps.filter((b) => b.end > seg.start && b.start < seg.end)
+    const all = bleeps.filter((b) => b.end > seg.start && b.start < seg.end)
+    if (!all.length) return seg
+    // Private bleeps first (auto-blur §7.4); the ordinary ones then mask as they always have.
+    const masked = maskedPrivately(seg, all)
+    if (masked) changed = true
+    seg = masked ?? seg
+    const near = all.filter((b) => !isPrivateBleep(b))
     if (!near.length) return seg
     const times = captionWordTimes(seg)
     const texts = seg.text.split(/\s+/).filter(Boolean)

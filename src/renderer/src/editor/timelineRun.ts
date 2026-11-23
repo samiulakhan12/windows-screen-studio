@@ -19,6 +19,8 @@ import { demuxVideoTrack } from '../../../shared/render/mp4'
 import { RangeReader } from '../../../shared/render/rangeReader'
 import { hasLibrarySounds } from '../../../shared/render/sfxJob'
 import type { Project } from '../../../shared/types'
+import { privateView } from '../../../shared/privacy/spoken'
+import { hidesSomething } from '../../../shared/privacy/coverData'
 
 /** A video file's facts: its rate, its frame count and its size. */
 export interface TrackFacts {
@@ -89,11 +91,15 @@ function problemText(reason: string): string {
 
 /** Writes the timeline files of an export that just finished (§8.7). Resolves with every file written and what it is for. */
 export async function writeTimelineStep(
-  project: Project,
+  stored: Project,
   request: Omit<TimelineRequest, 'plan'>,
   exported: { fps: number; frames: number; width: number; height: number },
   deps: TimelineStepDeps = {}
 ): Promise<TimelineResult> {
+  // The original recordings are never copied while the video hides part of them (auto-blur §9 row 10): the step is skipped and says so.
+  if (request.media === 'recordings' && hidesSomething(stored)) return { files: [], problem: t('privacy.export.recordingsSkipped') }
+  // Markers and names leave Flown from the private view (§7.5).
+  const project = privateView(stored)
   const track = deps.track ?? readTrack
   const write = deps.write ?? ((r: TimelineRequest) => window.api.writeTimeline(r))
   try {

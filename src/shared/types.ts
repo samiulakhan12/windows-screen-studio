@@ -1554,6 +1554,8 @@ export interface ProjectSummary {
    * pixelate shapes active about the thumbnail's time (docs/design/auto-blur.md §9 row 17). Absent: none.
    */
   thumbCovers?: NormRect[]
+  /** The crop the thumbnail is drawn through (question 13 (a), auto-blur §9 row 17); absent: the whole frame. */
+  thumbCrop?: NormRect
 }
 
 export interface CaptureSource {

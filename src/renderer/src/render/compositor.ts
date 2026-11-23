@@ -30,6 +30,7 @@ import { drawMagnifierLayer } from './magnifierLayer'
 import { drawChapterBar } from './chapterBarLayer'
 import { gradeScreen } from './gradeLayer'
 import { lutFor } from './lutCache'
+import { coverScreen, drawCoverOutput, type OutputView } from './coverLayer'
 
 export interface RenderScene {
   project: Project
@@ -170,7 +171,9 @@ export function drawFramePicture(
   const grade = scene.project.grade?.screen
   // Overlays only draws no recording (§6.1): its sizes come from the copy, the grade is not needed.
   const overlaysOnly = scene.alpha === 'overlays'
-  const screen = cropped && grade && !overlaysOnly ? gradeScreen(ctx, cropped, grade, lutFor(scene.project, 'screen'), scene.compare) : cropped
+  const graded = cropped && grade && !overlaysOnly ? gradeScreen(ctx, cropped, grade, lutFor(scene.project, 'screen'), scene.compare) : cropped
+  // Covers (auto-blur §8.1): filled into the picture everything below samples. None active: the picture itself.
+  const screen = graded && full && !overlaysOnly ? coverScreen(ctx, graded, full, scene, t) : graded
   const shown = croppedFrameSize(crop, src.screen.videoWidth, src.screen.videoHeight, scene.project)
   const vw = screen?.width || shown.width
   const vh = screen?.height || shown.height
@@ -241,8 +244,11 @@ export function drawFramePicture(
       if (v) c.drawImage(image, v.sx * vw, v.sy * vh, v.sw * vw, v.sh * vh, v.dx, v.dy, v.dw, v.dh)
     }
     const samples = motionSamples(scene, project, layout, t, cam, opts).map((s) => (s === cam ? s : punchedCamera(s, project, t)))
+    // The covers again on the output (auto-blur §8.2), through every camera drawn: nothing without one active.
+    const coverViews = (): OutputView[] => (samples.length <= 1 ? [cam] : samples).map((s) => ({ toOut: toOutput(rect, s) }))
     if (samples.length <= 1) {
       drawView(cam)
+      if (project.covers?.length) drawCoverOutput(c, scene, t, coverViews())
     } else {
       // Average the sub-frames: sample k is blended in with weight 1/(k+1). The largest view
       // goes first, so a shrinking card never averages in the black well at its edge.
@@ -259,6 +265,7 @@ export function drawFramePicture(
         drawView(s)
       })
       c.globalAlpha = 1
+      if (project.covers?.length) drawCoverOutput(c, scene, t, coverViews())
     }
   }
 

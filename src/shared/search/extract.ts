@@ -5,7 +5,9 @@
  * it should be is left out, never an error.
  */
 import { readTranscript } from '../captions/captionData'
-import { maskBleeped, wordsBleeped } from '../captions/cleanup'
+import { maskBleeped, maskedSegments, wordsBleeped } from '../captions/cleanup'
+import { isPrivateBleep } from '../privacy/coverData'
+import { maskPrivate, spokenForms } from '../privacy/spoken'
 import { checkAnchor, readAnchorFields, readBleeps } from '../captions/studioData'
 import { freezePlan, videoTimeAt } from '../engine/freeze'
 import { readFreezes } from '../engine/freezeData'
@@ -65,7 +67,10 @@ export function projectUnits(raw: unknown): SearchUnit[] {
   // is never drawn (graphicDrawn). Bleeps, the transcript and anchors are read as the editor reads them.
   const duration = durationOf(raw)
   const bleeps: Bleep[] | undefined = readBleeps(p.bleeps, duration)
-  const masked = (text: string | null): string | null => (text && bleeps ? maskBleeped(text, bleeps) : text)
+  // Secrets said aloud (auto-blur §7.5): their forms are masked beside the bleeped words, everywhere below.
+  const forms = bleeps?.some(isPrivateBleep) ? spokenForms({ transcript: readTranscript(p.transcript, duration), bleeps }) : null
+  const masked = (text: string | null): string | null => (text && bleeps ? maskBleeped(text, bleeps, forms) : text)
+  const privately = (text: string | null): string | null => (text && forms ? maskPrivate(text, forms) : text)
   let spoken: Pick<Project, 'transcript' | 'bleeps'> | null = null
   const onBleepedWords = (anchor: unknown): boolean => {
     const fields = bleeps ? readAnchorFields(anchor) : null
@@ -81,14 +86,14 @@ export function projectUnits(raw: unknown): SearchUnit[] {
   if (source) add('file', textOf(source.fileName.replace(/\.[^./\\]+$/, '')))
   for (const c of listOf(p.chapters)) {
     const t = time(c.t)
-    if (t !== null) add('chapter', textOf(c.title), t, t)
+    if (t !== null) add('chapter', privately(textOf(c.title)), t, t)
   }
   for (const c of listOf(p.titles)) {
     const start = time(c.start)
     if (start === null) continue
     const end = Math.max(start, time(c.end) ?? start)
     // A quote card masks a bleeped word in its quote (titleCardLayer drawnCard).
-    const words = [c.style === 'quote' ? masked(textOf(c.title)) : textOf(c.title), textOf(c.subtitle)].filter((s): s is string => !!s).join(' · ')
+    const words = [c.style === 'quote' ? masked(textOf(c.title)) : privately(textOf(c.title)), privately(textOf(c.subtitle))].filter((s): s is string => !!s).join(' · ')
     add('title', textOf(words), start, end)
   }
   for (const a of listOf(p.annotations)) {
@@ -109,9 +114,12 @@ export function projectUnits(raw: unknown): SearchUnit[] {
     } else if (g.kind === 'counter') add('text', textOf([counterNumber(g), masked(textOf(g.label))].filter((s) => !!s).join(' · ')), start, end)
   }
   const transcript = isObject(p.transcript) ? p.transcript : null
+  // What was said under a private bleep is indexed masked by time, as the captions show it (auto-blur §7.4).
+  const saidMasked = forms && bleeps ? new Map(maskedSegments(readTranscript(p.transcript, duration)?.segments ?? [], bleeps.filter(isPrivateBleep)).map((s) => [s.id, s.text])) : null
   for (const s of listOf(transcript?.segments)) {
     const start = time(s.start)
-    if (start !== null) add('said', textOf(s.text), start, Math.max(start, time(s.end) ?? start))
+    const own = saidMasked && typeof s.id === 'string' ? saidMasked.get(s.id) : undefined
+    if (start !== null) add('said', privately(own ?? textOf(s.text)), start, Math.max(start, time(s.end) ?? start))
   }
   const script = isObject(p.script) && typeof p.script.text === 'string' ? p.script.text : ''
   for (const para of notesParagraphs(script)) add('notes', para)
