@@ -44,6 +44,10 @@ export interface RenderScene {
   compare?: boolean
   /** A see-through export (output-and-languages §6); absent: the frame is drawn opaque, as before. */
   alpha?: 'background' | 'overlays'
+  /** The preview's Peek (docs/design/auto-blur.md §8.5): these covers are left out and drawn as outlines. Never saved, never set by an export (forOutput). */
+  peek?: { ids: readonly string[] | 'all' }
+  /** The preview's *Show where covers are* (§8.5): a dashed outline around every active cover. Never set by an export (forOutput). */
+  coverMarks?: true
 }
 
 /** A decoded frame and its display size. */

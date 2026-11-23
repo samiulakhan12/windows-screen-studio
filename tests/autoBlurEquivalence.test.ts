@@ -873,11 +873,26 @@ describe("test 20: Home's summaries", () => {
     }
     const list = await listProjects()
     expect(list.map((s) => s.createdAt)).toEqual(list.map((s) => s.createdAt).sort().reverse())
+    // The one field auto-blur adds (§9 row 17): the boxes Home fills over a thumbnail, present only for a
+    // project with a cover or a blur or pixelate shape about the thumbnail's time (min(1 s, 15%)). Every
+    // field of today is compared without it.
+    for (const s of list) {
+      const p = PROJECTS.find((x) => x.project.id === s.id)!.project
+      const t = Math.min(1, p.duration * 0.15)
+      const shaped = (p.shapes ?? []).some((h) => (h.kind === 'blur' || h.kind === 'pixelate') && h.start <= t + 0.1 && h.end > t - 0.1)
+      expect('thumbCovers' in s, s.id).toBe(shaped || !!p.covers?.length)
+    }
     // Summaries with the same creation time come in folder order: compared by id.
     pinned(
       'home',
       'listProjects',
-      list.map((s) => ({ ...s, dir: path.relative(ROOT, s.dir).split(path.sep).join('/') })).sort((a, b) => a.id.localeCompare(b.id))
+      list
+        .map((s) => {
+          const { thumbCovers: _boxes, ...today } = s as typeof s & { thumbCovers?: unknown }
+          void _boxes
+          return { ...today, dir: path.relative(ROOT, s.dir).split(path.sep).join('/') }
+        })
+        .sort((a, b) => a.id.localeCompare(b.id))
     )
   })
 })

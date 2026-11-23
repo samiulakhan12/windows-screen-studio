@@ -11,9 +11,10 @@
  * source array and crop, so an edit that does not touch them keeps them (and every cache keyed on
  * them) warm. readCrop and cropOf are frozen contracts (docs/design/editing-wins.md §4).
  */
-import type { AutoZoomSettings, ClickEvent, CursorSample, CursorTrack, NormRect, Project, ScrollEvent, Shape, Spotlight, ZoomFocus, ZoomSegment } from '../types'
+import type { AutoZoomSettings, ClickEvent, Cover, CursorSample, CursorTrack, NormRect, Project, ScrollEvent, Shape, Spotlight, ZoomFocus, ZoomSegment } from '../types'
 import { clamp } from './math'
 import { autoZoomsForTrack, regenerateAutoZooms } from './zoom'
+import { pathKeys, writePath } from '../privacy/coverPath'
 
 /** Fewest recorded pixels a crop keeps on each side (the whole side when the recording is smaller). */
 export const MIN_CROP_PX = 64
@@ -234,9 +235,28 @@ const zoomViews: Mapped<ZoomSegment> = new WeakMap()
 const shapeViews: Mapped<Shape> = new WeakMap()
 const spotlightViews: Mapped<Spotlight> = new WeakMap()
 const projectViews = new WeakMap<object, CroppableProject>()
+const coverViews = new WeakMap<Cover[], { key: string; out: Cover[] }>()
+
+/**
+ * Covers in view space (docs/design/auto-blur.md §4.8, D19): every key's box through rectToCrop,
+ * memoised per list; a cover wholly outside the crop is left out of the view (never out of the
+ * project). The compositor fills these as they are and never maps them through the crop again.
+ */
+function coversInView(c: NormRect, list: Cover[], key: string): Cover[] {
+  const hit = coverViews.get(list)
+  if (hit && hit.key === key) return hit.out
+  const out: Cover[] = []
+  for (const cover of list) {
+    const keys = pathKeys(cover).map((k) => ({ ...rectToCrop(c, k), t: k.t }))
+    if (!keys.some((k) => k.x < 1 && k.y < 1 && k.x + k.w > 0 && k.y + k.h > 0)) continue
+    out.push({ ...cover, path: writePath(keys) })
+  }
+  coverViews.set(list, { key, out })
+  return out
+}
 
 /** What cropProject reads and writes. */
-export type CroppableProject = Pick<Project, 'width' | 'height' | 'zooms' | 'shapes' | 'spotlights' | 'crop' | 'reframe'>
+export type CroppableProject = Pick<Project, 'width' | 'height' | 'zooms' | 'shapes' | 'spotlights' | 'crop' | 'reframe' | 'covers'>
 
 /**
  * The project as drawn: the crop's pixel size, zooms, shapes, spotlights and the followed view's
@@ -259,6 +279,7 @@ export function cropProject<P extends CroppableProject>(p: P): P {
     zooms: mapped(zoomViews, p.zooms, key, (z) => mapZoom(c, z, true)),
     ...(p.shapes ? { shapes: mapped(shapeViews, p.shapes, key, (s) => rectToCrop(c, s)) } : {}),
     ...(p.spotlights ? { spotlights: mapped(spotlightViews, p.spotlights, key, (s) => spotlightInView(c, s)) } : {}),
+    ...(p.covers ? { covers: coversInView(c, p.covers, key) } : {}),
     ...(p.reframe?.rest ? { reframe: { ...p.reframe, rest: restInView(c, p.reframe.rest) } } : {})
   } as unknown as P
   projectViews.set(p, view)

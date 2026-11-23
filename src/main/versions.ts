@@ -29,6 +29,7 @@ import {
 } from '../shared/editor/versions'
 import type { Project } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
+import { projectFileText } from './projectFile'
 import { removeSyncWithRetries } from './exportCleanup'
 import { t } from '../shared/i18n/t'
 import { fmt } from '../shared/i18n/fmt'
@@ -278,7 +279,8 @@ export function saveVersion(dir: string, projectId: string, raw: unknown, opts: 
   }
   // The editor may only keep versions of the project it has open.
   if (project.id !== projectId) throw new VersionError('Not allowed')
-  const json = JSON.stringify(project)
+  // The body as every project.json is written (auto-blur §4.6): the legacy shapes over covers; the hash and summary without them.
+  const json = projectFileText(project, 'compact')
   if (json.length > VERSION_LIMITS.bytes) throw new VersionError(t('errors.versions.tooLarge'))
   const hash = hashProject(project)
   const now = opts.now ?? new Date()

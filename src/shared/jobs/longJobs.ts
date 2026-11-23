@@ -106,7 +106,12 @@ export function thumbarButtons(jobs: readonly JobView[], now: number): ThumbButt
 }
 
 /** How a job ended. Files are absolute paths of what an export wrote (checked by main). */
-export type JobOutcome = { kind: 'done'; files?: string[]; label?: string; failed?: number; stopped?: boolean } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
+/**
+ * How a job ended. A done outcome's `notice` is the notification to show for it, whatever its kind
+ * (docs/design/auto-blur.md §2.6: Find private info's job ends with main.jobs.privacyDone); no job
+ * set it before.
+ */
+export type JobOutcome = { kind: 'done'; files?: string[]; label?: string; failed?: number; stopped?: boolean; notice?: NotificationCopy } | { kind: 'cancelled' } | { kind: 'failed'; message: string }
 
 /**
  * The code a stopped job's error carries (docs/design/output-and-languages.md §9.6): its name.
@@ -158,6 +163,7 @@ export function sizeText(bytes: number): string {
  * nothing). `files` are the job's checked files with their sizes; `name` a captions job's recording.
  */
 export function notificationFor(kind: JobKind, outcome: JobOutcome, files: readonly { path: string; bytes: number }[], name = ''): NotificationCopy | null {
+  if (outcome.kind === 'done' && outcome.notice) return outcome.notice
   if (outcome.kind === 'cancelled' || kind === 'analysis' || kind === 'ai') return null
   if (outcome.kind === 'failed') {
     const reason = outcome.message.split(/\n/)[0].trim().slice(0, 200)

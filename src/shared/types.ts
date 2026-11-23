@@ -863,8 +863,12 @@ export interface CaptionTrack {
   by: 'local' | AiProviderKind
   model: string
   createdAt: string
-  /** One text per spoken caption; `src` is a hash of the spoken text it was made from (out of date when it differs). */
-  segments: { id: string; text: string; src: string }[]
+  /**
+   * One text per spoken caption; `src` is a hash of the spoken text it was made from (out of date when it differs).
+   * `maskedFor`: the sorted ids of the private bleeps over that caption, joined by ',', when it was
+   * translated from the masked text (docs/design/auto-blur.md §7.4); absent: masked whole under one.
+   */
+  segments: { id: string; text: string; src: string; maskedFor?: string }[]
   /** by 'openai' through a service (smart-tools.md §10.6): its host ("translated with api.groq.com"). Absent for OpenAI itself. */
   host?: string
 }
@@ -1493,6 +1497,10 @@ export interface Project {
   chapterBar?: ChapterBar
   /** Sound effects on zooms, titles and callouts (LT-13, §10). Absent: none. */
   soundFx?: SoundFx
+  /** Solid covers (docs/design/auto-blur.md). Absent: none (every project from before). */
+  covers?: Cover[]
+  /** Find private info's choices and record. Absent: never used. */
+  privacy?: ProjectPrivacy
 }
 
 /** What the publishing copy pack keeps with the project (docs/design/publish-pack.md §3). */
@@ -1541,6 +1549,11 @@ export interface ProjectSummary {
   copyOf?: ProjectCopyOf
   /** The copy is a short clip or a shorter version (Project.clipOf). */
   clip?: true
+  /**
+   * Boxes Home fills over the thumbnail's frame, whole-frame normalised: the covers and the blur and
+   * pixelate shapes active about the thumbnail's time (docs/design/auto-blur.md §9 row 17). Absent: none.
+   */
+  thumbCovers?: NormRect[]
 }
 
 export interface CaptureSource {
@@ -1628,4 +1641,114 @@ export interface SoundSpan {
   action: 'mute' | 'duck'
   /** The found sound it came from (`<kind>-<start in centiseconds>`). */
   key: string
+}
+
+/** What Find looks for (docs/design/auto-blur.md §6); also what a found cover hides. 'text' is Cover this text everywhere. */
+export type PrivateKind =
+  | 'password'
+  | 'code'
+  | 'qr'
+  | 'key'
+  | 'link'
+  | 'email'
+  | 'card'
+  | 'phone'
+  | 'id'
+  | 'name'
+  | 'notice'
+  | 'address'
+  | 'dots'
+  | 'random'
+  | 'text'
+
+/**
+ * A solid box over the screen picture (docs/design/auto-blur.md §4.2). Its box may move over time
+ * (`path`). Filled into the screen picture after the crop and grade and again on the output (§8).
+ */
+export interface Cover {
+  id: string
+  /** Source seconds, start < end, within the recording. */
+  start: number
+  end: number
+  /**
+   * Where it is: keys "t x y w h" joined by ";", t in source seconds (3 decimals), the box
+   * normalised to the whole recorded frame (4 decimals, rounded outward). One key: a fixed box.
+   * The box holds from one key until the next (§4.2).
+   */
+  path: string
+  /** '#rrggbb', ungraded: the ring around the text when it was made, or a chip's colour. */
+  color: string
+  /** A suggestion waiting for review: 'auto' (found, score 0.85 or more) or 'check'. Absent: the user's. */
+  found?: 'auto' | 'check'
+  /** What it hides. Absent: a cover the user drew. */
+  kind?: PrivateKind
+  /** One Find run's suggestions of the same text share a group: one Review row (§5.10). */
+  group?: string
+  /** Covers the whole area where the text may be, because Flown could not place it (§5.8). */
+  lost?: true
+  /** Made from reads further apart than usual (§5.4). */
+  thin?: true
+  /** The last Find did not find this text again (§5.10). */
+  missed?: true
+}
+
+/**
+ * A suggestion the user uncovered (§5.10): its own path. Find again does not suggest `kind` where a
+ * new path lies inside this one's drawn box at every key.
+ */
+export interface RejectedPlace {
+  kind: PrivateKind
+  start: number
+  end: number
+  /** The removed cover's path, as `Cover.path` (§4.2). */
+  path: string
+}
+
+/** What the last Find did (§5.10). Holds no text. */
+export interface FindRecord {
+  /** ISO time it finished. */
+  at: string
+  kinds: PrivateKind[]
+  listened: boolean
+  /** The captions it listened to: sha256 of their words and times, hex (§7.7). */
+  captionsSig?: string
+  /** The reader's model set, e.g. 'pp-ocrv6-tiny+small-careful-long'. Absent: no screen read. */
+  reader?: string
+  /** Areas it could not read (§5.6). */
+  failed?: number
+  stopped?: true
+  /** Source seconds up to which the screen was read, when it stopped before the end. */
+  readTo?: number
+  /** Spans read less often than planned (§5.4): "start end" pairs joined by ";", source seconds. */
+  thin?: string
+  /** Suggestions not added because a removed path of the same kind held them (§5.10). */
+  suppressed?: number
+  /** Ids of the private bleeps this Find made, at most 2,000 (§2.12 `saidRemoved`). */
+  saidIds?: string[]
+}
+
+/** Find's choices for this project (§2.5). Absent: Settings' defaults. */
+export interface ProjectPrivacy {
+  kinds?: PrivateKind[]
+  /** Up to 5 regions added for phone numbers (ISO 3166-1 alpha-2). */
+  regions?: string[]
+  listen?: boolean
+  /** Names to hide in this video, one entry each (§6.11). */
+  names?: string[]
+  /** Words never to hide in this video. */
+  neverHide?: string[]
+  find?: FindRecord
+  rejected?: RejectedPlace[]
+}
+
+/** Private info's preferences in editor-prefs.json (`privacy`, docs/design/auto-blur.md §4.5). */
+export interface PrivacyPrefs {
+  kinds?: PrivateKind[]
+  regions?: string[]
+  names?: string[]
+  neverHide?: string[]
+  /** 'ring' or a chip: 'dark' | 'light' | 'black' | 'white'. */
+  colour?: 'ring' | 'dark' | 'light' | 'black' | 'white'
+  /** *Show where covers are* (§2.1). Absent: on. */
+  showCovers?: false
 }

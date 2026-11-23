@@ -9,6 +9,7 @@ import type { Project } from '../shared/types'
 import { stopAnalyses } from './analysisIpc'
 import { imageType } from './assetIpc'
 import { writeFileAtomicSync } from './atomicWrite'
+import { projectFileText } from './projectFile'
 import { MEDIA_FILE_RE, mediaUrl } from './mediaProtocol'
 import { duplicateProject } from './projectCopy'
 import * as projects from './projects'
@@ -34,7 +35,7 @@ export function saveProjectNow(project: Project, meta?: SaveMeta): void {
     if (last && last.session === meta.session && meta.seq <= last.seq) return
   }
   if (!existsSync(dir)) throw new Error(t('errors.projectsIpc.theRecordingFolderNo'))
-  writeFileAtomicSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
+  writeFileAtomicSync(path.join(dir, 'project.json'), projectFileText(project))
   if (meta) lastSaved.set(project.id, meta)
   noteProjectSaved(project)
 }

@@ -41,6 +41,7 @@ import { STUDIO_BASE } from './studioPresets'
 import { readTextMap } from './textMap'
 import { studioWords } from './words'
 import { readGraphicSound } from '../audio/soundFxData'
+import { isPrivateBleep } from '../privacy/coverData'
 
 export const STUDIO_LIMITS = {
   size: { min: 0.025, max: 0.22 },
@@ -85,6 +86,8 @@ export const LIST_ITEM_MAX = 60
 export const ANCHOR_TEXT_MAX = 80
 /** Longest bleeped word kept. */
 export const BLEEP_WORD_MAX = 40
+/** Longest maskedFor a translated segment keeps (auto-blur §7.4). */
+export const MASKED_FOR_MAX = 2048
 /** Longest counter prefix or suffix ("$", "%", "M"). */
 const AFFIX_MAX = 12
 /** Most items of a list card. */
@@ -736,7 +739,9 @@ export function readCaptionTracks(raw: unknown, transcript: Transcript | undefin
       const text = cleanCaptionText(s.text).slice(0, CAPTION_MAX_CHARS)
       if (!text) continue
       seen.add(s.id)
-      segments.push({ id: s.id, text, src: typeof s.src === 'string' ? s.src.slice(0, 64) : '' })
+      // maskedFor (auto-blur §7.4): kept when it is a string of at most 2,048 characters.
+      const maskedFor = typeof s.maskedFor === 'string' && s.maskedFor.length <= MASKED_FOR_MAX ? s.maskedFor : undefined
+      segments.push({ id: s.id, text, src: typeof s.src === 'string' ? s.src.slice(0, 64) : '', ...opt('maskedFor', maskedFor) })
     }
     segments.sort((a, b) => order.get(a.id)! - order.get(b.id)!)
     const by = v.by === 'local' ? 'local' : pick(v.by, PROVIDERS, 'local')
@@ -775,8 +780,11 @@ export function readBleeps(raw: unknown, duration: number): Bleep[] | undefined 
       ...opt('auto', v.auto === true ? (true as const) : undefined)
     })
   }
-  out.sort((a, b) => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-  const unique = uniqueIds(out.slice(0, MAX_BLEEPS), 'b')
+  const byTime = (a: Bleep, b: Bleep): number => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  out.sort(byTime)
+  // Past the limit, private bleeps are kept first, then the earliest of the rest (auto-blur §4.4); without any, cut as before.
+  const kept = out.length > MAX_BLEEPS && out.some(isPrivateBleep) ? [...out.filter(isPrivateBleep), ...out.filter((b) => !isPrivateBleep(b))].slice(0, MAX_BLEEPS).sort(byTime) : out.slice(0, MAX_BLEEPS)
+  const unique = uniqueIds(kept, 'b')
   return unique.length ? unique : undefined
 }
 

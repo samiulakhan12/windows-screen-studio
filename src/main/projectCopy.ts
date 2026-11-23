@@ -16,6 +16,7 @@ import { APP_NAME } from '../shared/brand'
 import { UNTITLED } from '../shared/editor/projectName'
 import { migrateProject } from '../shared/engine/project'
 import { writeFileAtomicSync } from './atomicWrite'
+import { projectFileText } from './projectFile'
 import { MEDIA_FILE_RE } from './mediaProtocol'
 import * as projects from './projects'
 import { t } from '../shared/i18n/t'
@@ -226,7 +227,7 @@ async function makeCopy(sourceId: string, raw: unknown, opts: { signal?: AbortSi
     // Last: until project.json exists the folder is not a project, so a crash leaves nothing in the library.
     const name = (typeof copy.name === 'string' ? copy.name.trim().slice(0, NAME_MAX) : '') || UNTITLED
     const project = { ...copy, id, createdAt: now.toISOString(), name, copyOf: { id: sourceId, name: sourceName } }
-    writeFileAtomicSync(path.join(dir, 'project.json'), JSON.stringify(project, null, 2))
+    writeFileAtomicSync(path.join(dir, 'project.json'), projectFileText(project))
     await fs.rm(path.join(dir, COPYING_MARK), { force: true, maxRetries: 3 })
     return { id, name, linked: files.every((f) => f.how !== 'link' || linked.has(f.name)) }
   } catch (err) {

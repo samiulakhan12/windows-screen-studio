@@ -7,6 +7,8 @@ import { migrateCursor, migrateProject } from '../shared/engine/project'
 import { cleanNotesText, NOTES_TEXT_MAX, readProjectScript } from '../shared/notes/notes'
 import type { CursorTrack, NormRect, Project, ProjectScript, ProjectSummary } from '../shared/types'
 import { writeFileAtomicSync } from './atomicWrite'
+import { projectFileText } from './projectFile'
+import { thumbCovers, thumbTime } from '../shared/privacy/coverData'
 
 /** Where recordings are kept: Videos\Flown. */
 export function projectsRoot(): string {
@@ -94,7 +96,8 @@ async function writeJsonAtomic(file: string, value: unknown): Promise<void> {
 }
 
 export async function writeProject(project: Project): Promise<void> {
-  await writeJsonAtomic(path.join(projectDir(project.id), 'project.json'), project)
+  // Through projectFileText (auto-blur §4.6): the legacy shapes over covers, exactly as before without them.
+  writeFileAtomicSync(path.join(projectDir(project.id), 'project.json'), projectFileText(project), { attempts: 4 })
 }
 
 /**
@@ -144,13 +147,19 @@ export async function readCursor(id: string): Promise<CursorTrack> {
   }
 }
 
+/** Seconds either side of a thumbnail's time whose covers and privacy shapes are filled over it (a decoder may show a nearby frame). */
+const THUMB_WINDOW = 0.1
+
 export async function listProjects(): Promise<ProjectSummary[]> {
   const out: ProjectSummary[] = []
   for (const name of await projectFolders()) {
     try {
       const p = await readProject(name)
       // What it was copied from, and whether it is a short clip (smart-tools.md §4.1: Made from this video).
-      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name), ...(p.copyOf ? { copyOf: p.copyOf } : {}), ...(p.clipOf ? { clip: true as const } : {}) })
+      // The boxes Home fills over the thumbnail (auto-blur §9 row 17): covers and blur and pixelate shapes about its time; absent when none.
+      const t = thumbTime(p.duration)
+      const boxes = thumbCovers(p, t - THUMB_WINDOW, t + THUMB_WINDOW)
+      out.push({ id: p.id, name: p.name, createdAt: p.createdAt, duration: p.duration, dir: projectDir(name), ...(p.copyOf ? { copyOf: p.copyOf } : {}), ...(p.clipOf ? { clip: true as const } : {}), ...(boxes.length ? { thumbCovers: boxes } : {}) })
     } catch {
       // Not a finished project; unfinished recordings are listed by listUnfinished().
     }

@@ -4,6 +4,7 @@ import { readBleeps, readCaptionAuto, readCaptionMarks, readCaptionPlaces, readC
 import type { CaptureInfo, Clip, CursorSettings, CursorTrack, Project, ZoomSegment } from '../types'
 import { readInputEdits, readScrolls } from './inputData'
 import { readItems, readShape, readSpotlight } from './shapeData'
+import { readCovers, readPrivacy, withoutLegacyShapes } from '../privacy/coverData'
 import { readTilt } from './tilt'
 import { readChapter, readTitleCard } from './titleData'
 import { readDirectorSettings } from './directorData'
@@ -148,7 +149,7 @@ export function migrateProject(raw: unknown): Project {
   const duration = Number.isFinite(p.duration) && p.duration > 0 ? p.duration : 0.1
   const listed = objects<Clip>(p.clips).filter((c) => Number.isFinite(c.start) && Number.isFinite(c.end))
   const clips = listed.length ? listed : [{ ...fullClip(duration), start: p.trim?.start ?? 0, end: p.trim?.end ?? duration }]
-  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, clipOf, publish, guide, autoCuts, autoCutOutcomes, sounds, joins, grade, chapterBar, soundFx, ...rest } = p
+  const { trim: _legacyTrim, audioStems, transcript, captions, captionMarks, captionPlaces, graphics, captionTracks, bleeps, captionAuto, inputEdits, director, script, crop, freezes, overlays, fonts, brand, reframe, copyOf, clipOf, publish, guide, autoCuts, autoCutOutcomes, sounds, joins, grade, chapterBar, soundFx, covers, privacy, ...rest } = p
   void _legacyTrim
   // Read once: the transcript, and the Captions Studio records that point at its captions.
   const transcriptRead = readTranscript(transcript, duration)
@@ -175,7 +176,8 @@ export function migrateProject(raw: unknown): Project {
     ...optional('inputEdits', readInputEdits(inputEdits, duration)),
     annotations: objects(p.annotations),
     // Read as the renderer draws them, so every one listed can be selected and edited.
-    shapes: readItems(p.shapes, readShape),
+    // The shapes written for older Flown over covers (auto-blur §4.6) are dropped first: this version draws the covers.
+    shapes: readItems(withoutLegacyShapes(p.shapes), readShape),
     spotlights: readItems(p.spotlights, readSpotlight),
     // One layout at a time, inside the recording; the camera's look sanitised (never added to).
     layouts: readLayouts(p.layouts, duration),
@@ -226,7 +228,10 @@ export function migrateProject(raw: unknown): Project {
     ...optional('joins', readJoins(joins)),
     ...optional('grade', readProjectGrade(grade)),
     ...optional('chapterBar', readChapterBar(chapterBar)),
-    ...optional('soundFx', readSoundFx(soundFx))
+    ...optional('soundFx', readSoundFx(soundFx)),
+    // Auto-blur (docs/design/auto-blur.md §4.7): solid covers and Find's choices, each absent unless set.
+    ...optional('covers', readCovers(covers, duration)),
+    ...optional('privacy', readPrivacy(privacy, duration))
   }
 }
 

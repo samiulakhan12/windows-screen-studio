@@ -19,6 +19,7 @@ import { sanitizeCaptionPref } from '../shared/captions/captionPrefs'
 import { sanitizeSmartPref } from '../shared/smart/smartPrefs'
 import { readUiPrefs } from '../shared/i18n/locale'
 import { readUserPresets } from '../shared/render/userPresets'
+import { readPrivacyPrefs } from '../shared/privacy/coverData'
 import { writeFileAtomicSync } from './atomicWrite'
 import { t } from '../shared/i18n/t'
 
@@ -27,6 +28,8 @@ function sanitizeOutputPref(key: PrefKey, value: unknown): unknown {
   if (value === null || value === undefined) return value
   if (key === 'exportPresets') return readUserPresets(value)
   if (key === 'ui') return readUiPrefs(value)
+  // Auto-blur's preferences (docs/design/auto-blur.md §4.5): anything malformed reads as absent.
+  if (key === 'privacy') return readPrivacyPrefs(value)
   return value
 }
 
