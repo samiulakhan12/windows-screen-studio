@@ -64,48 +64,48 @@ export const inside = (inner: Box, outer: Box, tol = 0.5): boolean => inner[0] >
 /**
  * A matcher over planted texts, as the helper's follow session answers (paths.ts's Matcher): a
  * track's parts are templates of the text at the frame they were cut; a candidate places them at
- * template + (dx, dy) (scale about the parts' centre); a part scores 0.9 when the text is there within
- * 2 px, else `miss` (0.1). `second` is the best score of the other candidates. Check reads answer the
- * planted texts whose boxes lie in the area.
+ * template + (dx, dy) (scale about the parts' centre) and the search finds the text within 8 px of
+ * that place (±4 template pixels at half size), answering the exact place. A part scores `score`
+ * (0.9) where the text is, else `miss` (0.1). `second` is the best score of the candidates that land
+ * elsewhere (more than 2 px from the best). Check reads answer the planted texts in the area.
  */
 export class ScriptedMatcher {
-  readonly calls: { t: number; tracks: number[] }[] = []
+  readonly calls: { t: number; tracks: number[]; candidates: Candidate[][] }[] = []
   readonly checks: { t: number; area: Box }[] = []
+  readonly tracked: { track: number; t: number }[] = []
   private readonly tracks = new Map<number, { t: number; parts: Box[]; key: string }>()
   constructor(
     private readonly planted: readonly Planted[],
     private readonly keyOf: (track: number) => string,
-    private readonly opts: { miss?: number; score?: number; check?: (t: number, area: Box) => ReadResult | null } = {}
+    private readonly opts: { miss?: number; score?: number; second?: (t: number) => number | undefined; check?: (t: number, area: Box) => ReadResult | null } = {}
   ) {}
 
   async track(track: number, t: number, parts: readonly Box[]): Promise<void> {
+    this.tracked.push({ track, t })
     this.tracks.set(track, { t, parts: parts.map((p) => [...p] as Box), key: this.keyOf(track) })
   }
 
   async match(t: number, asks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]> {
-    this.calls.push({ t, tracks: asks.map((a) => a.track) })
+    this.calls.push({ t, tracks: asks.map((a) => a.track), candidates: asks.map((a) => [...a.candidates]) })
     return asks.map((a) => {
       const tr = this.tracks.get(a.track)!
       const p = this.planted.find((x) => x.key === tr.key)
       const now = p?.at(t) ?? null
       const then = p?.at(tr.t) ?? null
-      const scores = a.candidates.map((c) => {
-        if (!now || !then) return this.opts.miss ?? 0.1
-        // Where the candidate puts the text's box, from where it was when the template was cut.
+      const hits = a.candidates.map((c) => {
+        if (!now || !then) return null
         const cx = then[0] + then[2] / 2
         const cy = then[1] + then[3] / 2
         const x = cx + c.scale * (then[0] - cx) + c.dx
         const y = cy + c.scale * (then[1] - cy) + c.dy
-        const w = then[2] * c.scale
-        return Math.abs(x - now[0]) <= 2 && Math.abs(y - now[1]) <= 2 && Math.abs(w - now[2]) <= 2 ? (this.opts.score ?? 0.9) : (this.opts.miss ?? 0.1)
+        if (Math.abs(x - now[0]) > 8 || Math.abs(y - now[1]) > 8 || Math.abs(then[2] * c.scale - now[2]) > 2) return null
+        return { dx: c.dx + now[0] - x, dy: c.dy + now[1] - y, scale: c.scale }
       })
-      let best = -1
-      scores.forEach((s, i) => {
-        if (best < 0 || s > scores[best]) best = i
-      })
-      const second = scores.filter((_s, i) => i !== best).reduce((m, s) => Math.max(m, s), 0)
-      const top = best >= 0 ? scores[best] : 0
-      return { track: a.track, parts: a.parts.map(() => top), best: best >= 0 ? a.candidates[best] : null, second }
+      const found = hits.find((h) => h !== null) ?? null
+      const top = found ? (this.opts.score ?? 0.9) : (this.opts.miss ?? 0.1)
+      const elsewhere = hits.some((h) => !h || !found || Math.abs(h.dx - found.dx) > 2 || Math.abs(h.dy - found.dy) > 2) ? (this.opts.miss ?? 0.1) : 0
+      const second = this.opts.second?.(t) ?? (found ? elsewhere : this.opts.miss ?? 0.1)
+      return { track: a.track, parts: a.parts.map(() => top), best: found ?? (a.candidates[0] ?? null), second }
     })
   }
 

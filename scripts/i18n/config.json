@@ -110,6 +110,7 @@
     "src/shared/privacy/vendor/libphonenumber/es6/parsePhoneNumber.d.ts",
     "src/shared/privacy/vendor/libphonenumber/metadata.max.json.d.ts",
     "src/shared/privacy/look.ts",
-    "src/shared/privacy/plan.ts"
+    "src/shared/privacy/plan.ts",
+    "src/shared/privacy/paths.ts"
   ]
 }
