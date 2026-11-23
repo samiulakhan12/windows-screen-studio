@@ -14,13 +14,16 @@ This is the second version of this design. The first (2,899 lines, built in five
 was lost before it was pushed. Only its record of the owner's answers, its measurements and its
 review findings survived; §0 restates the answers, §19 maps every finding to the section that
 prevents it. Every code fact below was checked again at `37f9355`, and every measurement was made
-again for this version.
+again for this version. This revision then took the product, engineering, security and lessons
+reviews of the second version; §3.4 lists what they changed and where this design disagrees.
 
 The rules of the earlier waves hold:
 
 - **Preview and export draw the same frames.** Covers are filled into the screen picture inside
   `drawFramePicture` (`src/renderer/src/render/compositor.ts:147`), which the preview, every export,
   the export dialog's preview, thumbnails, join stills, freeze stills and guide shots all use (§8).
+  Texts made from captions are masked in the same view of the project for the preview and every
+  output (`privateView`, §7.5).
 - **A covered region is unrecoverable in every output.** Covers are solid. They are filled into the
   screen picture after the crop and the colour grade, before anything samples it, and again on the
   output (§8, decision 3). Blur and pixelate were shown reversible (§3.2).
@@ -59,6 +62,10 @@ The evidence is in the repository:
   builder (`careful_long.py`, commit `89b95f0`), the text rules prototype with its full rule table
   (`detect/RULES.md`, `detect/rules.mjs`), the model pins (`reader-models.json`) and every result
   quoted here (`results/`). `scripts/privacy/README.md` says how to run each one.
+- `scripts/privacy/bench-buckets.sh` and `decode-speed.sh` (commit `ce5572e`): the build time, run
+  time and peak memory of the reader's fixed plan buckets (`results/tract-buckets.txt`), and what
+  ffmpeg takes to decode a 1080p60 proxy for the look, follow and read passes
+  (`results/decode-speed.txt`). §5.5 and §5.11 quote them.
 
 The truth file, the reads and the score files are gzip-compressed, because they hold invented keys
 and tokens in their real formats and GitHub's push protection would otherwise stop the push (§0,
@@ -81,9 +88,14 @@ Terms used below:
 - **Own span**: the characters of the secret itself in a line, never padded. **Cover box**: the own
   span's box padded (§6.1).
 - **Look pass**: the cheap pass over every frame that finds where and when the screen changes and
-  by how much it moved (§5.2).
+  by how much it moved (§5.2). **Analysed frame**: a frame the look pass compares: every frame up
+  to 30 fps, every second frame at 60 fps, every fourth at 120 fps (§5.2). **Source frame**: any
+  frame of `screen.mp4`.
 - **Lost area**: a cover over the whole area where text may be after Flown could not place it
   (§5.8).
+- **Check read**: a small read a walk asks for, to prove that text was not yet on screen (§5.8).
+- **Private item**: the unit every count of this feature uses: one Review row of found covers (a
+  group), one cover the user drew, or one group of private bleeps (§2.12).
 - **Private bleep**: a bleep over a secret said aloud. Its `word` holds a kind marker, never the
   word (§4.4).
 - **Spoken forms**: the ways a private bleep's secret can appear in text made from captions (§7.3).
@@ -94,7 +106,8 @@ Terms used below:
 
 **Decided by the owner on 17 November 2026: every recommendation of decisions 1-12 is accepted.**
 They stand and are not asked again. Each is restated here as decided, with what this version
-measured against it. Questions 13-16 are new and open, each with a recommendation.
+measured against it. Questions 13-19 are new and open, each with a recommendation; the build is
+written so that every part can start before they are answered.
 
 1. **DECIDED: which text reader, and the 5 MB line.** A bundled `ssw-ocr.exe` with tract compiled in.
    The PP-OCRv6 models are downloaded on demand from Qbexel's mirror (decision 10). Their exact bytes
@@ -113,6 +126,9 @@ measured against it. Questions 13-16 are new and open, each with a recommendatio
      1 px, every CTC step of 36 recognised lines the same (§5.6).
    - A MinGW skeleton with tract is **3,336,375 bytes** at brotli 11 (the mixed profile, §16.2), under
      the 5 MB line. tract stays; ONNX Runtime is not needed.
+   - Windows OCR is built into the same helper as a second reader behind `WINDOWS_READER_ALLOWED =
+     false` (§5.13), so decision 8's check can be run on the reference PC. Nothing offers it until
+     that check passes.
 2. **DECIDED: which detectors are on by default.** On: passwords and PINs; codes and QR codes (secret
    QR codes 0.99, any other 0.6); keys and tokens, including strong labels (0.75); tokens in links and
    webhooks; emails; card and bank numbers; phones (the PC's region, the UI language's region and up
@@ -141,13 +157,18 @@ measured against it. Questions 13-16 are new and open, each with a recommendatio
    them. A translated caption is masked whole until it is translated again after Find. A settle step
    masks chapter names, the publishing pack and the guide, and every field of an AI request is masked.
    Transcribing with a service warns that the service will hear the secrets; the sound is not muted
-   (§7).
+   (§7). *Applied:* listening is on whenever the project has captions, and unchecked and disabled
+   without them (§2.5). Question 19 asks whether the masking of stored texts may happen where they
+   leave Flown instead of in the stored text; §7.5 is written for the recommended answer.
 8. **DECIDED: checks before release.** Required: the shipped model bytes measured with the committed
-   scorer; Windows OCR at 95% or more pattern recall and 99% or more padded coverage before it is
-   offered; the helper's speed, memory and size at 1080p, 4K and 7680×2160 on the reference PC; the
-   rendered tracking set (A16) with every planted item covered in every frame; 30 real recordings
-   (97% or more covered, nothing found ever shown); pop-up false hits at most one per 10 minutes; and
-   a native Bangla review of the spoken word lists (§15, §17.3).
+   scorer; Windows OCR at 95% or more pattern recall and 99% or more padded coverage; the helper's
+   speed, memory and size at 1080p, 4K and 7680×2160; the rendered tracking set (lists, zoom,
+   selection, sticky header, window drag, toasts) with every planted item covered in every frame; 30
+   real recordings (97% or more covered, nothing found ever shown); pop-up false hits at most one per
+   10 minutes; and a native Bangla review. *Applied:* Windows OCR is measured by R10 on the reference
+   PC (§5.13); the tracking set is A16 (§17.3); the Bangla review covers the spoken word lists, the
+   Bangla label tables of `detect/tables.ts` and the `privacy` catalogue through
+   `docs/design/output-and-languages.md` §15 (§12.4).
 9. **DECIDED: the other account.** Ask now for an optional `private.json` holding password-box and
    text-field rectangles and focus, and each window's rectangle, visibility, z-order, process and
    title over time; never values. Its shape is in §18. This wave works without it.
@@ -174,14 +195,19 @@ New questions:
 
     **Recommended: (a).** It is the same leak; the change is visible only on Home, never in an output.
 14. **OPEN: the Windows Error Reporting exclusion.** A crash dump of `ssw-ocr.exe` would hold frame
-    pixels with secrets, and Windows Error Reporting can upload it. The helper calls `SetErrorMode`
-    so no dialog appears, but only an exclusion stops the report.
-    - (a) The installer writes `HKCU\Software\Microsoft\Windows\Windows Error Reporting\
-      ExcludedApplications\ssw-ocr.exe = 1` (DWORD) and the uninstaller removes it (§10.5).
-    - (b) No registry change; the helper only calls `SetErrorMode`.
+    pixels with secrets, and Windows Error Reporting can upload it. Whatever the answer, the helper
+    asks Windows to leave its heap out of any report (`WerSetFlags(WER_FAULT_REPORTING_FLAG_NOHEAP)`)
+    and ends itself without a report on an unhandled exception (§10.5); both come from `kernel32`
+    and change nothing outside the process. The question is whether to add the registry exclusion
+    as well, for the crashes those two cannot catch.
+    - (a) The installer writes `ssw-ocr.exe = 1` (DWORD) under `…\Windows Error Reporting\
+      ExcludedApplications`: in `HKLM\SOFTWARE\Microsoft\Windows` for an install for all users, in
+      `HKCU\Software\Microsoft\Windows` for an install for one user. The uninstaller removes it from
+      the same place (§10.5).
+    - (b) No registry change.
 
-    **Recommended: (a).** It is one per-user value, named after Flown's own helper, removed on
-    uninstall.
+    **Recommended: (a).** It is one value named after Flown's own helper, written where the install
+    is and removed on uninstall.
 15. **OPEN: invented secrets in the repository.** The evaluation set's truth file, reads and scores
     hold invented keys in real formats. GitHub push protection is on for this public repository and
     would refuse them, so they are committed gzip-compressed with a `.gitignore` against unpacked
@@ -195,26 +221,72 @@ New questions:
     (careful-narrow plus any line holding 16 or more token characters) re-reads 30% of lines,
     misses nothing on either set and costs about 1.53 s a frame (ONNX Runtime, one thread).
     **Recommended: careful-long.** It is the configuration every number in §5.11 assumes.
+17. **OPEN: three English texts that are now wrong about privacy.** The rule that existing English
+    does not change is the owner's. These texts tell the user that blur and pixelate hide
+    everything, which §3.2 shows is not so for text:
+    - `text.shape.blur.title`, "Blur private content (always fully applied)", and
+      `text.shape.pixelate.title`, "Pixelate private content (always fully applied)" (the add-shape
+      buttons' tooltips, `src/shared/editor/itemNames.ts:23-24`);
+    - `text.calloutSection.privacyNote`, "Blur and pixelate are fully on for their whole time, so
+      nothing they hide shows." (`CalloutSection.tsx:23`).
+    - (a) Change them, in one commit at integration that names this feature and re-records the
+      English guard: "Blur (always fully applied; blurred text can sometimes be read back)",
+      "Pixelate (always fully applied; pixelated text can sometimes be read back)", and "Blur and
+      pixelate are fully on for their whole time. Text under them can sometimes be read back; a cover
+      hides it completely."
+    - (b) Leave them; the new note under the slider (§2.4) and the *Cover* tool beside *Blur* carry
+      the warning.
+
+    **Recommended: (a).** A privacy tool should not promise what it does not do. The build is written
+    for (b) and works unchanged under (a); only the three messages change.
+18. **OPEN: does a crop or a muted part count as "hiding" for decision 4?** *The original recordings*
+    copies the whole uncropped `screen.mp4` and the unmuted sound. Decision 4 refuses it "whenever the
+    project hides anything", which this design reads as a cover, a blur or pixelate shape, or a bleep
+    (`hidesSomething`, §9 row 10).
+    - (a) Also refuse it for a cropped project and for a project with muted parts.
+    - (b) Not for those: a crop is usually framing (a taskbar, a second monitor's edge) and a muted
+      part a cough; the choice is named *The original recordings* and copies exactly that.
+
+    **Recommended: (b).** (a) would take the choice from most existing projects, which crop. Test 25
+    is written for the answer given.
+19. **OPEN: where decision 7's texts are masked.** Decision 7 has "a settle step" mask the spoken
+    secrets' forms in chapter names, title cards, the publishing pack and the guide. A settle step
+    rewrites text the user wrote, and *Uncover* on a private bleep that was a false hit cannot bring
+    the words back. Example: the user says their support line aloud and also typed it into the saved
+    YouTube description; Find bleeps it and the description becomes "•••-••••" for good.
+    - (a) Mask where these texts leave Flown or are drawn, in one view of the project
+      (`privateView`, §7.5): title cards and the chapter bar in the preview and every export, chapter
+      metadata, sidecars, the pack's copy and share, guide outputs, AI requests, the search index.
+      The stored text stays as the user wrote it, and uncovering a bleep brings every word back.
+    - (b) Keep the settle step, and store each changed field's original text in the same update, so
+      *Uncover* restores it in one undo step.
+
+    **Recommended: (a).** It masks every place (b) masks, also in the preview, and never changes what
+    the user typed. §7.5 and the contracts are written for (a); under (b) `settleSaid` returns, with
+    `Project.privacy.originals`, in the same contracts item.
 
 ---
 
 ## 1. Summary
 
 - **Covers in the editor.** A new *Private info* section at the top of the Shapes tab: *Add cover*
-  (3 seconds, to the end, or the whole video), *Find private info…*, the number of covers and of
-  suggestions to check, and what Find does not see. A selected cover has its colour, its box, *Follow
-  what is under it*, *Cover this text everywhere…*, *Cover the whole video*, *Keep* and *Remove*. Covers
-  have their own row on the timeline, shown only when the project has covers. Blur and pixelate
-  shapes get a note and *Turn into a cover*.
+  (3 seconds, to the end, or the whole video), *Find private info…*, the number of private items
+  and of suggestions to check, *Show where covers are* (a dashed outline in the editor only), and
+  what Find does not see. A *Cover* tool sits beside *Blur* and *Pixelate*. A selected cover has its
+  colour, its box, *Change the whole path*, *Start here* and *End here*, *Follow what is under it*,
+  *Cover this text everywhere…*, *Keep it for the whole video*, *Keep covered* and *Uncover*. Several
+  covers can be selected and edited together. Covers have their own row on the timeline, shown only
+  when the project has covers. Blur and pixelate shapes get a note and *Turn into a cover*.
 - **Find private info.** A dialog with the kinds to find (decision 2's defaults), names to hide, words
   never to hide, phone regions and *Also listen for secrets said aloud*. Find runs on this PC in the
   background while the user keeps editing: a look pass over every frame, reads of the areas that
   changed, the text rules, and following each found text through scrolls and moves until there is
   evidence it is gone. Its results land as suggestions in one undo step.
 - **Review.** A new Review kind, *Private*. One row per text (all the places and times the same text
-  showed in that run), Check rows first, filters per kind, *Keep* and *Remove* per row and for all of a
-  kind, *Peek* (see under the covers in the preview only), *Listen* (hear a bleeped secret in the
-  preview only) and *Done reviewing*.
+  showed in that run), each place a part of the row, Check rows first, filters per kind, *Keep
+  covered* and *Uncover* per row, per place and for all of a kind (with a confirm), *Peek while
+  reviewing* (V: see under the selected row's covers, magnified, in the preview only), *Listen*
+  (hear a bleeped secret in the preview only) and *Done reviewing*.
 - **Spoken secrets.** With captions, Find also listens: cards, codes, phones, IDs, passwords, emails
   and listed names said aloud become private bleeps. Their words are masked everywhere text is made
   from captions: captions, translations, subtitles, chapter names, the publishing pack, the guide,
@@ -223,13 +295,15 @@ New questions:
   dialog's preview, guide screenshots, PDF, HTML and Markdown guides, short clips, the publish pack's
   copy, share, Home thumbnails, the filmstrip and the pictures sent to AI. *The original recordings*
   timeline mode is refused while the project hides anything.
-- **Export note.** The export dialog says how many items the video hides and how many are still to
-  check, with *Review*.
+- **Export note.** The export dialog says how many private items the video hides, how many are
+  still to check, which blurred areas can be read back, whether Find has not checked the video or
+  did not finish, and offers to wait for a running Find or stop it first. Copies made from the
+  video before Find can take its covers.
 - **Polish** gains *Find private info*. **Settings** gains *Private info*: the reader's download, the
   default kinds, names and never-hide lists for every video, phone regions and the colour of new
   covers.
 - **Older Flown** opening a project with covers draws a pixelate and an opaque box over each cover.
-- **Size**: the installer grows by about 3.4 MB (the helper). The reader's models, 27.6 MB, are
+- **Size**: the installer grows by about 3.5 MB (the helper). The reader's models, 27.6 MB, are
   downloaded on demand.
 
 ---
@@ -257,21 +331,35 @@ captures this adds to).
 | `privacy.cover.length.toEnd` | To the end of the video |
 | `privacy.cover.length.whole` | For the whole video |
 | `privacy.section.find` | Find private info… |
-| `privacy.section.count` | `{covers, plural, =0 {No covers yet.} one {# cover.} other {# covers.}}` |
-| `privacy.section.toCheck` | `{count, plural, one {# to check.} other {# to check.}}` |
+| `privacy.section.count` | `{count, plural, one {{n} private item.} other {{n} private items.}}` |
+| `privacy.section.toCheck` | `{count, plural, one {{n} to check.} other {{n} to check.}}` |
 | `privacy.section.review` | Review |
-| `privacy.section.readerMissing` | Find needs the text reader, a 27.6 MB download. |
+| `privacy.section.readerMissing` | Find needs the text reader, a 27.6 MB download from Hugging Face. |
+| `privacy.section.showCovers` | Show where covers are |
+| `privacy.section.showCoversHint` | Draws a dashed outline around each cover in the editor only. Exports never show it. |
+| `privacy.section.weak` | `{count, plural, one {{n} blurred or pixelated area can sometimes be read back.} other {{n} blurred or pixelated areas can sometimes be read back.}}` |
+| `privacy.section.weakTurn` | Turn them all into covers |
 | `privacy.section.notSee` | What Find does not see |
+| `privacy.shape.cover` | Cover |
+| `privacy.shape.cover.title` | Cover private content with a solid box |
 
 - *Add cover* adds a cover at the playhead, for 3 seconds by default; its arrow opens the length menu,
   which remembers the last choice for the session. The new cover's box is 30% × 10% of the frame,
   centred where the cursor is at the playhead (or the frame's centre when the cursor is hidden or
   invalid), clipped to the frame. Its colour is picked from the paused frame (§8.4). It is selected.
   One undo step.
+- The add-shape row of the Shapes tab (`ShapesPanel.tsx`, the `SHAPE_KINDS` buttons) gains a *Cover*
+  button after *Pixelate* (`privacy.shape.cover`, tooltip `privacy.shape.cover.title`). It does what
+  *Add cover* does, so the habit of reaching for *Blur* meets the safe choice beside it.
 - *Find private info…* opens the dialog of §2.5. While Find runs, the section shows the progress line
   of §2.6 instead of the button.
-- The count line shows only when the project has covers. *Review* opens Review mode filtered to
-  *Private*.
+- The count line counts private items (§2.12) and shows only when there is at least one. *Review*
+  opens Review mode filtered to *Private*.
+- *Show where covers are* (a checkbox, on by default, remembered in the preferences, §4.5) draws a
+  1 px dashed outline in `--accent-400` around every active cover in the editor's preview only, so a
+  cover the colour of its background still shows where it is (§8.5). It never reaches an output.
+- The weak line shows when the project has blur or pixelate shapes. *Turn them all into covers*
+  turns every one into a cover over the same box and times, in one undo step.
 - *What Find does not see* is a disclosure button (`aria-expanded`) that opens §2.9's list.
 
 ### 2.2 A selected cover
@@ -293,8 +381,11 @@ in the Shapes tab, below *Private info*, in place of the shape properties.
 | `privacy.cover.box.top` | Top |
 | `privacy.cover.box.width` | Width |
 | `privacy.cover.box.height` | Height |
-| `privacy.cover.moveAll` | Move the whole path |
-| `privacy.cover.moveAllHint` | Changes to the box move it at every time, not only at the playhead. |
+| `privacy.cover.wholePath` | Change the whole path |
+| `privacy.cover.wholePathHint` | Moves and resizes the cover at every time, not only at the playhead. |
+| `privacy.cover.startHere` | Start here |
+| `privacy.cover.endHere` | End here |
+| `privacy.cover.outside` | The playhead is outside this cover. |
 | `privacy.cover.follow` | Follow what is under it |
 | `privacy.cover.followHint` | Flown reads the text under the cover and moves the cover with it. |
 | `privacy.cover.following` | Following… |
@@ -302,44 +393,86 @@ in the Shapes tab, below *Private info*, in place of the shape properties.
 | `privacy.cover.followDone` | The cover now follows the text from {start} to {end}. |
 | `privacy.cover.followNone` | Flown found no text under this cover to follow. |
 | `privacy.cover.everywhere` | Cover this text everywhere… |
-| `privacy.cover.whole` | Cover the whole video |
-| `privacy.cover.keep` | Keep |
-| `privacy.cover.remove` | Remove |
-| `privacy.cover.found` | Found by Find private info: {kind}. |
-| `privacy.cover.toCheck` | To check: {kind}. |
+| `privacy.cover.whole` | Keep it for the whole video |
+| `privacy.cover.keep` | Keep covered |
+| `privacy.cover.uncover` | Uncover |
+| `privacy.cover.uncovered` | Uncovered. It will show in exports. |
+| `privacy.cover.found` | Found by Find private info. |
+| `privacy.cover.what` | What it hides |
+| `privacy.cover.toCheck` | Check that this cover is needed and in the right place. |
 | `privacy.cover.lost` | Flown could not tell where this text moved, so the cover hides the whole area it may be in. |
-| `privacy.cover.missed` | The last Find did not find this text again. The cover stays until you remove it. |
+| `privacy.cover.missed` | The last Find did not find this text again. The cover stays until you uncover it. |
 | `privacy.cover.thin` | Flown read this part of the video less often. Check that the cover is right. |
-| `privacy.cover.timeKept` | This cover follows text, so it keeps its times. Drag its ends to make it longer. |
+| `privacy.cover.timeKept` | This cover follows moving text, so it can't be moved in time. Drag its ends to change how long it lasts. |
 | `privacy.cover.oneProject` | Covers paste only into the video they were copied from. |
+| `privacy.cover.selected` | `{count, plural, one {{n} cover selected} other {{n} covers selected}}` |
+| `privacy.cover.oneForBox` | Select one cover to change its box. |
+| `privacy.cover.oneForFollow` | Select one cover to follow what is under it. |
+| `privacy.cover.oneForEverywhere` | Select one cover to cover its text everywhere. |
+| `privacy.weak.turnSelected` | `{count, plural, one {Turn {n} into a cover} other {Turn {n} into covers}}` |
 
 - The box fields are percentages of the whole recorded frame, one decimal, with `NumberField`
-  (`src/renderer/src/i18n/NumberField.tsx`). They show the box at the playhead. With *Move the whole
-  path* off (the default), a change sets the box from the playhead until the path's next key; on, it
-  moves every key by the same amount.
-- On the preview the selected cover has eight handles (P1 `CoverHandles`); dragging moves or resizes
-  it under the same rule. Covers are drawn solid in the editor too; the selection outline is drawn
-  outside the box.
+  (`src/renderer/src/i18n/NumberField.tsx`). They show the box at the playhead.
+- **Resizing applies to the whole path.** For a cover with more than one key, an edge handle drag
+  moves that edge by the same amount at every key, and a *Width* or *Height* change moves the right
+  or bottom edge by the same amount at every key. The most common fix, widening a cover because a
+  character shows at its edge, so holds wherever the playhead is.
+- **Moving follows *Change the whole path*.** Dragging the middle, and *Left* and *Top*, move the box
+  from the playhead until the path's next key while the checkbox is off (the default), and at every
+  key while it is on.
+- On the preview the selected cover has eight handles (P1 `CoverHandles`). Covers are drawn solid in
+  the editor too; the selection outline is drawn outside the box.
+- *Start here* and *End here* set the cover's start or end to the playhead, holding the box there as
+  `setCoverEnds` does. Each is one undo step, and both are in the palette with no default key
+  (§2.15). They are disabled with `privacy.cover.outside` as their description when the playhead is
+  outside the cover.
 - *Follow what is under it* reads the text under the cover at the playhead and makes the cover a
-  path that follows it (§5.9). One undo step when it lands. *Stop* keeps the cover as it was.
-- *Cover this text everywhere…* opens the dialog of §2.5 with one choice: the text under this cover,
-  found and followed in the whole video (§5.10).
+  path that follows it (§5.9). Inside the time the walk reached, the followed path replaces the old
+  box; the old box stays only where the walk was lost and outside that time. One undo step when it
+  lands. *Stop* keeps the cover as it was.
+- *Cover this text everywhere…* opens its own dialog (below, §5.9).
+- *Keep it for the whole video* sets the cover's times to the whole recording, keeping its path (its
+  first and last boxes held to the ends).
+- *Keep covered* shows only on a suggestion; it makes the cover the user's. *Uncover* deletes the
+  cover, says `privacy.cover.uncovered` in the status line, and remembers the removed path so Find
+  again does not suggest the same kind on it (§5.10). Both read the same in Review (§2.7).
+- A suggestion's lines show under the title: `privacy.cover.found`, then *What it hides* with the
+  kind's title (`privacy.kind.<kind>.title`, "Email address") as a label and value, then `toCheck`,
+  `lost`, `missed` and `thin` where they apply.
 
-  | Key | English |
-  |---|---|
-  | `privacy.everywhere.title` | Cover this text everywhere |
-  | `privacy.everywhere.body` | Flown reads the text under this cover and covers it wherever it shows in this video. |
-  | `privacy.everywhere.remember` | Also add it to this video's names to hide |
-  | `privacy.everywhere.start` | Cover everywhere |
-  | `privacy.everywhere.done` | `{count, plural, =0 {The text was not found anywhere else.} one {Covered # more place.} other {Covered # more places.}}` |
+**Several covers selected** (Ctrl+click or Shift+click on bars or on the preview, or *Select on the
+timeline* in Review, §2.7). The section's title reads `privacy.cover.selected`. Colour chips, *Keep
+covered*, *Uncover*, *Keep it for the whole video*, nudging with the arrow keys and *Copy look* /
+*Paste look* act on every selected cover in one undo step. The box fields, *Follow what is under it*
+and *Cover this text everywhere…* are disabled, each with its reason (`oneForBox`, `oneForFollow`,
+`oneForEverywhere`) as its description. Selected blur and pixelate shapes show
+`privacy.weak.turnSelected`, which turns them all into covers in one undo step.
 
-- *Cover the whole video* sets the cover's times to the whole recording, keeping its path (its first
-  and last boxes held to the ends).
-- *Keep* shows only on a suggestion; it makes the cover the user's. *Remove* deletes the cover; a
-  removed suggestion is remembered so Find again does not suggest it there again (§5.10).
-- A suggestion's lines (`found`, `toCheck`, `lost`, `missed`, `thin`) show under the title. `{kind}`
-  is the kind's name from §2.5's table, in lower case through its own message
-  (`privacy.kind.<kind>.name`).
+**Cover this text everywhere** (P1 `EverywhereDialog`, a modal dialog labelled by its title):
+
+| Key | English |
+|---|---|
+| `privacy.everywhere.title` | Cover this text everywhere |
+| `privacy.everywhere.body` | Flown reads the text under this cover, finds it wherever it shows in this video, and covers it there. |
+| `privacy.everywhere.reading` | Reading the text under the cover… |
+| `privacy.everywhere.noText` | Flown found no text under this cover. |
+| `privacy.everywhere.needsReader` | This needs the text reader, a 27.6 MB download from Hugging Face. It runs on this PC. |
+| `privacy.everywhere.remember` | Also add it to the names to hide |
+| `privacy.everywhere.rememberNo` | No |
+| `privacy.everywhere.rememberThis` | In this video. The text is saved in this video's project file. |
+| `privacy.everywhere.rememberAll` | In every video. The text is saved in Flown's settings on this PC. |
+| `privacy.everywhere.start` | Cover everywhere |
+| `privacy.everywhere.done` | `{count, plural, =0 {The text was not found anywhere else.} one {Covered {n} more place.} other {Covered {n} more places.}}` |
+| `privacy.everywhere.failed` | Flown could not cover this text everywhere. Try again, or cover its other places by hand. |
+
+- On opening, the dialog asks main to read the text under the cover at the playhead (`underCover`,
+  §5.9) and shows `reading`. Then it shows one of: `needsReader` with *Download*
+  (`privacy.find.readerDownload`, the download's progress and failure lines of §2.5); `noText`; or
+  the body, the estimate (`privacy.find.estimate`) and *Cover everywhere*.
+- The *Also add it to the names to hide* choice (radio buttons, *No* checked) shows only when main
+  says the text looks like a name (§5.9). A key, a password, a code or a number is never offered.
+- While it runs, the dialog shows the progress line of §2.6 with *Stop*; *Stop* keeps what was found
+  so far. Then `done` or `failed`.
 
 ### 2.3 The Covers row on the timeline
 
@@ -349,10 +482,14 @@ only when the project has at least one cover, so older projects' timelines do no
 - Each cover is a bar from its start to its end. Suggestions waiting for review have a dashed edge;
   Check suggestions have the warning colour (`--warning`) on their edge; lost areas a hatched fill.
   Bars of the same group (§5.10) that overlap in time are drawn as one bar with a count badge.
+- Clicking a group's bar selects every cover of the group; Ctrl+click toggles one cover in or out
+  of the selection; Shift+click adds the bars between.
 - Thin marks under a bar show where the path changes (each key), at most one mark every 4 px.
+- Spans Find read less often (§5.4) are drawn under the row as hatched marks; each is an item of the
+  row's roving focus (`privacy.track.thin`) and Enter seeks to its start.
 - Keyboard: the row is one tab stop with roving focus (§11). Arrow keys move between bars, Enter
-  selects, Delete removes, Shift+Arrow lengthens or shortens by one frame (only the ends; §2.2's time
-  rule).
+  selects, Delete uncovers, Shift+Arrow lengthens or shortens by one frame (only the ends; §2.2's
+  time rule).
 - Dragging a bar's ends changes its start or end (one undo step per drag). Dragging the middle of a
   bar moves it in time only for a cover with one key; a cover that follows text shows
   `privacy.cover.timeKept` in the status line instead.
@@ -364,17 +501,27 @@ only when the project has at least one cover, so older projects' timelines do no
 | `privacy.track.itemCheck` | `Cover to check, {kind}, {start} to {end}` |
 | `privacy.track.itemWaiting` | `Suggested cover, {kind}, {start} to {end}` |
 | `privacy.track.itemMine` | `Cover, {start} to {end}` |
-| `privacy.track.group` | `{count, plural, one {# place} other {# places}}` |
+| `privacy.track.group` | `{count, plural, one {{n} place} other {{n} places}}` |
+| `privacy.track.thin` | `Read less often, {start} to {end}` |
+
+The bars' names are lists of fields (`{kind}` is `privacy.kind.<kind>.title`), not sentences
+(§12.1).
 
 ### 2.4 Blur and pixelate: the note
 
-Under the strength slider of a selected blur or pixelate shape (`ShapesPanel.tsx`), a note and a
-button. The existing note `text.calloutSection.privacyNote` stays as it is.
+Under the strength slider of a selected blur or pixelate shape (`ShapesPanel.tsx:226`), beside the
+existing hint `text.shapesPanel.hidesWhatIsUnder` ("Hides what is under it for its whole time on
+screen, also while the camera moves. The cursor stays visible on top."), a note and a button.
 
 | Key | English |
 |---|---|
-| `privacy.weak.note` | Blurred and pixelated text can sometimes be read back. A cover hides it completely. |
+| `privacy.weak.note` | Even fully on, blurred or pixelated text can sometimes be read back. A cover hides it completely. |
 | `privacy.weak.turn` | Turn into a cover |
+
+The note is worded to sit beside three existing texts that say blur and pixelate hide everything:
+the add-shape tooltips `text.shape.blur.title` and `text.shape.pixelate.title` ("…private content
+(always fully applied)", `itemNames.ts:23-24`) and `text.calloutSection.privacyNote` ("…so nothing they
+hide shows.", `CalloutSection.tsx:23`). They stay unchanged unless the owner answers question 17 (a).
 
 *Turn into a cover* replaces the shape with a cover over the same box and times (colour from the
 paused frame, §8.4), in one undo step, and selects it.
@@ -394,19 +541,19 @@ palette, Review's header and the export note.
 | `privacy.find.regionsTitle` | Phone numbers from |
 | `privacy.find.regionsHint` | Numbers that start with + are found from every country. Choose up to 5 more. |
 | `privacy.find.names` | Names to hide in this video |
-| `privacy.find.namesHint` | One name or word per line. A * at the start or end matches any letters there. |
+| `privacy.find.namesHint` | One name or word per line. List each form you want hidden, like Jane Doe and Jane. A * at the start or end matches any letters there. |
 | `privacy.find.neverHide` | Never hide |
 | `privacy.find.neverHideHint` | Product names and other words Flown should leave visible, one per line. |
 | `privacy.find.everyVideo` | Names and words from Settings are used too. |
 | `privacy.find.listen` | Also listen for secrets said aloud |
 | `privacy.find.listenHint` | Uses the captions. Secrets said aloud are bleeped and masked in captions and translations. |
 | `privacy.find.listenNone` | Make captions first to listen for secrets said aloud. |
-| `privacy.find.readerNone` | Find needs the text reader, a 27.6 MB download from Qbexel. It runs on this PC. |
+| `privacy.find.readerNone` | Find needs the text reader, a 27.6 MB download from Hugging Face. It runs on this PC. |
 | `privacy.find.readerDownload` | Download |
 | `privacy.find.readerProgress` | Downloading the text reader… {percent}% |
 | `privacy.find.readerFailed` | The text reader could not be downloaded. {reason} |
 | `privacy.find.readerRetry` | Try again |
-| `privacy.find.estimate` | `{minutes, plural, one {About # minute on this PC.} other {About # minutes on this PC.}} You can keep editing.` |
+| `privacy.find.estimate` | `{count, plural, =0 {Less than a minute on this PC. You can keep editing; keep this video open until Find ends.} one {About {n} minute on this PC. You can keep editing; keep this video open until Find ends.} other {About {n} minutes on this PC. You can keep editing; keep this video open until Find ends.}}` |
 | `privacy.find.again` | Find again keeps every cover you have and adds what is new. |
 | `privacy.find.start` | Find |
 | `privacy.find.startAgain` | Find again |
@@ -414,65 +561,106 @@ palette, Review's header and the export note.
 
 The kinds, in this order, each a checkbox with its default from decision 2:
 
-| Kind | `privacy.kind.<kind>.label` | `privacy.kind.<kind>.name` | Default |
+| Kind | `privacy.kind.<kind>.label` | `privacy.kind.<kind>.title` | Default |
 |---|---|---|---|
-| `password` | Passwords and PINs | password | on |
-| `code` | Sign-in and recovery codes | code | on |
+| `password` | Passwords and PINs | Password or PIN | on |
+| `code` | Sign-in and recovery codes | Code | on |
 | `qr` | QR codes | QR code | on |
-| `key` | Keys and tokens | key | on |
-| `link` | Tokens in links and webhooks | token in a link | on |
-| `email` | Email addresses | email address | on |
-| `card` | Card and bank numbers | card or bank number | on |
-| `phone` | Phone numbers | phone number | on |
+| `key` | Keys and tokens | Key or token | on |
+| `link` | Tokens in links and webhooks | Token in a link | on |
+| `email` | Email addresses | Email address | on |
+| `card` | Card and bank numbers | Card or bank number | on |
+| `phone` | Phone numbers | Phone number | on |
 | `id` | ID numbers | ID number | on |
-| `name` | Names you list | name | on (finds nothing until a name is listed) |
-| `notice` | Pop-up notifications | pop-up notification | on in whole-screen recordings; the box is hidden for area and window recordings |
-| `address` | Street addresses | street address | off |
-| `dots` | Password dots | password dots | off |
-| `random` | Random-looking text | random-looking text | off |
+| `name` | Names you list | Name | on (finds nothing until a name is listed) |
+| `notice` | Notifications | Notification | on in whole-screen recordings; hidden for area and window recordings and for imported videos |
+| `address` | Street addresses | Street address | off |
+| `dots` | Password dots | Password dots | off |
+| `random` | Random-looking text | Random-looking text | off |
 
-A user cover has no kind; a cover made by *Cover this text everywhere* has kind `text`
-(`privacy.kind.text.name`: "text you chose").
+`privacy.kind.notice.hint` describes the notifications kind under its checkbox: "The boxes that slide
+in at a corner of the screen." A user cover has no kind; a cover made by *Cover this text everywhere*
+has kind `text` (`privacy.kind.text.title`: "Text you chose"). The `.title` messages are standalone
+noun phrases used as labels and list fields, never inside a sentence; sentences that name a kind
+select on the kind's id (§12.1).
 
 - The kinds, regions, lists and *listen* choice are remembered per project in `Project.privacy`
-  (§4.3) and default from Settings (§2.14).
+  (§4.3) and default from Settings (§2.14). *Listen* is on whenever the project has captions, unless
+  the user unticked it for this project (`Project.privacy.listen: false`); Settings has no listen
+  choice.
 - Regions: the PC's region (`app.getSystemLocale()` region, read in main) and the UI language's region
   (`bn` → BD, `hi` → IN, `es` → ES, `en` → none) are always on; the user adds up to 5 in a list of
   every region the phone metadata knows, by country name.
 - The estimate is §5.11's first estimate. It is replaced by a second one after the look pass (§2.6).
-- *Listen* is disabled with `privacy.find.listenNone` when the project has no captions.
+- *Listen* is unchecked and disabled with `privacy.find.listenNone` when the project has no
+  captions.
 - Without the reader the dialog shows `privacy.find.readerNone` and *Download*; *Find* stays enabled
   only for *listen* (spoken secrets need no reader), and then reads `privacy.find.start`.
+- With another Find running in Flown (one at a time, §5.1), *Find* is disabled with `privacy.run.busy`
+  as its description.
 
 ### 2.6 While Find runs, and when it ends
 
 The Shapes tab's section and Review's header show one progress line (`role="status"`, polite,
-announced at most every 10%). Find runs in main at below-normal priority; the user keeps editing.
-One Find at a time per project; opening another project leaves it running for the first.
+announced at most every 10%). Find runs in main at below-normal priority; the user keeps editing
+this video. **One Find runs in Flown at a time** (§5.1): a second, for this video or another, is
+refused with `privacy.run.busy`. Find belongs to the open editor: it stops when the editor closes,
+and its results are applied only to the project and request that started it.
 
 | Key | English |
 |---|---|
 | `privacy.run.look` | Looking for changes on screen… {percent}% |
 | `privacy.run.read` | Reading text… {done} of {total} |
 | `privacy.run.follow` | Following text… |
-| `privacy.run.left` | `{minutes, plural, =0 {Less than a minute left.} one {About # minute left.} other {About # minutes left.}}` |
+| `privacy.run.left` | `{count, plural, =0 {Less than a minute left.} one {About {n} minute left.} other {About {n} minutes left.}}` |
 | `privacy.run.stop` | Stop |
+| `privacy.run.waiting` | Find waits while Flown records. |
 | `privacy.run.foundNone` | Find private info found nothing private. |
-| `privacy.run.found` | `{count, plural, one {Find private info found # private item.} other {Find private info found # private items.}}` |
-| `privacy.run.foundCheck` | `{count, plural, one {# of them is to check.} other {# of them are to check.}}` |
-| `privacy.run.said` | `{count, plural, one {# was said aloud and is bleeped.} other {# were said aloud and are bleeped.}}` |
-| `privacy.run.failedReads` | `{count, plural, one {Flown could not read # part of the video. It is covered until you check it.} other {Flown could not read # parts of the video. They are covered until you check them.}}` |
-| `privacy.run.stopped` | Find stopped. What it found so far is kept. |
-| `privacy.run.failed` | Find private info stopped: {reason} |
+| `privacy.run.notSeeLink` | What Find does not see |
+| `privacy.run.found` | `{count, plural, one {Found {n} private item.} other {Found {n} private items.}}` |
+| `privacy.run.foundCheck` | `{count, plural, one {{n} of them is to check.} other {{n} of them are to check.}}` |
+| `privacy.run.said` | `{count, plural, one {{n} was said aloud and is bleeped.} other {{n} were said aloud and are bleeped.}}` |
+| `privacy.run.failedReads` | `{count, plural, one {Flown could not read {n} part of the video. It is covered until you check it.} other {Flown could not read {n} parts of the video. They are covered until you check them.}}` |
+| `privacy.run.thinned` | `{count, plural, =0 {Flown read part of this video less often, so it may have missed text there.} one {Flown read {n} minute of this video less often, so it may have missed text there.} other {Flown read {n} minutes of this video less often, so it may have missed text there.}}` |
+| `privacy.run.suppressed` | `{count, plural, one {{n} was not suggested again, because you uncovered the same kind there before.} other {{n} were not suggested again, because you uncovered the same kind there before.}}` |
+| `privacy.run.saidFull` | Too many bleeps: some secrets said aloud could not be bleeped. Remove bleeps you do not need and find again. |
+| `privacy.run.stopped` | Find stopped. What it found so far stays covered to the end of the video, because Flown did not finish following it. Review to trim them. |
+| `privacy.run.busy` | Find private info is already running for a video. Wait for it, or stop it there. |
+| `privacy.run.tooLarge` | This recording is too large for Find to read: more than 7680 × 4320 pixels. |
+| `privacy.run.readerDamaged` | The text reader's files are damaged. Download them again. |
+| `privacy.run.downloadAgain` | Download again |
+| `privacy.run.failed.helper` | Find private info could not start the text reader on this PC. |
+| `privacy.run.failed.video` | Find private info could not read this recording. |
+| `privacy.run.failed.crashed` | The text reader stopped twice, so Find ended with what it had found. |
+| `privacy.run.failed.other` | Find private info stopped because of a problem. |
 | `privacy.run.openReview` | Review |
+| `privacy.leave.body` | Find private info is still running. Leave and stop it? What it found so far is kept. |
+| `privacy.leave.action` | Leave and stop |
+| `main.jobs.privacyDone` | `{count, plural, =0 {Find private info is done: nothing to review.} one {Find private info is done: {n} to review.} other {Find private info is done: {n} to review.}}` |
 
 - When results land, they are applied in one undo step (§14.1) and the line shows `found` (or
-  `foundNone`) with `foundCheck` and `said` as separate sentences when they apply, and *Review*.
-- *Stop* ends the scan. What was found and followed so far is applied as one undo step; a cover whose
-  following was not finished is extended to the end of the recording as a lost area (§5.8), so
-  stopping never leaves text uncovered that Find had found.
+  `foundNone` followed by the link `notSeeLink`, which opens §2.9's list) with `foundCheck`, `said`,
+  `failedReads`, `thinned` and `suppressed` as separate sentences when they apply, and *Review*.
+- While a recording runs, the line shows `waiting` (§5.11).
+- *Stop* ends the scan. What was found and followed so far is applied as one undo step. A cover whose
+  following was not finished is extended to the end of the recording as a lost area over the place it
+  was last seen, with its region (§5.10). Text that moved after the stop point can still show:
+  `stopped` says to review, and the export note says Find did not finish (§2.12).
+- **Leaving the editor while Find runs** (Home, opening another project, *Open the original*) asks
+  first, inside the editor's `leave` (`Editor.tsx:570-591`) and through `askConfirm` as
+  `editor.leave.unsaved` is asked: `privacy.leave.body` with the action `privacy.leave.action`; the
+  default button keeps the editor open. Confirming stops Find, applies what it found as *Stop* does,
+  then saves and leaves as today. **Closing Flown's window** tears the page down without that path
+  (`Editor.tsx:1825-1840` saves synchronously); Find is stopped by `stopAnalyses`, what it found in
+  this run is lost, and `privacy.find` is unchanged, so nothing claims the video was checked.
+- When Flown's window does not have the focus as Find ends, Windows shows `main.jobs.privacyDone`
+  (`notificationFor`, `src/shared/jobs/longJobs.ts:160`, gains this one case; analysis jobs show no
+  notification today).
 - A failed read never drops silently: its area becomes a lost area until the next good read there,
   and `failedReads` says so (§5.6).
+- Failures name their cause in one whole sentence (`failed.helper`, `failed.video`,
+  `failed.crashed`, `failed.other`, `tooLarge`, `readerDamaged` with *Download again*); none takes a
+  raw reason string.
 
 ### 2.7 Review: private items
 
@@ -483,69 +671,124 @@ before *Chapter*.
 |---|---|
 | `review.kind.private.chip` | Private |
 | `review.kind.private.name` | private item |
-| `review.kind.private.all` | Remove all private item covers |
-| `review.kind.private.count` | `{count, plural, one {# private item} other {# private items}}` |
+| `review.kind.private.all` | Uncover all private items |
+| `review.kind.private.count` | `{count, plural, one {{n} private item} other {{n} private items}}` |
 | `privacy.review.title` | `{kind} · {start}–{end}` |
-| `privacy.review.where` | `{place, select, topLeft {top left} top {top} topRight {top right} left {left} centre {middle} right {right} bottomLeft {bottom left} bottom {bottom} other {bottom right}} of the screen` |
-| `privacy.review.places` | `{count, plural, one {# place} other {# places}}` |
+| `privacy.review.where` | `{place, select, topLeft {Top left} top {Top} topRight {Top right} left {Left} centre {Middle} right {Right} bottomLeft {Bottom left} bottom {Bottom} other {Bottom right}} of the screen` |
+| `privacy.review.places` | `{count, plural, one {{n} place} other {{n} places}}` |
+| `privacy.review.area` | Covers {percent} of the screen for {time} |
+| `privacy.review.place` | `{where} · {start}–{end}` |
 | `privacy.review.check` | Check |
 | `privacy.review.said` | Said aloud |
 | `privacy.review.lost` | Covers an area |
 | `privacy.review.missed` | Not found again |
 | `privacy.review.thin` | Read less often here |
+| `privacy.review.keep` | Keep covered |
+| `privacy.review.uncover` | Uncover |
+| `privacy.review.keepRow` | Keep covered: {title} |
+| `privacy.review.uncoverRow` | Uncover: {title} |
+| `privacy.review.uncovered` | Uncovered. It will show in exports. |
+| `privacy.review.select` | Select on the timeline |
 | `privacy.review.peek` | Peek |
+| `privacy.review.peekRow` | Peek: {title} |
+| `privacy.review.peekAll` | Peek while reviewing |
+| `privacy.review.peekAllHint` | Shows what is under the selected row's covers, magnified, in the preview only. Key: V. |
 | `privacy.review.listen` | Listen |
+| `privacy.review.listenRow` | Listen: {title} |
 | `privacy.review.filter` | Show |
 | `privacy.review.filterAll` | All kinds |
-| `privacy.review.keepKind` | Keep all {kindPlural} |
-| `privacy.review.removeKind` | Remove all {kindPlural} |
+| `privacy.review.keepKind` | `{kind, select, password {Keep all passwords and PINs covered} code {Keep all codes covered} qr {Keep all QR codes covered} key {Keep all keys and tokens covered} link {Keep all tokens in links covered} email {Keep all email addresses covered} card {Keep all card and bank numbers covered} phone {Keep all phone numbers covered} id {Keep all ID numbers covered} name {Keep all names covered} notice {Keep all notifications covered} address {Keep all street addresses covered} dots {Keep all password dots covered} random {Keep all random-looking text covered} text {Keep all text you chose covered} other {Keep all of this kind covered}}` |
+| `privacy.review.uncoverKind` | `{kind, select, password {Uncover all passwords and PINs} code {Uncover all codes} qr {Uncover all QR codes} key {Uncover all keys and tokens} link {Uncover all tokens in links} email {Uncover all email addresses} card {Uncover all card and bank numbers} phone {Uncover all phone numbers} id {Uncover all ID numbers} name {Uncover all names} notice {Uncover all notifications} address {Uncover all street addresses} dots {Uncover all password dots} random {Uncover all random-looking text} text {Uncover all text you chose} other {Uncover all of this kind}}` |
+| `privacy.review.uncoverConfirm` | `{count, plural, one {Uncover {n} private item? It will show in every export.} other {Uncover {n} private items? They will show in every export.}}` |
+| `privacy.review.uncoverConfirmAction` | Uncover |
 | `privacy.review.done` | Done reviewing |
-| `privacy.review.doneConfirm` | `{count, plural, one {Keep the # cover still waiting?} other {Keep the # covers still waiting?}}` |
-| `privacy.review.doneCheck` | `{count, plural, one {# of them is to check and has not been looked at.} other {# of them are to check and have not been looked at.}}` |
+| `privacy.review.doneConfirm` | `{count, plural, one {Keep the {n} cover still waiting?} other {Keep the {n} covers still waiting?}}` |
+| `privacy.review.doneCheck` | `{count, plural, one {{n} of them is to check and has not been looked at.} other {{n} of them are to check and have not been looked at.}}` |
 | `privacy.review.doneKeep` | Keep them |
 | `privacy.review.emptyKind` | Nothing of this kind is waiting. |
 | `privacy.review.findAgain` | Find again… |
+| `privacy.review.unfinished` | Find private info did not finish: it read this video up to {time}. |
 
 **One row per text.** A row is one group (§5.10): every place and time the same text showed in that
-Find run, with its covers and bleeps. Its title is the kind and the first start to the last end
-("Email · 0:42–3:10"), then the place on screen of its first cover ("top right of the screen") and
-the number of places. The text itself is never shown in Review or anywhere in the UI outside the
-preview's Peek: the user may be sharing their screen.
+Find run, with its covers. Its title is the kind's title and the first start to the last end ("Email
+address · 0:42–3:10"), then the place on screen of its first cover ("Top right of the screen"), the
+number of places, and, when the row holds a lost area, the largest one's size and time
+(`privacy.review.area`: "Covers 40% of the screen for 1:10"). A secret said aloud is a row of its
+own: its private bleeps share a group (§4.4), and the screen's text never reaches the renderer to be
+matched with it (D5).
 
-**Order.** Check rows first, then the rest, each by start time. The list keys of Review
-(`src/shared/review/keys.ts:17-27`) work as before.
+**Places.** A row with more than one place shows Review's existing parts expansion
+(`review.row.showParts` / `hideParts`, `ReviewPanel.tsx:985-1000`). Each place is a part: its title
+(`privacy.review.place`: where on screen and its times), its badges, its own preview stretch, and its
+own *Keep covered* and *Uncover*. So one wrong place, or one large lost area, can be checked and
+decided without leaving Review. The row's own buttons act on every place.
 
-**Keep, Remove.** *Keep* makes every cover and bleep of the row the user's; *Remove* deletes them and
-remembers the places (§5.10). Each is one undo step. The kind filter (`privacy.review.filter`, a
-select of the kinds present) narrows the list; with one kind shown, the header has *Keep all…* and
-*Remove all…* for it (`kindPlural` is the kind's plural name, `privacy.kind.<kind>.plural`). Bulk work
-uses `heldInSlices` (`src/shared/review/slices.ts:103`), one undo step, and *Remove all* keeps a
-version first, as Review does today (`ReviewPanel.tsx:398-405`).
+**What is shown.** The screen's text is never shown in Review or anywhere in the UI outside the
+preview's Peek: the user may be sharing their screen. Words said aloud are shown where the user
+edits captions (the Captions and Transcript tabs) as today; every output and every other text made
+from captions masks them (§7).
+
+**Order.** Check rows first, then the rest, each by start time. `reviewItems` sorts every kind by time
+(`src/shared/review/review.ts:108`), so the private order is applied by `ReviewPanel` (P5) to the rows
+of kind `private` when the *Private* filter is on, and kept there; the list keys of Review
+(`src/shared/review/keys.ts:17-27`) work as before on that order.
+
+**Keep covered, Uncover.** The two row buttons read *Keep covered* and *Uncover* for private rows,
+with the accessible names `keepRow` and `uncoverRow` and the acted line `uncovered`; Review's shared
+*Keep* and *Remove* keys and messages are unchanged for every other kind. K and Delete act on private
+rows as on others. *Keep covered* makes every cover and bleep of the row the user's; *Uncover*
+deletes them and remembers the removed paths (§5.10). Each is one undo step. The kind filter
+(`privacy.review.filter`, a select of the kinds present) narrows the list; with one kind shown, the
+header has *Keep all … covered* and *Uncover all …* for it, each one whole message selecting on the
+kind (§12.1). *Uncover all …* and `review.kind.private.all` ask first (`uncoverConfirm`, focus on
+*Cancel*), keep a version, as *Remove all* does today (`ReviewPanel.tsx:398-405`), and run as one
+undo step through `heldInSlices` (`src/shared/review/slices.ts:103`).
+
+**Select on the timeline** (on each row) selects every cover of the row on the Covers row, for the
+group edits of §2.2.
 
 **Done reviewing.** In the header while private rows wait. It keeps every waiting private suggestion
 in one undo step, after a confirm (`doneConfirm`, with `doneCheck` when Check rows are among them;
 focus starts on *Cancel*). The export note's "still to check" line then goes away.
 
-**Badges** on a row: *Check*, *Said aloud*, *Covers an area*, *Not found again*, *Read less often here*.
+**Unfinished Find.** When the last Find stopped, failed reads or ended early (`FindRecord.stopped`,
+`failed`, `readTo`, §4.1), the header shows `privacy.review.unfinished` with *Find again…*.
+
+**Badges** on a row and on a place: *Check*, *Said aloud*, *Covers an area*, *Not found again*, *Read
+less often here*.
 
 **Preview.** Selecting a row seeks to its start and plays its stretch as Review does
-(`src/shared/review/preview.ts:51-70`), with the covers drawn. *Peek* and *Listen* are toggle buttons
-on the row (§2.8).
+(`src/shared/review/preview.ts:51-70`, 1.5 s before and after, at most 8 s), with the covers drawn.
+Selecting a place plays that place's stretch. *Peek* and *Listen* are toggle buttons on the row, and
+*Peek while reviewing* is a toggle in the header (§2.8).
 
 ### 2.8 Peek and Listen
 
-- **Peek** (`aria-pressed`) shows the selected row's covers as 2 px outlines in the accent colour,
-  so the user sees what is under them, in the editor's preview only. The command *Peek under covers*
-  does the same for every cover while it is on. A banner sits over the preview while anything is
-  peeked:
+- **Peek** (`aria-pressed`, accessible name `privacy.review.peekRow`) shows the row's covers as 2 px
+  outlines in the accent colour, so the user sees what is under them, in the editor's preview only.
+  The command *Peek under covers* does the same for every cover while it is on.
+- **Peek while reviewing** (a toggle in the private Review header, `aria-pressed`, tooltip
+  `privacy.review.peekAllHint`) stays on while the user moves through the rows: the selected row is
+  peeked, then the next one when N or ↓ moves on. V in the list turns it on and off (`keys.ts`
+  gains the action `peek` for V, given only when the selected row is of kind `private`, so V goes on
+  to the editor everywhere else as today; V has no editor shortcut). A keyboard pass over 200 rows
+  is N, look, K or Delete, with no mouse and no pressing of Peek again.
+- **The magnified view.** While a row is peeked, a panel under the banner shows the selected
+  cover's area at the playhead from the raw frame, cut with a margin of half its height and drawn at
+  twice the preview's scale (at least 2×, at most 8×, and never past the recording's own pixels), so
+  text 12 px high in a 1080p frame is readable in a small preview. It is a preview-only canvas
+  (`aria-label` `privacy.peek.inset`), never in an output, the export dialog's preview, a thumbnail
+  or a guide shot (§8.5).
+- A banner sits over the preview while anything is peeked:
 
   | Key | English |
   |---|---|
   | `privacy.peek.banner` | Peeking under covers. Exports still cover them. |
   | `privacy.peek.stop` | Stop peeking |
+  | `privacy.peek.inset` | Magnified view of what is under the cover |
 
-- **Listen** (`aria-pressed`, on rows with a bleep) plays that bleep's original sound in the preview
-  only.
+- **Listen** (`aria-pressed`, accessible name `privacy.review.listenRow`, on rows with a bleep) plays
+  that bleep's original sound in the preview only.
 - Peek and Listen are cleared when Review closes, when the project closes, before any export or
   guide shot starts, and after 60 s without input. They never reach an export, the export dialog's
   preview, a thumbnail, a guide shot, a join still kept for export or the AI (§8.6, §9).
@@ -558,25 +801,50 @@ The disclosure of §2.1 and the dialog's footer list, one message each (`privacy
 |---|---|
 | `privacy.notSee.scripts` | Text in Bangla, Hindi, Arabic or other scripts the reader does not know. |
 | `privacy.notSee.small` | Text smaller than about 9 pixels high, or blurred by motion. |
+| `privacy.notSee.names` | People's and company names, unless you list them. |
+| `privacy.notSee.brief` | Text that is on screen for less than about a second, like a page you scroll past quickly. |
 | `privacy.notSee.unlabelled` | Codes and passwords shown with no label near them, like an authenticator app's codes. |
-| `privacy.notSee.pictures` | Text inside pictures, videos and handwriting, and faces. |
+| `privacy.notSee.pictures` | Text inside pictures and videos shown on screen, handwriting, and faces. |
+| `privacy.notSee.added` | Images you add and the camera. Covers hide parts of the screen recording only. |
 | `privacy.notSee.off` | Kinds that are off: street addresses, password dots and random-looking text. |
 | `privacy.notSee.said` | Secrets said aloud when the video has no captions, or that the captions got wrong. |
+| `privacy.notSee.length` | A cover can still show roughly how long the hidden text is. |
+| `privacy.notSee.folder` | The project folder on this PC keeps the original recording, without covers. |
 | `privacy.notSee.check` | Always watch the video before you share it. |
+
+The names hint of the Find dialog (§2.5) says how to list the people and companies a recording shows.
 
 ### 2.10 Polish
 
-`PolishDialog.tsx` gains the row *Find private info* (`review.polish.step.privacy`, "Find private info";
-hint `review.polish.hint.privacy`, "Covers passwords, keys, codes and other private text, and bleeps
-secrets said aloud.") after *Camera director*, only when the reader is downloaded. It is on in
-`DEFAULT_POLISH_OPTIONS` and read as off from saved options (`readPolishOptions`,
-`src/shared/editor/polish.ts:393`), like every step added after options were saved. Its result line
-in Polish's summary follows the other steps' style ("Smooth cuts at 4 cuts"):
-`review.polish.result.privacy`: `Find private info: {count, plural, =0 {nothing private found} one {{n}
-private item} other {{n} private items}}`, or with Check rows `review.polish.result.privacyCheck`:
-`Find private info: {count, plural, one {{n} private item} other {{n} private items}} · {check} to check
-in Review`. Without the reader the step is skipped with `review.polish.skip.noReader` ("The text reader
-is not downloaded.").
+`PolishDialog.tsx` gains the row *Find private info* (`review.polish.step.privacy`, "Find private
+info") after *Camera director*, only when the reader is downloaded. Its hint names the time:
+`review.polish.hint.privacy`: `{count, plural, =0 {Covers passwords, keys, codes and other private
+text, and bleeps secrets said aloud. Less than a minute on this PC.} one {Covers passwords, keys,
+codes and other private text, and bleeps secrets said aloud. About {n} minute on this PC.} other
+{Covers passwords, keys, codes and other private text, and bleeps secrets said aloud. About {n}
+minutes on this PC.}}`, with §5.11's first estimate. When this project's last Find already read the
+whole screen with the same kinds and reader (`privacy.find`, not stopped, with no failed reads), the
+hint is `review.polish.hint.privacyChecked`
+("Already checked on screen. Listens to the new captions for secrets said aloud.") and Polish only
+listens (§14.5).
+
+It is on in `DEFAULT_POLISH_OPTIONS` and read as off from saved options (`readPolishOptions`,
+`src/shared/editor/polish.ts:393`), like every step added after options were saved. While it runs,
+Polish's progress shows Find's phase lines (`privacy.run.look`, `read`, `follow`). Its result line in
+Polish's summary follows the other steps' style ("Smooth cuts at 4 cuts"):
+
+- `review.polish.result.privacy`: `{count, plural, =0 {Find private info: nothing private found}
+  one {Find private info: {n} private item} other {Find private info: {n} private items}}`;
+- `review.polish.result.privacyCheck`: `{count, plural, one {Find private info: {n} private item ·
+  {check} to check in Review} other {Find private info: {n} private items · {check} to check in
+  Review}}` (`check` formatted by `fmt.count`);
+- `review.polish.result.privacyListened`: "Find private info: already checked on screen; listened to
+  the new captions";
+- `review.polish.result.privacyUnfinished`: "Find private info did not finish. Find again before you
+  share the video." when it stopped, failed reads or ended early.
+
+Without the reader the step is skipped with `review.polish.skip.noReader` ("The text reader is not
+downloaded.").
 
 ### 2.11 The guide
 
@@ -586,31 +854,81 @@ step's own shot frame (§8.4). A hint under them (`privacy.guide.covered`): "The
 solid box in the video and in every screenshot." Blur shapes made before stay as they are.
 
 The shot viewer shows `privacy.guide.notChecked` ("Find private info has not checked this video.")
-above *Also send the screenshots* when that is ticked and the project has never been through Find.
+above *Also send the screenshots* when that is ticked and the project has never been through Find,
+and `privacy.guide.unfinished` ("Find private info did not finish on this video. Find again before
+you send the screenshots.") when the last Find stopped, failed reads or ended early. With the reader
+downloaded, the guide's save and copy area (PDF, HTML, Markdown, copy) shows the same two lines,
+each with *Find…* (`privacy.export.find`), so the guide's outputs are not silent either.
 
 ### 2.12 The export dialog
 
-A note above *Export* (P5 `PrivacyExportNote`), shown only when the project hides something or Find
-is running, so the dialog of a project without covers, bleeps or privacy shapes is unchanged.
+**What is counted.** One unit everywhere: a **private item** is one Review group of found covers,
+one cover the user drew, or one group of private bleeps (`privateItems`, §16.0). The *Private info*
+section, Find's result, Review's count, the export note and Polish all count it, so their numbers
+agree. Ordinary bleeps (swear words) are not private items. Blur and pixelate shapes are not counted
+as hidden: they have their own line, because §3.2 shows they can be read back.
+
+A note above *Export* (P5 `PrivacyExportNote`). It shows only when one of its lines applies, so the
+dialog of a project without covers, private bleeps or privacy shapes, opened by a user who never
+downloaded the reader, is unchanged.
 
 | Key | English |
 |---|---|
-| `privacy.export.hides` | `{count, plural, one {This video hides # private item.} other {This video hides # private items.}}` |
-| `privacy.export.toCheck` | `{count, plural, one {# is still to check.} other {# are still to check.}}` |
+| `privacy.export.hides` | `{count, plural, one {This video hides {n} private item.} other {This video hides {n} private items.}}` |
+| `privacy.export.toCheck` | `{count, plural, one {{n} is still to check.} other {{n} are still to check.}}` |
 | `privacy.export.review` | Review |
-| `privacy.export.running` | Find private info is still running. The export covers only what it has found so far. |
+| `privacy.export.weak` | `{count, plural, one {{n} blurred or pixelated area can sometimes be read back.} other {{n} blurred or pixelated areas can sometimes be read back.}}` |
+| `privacy.export.weakTurn` | Turn them all into covers |
+| `privacy.export.notChecked` | Find private info has not checked this video. |
+| `privacy.export.find` | Find… |
+| `privacy.export.unfinished` | Find private info did not finish: it read this video up to {time}. Find again before you share it. |
+| `privacy.export.thinned` | `{count, plural, =0 {Find read part of this video less often, so it may have missed text there.} one {Find read {n} minute of this video less often, so it may have missed text there.} other {Find read {n} minutes of this video less often, so it may have missed text there.}}` |
+| `privacy.export.saidRemoved` | `{count, plural, one {{n} secret said aloud is no longer bleeped.} other {{n} secrets said aloud are no longer bleeped.}}` |
+| `privacy.export.running` | Find private info is still running. This export does not include what it is finding. Wait for Find, or stop it to cover what it found so far. |
 | `privacy.export.wait` | Wait for Find |
+| `privacy.export.stopAndExport` | Stop Find and export |
 | `privacy.export.captionsChanged` | The captions changed after Find listened to them. Find again to check what is said. |
 | `privacy.export.findAgain` | Find again… |
+| `privacy.export.fromOriginal` | The video this was made from has covers this copy does not have. |
+| `privacy.export.bringOver` | Bring them over |
 | `privacy.export.recordingsOff` | The original recordings are not saved while this video hides something. |
 | `privacy.export.recordingsSkipped` | The timeline was not saved: it used the original recordings, and this video hides parts of them. |
 
-- *Review*, *Wait for Find* and *Find again…* close the dialog first and then open Review, keep the
-  dialog open with Export disabled until Find ends, or open §2.5 (finding 30).
+- `hides` shows when there is at least one private item, with `toCheck` when suggestions wait.
+- `weak` shows when the project has blur or pixelate shapes; *Turn them all into covers* turns them
+  into covers in one undo step, as in the *Private info* section (§2.1).
+- `notChecked` shows when the reader is downloaded (the user has opted into the feature) and the
+  project has no `privacy.find`. Users without the reader see no change.
+- `unfinished` shows when the last Find stopped, failed reads or ended early (`FindRecord.stopped`,
+  `failed`, `readTo`), with `{time}` its `readTo`. `thinned` repeats Find's line from
+  `FindRecord.thin`. `saidRemoved` shows when private bleeps Find made (`FindRecord.saidIds`) are gone,
+  for example removed by an older Flown.
+- `running` shows while Find runs for this video, with two buttons. *Wait for Find* keeps the dialog
+  open with *Export* disabled until Find ends and its results are applied. *Stop Find and export*
+  stops Find, applies what it found as one undo step (the *Stop* path of §5.10), then exports. An
+  export never starts while Find runs without one of these.
+- `fromOriginal` shows on a copy (`copyOf`) whose original has covers or private bleeps this copy
+  lacks (main compares, §5.10). *Bring them over* adds them as suggestions in one undo step.
+- *Review*, *Find…*, *Find again…* and *Bring them over* close the dialog first and then open Review
+  or the Find dialog (finding 30).
 - In *Also save › Timeline*, the *Uses: The original recordings* choice is disabled with
-  `privacy.export.recordingsOff` as its description while the project hides something (§9 row 10). A
-  preset or saved bundle choice of *The original recordings* loads unchanged; Export goes ahead and
-  the done view lists `privacy.export.recordingsSkipped`.
+  `privacy.export.recordingsOff` as its description while `hidesSomething` (§9 row 10); that line is
+  driven by `hidesSomething` alone, not by the count above. A preset or saved bundle choice of *The
+  original recordings* loads unchanged; Export goes ahead and the done view lists
+  `privacy.export.recordingsSkipped`.
+
+**Copies made before Find.** Short clips, vertical and square versions, Duplicate and shorter
+versions are separate projects on the same recording (`copyOf`, `clipOf`). After Find, and after
+*Keep covered* or *Done reviewing*, on a project that has copies, Find's result line and Review's
+header offer:
+
+| Key | English |
+|---|---|
+| `privacy.copies.offer` | `{count, plural, one {Also cover the copy made from this video} other {Also cover the {n} copies made from this video}}` |
+| `privacy.copies.done` | `{count, plural, one {Covered the copy made from this video. Its covers wait in its Review.} other {Covered the {n} copies made from this video. Their covers wait in their Review.}}` |
+
+It adds this video's covers and private bleeps to each copy, as suggestions, through main (§5.10).
+Covers are in source seconds of the shared `screen.mp4`, so they are copied as they are.
 
 ### 2.13 Captions, translations and transcription
 
@@ -622,19 +940,28 @@ is running, so the dialog of a project without covers, bleeps or privacy shapes 
   *listen*, or the project has private bleeps, `privacy.transcribe.hears`: "The service hears
   everything said in the video, secrets too. Bleeps apply only to what Flown makes from it." The
   sound is not muted (decision 7).
-- **Bleeps list**: private bleeps are listed in the Captions tab's bleeps list as
-  `privacy.bleep.item`: "Secret said aloud: {kind}, {start}" and never show the word.
+- **Publishing pack** (`PublishDialog.tsx`): the dialog shows the stored text the user edits; when a
+  spoken secret's form is in it, `privacy.publish.masked` says "Secrets said aloud show as •••• when
+  this text is copied, saved or shared." Copy, the sidecar description and share post the masked
+  text (§7.5).
+- Private bleeps have no list of their own in the Captions tab (it has none at `37f9355`); they are
+  Review rows (§2.7).
 
 ### 2.14 Settings › Private info
 
-A new section in Settings (`SettingsSection` gains `'privacy'`, after `'localAi'`;
-`src/renderer/src/settings/SettingsDialog.tsx:22`). The nav label is `settings.privacy.title`
-("Private info").
+A new section in Settings. Settings has no navigation: its sections are stacked children of
+`.settings-body` (`src/renderer/src/settings/SettingsDialog.tsx:57-69`). `PrivacySettings` is placed
+after `LocalAiSection`, with its own heading `privacy.settings.title` ("Private info"), and
+`SettingsSection` gains `'privacy'` (`:22`) so the palette and *Find private info…*'s reader line can
+open Settings scrolled to it (`reveal`, as `LocalAiSection` does). The English guard's
+`settings-NN` captures are numbered by child index (`tests/e2e/uiTour.cjs:427-435`), so the sections
+after it shift by one; §12.2 says how the guard check aligns them.
 
 | Key | English |
 |---|---|
+| `privacy.settings.title` | Private info |
 | `privacy.settings.reader` | Text reader |
-| `privacy.settings.readerAbout` | Reads text on screen on this PC: PaddlePaddle's PP-OCRv6 models (Apache-2.0), 27.6 MB, from Qbexel's copy. |
+| `privacy.settings.readerAbout` | Reads text on screen on this PC: PaddlePaddle's PP-OCRv6 models (Apache-2.0), a 27.6 MB download from Hugging Face (Qbexel's copy, or PaddlePaddle's own files). |
 | `privacy.settings.readerReady` | Downloaded. |
 | `privacy.settings.readerNone` | Not downloaded. |
 | `privacy.settings.readerDamaged` | The downloaded files are damaged. Download them again. |
@@ -647,20 +974,25 @@ A new section in Settings (`SettingsSection` gains `'privacy'`, after `'localAi'
 | `privacy.settings.regions` | Phone numbers from |
 | `privacy.settings.colour` | Colour of new covers |
 | `privacy.settings.withPolish` | Polish finds private info when this is on in its options. |
+| `privacy.settings.unavailable.helper` | The text reader cannot run on this PC. Flown's installation may be damaged; installing it again may help. |
+| `privacy.settings.unavailable.cpu` | The text reader cannot run on this PC's processor. |
 
 The names and never-hide lists are kept in `editor-prefs.json` under the new key `privacy` (§4.5).
-They are private: they never go to logs or diagnostics (§10.6).
+They are private: they never go to logs or diagnostics (§10.6). The Windows reader of §5.13 has no
+control and no message while `WINDOWS_READER_ALLOWED` is false.
 
 ### 2.15 Command palette and shortcuts
 
-Three commands in `COMMAND_LIST` (`src/shared/editor/commands.ts:42`), category *Add* and *View*, with
-no default key (`DEFAULT_KEYMAP` unchanged, as every wave-10 to wave-12 command):
+Five commands in `COMMAND_LIST` (`src/shared/editor/commands.ts:42`), categories *Add*, *Edit* and
+*View*, with no default key (`DEFAULT_KEYMAP` unchanged, as every wave-10 to wave-12 command):
 
 | Command id | Title (`commands.title.<id>`) | Keywords |
 |---|---|---|
-| `addCover` | Add a cover | privacy hide redact secret password solid box |
-| `findPrivate` | Find private info… | privacy redact secret password email key token scan |
+| `addCover` | Add a cover | privacy hide redact secret password solid box blur pixelate censor mask black out |
+| `findPrivate` | Find private info… | privacy redact secret password email key token scan blur censor mask |
 | `peekCovers` | Peek under covers | privacy show hidden covers |
+| `coverStartHere` | Start the selected cover here | privacy cover trim start begin playhead |
+| `coverEndHere` | End the selected cover here | privacy cover trim end stop playhead |
 
 They sit on `WAITING_COMMANDS` (§12.3) until the part that makes them work is merged, so the palette
 and the shortcuts editor do not change before integration.
@@ -690,10 +1022,10 @@ committed scripts. Where this version differs from the first it says so (§19).
 |---|---|---|---|
 | D1 | What hides the text | A solid fill, its colour from the ring around the text (§8) | Blur and pixelate: recovered by hidden Markov models (Hill et al., PoPETs 2016(4):403-417), by image recognition (McPherson et al., arXiv 1609.00408: 57% against 16×16 mosaics), by Depix and Unredacter, and from video because motion shifts the mosaic grid (Positive Security, 25 Jan 2022; Jeff Geerling, 15 Apr 2025). Screen recordings are the worst case: the text scrolls under the effect and the font is known. Flown's own first version read codes back from its blur and pixelate. |
 | D2 | Where the fill happens | In the screen picture after the crop and grade (`compositor.ts:169`), and again on the output | Only on the output: blur and pixelate shapes, magnifier lenses, motion-blur sub-frames, the title card's blurred background and the Glass caption look all sample the screen picture before the output; a secret next to a cover would leak through them. Only in the source: the recording files are never changed. |
-| D3 | How covers move | A path of boxes over time, from the look pass's shifts and the reader's positions (§5) | A fixed box per read: uncovers text during every scroll. Optical flow over the whole frame: too slow on a laptop and wrong on text. Following by OCR every frame: 2.5 s a frame (§5.11). |
-| D4 | When a cover ends | Only on evidence the text is gone: a read finds no part of it and the template search fails (§5.8) | At the next change in its region: a scroll would end it with the text still on screen (the first version's blocker). A fixed time: either too short or too long. |
+| D3 | How covers move | A path of boxes over time, from the look pass's shifts and the reader's positions (§5); between two analysed frames where the box moved, a key holds the union of both boxes (§4.2) | A fixed box per read: uncovers text during every scroll. Optical flow over the whole frame: too slow on a laptop and wrong on text. Following by OCR every frame: 2.5 s a frame (§5.11). Keys only at analysed frames: at 60 fps the frame between two of them showed text half a step past its cover. |
+| D4 | When a cover ends, and starts | Only on evidence the text is gone, in both directions: a read finds no part of it and the template search fails, or a page change with no match, or the box has left its region (§5.8) | At the next change in its region: a scroll would end it with the text still on screen (the first version's blocker). A fixed time: either too short or too long. Stopping the backward walk at the first frame with no match: a tooltip over the text, or a caret, started the cover too late. |
 | D5 | Where the text rules run | In main, on the reader's lines; only covers reach the renderer (§5.7) | In the renderer: the screen's text would sit in the renderer's memory and could reach React state, logs or a crash report. |
-| D6 | Which reader | `ssw-ocr.exe` with tract and PaddlePaddle's own PP-OCRv6 ONNX files (decision 1) | ONNX Runtime: +5.4 MB and cannot be downloaded, because nothing downloaded may run. Windows.Media.Ocr: needs package identity (MSIX or a package with external location); a later option after decision 8. Tesseract: weaker on screen text and on small fonts. RapidOCR's conversions: their licence covers only some files. |
+| D6 | Which reader | `ssw-ocr.exe` with tract and PaddlePaddle's own PP-OCRv6 ONNX files (decision 1); Windows.Media.Ocr built into the same helper behind `WINDOWS_READER_ALLOWED = false` (§5.13) | ONNX Runtime: +5.4 MB and cannot be downloaded, because nothing downloaded may run. Windows.Media.Ocr alone: its accuracy on screen text, its speed and its behaviour from an unpackaged helper are not measured; decision 8 measures them before it is offered. Tesseract: weaker on screen text and on small fonts. RapidOCR's conversions: their licence covers only some files. |
 | D7 | Which models | tiny det, tiny rec, and small rec for the careful pass (careful-long, question 16) | small det: 2.4 s a frame for 0.4 points more line coverage. medium: 12.7 s a frame. tiny alone: misses a mangled key on the held-out set. |
 | D8 | How Find reports | Suggestions in the project, reviewed in Review mode, one row per text (§2.7) | A separate list: Review already has keyboard rules, bulk work in one undo step, previews and the export note's count. One row per cover: a scrolled email gives dozens of rows. |
 | D9 | Check rows | Drawn, listed first, counted in the export note | Not drawn until checked: a miss is worse than an extra box (decision 2). |
@@ -706,6 +1038,14 @@ committed scripts. Where this version differs from the first it says so (§19).
 | D16 | Time moves of followed covers | Refused; only the ends change (§2.2) | Moving the whole path in time: moves the cover off the text it was made for. |
 | D17 | Unlabelled random strings | Off; a Check suggestion when on (§6.12) | On: 2,193 false hits in 368,134 lines of text with nothing planted. |
 | D18 | Where Find's per-project choices live | `Project.privacy` (§4.3), defaults in Settings | Only in Settings: Find again must use what the last Find used. |
+| D19 | One coordinate space for drawing covers | `project.covers` in whole-frame coordinates; `cropProject` maps them into the view like shapes; the drawing code maps view boxes straight to picture pixels (§4.8, §8.1) | Mapping again through the crop in `coverScreen`: the scene's project is already the crop's view (`crop.ts:305-311`), so every cropped project would draw its covers in the wrong place. Not mapping in `cropProject`: covers would be the one item of the view in another space than shapes, handles and the outline. |
+| D20 | Where the text rules run in main | A `worker_threads` worker with a time limit per read (§10.3) | Main's event loop: a line built to trip a backtracking pattern would freeze the whole app, autosave included. |
+| D21 | What a removed suggestion suppresses | Its own path: a new suggestion of the same kind is dropped only when its box lies inside the removed path at every key (§5.10) | The union box and time range of the removed cover: removing one false hit on a scrolled list stopped every later hit of that kind in that area for minutes. |
+| D22 | How long the screen's text lives in main | During Find, and folded text only for at most 10 minutes after it, for *Cover this text everywhere* (§5.7) | No cache: *Cover this text everywhere* right after Find would read the whole video again (about 7 minutes for 20). For the session: a renderer crash or a forgotten close kept secrets in memory with no limit. |
+| D23 | Cover widths | Rounded up to steps of 4 character widths plus 0-2 at random per group (§6.1) | The text's own width: a cover's width gives the hidden text's rendered width, enough to rank names and tell a PIN's length (the redaction-width attack). |
+| D24 | Texts made from captions | Masked in one view of the project wherever they are drawn or leave Flown (`privateView`, §7.5; question 19) | Rewriting the stored text (the settle step of decision 7 as written): a false hit's masking could not be undone. |
+| D25 | Find's lifetime | One Find in Flown at a time, owned by the open editor; leaving asks first and applies what was found (§2.6, §5.1) | Running on after the editor closes: nothing would apply its results, and two projects could run two helpers of up to 700 MB each. |
+| D26 | Following's protocol | A follow session in the helper that decodes each frame once and answers every track of a frame together; the walks stay in main (§5.8) | One `follow` per hit over a range with candidates fixed in advance: the speed guide and re-anchoring depend on the previous frame's result, and 20 hits on one page decoded the same frames 40 times. The helper computing the walks itself: the lost areas, evidence of absence and re-anchoring by reads would be written twice, in Rust and in P4's tested TypeScript. |
 
 ### 3.3 What this version adds to the first
 
@@ -718,10 +1058,67 @@ committed scripts. Where this version differs from the first it says so (§19).
   dash runs, which left those lines 88-93% covered.
 - The legacy shapes are written per path piece, not per cover (§4.6).
 - Multi-select, group edit, group nudge and the group clipboard include covers (§14.4).
-- Re-reads and following seek to the nearest key frame (§5.6).
+- Re-reads and following seek to the nearest key frame (§5.5, §5.8).
 - The guide's *Blur an area…* takes its colour from the step's own shot frame (§8.4).
 - A16, the rendered tracking set, and the A2 variants are end-to-end tests (§17.3).
 - Every numbered test is its own test (§17).
+
+### 3.4 What the reviews of this version changed, and where this design disagrees
+
+Four reviews (product, engineering, security, lessons) read the first draft of this version. Every
+code claim they made was checked at `37f9355` and held. Taken:
+
+- **Every second frame at 60 fps** (all four): a key between two analysed frames holds the union of
+  both boxes; starts and ends reach the source frame next to the analysed one (§4.2, §5.8); tests 186
+  and 187, and A16's fast scroll checked frame by frame.
+- **The crop mapped twice** (engineering, security): one coordinate rule (D19, §4.8, §8.1); test 15
+  builds its scene with `cropView`; A2g.
+- **Find's lifetime** (product, engineering, security, lessons): D25, §2.6, §5.1.
+- **Export during Find** (product, engineering): the note's sentence was false; it now offers *Wait
+  for Find* and *Stop Find and export* (§2.12); A18.
+- **The backward walk, typed text, lost areas and short texts** (engineering, security, lessons):
+  §5.8's backward evidence, check reads, the typing rule and the 2-D lost area whatever the
+  candidates scored.
+- **The helper's protocol** (engineering, lessons): threads, out-of-band commands, a careful event,
+  a follow session, restarts from the next read (§5.5, §5.6, §5.8, §16.0).
+- **Budgets** (engineering): fixed detector buckets measured here, plans kept for the whole Find,
+  every read decode counted, phases so that at most three threads are busy (§5.4, §5.5, §5.11).
+- **Privacy of the text** (security): rules in a worker (D20), retention (D22), widths (D23), helper
+  stderr and panics (§10.4, §10.6), caps that answer `partial` (§10.3), suppression by path (D21),
+  WER for installs for all users and at run time (§10.5), IPC checks (§10.7).
+- **Review without fatigue** (product): places as parts, *Peek while reviewing* with V and a
+  magnified view, *Keep covered* and *Uncover* with a confirm on bulk, one counting unit, thinned
+  spans shown, unfinished Finds shown, copies made before Find, cover outlines in the editor,
+  resizing the whole path, *Start here* and *End here*, multi-selection's states (§2).
+- **Catalogue fixes** (product, engineering): no `#` in any message (rule 17 of
+  `output-and-languages.md`, `scripts/i18n/lib/catalogue.cjs:114`); sentences naming a kind select on
+  the kind's id; the keys `KIND_WORDS` and `LOOK_CLASS_WORDS` need (§12.1).
+- **Spoken forms** (lessons): built from the hit's own words, numbers as digit strings, word
+  boundaries (§7.3). **Stored texts** (engineering): question 19 and D24.
+- **Gaps in the parts** (lessons, engineering): the reader-state and progress stubs, the tracking
+  fixtures script, the timeline flush seam and the runner cases are contracts items; the waiting
+  commands are split per part (§16.0, §12.3).
+
+Where this design disagrees, or chose between the reviews:
+
+- **Slack instead of union keys.** The product review proposed a slack of half a look step. At 120 fps
+  (step 4) half a step does not reach the next key, and a larger slack widens every cover, the user's
+  too, at both ends. The union key is data: legacy shapes, Home thumbnails and filmstrip tiles see it
+  with no new logic.
+- **Following computed in the helper** (lessons) or **in main with a session** (engineering): D26
+  takes the session.
+- **No cache of the screen's text** (security): D22 keeps folded text for at most 10 minutes, the
+  security review's own fallback, so *Cover this text everywhere* right after Find does not read the
+  video again.
+- **Showing the text read under a cover, masked, with press to show** (product, optional): not done;
+  the screen's text stays out of the renderer (D5). The dialog says when nothing was read.
+- **Disabling *Cover this text everywhere…* without the reader** (product): the dialog offers the
+  download instead, which is one step shorter; the button stays enabled.
+- **Extending covers to the field or column** (security): a read gives lines, not fields, so only the
+  width rounding of D23 is done; §2.9 says a cover can still show roughly how long the text is.
+- **A static ReDoS checker such as recheck** (security): not added as a dependency; P3 writes a small
+  check for nested and overlapping quantifiers, and the worker's time limit is the guarantee (§10.3).
+- **Crop as hiding** (security): question 18. **The three blur texts** (product): question 17.
 
 ---
 
@@ -766,15 +1163,16 @@ export interface Cover {
   missed?: true
 }
 
-/** A place a suggestion was removed from: Find again suggests nothing of `kind` inside it. */
+/**
+ * A suggestion the user uncovered (§5.10): its own path. Find again does not suggest `kind` where a
+ * new path lies inside this one's drawn box at every key.
+ */
 export interface RejectedPlace {
   kind: PrivateKind
   start: number
   end: number
-  x: number
-  y: number
-  w: number
-  h: number
+  /** The removed cover's path, as `Cover.path` (§4.2). */
+  path: string
 }
 
 /** What the last Find did (§5.10). Holds no text. */
@@ -790,6 +1188,14 @@ export interface FindRecord {
   /** Areas it could not read (§5.6). */
   failed?: number
   stopped?: true
+  /** Source seconds up to which the screen was read, when it stopped before the end. */
+  readTo?: number
+  /** Spans read less often than planned (§5.4): "start end" pairs joined by ";", source seconds. */
+  thin?: string
+  /** Suggestions not added because a removed path of the same kind held them (§5.10). */
+  suppressed?: number
+  /** Ids of the private bleeps this Find made, at most 2,000 (§2.12 `saidRemoved`). */
+  saidIds?: string[]
 }
 
 /** Find's choices for this project (§2.5). Absent: Settings' defaults. */
@@ -829,8 +1235,26 @@ change; a private bleep is a bleep whose `word` starts with `:` (§4.4).
   first key's box. A cover is active on `[start, end)`.
 - **Slack**: a cover is drawn at picture time `t` when it is active at any time in
   `[t - s, t + s]` with `s = 0.5 / capture.fps + 0.001` (the slack privacy shapes use,
-  `shapesLayer.ts:43`), and its drawn box is the union of its boxes over that window. A decoder that
-  shows the next or the previous frame never shows a line the cover moved off.
+  `shapesLayer.ts:43`), and its drawn box is the union of its boxes over that window. It absorbs the
+  difference between a picture's time and its source frame's time; it does not reach a neighbouring
+  frame.
+- **Between analysed frames** (the rule that makes a path cover every source frame). Find places a
+  box only on analysed frames (every second frame at 60 fps, every fourth at 120). Text that moves
+  between two analysed frames `a` and `b` is, on the source frames between them, somewhere between
+  its box at `a` and its box at `b`. So whenever a walk writes different boxes at `a` and `b`, it
+  also writes a **union key** at the first source frame after `a` (`t(a) + 1 / fps`, rounded down to
+  the millisecond) holding `union(box(a), box(b))`; the key at `b` follows. When `b` is just one
+  source frame after `a` (step 1), no union key is needed and none is written. `stepKeys`
+  (`coverPath.ts`, contracts) is the one function that turns a walk's placements into keys, and every
+  path Find, *Follow* or *Cover this text everywhere* writes goes through it.
+- **Starts and ends** follow the same rule. A found cover starts at the first source frame after the
+  last frame proven to be without the text (§5.8), not at the next analysed frame, and its first key
+  there holds the union of its first placed box and that box moved back by the move the look pass saw
+  between the two frames. It ends one analysed frame after the first frame without a match (§5.8;
+  `end` is exclusive): that frame, which may still show a fading glyph, and the source frames up to
+  the next analysed frame stay covered.
+- Because these are keys like any other, the legacy shapes (§4.6), Home thumbnails (§9 row 17), the
+  filmstrip tiles (row 18) and the output pass (§8.2) need nothing more.
 - **Rounding**: `writePath` writes x and y rounded down and x + w and y + h rounded up to 4 decimals
   (0.19 px at 1920), so a written path never shrinks a box. `t` is rounded to the millisecond, down
   for the first key and to the nearest for the others; `start` rounds down and `end` up.
@@ -838,14 +1262,22 @@ change; a private bleep is a bleep whose `word` starts with `:` (§4.4).
   (`src/main/projectsIpc.ts:37`), which puts every number of an array on its own line. A 2,000-cover
   project with 50 keys each is about 3.5 MB as strings and about 14 MB as arrays.
 - **Limits**: at most `MAX_COVERS = 2000` covers and `MAX_KEYS = 200000` keys in a project. Find
-  never writes more (§5.10, `mergeCovers`).
+  never writes more (§5.10, `mergeCovers`, `simplifyKeys`). Union keys count toward the limits; a
+  10 s scroll at 30 analysed frames a second gives about 600 keys.
+- **Simplifying keys** (`simplifyKeys(covers, maxKeys)`, contracts): while the total is over
+  `maxKeys`, the cover with the most keys has its neighbouring keys merged in pairs, each pair
+  replaced by one key at the first one's time holding the union of both boxes. The longest paths are
+  simplified first, so no cover drops to one key while a longer one keeps more. Merging only grows
+  boxes.
 
 ### 4.3 Readers (`src/shared/privacy/coverData.ts`, contracts, in full)
 
 - `readCovers(raw: unknown, duration: number): Cover[] | undefined`: one linear pass (finding 17).
   - Drops anything that is not an object, or has no string id (or a repeated one), no finite
-    `start < end`, or a path that does not parse. Clamps times to `[0, duration]`; drops a cover
-    shorter than 0.02 s.
+    `start < end`, or a path that does not parse. Clamps times to `[0, duration]`. A cover shorter
+    than 0.02 s (one frame at 60 fps is 16.7 ms; a cover clamped at the recording's end can be
+    shorter) is **widened**, never dropped: to 0.02 s about its middle, held inside the recording.
+    The writers do the same before writing, so a one-frame hit survives a write and a read.
   - Keeps `color` when it is `#rrggbb`, else `COVER_DARK` (`'#1c1c22'`, the `--surface-2` token).
   - Keeps `found`, `kind`, `group` (1-32 characters of `[A-Za-z0-9_-]`), `lost`, `thin` and `missed`
     only when valid.
@@ -853,12 +1285,17 @@ change; a private bleep is a bleep whose `word` starts with `:` (§4.4).
   - A file Flown wrote never exceeds the limits of §4.2. A hand-edited file that does is read
     without losing cover: a cover over `MAX_KEYS_PER_COVER` keys becomes one key holding the union
     of all its boxes; past `MAX_COVERS`, covers are merged by `mergeCovers` (§5.10), which only ever
-    grows boxes and times. Nothing a file covers is ever uncovered by reading it (finding 20).
+    grows boxes and times; past `MAX_KEYS` in all (for example 2,000 covers of 150 keys each),
+    `simplifyKeys` (§4.2) merges neighbouring keys of the longest paths first. Nothing a file covers
+    is ever uncovered by reading it, and no cover is read coarser because of where it sits in the
+    file (finding 20).
   - Returns `undefined` for absent or empty input, so absent stays absent.
 - `readPrivacy(raw: unknown, duration: number): ProjectPrivacy | undefined`: kinds from
   `PRIVATE_KINDS` only, at most 5 regions of two upper-case letters, at most 200 names and 200
-  never-hide words of 1-80 characters each (NFC, one line), `find` with a valid ISO time, at most 5,000
-  rejected places with valid boxes and times. Unknown fields are dropped.
+  never-hide words of 1-80 characters each (NFC, one line), `find` with a valid ISO time (its `thin`
+  parsed like a path's times, at most 2,000 spans; at most 2,000 `saidIds`), at most 5,000 rejected
+  places whose paths parse with at most 400 keys each (a longer removed path is simplified with
+  `simplifyKeys` before it is written). Unknown fields are dropped.
 - `isPrivateBleep(b: Bleep): boolean`: `b.word.startsWith(':')`.
 - Both readers are idempotent: reading what they return gives the same value.
 
@@ -866,7 +1303,12 @@ change; a private bleep is a bleep whose `word` starts with `:` (§4.4).
 
 A private bleep is an ordinary `Bleep` (`types.ts:873-882`) with:
 
-- `word: ':' + kind`, for example `':card'`. `bleepKey` of any caption word never starts with `:`
+- `word: ':' + kind + ':' + group`, for example `':card:k3v9q2m8xa'`: the kind, then the group of the
+  said text (10 characters of `[a-z0-9]`, lower case because `readBleeps` lower-cases every word,
+  `studioData.ts:773`; 17 characters at most, under `BLEEP_WORD_MAX = 40`). `privateKindOf` and
+  `privateGroupOf` parse it; a word of the form `':' + kind` alone is read with no group. Bleeps of
+  one said text share the group, so they are one Review row (§2.7). `bleepKey` of any caption word
+  never starts with `:`
   (it keeps letters, digits and marks only, `src/shared/captions/cleanup.ts:362-363`), so no word
   ever matches it. An older Flown reads it with
   `readBleeps` (`src/shared/captions/studioData.ts:760`) and keeps it: it mutes the sound and, because
@@ -879,6 +1321,18 @@ A private bleep is an ordinary `Bleep` (`types.ts:873-882`) with:
 
 The kind marker survives every round trip through an older Flown, so `isPrivateBleep` needs no other
 field.
+
+**The bleep limit.** `readBleeps` keeps at most `MAX_BLEEPS = 2000` and, past it, the earliest by time
+(`studioData.ts:779`), so a project near the limit could lose its latest private bleeps on the next
+load. Two rules prevent it:
+
+- `saidBleeps` (§7.2) keeps the total at or under `MAX_BLEEPS`: past it, it merges private bleeps
+  that are close in time, across groups if it must (each merge only grows a bleep, and the merged
+  bleep takes the earlier group). When even that cannot fit, Find's result says so
+  (`privacy.run.saidFull`: "Too many bleeps: some secrets said aloud could not be bleeped. Remove
+  bleeps you do not need and find again.") and the hits it could not place are counted in Review.
+- `readBleeps` keeps private bleeps first when it must cut (then the earliest of the rest). A project
+  with no private bleeps is cut exactly as today.
 
 ### 4.5 Preferences
 
@@ -893,6 +1347,8 @@ export interface PrivacyPrefs {
   neverHide?: string[]
   /** 'ring' or a chip: 'dark' | 'light' | 'black' | 'white'. */
   colour?: 'ring' | 'dark' | 'light' | 'black' | 'white'
+  /** *Show where covers are* (§2.1). Absent: on. */
+  showCovers?: false
 }
 ```
 
@@ -938,27 +1394,63 @@ no covers, and otherwise a copy whose `shapes` end with the legacy shapes:
 - **Byte for byte**: a project with no covers is written exactly as today (test 20).
 
 What an older Flown shows: an opaque box with a mosaic under it over each piece; an older guide
-screenshot shows the same boxes. The residual risk (decision 5): during the rectangle's 0.15 s fades
-only the mosaic hides the text, and a piece's union box may hide more than the cover did.
+screenshot shows the same boxes. **What an older Flown (the `37f9355` code) still leaks**, stated as
+the residual risk of decision 5 and risk 7:
+
+- during the rectangle's 0.15 s fades only the mosaic hides the text, and a piece's union box may
+  hide more than the cover did;
+- its magnifier lens draws only `drawPrivacyLayer` inside the lens (`magnifierLayer.ts:152`), so a
+  lens over a cover shows the mosaic alone, magnified;
+- its Home thumbnails and timeline filmstrip draw raw frames;
+- its *The original recordings* timeline copies `screen.mp4`;
+- its captions mask a private bleep's words by time but keep each word's first letter (`maskWord`,
+  `cleanup.ts:842-847`), and leave a caption unmasked when its words and times do not line up
+  (`:896`);
+- it sends captions to AI unmasked (marks, cleanup, translation);
+- it lists a private bleep as an ordinary automatic bleep, which the user can remove there. This
+  version then sees it gone: `FindRecord.saidIds` lets the export note say so (§2.12).
 
 ### 4.7 Migration (`src/shared/engine/project.ts`)
 
 `migrateProject` (`:145`) destructures `covers` and `privacy` beside the other optional fields
-(`:151`) and adds `...opt('covers', readCovers(covers, duration))` and
-`...opt('privacy', readPrivacy(privacy, duration))`; before reading `shapes` it removes the legacy
-shapes (§4.6). A project without either field migrates to the same keys and bytes as before. Copies
-carry covers by spread: `projectCopy` (`src/shared/editor/duplicate.ts:75-90`), `clipCopy`
-(`src/shared/clips/clipCopy.ts:141-153`) and `short60.ts:269`. A clip copy keeps only the covers that
-overlap its range, mapped like its other items, and keeps the private Review rows waiting
-(`clipCopy.withinRange`, `:106-113`, skips the `private` kind; §14.3).
+(`:151`) and adds `...optional('covers', readCovers(covers, duration))` and
+`...optional('privacy', readPrivacy(privacy, duration))` (`optional`, `:133`); before reading `shapes`
+it removes the legacy shapes (§4.6). A project without either field migrates to the same keys and
+bytes as before.
+
+**Copies keep every cover.** Copies carry covers and private bleeps by spread: `projectCopy`
+(`src/shared/editor/duplicate.ts:75-90`), `clipCopy` (`src/shared/clips/clipCopy.ts:141-153`) and
+`short60.ts:269`. A clip copy or a shorter version keeps **every** cover, as it keeps every shape:
+`clipCopy` limits only the clips (`:141-153`), and the copy holds the whole recording
+(`src/main/projectCopy.ts:116-136` links or copies every media file), so widening its clips in its own
+editor brings back footage whose covers must still be there. Covers are in source seconds and cost
+nothing off screen. `clipCopy.withinRange` (`:106-113`) settles pending Review rows wholly outside the
+clip's range by Review's own Keep, as for every other kind; for a private row, Keep only drops
+`found`, so the cover stays and is drawn.
 
 ### 4.8 Crop
 
-`cropProject` (`src/shared/engine/crop.ts:247-267`) maps `covers` like `shapes`: every key's box through
-`rectToCrop` (`:149`), memoised per list in its own WeakMap beside `mapped` (`:225-236`). While the
-crop tool is open the scene has no crop and the whole frame (`Editor.tsx:507-511`), so covers show in
-place. A cover entirely outside the crop is dropped from the view (nothing of it is shown), never
-from the project.
+**One coordinate rule (D19).** `project.covers` is in whole-frame coordinates, always: the project
+file, Find, the box fields, Home thumbnails (§9 row 17), the filmstrip (row 18) and the legacy shapes
+(§4.6) use it as it is. The view the scene draws is `cropView(project, track)` (`crop.ts:305-311`):
+its `project` is `cropProject(project)` and every position in it is relative to the crop, as the
+scene's own comment says (`compositor.ts:41`). So:
+
+- `cropProject` (`src/shared/engine/crop.ts:247-267`) maps `covers` like `shapes`: every key's box
+  through `rectToCrop` (`:149`), memoised per list in its own WeakMap beside `mapped` (`:225-236`).
+  A cover entirely outside the crop is left out of the view (nothing of it is shown), never out of
+  the project.
+- `coverScreen` (§8.1) and `drawCoverOutput` (§8.2) take `scene.project.covers`, already in view
+  space, and **never map through the crop again**. The picture they fill is the crop's copy (or the
+  grade's canvas made from it), whose pixels are the view's; without a crop the view and the frame
+  are the same.
+- `CoverHandles` and the preview's outlines work in view space like the shapes' handles; a box edit
+  maps back with `fromCrop` before it is stored, as shape edits do.
+- While the crop tool is open the scene has no crop and the whole frame (`Editor.tsx:507-511`), so
+  covers show in place.
+
+Test 15 builds its scene through `cropView` and checks the filled pixels of a cropped and graded
+project; A2g exports one.
 
 ### 4.9 What older and newer Flown do with each field
 
@@ -967,7 +1459,8 @@ from the project.
 | `covers` | read, drawn, edited | kept on save (`...rest`), not drawn |
 | `~cover:` shapes | dropped on load, written on save | drawn as pixelate + opaque box, kept, editable |
 | `privacy` | read | kept on save, unused |
-| private bleep (`word: ':card'`) | private: listed under Private, masked everywhere | an ordinary bleep: muted, masked by time in captions |
+| private bleep (`word: ':card:<group>'`) | private: listed under Private, masked everywhere | an ordinary bleep: muted, masked by time in captions (first letter kept, `maskWord`) |
+| `privacy.rejected[].path`, `privacy.find.thin`, `saidIds` | read | kept on save, unused |
 | `maskedFor` on a track segment | used (§7.4) | dropped on save by its track reader; this version then masks that caption whole again (the safe side) |
 | `privacy` in `editor-prefs.json` | read | kept |
 
@@ -978,53 +1471,77 @@ from the project.
 ### 5.1 Overview
 
 Find runs as one long job in main (`src/main/privacy/scan.ts`, P4), like the scene scan
-(`src/main/sceneScan.ts`): below-normal priority, one per project, stopped by `stopAnalyses`
-(`src/main/analysisIpc.ts:210`) when the project closes or is deleted, and by *Stop*.
+(`src/main/sceneScan.ts`), at below-normal priority.
+
+**Lifetime (D25).**
+
+- **One Find in Flown at a time.** `findIpc.ts` holds one running scan for the whole app; a second
+  `privacy:find`, for this project or another, answers `{ ok: false, reason: 'busy' }`. *Follow what
+  is under it* and *Cover this text everywhere* use the same helper and the same queue, ahead of
+  Find's reads, so at most one helper runs.
+- **Find belongs to the open editor.** It is stopped by `stopAnalyses`
+  (`src/main/analysisIpc.ts:210`), which the editor calls when it closes (`player.ts:1229`) and
+  `projects:delete` calls (`projectsIpc.ts:105`), and by *Stop*. Its results are applied only in the
+  renderer, to the open store.
+- **Leaving asks first** (§2.6): confirming stops Find, waits for its partial result, applies it as
+  *Stop* does, and only then saves and leaves. Closing the window loses this run's results and
+  leaves `privacy.find` unchanged.
+- **Results land only where they belong.** `privacyRun` applies a `FindResult`, `FollowResult` or
+  *Everywhere* result only when its `projectId` and `requestId` equal the open project's current
+  request; anything else is dropped (test 247).
 
 ```
 renderer                         main (scan.ts)                          ssw-ocr.exe (helper)
-FindDialog ── find:start ──────▶ flush check, load project.json
-                                 open ───────────────────────────────▶ hash models, parse (§10.2)
-                                 look ───────────────────────────────▶ ffmpeg (look scale) → tiles, moves
-                                 ◀── look batches (no pixels, no text)
+FindDialog ── privacy:find ────▶ load project.json (saved first)
+                                 open ───────────────────────────────▶ read, hash, parse models (§10.2)
+                                 look ───────────────────────────────▶ look worker: ffmpeg (look scale)
+                                 ◀── look batches (no pixels, no text)    → tiles, moves
                                  planReads (P4 plan.ts, pure)
-                                 read ───────────────────────────────▶ ffmpeg (seek to key frame) → tiles,
-                                 ◀── lines: boxes, text, spans, ring      detector, recogniser, QR class
-                                 detectFrame (P3, pure) on every read
-                                 careful (lines to read again) ──────▶ small recogniser
-                                 ◀── second reads
-                                 follow ─────────────────────────────▶ gradient templates per part
-                                 ◀── positions per frame
+                                 read (one per command, ≤ 3 queued) ─▶ inference worker: ffmpeg seeks to
+                                 ◀── lines: boxes, text, spans, ring      the key frame → tiles, detector,
+                                                                          recogniser, QR
+                                 rules worker: detectFrame (P3, pure)
+                                 careful (lines to read again) ──────▶ small recogniser, ahead of reads
+                                 ◀── careful variants
+                                 followOpen / match (per frame) ─────▶ follow session: half-size frames
+                                 ◀── matches for every track            decoded once, templates per part
                                  found items (P4 found.ts): groups, paths, scores; no text
-◀── find:result (covers only) ── text forgotten
+◀── privacy:find result ──────── (covers only); folded text kept ≤ 10 min (§5.7)
 privacyRun: detectSaid on the
 captions (P3, in the renderer);
 one store.update (afterGestures)
 ```
 
 - The screen's text never leaves main and the helper. The renderer receives covers (boxes, times,
-  kinds, colours, groups), never text (D5).
+  kinds, colours, groups), never text (D5). The one exception is the user's explicit choice to add
+  a text read under a cover to the names to hide (§5.9).
 - The spoken rules run in the renderer on the captions it already holds (§7.2), so Polish can run
   them on the captions it has just made (decision 11).
 - Main flushes nothing itself: the renderer saves the project (`projects:saveSync`) before
-  `find:start`, and main reads `project.json` for `capture`, `width`, `height`, `duration` and the
-  file names. Covers and choices travel in the request.
+  `privacy:find`, and main reads `project.json` for `capture`, `source`, `width`, `height`,
+  `duration` and the file names. Covers and choices travel in the request.
+- **Phases.** Find runs its look pass first, then reads and follows minute by minute, so that at most
+  three threads are busy at once (§5.11).
 
 ### 5.2 The look pass (helper `look`, P2; planning in `look.ts`, P4)
 
 The look pass decodes every frame once at a small size and records, per analysed frame, which
 tiles changed and how each changed region moved. It holds no pixels and no text afterwards.
 
-- **Decode**: the helper runs the bundled `ffmpeg.exe` (path from main) inside a job object (§10.4):
-  `-hide_banner -nostdin -threads 2 -i screen.mp4 -map 0:v:0 -vf
-  "scale=W/k:H/k:flags=area,format=gray,showinfo" -f rawvideo -`. `showinfo` gives each frame's exact
-  `pts_time` and `iskey`, so every time in Find is a frame's own time, and the key frames are known
-  for the reads (§5.5).
+- **Decode**: the helper's look worker runs the bundled `ffmpeg.exe` (path from main) inside a job
+  object (§10.4): `-hide_banner -nostdin -loglevel error -threads 2 -filter_threads 1 -i screen.mp4
+  -map 0:v:0 -vf "select='not(mod(n\,STEP))',scale=W/k:H/k:flags=area,format=gray,showinfo" -f
+  rawvideo -`. Every frame is decoded (H.264 needs it) but only analysed frames are scaled.
+  `showinfo` gives each frame's exact `pts_time` and `iskey`, so every time in Find is a frame's own
+  time, and the key frames are known for the reads (§5.5). This is the only ffmpeg of Find with more
+  than one thread.
 - **Look scale** `k = max(4, ceil(sqrt(W·H / (480·270))))`: 480×270 for 1080p, 480×270 for 4K
   (k = 8), 640×180 for 7680×2160 (k = 12).
-- **Step**: every frame up to 30 fps; every second frame at 60 fps (`step = ceil(fps / 30)`). Text
-  that shows for less than two frames is not followed between reads; a read can still find it
-  (§5.4).
+- **Step**: every frame up to 30 fps; every second frame at 60 fps, Flown's default (`step =
+  ceil(fps / 30)`; `src/shared/recording/settings.ts:42`, the proxy is constant-rate,
+  `src/main/proxyArgs.ts:120-121`). The source frames between analysed ones are covered by the union
+  keys of §4.2. Text that shows for less than two frames is not followed between reads; a read can
+  still find it (§5.4).
 - **Tiles**: 8×8 look pixels (32×32 video pixels at 1080p). A tile changed when its mean absolute
   difference from the last analysed frame is over 2.0 levels or its largest over 24 levels.
 - **Regions**: changed tiles joined by 8-connectivity, merged when within 2 tiles, each as its
@@ -1059,46 +1576,85 @@ The editor already loads the cursor track (`projects:load`, `src/main/projectsIp
   0.3 s later.
 - **Scrolls**: notches mark when a region is expected to move; they seed the move search's direction
   when the profile NCC has two close candidates.
+- **Display scale** (`CursorTrack.scale`, `types.ts:62`; 1 when absent): at 150-200% a field and its
+  label are 1.5-2 times larger in video pixels. Every size given in screen pixels below is multiplied
+  by it: the typing read's box and the settle padding (§5.4) and the template search's radius
+  (§5.8).
 
 `cursor.json` holds no typed text (`src/main/recording/keystrokes.ts:1-6`, read only).
 
 ### 5.4 Which frames and areas to read (`planReads`, P4 `plan.ts`, pure)
 
-`planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number): ReadPlan`
-returns reads `{ t, areas: Box[], why }` in time order. A **unit** is one 1920×1088 tile's area; a
-read's cost is its area in units (at least one tile per area).
+`planReads(look: LookData, hints: ReadHints, size: Size, fps: number, scale: number, budget:
+number): ReadPlan` returns reads `{ t, areas: Box[], why, units }` in time order.
+
+**Cost.** The detector runs on fixed **buckets**: 640×352, 960×544 and 1920×1088 (§5.5). A read's
+cost is the buckets it actually runs, measured against the largest (`results/tract-buckets.txt`, one
+thread: 71-77 ms, 141-215 ms and 871-909 ms a run): **0.1, 0.2 and 1 unit**. Each area is padded up
+to the smallest bucket that holds it; an area larger than 1920×1088 is cut into 1920×1088 tiles;
+small areas of one read that fit together in one bucket are packed into it (shelf packing, a 32 px
+gap between them, no area cut). A unit with its lines and careful re-reads costs about 2.9 s (§5.6).
 
 1. **First frame**: the first non-black frame, whole.
 2. **Settle reads**: for each burst of changes in a region (changed frames less than 0.3 s apart), the
    first analysed frame at least 0.3 s after the burst in which the region is still, or the frame just
    before the next burst when it comes sooner. The area is the union of the burst's changed tiles,
-   padded by 64 video pixels.
+   padded by 64 × `scale` video pixels.
 3. **Scroll reveals**: during a move lasting over 1.0 s, every 0.75 s, the strip that came into the
    region since the last read of it.
-4. **Typing reads**: 0.3 s after each typing burst ends and after each paste: a 640×200 px box (at
-   the recording's pixels) around the click before the burst when positions are valid, else the
-   changed regions since the burst started.
+4. **Typing reads**: 0.3 s after each typing burst ends and after each paste: a (640 × 200) ×
+   `scale` px box around the click before the burst when positions are valid, else the changed
+   regions since the burst started.
 5. **Periodic reads**: the whole frame every 60 s in which no read covered half of it.
-6. **Budget**: `budget = ceil(duration / 8) × min(2, W·H / (1920·1080))` units (150 for 20 minutes
-   at 1080p). Over budget, steps 1, 2 and 4 are kept and steps 3 and 5 are thinned (reveals every
-   1.5 s, periodic every 120 s); covers made from thinned spans are marked `thin` (§2.2). Settle reads
-   of the same region within 1 s are merged before anything else is thinned. Nothing is dropped
-   silently: the plan counts what it thinned and the scan's result reports it.
-7. **Estimates** (§5.11): the dialog shows the first estimate from the recording's length, size and
+6. **Merging, always**: settle and typing areas of overlapping regions less than 1.0 s apart are read
+   once, at the later one's frame, over the union of their areas. Text shown for less than about a
+   second can be missed, and §2.9 says so (`privacy.notSee.brief`).
+7. **Budget**: `budget = ceil(duration / 8) × min(2, W·H / (1920·1080))` units (150 for 20 minutes at
+   1080p). Over it, in this order until it fits: reveals every 1.5 s, then periodic reads every
+   120 s, then settle and typing areas less than 3 s apart merged, then less than 5 s apart. A read
+   is never dropped: the plan stops thinning at twice the budget and runs what is left. Every span
+   whose reads were thinned is recorded (`ReadPlan.thinSpans`), covers made from it are marked `thin`
+   (§2.2), Find's result reports the thinned minutes (`privacy.run.thinned`), and `FindRecord.thin`
+   keeps the spans for the Covers row and the export note.
+8. **Check reads and partial reads** are added while Find runs: a walk asks for a check read of one
+   small area when it needs proof that text was not yet on screen (§5.8, about 0.1 unit each), and a
+   read that hit a cap is completed by extra reads of its unread areas (§10.3). Both count against the
+   budget and are reported with the rest.
+9. **Estimates** (§5.11): the dialog shows the first estimate from the recording's length, size and
    frame rate; the progress line replaces it with the second, from the plan's units and the measured
    look speed, once the look pass ends.
 
+`scale` is the cursor track's display scale (§5.3). The planned areas themselves are checked against
+whole-frame reads by R17: the reader must find the same items through them (§17.1).
+
 ### 5.5 Reading a frame (helper `read`, P2)
 
-- **Decoding**: reads are sent in time order, in batches of reads less than 10 s apart. For each
-  batch the helper starts ffmpeg at the key frame at or before the batch's first frame (`-ss <key t>
-  -i screen.mp4 -copyts`, the key frame from the look pass) and keeps only the planned frames
-  (`select` by `pts`), as RGB24 at full size. A read never decodes from the start of the recording.
+- **The helper's threads.** A stdin dispatcher reads commands; a **look worker** runs the look pass
+  with its own ffmpeg (§5.2); one **inference worker** runs reads, careful re-reads and follow
+  matches from one queue. `careful`, `release` and `cancel { id }` are handled by the dispatcher
+  between commands, never queued behind a read: `careful` goes to the front of the inference queue,
+  `release` frees a read's crops at once, `cancel` drops a queued command or stops a running one at
+  its next tile or frame. So a read waiting for its careful pass can never block the command that
+  would finish it.
+- **One read per command.** Main sends one `read { id, video, key, t, areas }` per planned read (the
+  ffmpeg path was given once, at `open`) and keeps at most 3 reads sent and not yet released, so
+  the helper holds at most 3 reads' line crops. One counter numbers every command; every event
+  carries the command id it answers.
+- **Decoding**: for each read the helper starts ffmpeg with `-threads 1 -filter_threads 1`, seeking
+  to the key frame at or before it (`-ss <key t> -i screen.mp4 -copyts`, the key frame from the look
+  pass; the proxy has one every 15 frames, `proxyArgs.ts:123`) and keeping only the planned frame
+  (`select` by `pts`), as RGB24 at full size. Reads less than 1.0 s apart share one ffmpeg run, which
+  decodes at most 60 extra frames (about 0.11 s, the cost of one more process). Measured
+  (`results/decode-speed.txt`, one thread): one such read costs 0.094-0.106 s of CPU and 0.16 s wall
+  with the process start. A read never decodes from the start of the recording, and the next read's
+  frame is decoded while the current one is inferred (two threads, §5.11).
 - **Too large**: a recording over 7680×4320 or 40 megapixels is refused before decoding (`tooLarge`,
   §10.3).
-- **Tiles**: each area is cut into tiles of at most 1920×1088 that overlap by 64 px, zero-padded to
-  multiples of 32. The detector runs on each tile with a concrete plan per tile shape (at most 4
-  shapes kept).
+- **Buckets and tiles**: each area is padded (with zeros) up to the smallest of the three detector
+  buckets that holds it, 640×352, 960×544 or 1920×1088; larger areas are cut into 1920×1088 tiles that
+  overlap by 64 px; small areas of one read are packed into one bucket (§5.4). The helper builds the
+  three detector plans once when it opens and keeps them for the whole Find: 0.37 s to build, 259 MB
+  peak with all three (`results/tract-buckets.txt`). No read ever builds a plan.
 - **Detector post-processing** (PP-OCRv6's own `inference.yml`): threshold 0.2, box threshold 0.4,
   unclip ratio 1.4, at most 3,000 candidates; minimum-area rectangles; a line tilted more than 2°
   is cut with a rotated crop.
@@ -1108,6 +1664,8 @@ read's cost is its area in units (at least one tile per area).
 - **Recogniser**: each line is scaled to height 48 and padded to the next width bucket of 320, 448,
   640, 896 or 1280 (concrete plans; tract runs symbolic widths 3.7-7 times slower). A line wider than
   1280 at height 48 is cut into 1280-wide chunks overlapping by 64, read, and joined at the overlap.
+  Both recognisers' five plans are built once at open and kept: tiny 0.23 s and 58 MB, small 0.53 s
+  and 188 MB (`results/tract-buckets.txt`).
 - **CTC decoding** with the model's character list (from its `inference.yml`); each character's
   x-range comes from its CTC columns (`scripts/privacy/ppocr.py:180-197`), mapped back to video
   pixels.
@@ -1115,18 +1673,26 @@ read's cost is its area in units (at least one tile per area).
   largest per-channel median absolute deviation as its spread (§8.4).
 - **QR codes**: rqrr on each area's grey image; the helper returns each code's quad and payload, which
   main classes and forgets (§6.9).
-- **Line crops** are kept in the helper until main sends `careful` or `release` for that read (§5.6),
-  at most 3 reads' crops at once.
-- **Answer**: `{ id, t, lines: [{ box, quad, variants: [{ model, text, conf, spans }], ring, spread }],
-  qr: [{ quad, payload }] }`, or `{ id, error }`. Reads answer in command order.
+- **Line crops** are kept in the helper until main sends `careful` or `release` for that read (§5.6);
+  main's limit of 3 reads in flight bounds them.
+- **Caps answer `partial`.** A read that reaches a cap (64 tiles, 3,000 detector candidates in a tile,
+  1,000 lines) stops there and answers `partial: true` with the areas it did not finish. Main splits
+  those areas and reads them as extra reads (§5.4); whatever still cannot be read becomes a lost area
+  counted in `failedReads` (§10.3). A dense spreadsheet or log is therefore read in more pieces,
+  never cut silently.
+- **Answer**: `{ id, read: { t, lines: [{ box, quad, variants: [{ model, text, conf, spans }], ring,
+  spread }], qr: [{ quad, payload }], partial?: Box[] } }`, or `{ id, error }`. Each answer names the
+  command it answers; main never relies on their order.
 
 ### 5.6 The careful pass, and what the reader measures
 
-Main runs the text rules (§6) on each line's tiny read and sends back `careful { id, lines }` for every
-line that has a rule hit, a confidence under 0.9, or a run of 16 or more token characters
-(`[A-Za-z0-9_\-+/.~]`) after cleaning (§6.2): **careful-long** (question 16). The helper reads those
-lines again with the small recogniser and adds the variant. Then main runs the rules on every variant
-and keeps the union of the hits (§6.1).
+Main runs the text rules (§6) on each line's tiny read and sends `careful { id, read, lines }` (its own
+command id, the read's id, the line indices) for every line that has a rule hit, a confidence under
+0.9, or a run of 16 or more token characters (`[A-Za-z0-9_\-+/.~]`) after cleaning (§6.2):
+**careful-long** (question 16). The helper reads those lines again with the small recogniser, ahead of
+any queued read, and answers with its own event `{ id, careful: ReadVariant[][] }` (one list per line
+asked, in the order asked), then frees that read's crops. A read with no line to re-read gets
+`release { read }`. Main runs the rules on every variant and keeps the union of the hits (§6.1).
 
 **Accuracy on the evaluation set** (ONNX Runtime 1.32, one thread, the stand-in rules of
 `scripts/privacy/rules.py`; `scripts/privacy/results/`). *Lines*: the reader alone, the share of each
@@ -1179,21 +1745,35 @@ O/0 and I/l/1. False hits: ordinary items touched, out of 255; stray covers.
 A full 1080p read with careful-long (37 lines, 11 of them read again) is therefore about
 1.14 + 37 × 0.020 + 11 × 0.096 ≈ **2.9 s** on one thread with the shipped profile.
 
+**Through the planned areas.** The first build measured R4 through a real scan, which cuts settle,
+typing and reveal areas, pads them by 64 px, tiles them and joins lines across tile edges: pattern
+recall 97.9 against 98.9 for whole frames, at the edge of its 1-point tolerance, and its report
+pointed at the tile and detector-scale path. This version checks that path on its own: R17 reads the
+24 evaluation frames through the areas `planReads` cuts (bucket-padded and packed) and requires
+pattern recall and padded coverage within 0.5 points of the whole-frame reads.
+
 **Failures.** Each read runs inside `catch_unwind`. A failed read answers `{ id, error }`: main marks
 its areas as a lost area from that frame until the next good read of them, and counts it for
-`privacy.run.failedReads` (finding 23). If the helper process dies, main starts it again once per
-Find, opens the models again and goes on from the failed read; a second death ends Find with what it
-has, as *Stop* does (§2.6).
+`privacy.run.failedReads` (finding 23). After any caught panic the helper drops and rebuilds its
+plans (about 1.1 s), because tract's state inside a panicked run is not trusted. If the helper process
+dies (a stack overflow or an allocation failure is not caught by `catch_unwind`), every read in
+flight is marked failed (a lost area each), main starts the helper again once per Find, opens the
+models again and goes on from the **next** planned read, so a frame that kills the helper is never
+read twice. A second death ends Find with what it has, as *Stop* does, with
+`privacy.run.failed.crashed` (§2.6).
 
 ### 5.7 From lines to suggestions (main, `scan.ts`, P4; the rules are P3's)
 
 - `detectFrame(lines, context)` (P3, §6) runs on every read with the read's lines (every variant),
   the rows and columns they form, the frame size, the kinds on, the regions, the names and never-hide
   lists. It returns hits `{ kind, rule, score, spans: { line, start, end }[], box }` where `spans` are
-  own spans (§6.1).
+  own spans (§6.1). It runs in a `worker_threads` worker (`src/main/privacy/rulesWorker.ts`, P4) with a
+  time limit of 2 s a read; on timeout main ends the worker, starts a new one, counts the read as
+  failed and covers its areas as a lost area (§10.3).
 - A hit's **cover box** is the union of its own spans' boxes, padded by max(3 px, 0.35 × line height)
-  vertically and max(that, one mean character width) horizontally, clipped to the frame (finding 22).
-  Keys and PEM blocks use their block's full width (§6.4).
+  vertically and max(that, one mean character width) horizontally, then widened to hide the text's
+  length (§6.1), clipped to the frame (finding 22). Keys and PEM blocks use their block's full width
+  (§6.4).
 - A hit's **group key** is its own text folded (§6.2), kept in main's memory only. Hits of one run
   with the same group key share one random group id (`group`, 12 characters).
 - QR codes give hits of kind `qr` with their quad's box padded by 4 modules' worth (the quiet zone).
@@ -1201,16 +1781,31 @@ has, as *Stop* does (§2.6).
 - Hits below 0.50 are dropped. A hit at 0.85 or more is `found: 'auto'`, else `'check'`. A
   suggestion's score is the highest of its reads while it is followed; a later read never lowers it.
 - Each hit is then followed (§5.8) into a path.
-- The texts, group keys, lines and templates are dropped when Find ends. Nothing of them is written,
-  logged or sent to the renderer.
+- **How long the text lives (D22).** The lines, the raw texts, the templates and the QR payloads are
+  dropped when Find ends. Only the **folded** text of each read line (§6.2), with its frame and box,
+  is kept in main's memory, for *Cover this text everywhere* (§5.9), and only for 10 minutes after
+  Find ends. It is cleared earlier on *Stop*, on `stopAnalyses` (the editor closing or the project
+  being deleted), when the renderer process goes away (`render-process-gone`) and when a new Find
+  starts (`forgetReads`). Nothing of it is written, logged or sent to the renderer.
 
 ### 5.8 Following
 
 Every hit starts at its read frame R with its cover box and its **parts**: its own box cut into equal
-parts no wider than 6 line heights each, at most 3. Main asks the helper to follow (`follow`), which
-decodes the frames it needs at half size (the template scale), seeking to key frames.
+parts no wider than 6 line heights each, at most 3.
 
-**Templates.** At R, each part's box padded by 25% of the line height, cut from the half-size grey
+**The follow session (D26).** Main opens one session per span of time it walks, in one direction:
+`followOpen { id, video, key, from, to, dir }`. The helper decodes the span's frames once, at
+half size in grey (the template scale), with `-threads 1`: forward in order; backward one key-frame
+interval (GOP) at a time, newest first, keeping at most two intervals in memory. Main registers each
+hit as a **track** with `track { session, track, t, parts }` (templates cut at frame `t`), then walks
+every track of the span together, one analysed frame at a time: `match { session, t, tracks: [{
+track, parts, candidates }] }` answers `{ id, matched: [{ track, parts: (number | null)[], best: {
+dx, dy, scale } | null, second: number }] }` for every track at once. So 20 hits on one page cost one
+decode of each frame, and main can feed each frame's candidates from the result of the frame before
+(the speed guide, re-anchoring). `closeSession` frees it. A frame costs about 3.1 ms to decode at
+half size (`results/decode-speed.txt`) and a few hundredths of a millisecond a part to match.
+
+**Templates.** At `t`, each part's box padded by 25% of the line height, cut from the half-size grey
 frame, as Sobel gradient magnitude. Gradient magnitude does not change when text is selected or
 inverted (dark mode, a highlight), so one template serves both.
 
@@ -1219,59 +1814,112 @@ inverted (dark mode, a highlight), so one template serves both.
 1. If no tile under the cover's box changed, the box holds (no key).
 2. **Candidates**: the moves of the regions overlapping the box at f (best and alternatives), no
    move, and the **speed guide**: the last placed move per frame times the frames since.
-3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 template
-   pixels.
+3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 × `scale`
+   template pixels (§5.3).
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
    more (one clear best match), and the placed parts agree within 2 px. The box moves by that
-   candidate; a key is written at f.
-5. **Not placed** while the region changed: the cover becomes a **lost area**. Its box at f is the
-   union of the box moved by every candidate. When no candidate scored 0.4 or more, it is the union
-   of the box and every changed region it overlaps, as a 2-D box (finding 4: never a band along one
-   axis). The last placed templates are tried at every later changed frame; one clear match places
-   the cover again.
+   candidate; `stepKeys` writes the key at f and, when the box moved, the union key before it (§4.2).
+5. **Not placed** while the region changed: the cover becomes a **lost area**. Its box at f is the 2-D
+   union of the box, the box moved by **every** candidate, and **every changed region the box
+   overlaps**, whatever the candidates scored (finding 4: never a band along one axis). A move that
+   is not among the candidates (a Page Down larger than half the region, a jump, a false 0.45 match
+   in dense text) therefore still lands inside the lost area, because the text stays inside the
+   region that changed. The last placed templates are tried at every later changed frame; one clear
+   match places the cover again.
 6. **Zoom inside the recorded app** (the whole region changed with no profile match): the parts are
    also tried at scales 0.8, 0.9, 1.1 and 1.25 about the region's centre before the cover is lost.
 
 **Evidence of absence.** A cover ends only when the text is shown to be gone:
 
 - its region changed at frame C, and
-- the next read covering its box or lost area, at frame S, finds no line holding the text (the folded
-  own text, or for a text of 12 characters or more, any third of it), and
-- the template search at S finds no part scoring 0.5 or more anywhere in the region.
+- the next read covering its box or lost area, at frame S, finds no line holding the text, and
+- the template search at S finds no part scoring 0.5 or more anywhere in the region, at scale 1 and
+  at the zoom scales of step 6.
 
-It then ends at the first changed frame from C on at which no part matches (at most 16 frames are
-checked; at S when more), plus one frame. Until then it goes on, placed or lost, with no time limit.
-A read that finds the same group key again re-anchors the cover there, and the walk backward from
-that read corrects the path to the last placed frame (the lost area between them stays).
+"Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
+§5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any
+third of it; or for a text of 5-11 characters, the text within edit distance 1 or any run of 4 of its
+characters; or for a shorter text, the text itself. One misread digit of a six-digit code therefore
+never ends its cover.
 
-**Backward walk.** From R back to the start: the box at f is the box at f + 1 moved back by the move
-the look pass found **between f and f + 1** (finding 3: never the move of f − 1 to f). The same
-placing and lost rules apply. It stops at the first frame f at which the region changed and no part
-matches: the cover starts at f + 1. A page change (30% or more of the frame changed,
-`SCREEN_RULES.page`, `src/shared/smart/screenChanges.ts`) with no match stops it as well. So text that
-scrolled into view before its first read is covered from when it appeared.
+It then ends at the analysed frame after the first changed frame e from C on at which no part scores
+0.5 (at most 16 frames are checked; at S when more): frame e itself, which may show a fading glyph,
+and the source frames up to the next analysed frame stay covered (§4.2). Until then it goes on,
+placed or lost, with no time limit. A read that finds the same group key again re-anchors the cover
+there, and the walk backward from that read corrects the path to the last placed frame (the lost
+area between them stays).
 
-**What this handles** (each is a case of A16, §17.3): scrolling lists and pages (vertical moves),
-horizontal scrolling, a window dragged across the screen (2-D moves), a sticky header (its tiles do
-not change, so covers in it hold while the body scrolls), a selection or highlight drawn over the text,
-zoom in the app, and toasts sliding over covered text (the cover is lost under the toast and placed
-again when it leaves).
+**Backward walk.** From R back to the start: the box at f is the box at the next analysed frame
+moved back by the move the look pass found **between f and that frame** (finding 3: never the move
+before f). The same placing and lost rules apply, and the walk **does not stop at the first frame
+where no part matches**: a tooltip, a hover highlight, the cursor, a toast or a caret over the text
+makes frames with no match while the text is still there. It goes on, placed or lost, until one of:
+
+- **evidence of absence going back**: at an earlier frame S′, a read covering the box or lost area
+  lacks the text (with the same generous rule) and the template search there fails at every scale.
+  When no read covers it, the walk asks for a **check read**: the box's padded area (or the lost
+  area) at the analysed frame before the earliest frame with no match, read alone (about 0.1 unit,
+  §5.4). A check read that finds the text re-anchors the walk, which goes on back;
+- a **page change** (30% or more of the frame changed, `SCREEN_RULES.page`,
+  `src/shared/smart/screenChanges.ts`) at a frame where no part matches;
+- the box has moved **wholly outside the region it moved with, or outside the frame**: the text
+  scrolled or was dragged into view there;
+- the first frame of the recording.
+
+The cover then starts at the first source frame after the frame proven absent, with the union key of
+§4.2. So text that scrolled into view, or sat under a tooltip, before its first read is covered from
+when it appeared.
+
+**Text typed or deleted in place.** Text that grows one character per keystroke (an email or a card
+number typed into a form, a key typed into a terminal, a code into a field) matches no part until
+most of a part is there, so the rules above would leave its first characters uncovered. So:
+
+- When the frames before R change only inside the hit's **line band** (the rows of its padded box,
+  from the line's left edge to the right edge of its changed region), or a typing burst, a
+  text-cursor span or a paste (§5.3) covers them, the backward walk covers back to the start of that
+  burst, or to the first frame after the line band was last still for 1.0 s, whichever is earlier,
+  with one box: the union of the own box and every changed tile of the line band in that span. That
+  piece is marked `lost` (it covers an area). The cover's start then follows the evidence rule above
+  from there.
+- Going forward, when the parts stop matching while the line band changes inside a typing burst (the
+  text is being deleted or changed), the cover holds as the same union until the burst ends and the
+  band has been still for 1.0 s; only then does the evidence of absence apply.
+
+**What this handles** (each is a case of A16, §17.3): scrolling lists and pages (vertical moves), a
+fast scroll of 1,500 px a second checked on every source frame, horizontal scrolling, a window
+dragged across the screen (2-D moves), a sticky header (its tiles do not change, so covers in it hold
+while the body scrolls), a selection or highlight drawn over the text, zoom in the app, toasts sliding
+over covered text (the cover is lost under the toast and placed again when it leaves), a toast or
+tooltip over text before its first read, and text typed into a field or a terminal and deleted again.
 
 ### 5.9 *Follow what is under it* and *Cover this text everywhere*
 
 - **Follow** (`followCover`, P4; run from P1's `followRun.ts`): main reads the cover's box at the
   playhead's frame; the lines at least half inside it make the template and the group key. The walks
-  of §5.8 run from there. The result is the old path's union with the new one: the cover never covers
-  less than it did. Without the reader, the template is the raw box itself, following is by template
-  only, and the cover ends only where the region changed and the template fails; the result is marked
-  `thin`.
-- **Everywhere** (`coverEverywhere`, P4; P1's `EverywhereDialog.tsx`): main reads the text under the
-  cover as for Follow, then looks for the same folded text in the last Find's reads of this project
-  (kept in main's memory for the session) or, when there are none, runs Find with that text as the
-  only listed name and every other kind off. Each place is followed and added as a cover of kind
-  `text` in a new group, in one undo step. *Also add it to this video's names to hide* (off by
-  default) adds the text to `Project.privacy.names`, the user's explicit choice to keep it there; the
-  dialogs that show the list read it again from the project afterwards (finding 28).
+  of §5.8 run from there. **Inside the time the walks reached** (from the backward walk's start to
+  the forward walk's proven end), the followed path replaces the old box wherever it was placed; the
+  old box is kept only where the walk was lost, and before and after that time. So a cover made *To
+  the end of the video* over an email, then followed through a scroll, leaves no box at the old place
+  once the text has moved. The user asked for it and it is one undo step. Without the reader, the
+  template is the raw box itself, following is by template only, the cover ends only where the region
+  changed and the template fails, and the result is marked `thin`.
+- **Everywhere** (`underCover` then `coverEverywhere`, P4; P1's `EverywhereDialog.tsx`):
+  1. `underCover { projectId, requestId, t, box }` reads the cover's box at the playhead's frame and
+     answers `{ ok: true, nameLike } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
+     keeps the text for that request id only, until the dialog closes. `nameLike` is true when the
+     text is at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits
+     it. A key, a password, a code or a number is never name-like.
+  2. `coverEverywhere { projectId, requestId, remember }` looks for the same folded text in the kept
+     reads of the last Find (§5.7) when there are some; otherwise it runs Find with that text as the
+     only target and every other kind off, using the look cache, with Find's estimate, progress and
+     *Stop*. Each place is followed and added as a cover of kind `text` in a new group, in one undo
+     step.
+  3. `remember` is `'no'`, `'project'` or `'settings'`. Only when it is not `'no'` and the text is
+     name-like does the result carry `addedName: string`, which the renderer adds to
+     `Project.privacy.names` (in the same undo step) or to Settings' names. This is the one place the
+     screen's text reaches the renderer, by the user's explicit choice, and it then shows in the names
+     list. Every other result holds no text (test 233). The dialogs that show the list read it again
+     afterwards (finding 28).
 
 ### 5.10 Find again, groups, merging and applying (P4 `found.ts`)
 
@@ -1282,59 +1930,94 @@ again when it leaves).
     drawn box (with slack) contains the new box (`containsOver`, §16.0). Overlap is not enough.
   - The last run's suggestions that this run did not find stay, marked `missed: true`, with their
     group; a later run that finds them again clears the mark.
-  - A new suggestion of a kind whose every key box lies at least 80% inside a rejected place of the
-    same kind (§4.1), within that place's times, is not added. A removed place never suppresses
-    another kind.
+  - **A removed path suppresses only what it holds (D21).** A new suggestion is not added only when a
+    rejected place of the **same kind** holds it: at every key of the new path, and at every key of
+    the rejected path inside the new one's times, the rejected path's drawn box (with slack)
+    contains the new box (`containsOver`, §16.0). Removing one false email on a scrolled list
+    therefore never stops a different email shown later in the same area. A removed place never
+    suppresses another kind. Each suppression is counted (`FindRecord.suppressed`) and reported
+    (`privacy.run.suppressed`).
 - **Groups**: one Review row (§2.7). Covers of one group that overlap in time (or are within 0.5 s)
   and whose boxes overlap are merged into one cover whose path is the union.
+- **Indexes** (finding 7, and the quadratic loops a 2,000-cover project would hit): containment
+  against existing covers and against rejected places looks only at candidates from a time index
+  (one-second buckets) and a coarse spatial grid (8 × 8 cells of the frame), built once per call.
 - **Limits**: over `MAX_COVERS` (2,000) covers, `mergeCovers` merges the cheapest pairs first (same
-  kind before any kind; cost = added area × added time), with a heap, O(n log n) (finding 7), until the
-  count fits. Merging only grows boxes and times. A drawn cover is never dropped. Over `MAX_KEYS`,
-  the longest paths are simplified into fewer keys whose boxes are unions of the keys they replace.
+  kind before any kind; cost = added area × added time), with a heap. Candidate pairs are only each
+  cover's 8 nearest by start time among the covers sharing a grid cell with it, refreshed for the
+  merged cover after each merge, so the work is O(n log n) (finding 7), never all pairs. Merging only
+  grows boxes and times. A drawn cover is never dropped. Over `MAX_KEYS`, `simplifyKeys` (§4.2).
 - **Applying**: the result is applied with `withFoundCovers(project, result)` (P4) in one
   `store.update` scheduled with `afterGestures` (`src/shared/editor/editStore.ts:299`), against the
   project as it is when the result lands, so a drag during Find is never overwritten and never
   overwrites the result (finding 16). The same update adds the private bleeps of §7.2, sets
   `Project.privacy.find` and clears `missed` where it applies.
 - **Stop**: what was found so far is applied the same way; covers whose walks were not finished run to
-  the end of the recording as lost areas (§2.6).
+  the end of the recording as lost areas over the union of their last box and the region they were
+  moving with (§2.6); `FindRecord.stopped` and `readTo` say how far the screen was read.
+- **Copies made before Find** (§2.12): `privacy:copies { projectId }` lists the projects whose
+  `copyOf.id` is this one (`ProjectSummary.copyOf`); `privacy:coverCopies { projectId, copyIds }`
+  reads each copy's `project.json`, adds this project's covers and private bleeps with
+  `withFoundCovers` as suggestions (kinds, groups and tiers kept; containment and the copy's own
+  rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor
+  is skipped and says so; it can use *Bring them over* (§2.12). `privacy:originCovers { projectId }`
+  answers how many of the original's covers and private bleeps a copy lacks, and returns them for
+  *Bring them over*.
 
 ### 5.11 CPU and memory budgets
 
-For a **20-minute recording at 1920×1080 and 60 fps** (72,000 frames, H.264 as Flown records) on a
-**4-core laptop** (the reference PC of decision 8). Find uses at most three threads, all at
-below-normal priority: ffmpeg's decoder with 2 threads, and the reader on 1. The editor keeps the
-fourth core.
+For a **20-minute recording at 1920×1080 and 60 fps** (72,000 frames, H.264 as Flown's proxy is) on a
+**4-core laptop** (the reference PC of decision 8). Every figure marked *measured* is from this
+machine on one thread (`results/decode-speed.txt`, `results/tract-buckets.txt`, §5.6); the reference
+PC measures them again before release.
+
+**Threads.** Find keeps **at most three threads busy at once**, all at below-normal priority, so the
+editor keeps a core:
+
+- **Look phase** first: the look ffmpeg on 2 threads (the only ffmpeg with more than one) and the
+  look worker's analysis on 1.
+- **Read and follow phase** next, minute by minute (the reads of a minute, then its follow sessions):
+  the inference worker on 1 thread; one ffmpeg with `-threads 1` decoding the next read's frame or
+  the session's frames while the current one is inferred; the rules worker in short bursts between.
 
 | Stage | Work | CPU | Basis |
 |---|---|---|---|
-| Look: decode | 72,000 frames decoded and scaled to 480×270 grey | 110-240 s on 2 threads (1.5-3.3 ms a frame) | estimate for software H.264 at 1080p; measured on the reference PC before release |
-| Look: analysis | tiles and moves on 36,000 analysed frames | about 15 s | 0.4 ms a look frame (estimate) |
-| Reads | 150 units (§5.4) with careful-long | 150 × 2.9 s ≈ 435 s on 1 thread | measured tract times (§5.6) on this machine |
-| Rules | 150 units × 37 lines × 1.3 variants | under 3 s | prototype: 40-250 µs a line |
-| Follow: decode | the frames with moves near covers, about 15%, at half size | 20-45 s | estimate |
-| Follow: matching | parts × changed frames | under 10 s | 0.05 ms a part a frame (estimate) |
-| **Wall time** | the look pass runs ahead; reads and follows of each minute run while the look pass decodes the next | **8-10 minutes** | 0.4-0.5 times the recording's length |
+| Look: decode | every one of 72,000 frames decoded; 36,000 analysed frames scaled to 480×270 grey | 72,000 × 1.77-1.86 ms + 36,000 × 0.65-0.7 ms ≈ 150-160 s; ≈ 80-100 s wall on 2 threads | *measured* per frame (decode only, and decode with the look scale) |
+| Look: analysis | tiles and moves on 36,000 analysed frames | about 15 s | 0.4 ms a look frame (estimate; R11 measures it) |
+| Reads: inference | 150 units (§5.4) with careful-long, check reads and partial reads inside the budget | 150 × 2.9 s ≈ 435 s on 1 thread | *measured* tract times: detector buckets, tiny and small recognisers per line (§5.5, §5.6) |
+| Reads: decode | about 300-600 reads, each a seek to its key frame (reads less than 1 s apart share one) | 0.094-0.106 s each ≈ 30-60 s, on the second thread while the first infers | *measured* (one read with its process start) |
+| Rules | about 37 lines a unit × 1.3 variants | under 3 s, in the rules worker | prototype: 40-250 µs a line |
+| Follow: decode | the frames of the follow sessions, about 15% of all, once each at 960×540 grey | 10,800 × 3.05-3.06 ms ≈ 33 s, on the second thread | *measured* per frame |
+| Follow: matching | parts × tracks × analysed frames in sessions | under 10 s | 0.05 ms a part a frame (estimate; R22 measures it) |
+| **Wall time** | look phase, then reads and follows | **about 9-11 minutes** (0.45-0.55 × the recording's length) | the sum of the rows' wall times; the plan's real units replace it in the second estimate |
+
+The 150 units are the budget, not a measured distribution: how many units a real recording's plan
+needs (settle bursts, typing, reveals) is measured on A16's videos at integration and on decision 8's
+30 real recordings, and every user sees the second estimate made from their own plan.
 
 | Process | Peak memory |
 |---|---|
-| `ssw-ocr.exe` | ≤ 700 MB: the detector's tile plan 250 MB, tiny recogniser plans (5 buckets) 85 MB, small recogniser plans 259 MB while a careful batch runs (dropped after it), frames and crops ≤ 60 MB |
-| `ffmpeg.exe` (look or read) | 120-200 MB |
-| main (scan state) | ≤ 60 MB: look data 11 MB, the run's lines and texts, the paths |
+| `ssw-ocr.exe` | ≤ 600 MB at 1080p and 4K, ≤ 750 MB at 7680×2160: detector plans for the three buckets 259 MB (*measured*, with their input and activations), small recogniser plans 188 MB and tiny 58 MB (*measured*, each with its own process's base; all built once at open and kept, §5.5), at most 3 RGB frames in flight (6.3 MB each at 1080p, 25 MB at 4K, 50 MB at 7680×2160), line crops ≤ 20 MB, a follow session's two key-frame intervals at half size (15 MB at 1080p, 60 MB at 4K), the look worker ≤ 10 MB |
+| `ffmpeg.exe` | 76-124 MB each (*measured* peak: look 76 MB, a read's seek 93 MB, full-size RGB 124 MB); at most one at a time in each phase |
+| main (scan state) | ≤ 60 MB: look data 11 MB, the run's folded texts and boxes, the paths |
 | renderer | the covers only: under 5 MB for 2,000 covers |
 
 - **4K** (3840×2160): the look scale keeps the look frames at 480×270, but decoding is about four
   times the work; reads take up to twice the units (§5.4). Estimated 2-3 times the 1080p wall time.
   **7680×2160**: eight tiles a full read. Both are measured on the reference PC (decision 8).
-- **First estimate** (before Find starts, §2.5): `frames × decodeMs(W·H) / 2 + 150 units × 2.9 s ×
-  (duration / 1200 s)`, with `decodeMs` 2.5 ms for 1080p scaled by area, replaced by this PC's
-  measured speed once one Find has run (kept in `userData/reader-models/models.json`).
+- **First estimate** (before Find starts, §2.5): `frames × d / 1.8 + readBudget(duration, size) ×
+  2.9 s + 0.05 × duration`, where `d` is 1.85 ms a frame at 1080p scaled by area until this PC's own
+  decode speed is known (recorded after each Find in `userData/reader-models/models.json`), and 1.8 is
+  the speed-up of two decoding threads.
 - **Second estimate** (after the look pass, §2.6): from the plan's units, the read speed measured on
   this run's first reads and the follow spans.
-- **Recording in progress**: Find does not start while Flown records, and a recording that starts
-  suspends Find's helper and its ffmpeg (`suspend`, through the job object) until it ends. Main reads
-  the state with `isToolbarVisible()` (`src/main/windows.ts`, called as `busyReason` does at
-  `src/main/updates/updatesIpc.ts:33`, never edited), every 2 s while Find runs.
+- **Recording in progress**: Find does not start while Flown records (`privacy.run.waiting`). When a
+  recording starts during Find, main sends `pause`: the helper stops reading its ffmpeg's output (the
+  pipe fills and ffmpeg blocks), and its workers stop at the next tile or frame, at most one
+  1920×1088 detector run later (0.87-0.91 s *measured*). `resume` continues. Windows has no call to
+  suspend a job object, so this is the mechanism. Main reads the state with `isToolbarVisible()`
+  (`src/main/recording/toolbarWindow.ts:89`, imported as `busyReason` does at
+  `src/main/updates/updatesIpc.ts:14, 33`, never edited), every 2 s while Find runs.
 - **Other work**: Find registers as an `analysis` job, so *Restart now* and the language relaunch wait
   for it (`busyReason`, `updatesIpc.ts:30-42`).
 
@@ -1375,6 +2058,26 @@ against the pinned file in `scripts/privacy/reader-models.json`.
   becomes `damaged` (`privacy.settings.readerDamaged`).
 - **Remove** deletes the folder. Nothing else is ever downloaded for this feature.
 
+### 5.13 The Windows reader (behind `WINDOWS_READER_ALLOWED`, P2)
+
+Decision 1 offers Windows OCR only after it passes decision 8's check (95% or more pattern recall,
+99% or more padded coverage). For that check to be run, the helper carries it:
+
+- `open { reader: 'windows' }` makes the helper use `Windows.Media.Ocr` (`OcrEngine` for the user's
+  profile languages, through the `windows` crate's WinRT bindings) instead of tract. Reads, tiles,
+  buckets, the careful pass (skipped: one reader only), caps and answers are the same. Windows OCR
+  gives word boxes but no character positions, so each word's characters get equal shares of its
+  box; the own-span padding of §6.1 covers the difference, and R10 measures it.
+- Its imports are added to the helper's allow-list (`combase.dll`, `oleaut32.dll`,
+  `api-ms-win-core-winrt-l1-1-0.dll`, as the first build measured) and the helper's size budget is
+  measured with them (§16.2).
+- **R10** (Windows, reference PC) reads the 24 evaluation PNGs with it and scores them with
+  `score_reader.py`'s rules. Whether it runs from an unpackaged helper, its speed and its memory are
+  measured in the same run.
+- `WINDOWS_READER_ALLOWED = false` (`readerCatalog.ts`) keeps every path to it closed: main never
+  sends `reader: 'windows'`, and no control or message offers it (§2.14). Turning it on, with the UI
+  that offers it, is a later change made only after R10 passes.
+
 ---
 
 ## 6. The detectors (P3, `src/shared/privacy/detect/`, pure)
@@ -1396,6 +2099,15 @@ section gives what each kind finds, how, and why.
   horizontally, clipped to the frame, never rounded past its edge (finding 22). The stand-in scorer
   measured that one character width plus a quarter line height is the smallest pad that fully covers
   a 4-character PIN; 0.6 of a character width left it 96% covered.
+- **Hiding the length (D23).** A solid cover as wide as its text gives the text's rendered width,
+  and in a known UI font that is enough to rank candidate names and email local parts, or to tell a
+  PIN's length (the redaction-width attack, Bland et al., "Story Beyond the Eye", PoPETs 2023). So
+  after padding, `found.ts` widens each found cover, equally on both sides (held inside the frame):
+  its width is rounded up to the next multiple of 4 mean character widths of its line, then widened
+  by 0, 1 or 2 more character widths, chosen at random once per group, so every place of one text
+  gets the same extra. Two names of 9 and 11 characters in one font then get covers of the same
+  width. The covers of keys and PEM blocks, which already span their block, are left as they are.
+  §2.9 still says a cover can show roughly how long the text is (`privacy.notSee.length`).
 - **Tiers**: 0.85 or more is `auto`; 0.50 up to 0.85 is `check`; below 0.50 nothing. Every
   suggestion is drawn (decision 2). Decision 2's scores are kept: secret QR codes 0.99, other QR codes
   0.6, strong labels 0.75.
@@ -1612,7 +2324,10 @@ the rules (the first version kept a second copy in the helper for this).
 
 ### 6.13 Pop-up notifications (P4 `notices.ts`, from the look data)
 
-In whole-screen recordings (`capture.target === 'screen'`) only. A **notice** is a changed region that:
+In whole-screen recordings only: `capture.target === 'screen'` and no `project.source`. An imported
+video also has `target: 'screen'` (`src/main/importVideo.ts:292`), but slides, phone or camera footage
+are not a desktop, and the corner rule would fire on them; so imported videos never run it, and the
+kind's checkbox is hidden for them (§2.5). A **notice** is a changed region that:
 
 - appears in one analysed frame from still surroundings, rectangular (its changed tiles fill 80% or
   more of its box);
@@ -1715,25 +2430,36 @@ just made (decision 11).
 - Measured on Flown's docs read as speech (455,764 words): 8 hits, 0.18 per 10,000 words. A 20-minute
   talk is about 3,000 words.
 - **Each hit becomes a private bleep** (§4.4) from its first word's start − 0.05 s to its last word's
-  end + 0.05 s (0.15 s for estimated times, as `Bleep` widens), `auto: true`, kind marker in `word`. A
-  hit inside an existing bleep adds nothing. Over `MAX_BLEEPS`, neighbouring private bleeps of the same
-  group within 1 s are merged first; a found secret is never dropped.
+  end + 0.05 s (0.15 s for estimated times, as `Bleep` widens), `auto: true`, kind and group in
+  `word`. Hits of the same said text (the same digit string, or the same folded words) share one
+  group. A hit inside an existing bleep adds nothing. The total stays at or under `MAX_BLEEPS` (§4.4):
+  neighbouring private bleeps of the same group within 1 s are merged first, then across groups,
+  each merge only growing a bleep; a hit that still cannot be placed is reported
+  (`privacy.run.saidFull`), never dropped silently.
 
 ### 7.3 Spoken forms (`spokenForms`, contracts, `src/shared/privacy/spoken.ts`)
 
 `spokenForms(project): SpokenForms`, computed once per `transcript` and `bleeps` array (WeakMap), holds
-for each private bleep:
+for each group of private bleeps, **from the hit's own words, never from the padded span** (finding
+11 applied to speech):
 
-- the caption words at least half inside it, as written and folded;
-- for numbers, the digits of the run in that bleep, as a digit string, and its usual written groupings
-  (4-4-4-4, 3-3-4, 3-2-4, spaced and dashed);
-- for emails said aloud, the address as written (`name@domain.tld`).
+- **Own words**: the caption words whose **midpoint** lies inside the bleep shrunk back by its
+  widening (0.05 s, or 0.15 s for estimated times). A short neighbour that only falls half inside
+  the padding ("is", "my") is never a form.
+- **A multi-word hit is one phrase form** (the words joined, as written and folded), never each word
+  on its own.
+- **A number run is its digit string** with its usual written groupings (4-4-4-4, 3-3-4, 3-2-4,
+  spaced and dashed), never its number words: a card said "four nine one seven …" gives
+  `4917…`, not "four" or "nine".
+- For emails said aloud, the address as written (`name@domain.tld`).
 
-`maskPrivate(text, forms): string` replaces every occurrence of a form in `text` (case-insensitive;
-digits compared on the digit view, ignoring spaces and dashes between them) with `•` for each of its
-letters and digits, keeping spaces and punctuation. A form of fewer than 4 letters or digits is used
-only as a whole word. `maskPrivate` returns `text` itself when nothing matched, and when the project
-has no private bleeps it is never called.
+`maskPrivate(text, forms): string` replaces every occurrence of a form in `text` with `•` for each of
+its letters and digits, keeping spaces and punctuation. Word and phrase forms match **on word
+boundaries only** and case-insensitively, so "weight", "fourteen" and "Four ways to save" stay as they
+are. Digit forms are compared on the digit view, ignoring spaces and dashes between digits, and only
+where the digits are not part of a longer digit run. A form of fewer than 4 letters or digits is used
+only as a whole phrase. `maskPrivate` returns `text` itself when nothing matched, and when the
+project has no private bleeps it is never called.
 
 ### 7.4 Captions and translations
 
@@ -1754,29 +2480,45 @@ has no private bleeps it is never called.
 
 ### 7.5 Every other text made from captions
 
+**`privateView(project): Project`** (contracts, `src/shared/privacy/spoken.ts`; question 19, answer
+(a); D24). The project as it is drawn and as it leaves Flown: a copy whose stored texts made from, or
+typed beside, captions have the spoken forms masked with `maskPrivate`. It is memoised per project
+object (WeakMap, like `cropView`), returns `project` itself when the project has no private bleeps or
+no field holds a form, and never changes the stored project. The user still sees and edits their
+own text in the panels that edit it (the chapter list, the title card fields, the pack's text
+boxes, the guide's step fields); the preview, every export and every other output use the view.
+
+Its fields (`PRIVATE_TEXT_FIELDS`): `chapters[].title`; `titles[].title` and `.subtitle`;
+`publish.description`; `guide.title`, `.intro`, `.expected`, `.actual`, `.details[].text`, and every
+string of `.steps[]` and `.added[]`.
+
 | Text | Where it is made | How the private forms are masked |
 |---|---|---|
-| Chapter names, found or made by AI | `src/shared/chapters/names.ts`, `chaptersRun.ts` | stored: `settleSaid` (below) masks the forms in `chapters[].title` |
-| Chapter title cards (finding 12) | `titles[]` made from chapters | stored: `settleSaid` masks `titles[].text` and its lines |
+| Chapter names, found or made by AI | `src/shared/chapters/names.ts`, `chaptersRun.ts` | drawn and written from `privateView`: the chapter bar (`chapterBarLayer.ts`), the file's chapter metadata (`chaptersOf`, `exporter.ts:273-276`), the chapters sidecar, the pack's chapters, timeline markers |
+| Chapter title cards (finding 12) | `titles[]` made from chapters | drawn from `privateView` (`titleCardLayer.ts`), so the preview, every export, thumbnails and guide shots show the masked card |
 | Graphics made from captions (pop-ups, counters, list cards, quote cards) | drawn from caption words with `maskBleeped` | drawn: `maskBleeped` also applies `maskPrivate` when the project has private bleeps |
-| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | stored: `settleSaid` masks the saved description; made: its segments come from `maskedSegments` |
-| Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | stored: `settleSaid` masks the edited titles and notes; made: from masked segments |
-| Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments; the copy's own name is masked by `settleSaid` on the copy |
+| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the dialog says so (§2.13) |
+| Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | made from masked segments; written from `privateView` (`guideRun.ts`, PDF, HTML, Markdown, clipboard) |
+| Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments |
 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` |
 | Review titles for captions | `captionReview.ts` | private bleeps are not listed as *Bleep* rows; their titles never hold words (§2.7) |
 | Transcript text export | `transcriptText.ts` | from `maskedSegments` |
 
-**`settleSaid(next, prev)`** (contracts, the last step of the settle chain at `Editor.tsx:228-230`):
-when `next.bleeps` or `next.transcript` differs from `prev`'s and `next` has private bleeps, it masks the
-spoken forms in the stored texts above, in the same update. It is idempotent (masked text has no
-forms left). It returns `next` itself when nothing changed, so projects without private bleeps settle
-exactly as before.
+**Where the view is taken.** The scene's project: `Editor.tsx`'s `drawn` becomes
+`cropView(privateView(project), cursor)` (`:504-511`), so the preview and every export that takes the
+scene draw it. The exporter's own project inputs (`chaptersOf`), the bundle's sidecars
+(`exportBundleRun.ts`), the pack's outputs (`publishRun.ts`, `PublishDialog.tsx`'s copy and share),
+the guide's outputs (`guideRun.ts`), the timeline (`timelineRun.ts`) and `maskRequest` (§7.6) each take
+`privateView(project)` at their entry. Removing a private bleep (*Uncover*) brings every word back
+everywhere, in the same undo step, because nothing stored changed.
 
 ### 7.6 AI requests (`aiTextFor`, contracts)
 
 - **One wrapper**: `aiTextFor(project, providerId, request, requestId)`
   (`src/renderer/src/ai/aiTextFor.ts`) calls `maskRequest(request, project)`
-  (`src/shared/privacy/aiRequest.ts`) and then `window.api.aiText`. All 9 call sites of §7.1 call it.
+  (`src/shared/privacy/aiRequest.ts`) and then `window.api.aiText`, and returns what `aiText` returns
+  (`ReturnType<AiApi['aiText']>`: the result with its optional `usage` and `model`, which
+  `CleanupSection.tsx:200` and `LanguagesSection.tsx:238, 253` read). All 9 call sites of §7.1 call it.
   A new test (test 31) fails when any file under `src/renderer` other than `aiTextFor.ts` calls
   `window.api.aiText`.
 - **`maskRequest`** walks every string of the request (`segments[].text` and their words, `text`,
@@ -1840,9 +2582,11 @@ const screen = graded && !overlaysOnly ? coverScreen(ctx, graded, full, scene, t
      `VideoFrame`, or a shared `ImageBitmap` (freeze stills, join stills). It is copied 1:1 into a
      per-target canvas (`coverCopies`, a WeakMap like `cropCopies`, `:343`), which is filled. A picture
      the compositor does not own is never drawn into.
-3. Maps each cover's box from whole-frame coordinates into the picture: through the crop
-   (`rectToCrop`, `crop.ts:149`) when the picture is a crop's copy, then to pixels, rounded outward
-   (floor the start, ceil the end), clipped to the picture.
+3. Maps each cover's drawn box, which `scene.project` already holds in view space (§4.8, D19), straight
+   to the picture's pixels: `x × width`, `y × height`, rounded outward (floor the start, ceil the end),
+   clipped to the picture. It never maps through the crop: the picture is the crop's copy, or the
+   grade's canvas made from it, whose pixels are the view's. Whether the picture is a crop's copy, a
+   grade's canvas or the frame itself changes only step 2, never the mapping.
 4. Fills each box with the cover's graded colour (§8.4), `globalCompositeOperation = 'copy'` off,
    no anti-aliasing (integer pixel rectangles).
 5. Returns the filled picture.
@@ -1864,10 +2608,13 @@ cover.
 Inside the card's clip, right after the screen draw (`:259`) and before the FrameContext, the covers
 active at `t` are filled again on the output, through the camera of every sub-frame drawn
 (`motionSamples`), as the union of their output boxes, each grown by one output pixel, in the same
-graded colour. On a tilted card this is drawn on the card's own canvas, so the warp carries it. It
-catches anything that could still bring the text's pixels to the output: resampling at the box's
-edge, a decoder showing a neighbouring frame, a sub-frame camera whose view differs from the main one.
-It is skipped in the `'overlays'` alpha mode and when no cover is active.
+graded colour. Each view gives `toOut(x, y): { x, y }` (normalised view coordinates to output pixels,
+as `FrameContext.toOut`, `frameContext.ts:50`, and `outputPoint.ts`); a box's output rectangle is the
+bounding box of its four mapped corners, rounded outward. On a tilted card this is drawn on the
+card's own canvas, so the warp carries it. It catches anything that could still bring the text's
+pixels to the output: resampling at the box's edge, a decoder showing a neighbouring frame, a
+sub-frame camera whose view differs from the main one. It is skipped in the `'overlays'` alpha mode
+and when no cover is active.
 
 ### 8.3 The magnifier, shapes and the cursor
 
@@ -1902,12 +2649,18 @@ It is skipped in the `'overlays'` alpha mode and when no cover is active.
 - `RenderScene.peek?: { ids: readonly string[] | 'all' }` (contracts, a field only). When set,
   `coverScreen` and `drawCoverOutput` skip the peeked covers, and `drawCoverPeek` (P1) draws their
   boxes as 2 px outlines in `--accent-400` on the output.
-- Only the player's preview scene sets it, as `comparedScene` sets `compare` (`player.ts:597-600`).
-  `ExportDialog` receives `scene`, not the preview scene (`Editor.tsx:2042-2044`); the exporter,
-  `ExportPreview`, thumbnails and guide shots build their scenes without it. Every export entry point
-  strips `peek` from the scene it is given (test 25).
-- `JoinStills.fresh` (`joinStills.ts:45-46`) keys on the peek state as it does on `compare`; its
-  stale-still fallback (`:119`) never returns a still composed with another peek state.
+- `RenderScene.coverMarks?: true` (contracts, a field only): *Show where covers are* (§2.1). When
+  set, `drawCoverMarks` (P1) draws a 1 px dashed `--accent-400` outline with a 1 px `#000000` halo
+  around every active cover after the output pass.
+- The magnified view of §2.8 is not part of the scene: `PeekInset` (P1) is its own preview-only
+  canvas that draws the raw frame's area under the selected cover from the player's video element.
+- Only the player's preview scene sets `peek` and `coverMarks`, as `comparedScene` sets `compare`
+  (`player.ts:597-600`). `ExportDialog` receives `scene`, not the preview scene
+  (`Editor.tsx:2042-2044`); the exporter, `ExportPreview`, thumbnails and guide shots build their
+  scenes without them. Every export entry point strips both from the scene it is given (`forOutput`,
+  contracts; test 17).
+- `JoinStills.fresh` (`joinStills.ts:45-46`) keys on the peek and marks state as it does on `compare`;
+  its stale-still fallback (`:119`) never returns a still composed with another state.
   `ExportPreview` has its own `JoinStills` (`ExportPreview.tsx:208-211`), never peeked.
 - *Listen* removes one private bleep from the preview's sound gains only (`previewAudio.ts`), never from
   the export's (`exporter.ts:162`).
@@ -1936,26 +2689,29 @@ applies with no change of its own. Line numbers are at `37f9355`.
 | 5 | Every video export: MP4 (H.264, HEVC, AV1), WebM (VP9), MOV (CineForm, Animation, ProRes when allowed), GIF, transparent `background` and `overlays`, 24-120 fps, batch, per-chapter parts, presets | `exporter.ts:319-355` `exportVideo`, `:520-745` `renderAll` (drawFrame `:682`, joins `:623`, alpha `:357-360`, batch `:855-892`) | drawFrame. Every encoder route (WebCodecs, raw frames to ffmpeg, GPU encoders, GIF) only reads the canvas after drawFrame. `overlays` draws no recording |
 | 6 | Thumbnail PNGs (Save thumbnail, the bundle's thumbnail, part thumbnails) | `exporter.ts:776-820` (drawFrame `:803`); `ExportDialog.tsx:688-689, 843, 884-895` | drawFrame |
 | 7 | Copy the exported file to the clipboard | `src/main/exportIpc.ts:421-424` (only files in `exportedFiles`) | the file already has covers |
-| 8 | Export bundle sidecars: subtitles (spoken and translated), chapters, description, thumbnail | `exportBundleRun.ts:65-111`, `src/main/exportBundle.ts:38-84` | thumbnail: row 6. Subtitles: `maskedSegments` and the translation masks (§7.4). Chapters and description: `settleSaid` (§7.5) |
+| 8 | Export bundle sidecars: subtitles (spoken and translated), chapters, description, thumbnail; chapter metadata in the file | `exportBundleRun.ts:65-111`, `src/main/exportBundle.ts:38-84`; `exporter.ts:273-276` `chaptersOf`, `src/main/exportArgs.ts:141-157` | thumbnail: row 6. Subtitles: `maskedSegments` and the translation masks (§7.4). Chapters, chapter metadata and description: from `privateView` (§7.5) |
 | 9 | Timeline for other editors, *This export* | `src/main/timelineIpc.ts:305-372` | points at the covered export; stems carry the private bleeps (row 11) |
-| 10 | Timeline, *The original recordings* | `timelineIpc.ts:174-200` `copyRecordings`, `:322-323`; `timelineRun.ts:91-118`; `BundleOptions.timelineMedia` (`exportBundle.ts:32`, `:63`), user presets (`userPresets.ts:30, 110, 154`), `ExportBundleOptions.tsx:263, 310-319` | **Refused** while `hidesSomething(project)` (any cover, any blur or pixelate shape, any bleep). Renderer: the chip is disabled with `privacy.export.recordingsOff`; `timelineRun` skips the step and the done view says `privacy.export.recordingsSkipped`. Main: `writeTimeline` in recordings mode reads `project.json` itself (`migrateProject`) and refuses with `errors.timeline.hidden` ("This video hides parts of its recordings, so they were not copied.") whatever the renderer sent. The editor saves (`projects:saveSync`) before the timeline step, so main reads what the user sees. A preset choosing it loads unchanged (test 20) |
+| 10 | Timeline, *The original recordings* | `timelineIpc.ts:174-200` `copyRecordings`, `:322-323`; `timelineRun.ts:91-118`; `BundleOptions.timelineMedia` (`exportBundle.ts:32`, `:63`), user presets (`userPresets.ts:30, 110, 154`), `ExportBundleOptions.tsx:263, 310-319` | **Refused** while `hidesSomething(project)` (any cover, any blur or pixelate shape, any bleep; a crop and muted parts as question 18 decides). Renderer: the chip is disabled with `privacy.export.recordingsOff`; `writeTimelineStep` (`timelineRun.ts:91`) skips the step and the done view says `privacy.export.recordingsSkipped`. Main: `writeTimeline` in recordings mode reads `project.json` itself (`migrateProject`) and refuses with `errors.timeline.hidden` ("This video hides parts of its recordings, so they were not copied.") whatever the renderer sent. So that main reads what the user sees, `ExportDialog` gains a `flush: () => void` prop that `Editor.tsx` passes (its saver's `flushSync`), and the bundle run calls it before the timeline request (test 25 checks the order). A preset choosing it loads unchanged (test 20) |
 | 11 | Sound stems | `exporter.ts:184-196` `stemsOf`; `src/main/stemsRun.ts`; `src/shared/render/stems.ts:80-104` | private bleeps are bleeps: `jobSoundGains` carries them (`exporter.ts:162`) |
 | 12 | Guide, demo and bug-report screenshots (Actual included) | `guideStills.ts:81-163` (drawFrame `:116`), from `guideProject` (`src/shared/guide/shots.ts:42-79`) via `stillsInput` (`useGuideShots.ts:29-48`) | drawFrame. `guideProject` keeps `covers` through `...rest` (the privacy shapes are kept the same way). The shot cache key `shotSig` (`shots.ts:279-293`) and `planActual` (`:305-310`) gain the covers active at `t` (id, colour, drawn box) and the peek-free flag, so an edit never leaves a stale, uncovered shot in the cache (300 shots or 256 MB) |
-| 13 | Guide outputs: PDF, HTML, demo HTML, Markdown folder, HTML+text clipboard, one PNG on the clipboard | `src/main/guide/writeGuide.ts`, `printPdf.ts`, `guideIpc.ts:88, 91-95`; `guideRun.ts:113, 138` | pictures from row 12; titles and notes from masked segments and `settleSaid` (§7.5) |
+| 13 | Guide outputs: PDF, HTML, demo HTML, Markdown folder, HTML+text clipboard, one PNG on the clipboard | `src/main/guide/writeGuide.ts`, `printPdf.ts`, `guideIpc.ts:88, 91-95`; `guideRun.ts:113, 138` | pictures from row 12; titles and notes from masked segments and `privateView` (§7.5) |
 | 14 | Pictures sent to AI (guide *Write titles* with *Also send the screenshots*) | `visionTitles.ts:44-118`, `guideRun.ts:155`, main `src/main/ai/images.ts:41` | the pictures are row 12's shots; the request goes through `aiTextFor` (§7.6); never on this PC |
 | 15 | AI text requests (all 9 call sites) | §7.1 | `aiTextFor` (§7.6) |
 | 16 | Transcription with a service | `src/main/ai/transcribe.ts:194` | the warning of §2.13; the sound is not muted (decision 7) |
-| 17 | Home thumbnails | `Home.tsx:201-238` `captureThumbnail` (drawImage `:231`, `toDataURL` `:232`), cache `:195-199` | `ProjectSummary` gains `thumbCovers?: NormRect[]`, computed in main by `listProjects` (`src/main/projects.ts:147-159`) with `thumbCovers(project, t)`: the drawn boxes of the covers and of the blur and pixelate shapes active at the thumbnail's time (min(1 s, 15%)), with slack. `captureThumbnail` fills them in Dark after drawing the frame and before `toDataURL`; the cache key adds a hash of the boxes. Absent when there are none, so other projects' summaries and thumbnails are unchanged. Question 13: the crop |
-| 18 | Filmstrip on the timeline | `src/main/filmstrip.ts:35-50`, `:161`, cache written `:208`; drawn by `src/renderer/src/editor/Filmstrip.tsx` | the tiles are drawn with the cover boxes active at each tile's time filled in Dark (`fillCoverTiles`, P1); the cache file stays raw on this PC, beside `screen.mp4` itself |
-| 19 | Project copies: Duplicate, Make vertical or square, Short clips, Shorter version | `projectCopy.ts:154-235` (write `:229`); `duplicate.ts:75-90`, `clipCopy.ts:141-153`, `short60.ts:269` | covers ride `...project`; clip copies keep the covers over their range; written with the legacy shapes (§4.6) |
+| 17 | Home thumbnails | `Home.tsx:201-238` `captureThumbnail` (drawImage `:231`, `toDataURL` `:232`), cache `:195-199` | `ProjectSummary` gains `thumbCovers?: NormRect[]`, computed in main by `listProjects` (`src/main/projects.ts:147-159`) with `thumbCovers(project, from, to)`: the boxes of the covers and of the blur and pixelate shapes active **anywhere** in `[t − 0.1 s, t + 0.1 s]`. The thumbnail's time `t` is worked out in one place, `thumbTime(duration)` = min(1, duration × 0.15) (contracts), which `captureThumbnail` (`Home.tsx:221`, today from the element's `video.duration`) and main both call with `project.duration`, so the two cannot drift apart by more than the window. `captureThumbnail` fills the boxes in Dark after drawing the frame and before `toDataURL`; the cache key adds a hash of the boxes. Absent when there are none, so other projects' summaries and thumbnails are unchanged. Question 13: the crop |
+| 18 | Filmstrip on the timeline | `src/main/filmstrip.ts:35-50`, `:161`, cache written `:208`; drawn by `src/renderer/src/editor/Filmstrip.tsx` | each tile shows the last key frame at or before its time `t` (`-skip_frame nokey`, `round=up`, `filmstrip.ts:30-46`), which can be up to one key-frame interval earlier (15 frames). So each tile is drawn with the boxes of every cover active anywhere in `[t − 15 / fps − 0.02 s, t]` filled in Dark (`fillCoverTiles`, P1); the cache file stays raw on this PC, beside `screen.mp4` itself |
+| 19 | Project copies: Duplicate, Make vertical or square, Short clips, Shorter version | `projectCopy.ts:154-235` (write `:229`); `duplicate.ts:75-90`, `clipCopy.ts:141-153`, `short60.ts:269` | covers ride `...project`; every copy, clip copies included, keeps every cover and private bleep (§4.7); written with the legacy shapes (§4.6). Copies made before Find get its covers through *Also cover the copies* and *Bring them over* (§2.12, §5.10) |
 | 20 | Share after export | `src/main/share/shareService.ts` (`isExported` gate `:20`), `copyToFolder.ts:152`, `webhookPost.ts:37` | exported files only; posted text is the pack's (row 21) |
-| 21 | Publishing copy pack | `pack.ts:88-91`, `publishRun.ts:158` | text only: masked segments, `settleSaid`, `aiTextFor` |
+| 21 | Publishing copy pack: copy, sidecar description, share post | `pack.ts:88-91`, `publishRun.ts:158`, `PublishDialog.tsx` | text only: masked segments, `privateView` for the saved description (§7.5), `aiTextFor`; the dialog's note (§2.13) |
 | 22 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` (§7.5) |
 | 23 | Caption contrast probe | `contrastProbe.ts:55-79` (drawFrame `:67`) | reads the covered frame; emits nothing |
 | 24 | Internal readers that output numbers only: scene scan, still detection, the look pass | `sceneScan.ts:289`, `analysisIpc.ts:168`, §5.2 | no pixels leave |
 | 25 | Logs and diagnostics | `appLog.ts:57` (`redactLine(…, secretValues())`), `diagnostics.ts:93-96` | no found text is ever logged; listed names join `secretValues()` (§10.6) |
 | 26 | Versions | `src/main/versions.ts:267-346` | the version body is written with the legacy shapes (§4.6); restoring keeps the covers |
-| 27 | Project folder copies by the user (Explorer) | outside Flown | `project.json` holds covers and the legacy shapes; `screen.mp4` is the raw recording, as today. The export note and the help text say covers apply to what Flown makes |
+| 27 | Project folder copies by the user (Explorer) | outside Flown | `project.json` holds covers and the legacy shapes; `screen.mp4` is the raw recording, as today. §2.9's list says so: `privacy.notSee.folder`, "The project folder on this PC keeps the original recording, without covers." (test 63 checks the list) |
+| 28 | The Style tab's colour look chips | `src/renderer/src/editor/panels/ColourControls.tsx:136-170` (`thumbPixels`, `LookThumb`: the playhead's frame at 96×54) | a preview-only picture, but it is the raw frame: `LookThumb` fills the boxes of the covers active at the playhead, in Dark, into the 96×54 pixels before grading (`fillCoverPixels`, P1, contracts stub draws nothing) |
+| 29 | The cover outlines and the magnified view under Peek | P1 `drawCoverMarks`, `PeekInset` (§8.5) | preview only: set only on the player's preview scene or drawn on their own canvas; `forOutput` strips the marks at every export entry point (test 17) |
+| 30 | Title cards and the chapter bar | `titleCardLayer.ts`, `chapterBarLayer.ts`, through `drawFrame` | drawn from the scene's project, which is `privateView` (§7.5), so rows 1-6 and 12 carry the masking |
 
 ---
 
@@ -1963,14 +2719,18 @@ applies with no change of its own. Line numbers are at `37f9355`.
 
 ### 10.1 What stays where
 
-- The screen's text exists only in the helper's and main's memory while Find runs (§5.7). It is never
-  written to disk, logged, sent to the renderer or sent off the PC. `Project.covers` holds boxes,
-  times, colours, kinds and random group ids; no text and no hash of text (a hash of a 6-digit code
-  can be reversed by trying a million values).
-- Private bleeps hold a kind marker, never the word (§4.4).
+- The screen's text exists only in the helper's and main's memory: in full while Find runs, and as
+  folded text for at most 10 minutes after it, cleared earlier on *Stop*, on the editor closing, on
+  the renderer going away and on a new Find (§5.7, D22). It is never written to disk, logged, sent to
+  the renderer or sent off the PC, with one exception the user chooses (below). `Project.covers`
+  holds boxes, times, colours, kinds and random group ids; no text and no hash of text (a hash of a
+  6-digit code can be reversed by trying a million values).
+- Private bleeps hold a kind marker and a random group, never the word (§4.4).
 - The names and never-hide lists are the user's own entries, kept in `project.json` and
-  `editor-prefs.json` because the user typed them there. *Cover this text everywhere* adds text to the
-  list only when its checkbox is ticked (off by default).
+  `editor-prefs.json` because the user typed them there. *Cover this text everywhere* adds the text
+  read under a cover to a list only when the user chooses *In this video* or *In every video*, and
+  only when the text looks like a name (§5.9); it then shows in that list. A key, a password, a code
+  or a number is never added.
 - The look cache holds tile bits and moves, no pixels (§5.2).
 - Nothing is uploaded. The only download is the reader's files (§5.12).
 
@@ -1979,9 +2739,11 @@ applies with no change of its own. Line numbers are at `37f9355`.
 - Main checks every file's size and SHA-256 against `READER_FILES` when Find starts. A mismatch deletes
   the file and sets the state to `damaged`.
 - The helper's `open` receives the expected size and SHA-256 of each file (from main, which has them
-  compiled in from `readerCatalog.ts`, and the helper compiles in the same pins: both must agree) and
-  hashes each file before parsing any; a mismatch answers `{ error: 'model' }` and parses nothing
-  (test R2). tract parses only files that passed.
+  compiled in from `readerCatalog.ts`, and the helper compiles in the same pins: both must agree).
+  It reads each file into memory **once**, hashes that buffer, and parses the same buffer
+  (`model_for_read`), so a file swapped between the check and the parse is never parsed. It hashes
+  every file before parsing any; a mismatch answers `{ error: 'model' }` and parses nothing (test
+  R2).
 - Models are data: nothing downloaded is ever run. The helper itself is signed and installed with the
   app (`resources/native/ssw-ocr.exe`), never downloaded.
 
@@ -1989,16 +2751,28 @@ applies with no change of its own. Line numbers are at `37f9355`.
 
 - Recognised text can be anything a web page or a chat showed. It is only matched by the rules,
   never evaluated, never used as a path or a command, never shown in the UI.
-- Every rule is linear-time on a line: lines are cut to 512 characters before matching (longer lines
-  are matched in overlapping windows of 512), and test 104 runs every pattern on 64 KB adversarial
-  strings with a 50 ms limit.
-- QR payloads are screen content like the text: main classes them and forgets them (§6.9). rqrr decodes
-  with its own bounds; the helper drops codes whose version is over 40 and payloads over 4,096 bytes.
+- **The rules never run on main's event loop (D20).** `detectFrame` and `classQr` run in a
+  `worker_threads` worker (`src/main/privacy/rulesWorker.ts`) with a time limit of 2 s a read. On
+  timeout main ends the worker, starts a new one, counts the read as failed and covers its areas as a
+  lost area. So a line built to make a backtracking pattern slow costs at most 2 s and one failed
+  read, and never freezes the editor or its autosave.
+- **Patterns**: lines are matched in windows of 512 characters that overlap by 256, longer than the
+  longest match any rule allows (200 characters), and a hit touching a window's edge is extended on
+  the full line to the end of its token run, so a 900-character JWT or signed URL is covered whole.
+  Test 104 runs every pattern on 64 KB adversarial strings with a 50 ms limit, and a static check
+  (`scripts/privacy/regexCheck.mjs`, P3) refuses any pattern with nested unbounded quantifiers or a
+  quantified alternation whose branches can match the same text. The worker's time limit is the
+  guarantee; the static check keeps the patterns from needing it.
+- QR payloads are screen content like the text: main classes them in the rules worker and forgets
+  them (§6.9). rqrr decodes with its own bounds; the helper drops codes whose version is over 40 and
+  payloads over 4,096 bytes.
 - **Huge frames**: the helper refuses a video over 7680×4320 or 40 megapixels before decoding
-  (`tooLarge`), caps a read to 64 tiles, caps the detector's candidates at 3,000 a tile and lines at
-  1,000 a read, and splits lines wider than 1280 at height 48 (§5.5). A malformed or truncated video
-  ends the read with an error; ffmpeg runs with `-xerror` off and a time limit of 60 s plus the
-  recording's length, as the scene scan (`sceneScan.ts`).
+  (`tooLarge`), and splits lines wider than 1280 at height 48 (§5.5). **Caps answer `partial`**: a
+  read capped at 64 tiles, 3,000 detector candidates a tile or 1,000 lines answers with the areas it
+  did not finish; main reads them as extra reads, and whatever still cannot be read becomes a lost
+  area counted in `failedReads` (§5.5, finding 23). A malformed or truncated video ends the read with
+  an error; ffmpeg runs with `-xerror` off and a time limit of 60 s plus the recording's length, as the
+  scene scan (`sceneScan.ts`).
 
 ### 10.4 The helper process
 
@@ -2007,25 +2781,54 @@ applies with no change of its own. Line numbers are at `37f9355`.
   `src/main/localAi/engine.ts:331, 483-496` does for `ssw-llm.exe`.
 - Below-normal priority. A heartbeat line every 2 s, also while `open` hashes and parses the models
   (finding 25); main kills a helper silent for 20 s.
+- **It exits when main is gone**: on end of input on stdin, and when writing a heartbeat fails. So no
+  helper keeps frames and text in memory after Flown has closed or crashed (tests R1, R20).
+- Its threads are those of §5.5: the stdin dispatcher, the look worker, the inference worker.
 - ffmpeg runs inside a Windows job object created by the helper with
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so killing the helper kills ffmpeg (test R8, Windows only).
-- **A crash in one read** is caught (`catch_unwind`) and answered as an error (§5.6); a crash of the
-  process is restarted once per Find.
+  ffmpeg runs with `-loglevel error`, and the helper reads its stderr only to classify an exit
+  (`video`, `stopped`); it never passes it on.
+- **A crash in one read** is caught (`catch_unwind`) and answered as an error, and the plans are
+  rebuilt (§5.6); a crash of the process is restarted once per Find, from the next read.
+- **Nothing it holds reaches stderr.** At start the helper sets `std::panic::set_hook` to print only a
+  fixed code and the panic's source location (`panic at read.rs:212`), never the payload: Rust's
+  default hook prints the message, and a slicing panic quotes up to 256 characters of the string
+  itself. No code path writes recognised text, a QR payload or a path inside the user's folders to
+  stderr, or to stdout outside the protocol's answers (test R19 forces a panic on a line holding a
+  marker string and checks stderr).
 - `SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX)` at start, so no crash dialog appears.
 
 ### 10.5 Windows Error Reporting (question 14, recommended (a))
 
-A crash dump of `ssw-ocr.exe` would hold frames with secrets. `build/installer.nsh` gains, in
-`customInstall`, a per-user DWORD `ssw-ocr.exe = 1` under
-`HKCU\Software\Microsoft\Windows\Windows Error Reporting\ExcludedApplications`, and a new
-`customUnInstall` macro that deletes that value. The file has no uninstall macro today
-(`build/installer.nsh:44-51` holds `customInstall` only). The helper does not call
-`WerAddExcludedApplication` itself, so it imports nothing from `wer.dll`.
+A crash dump of `ssw-ocr.exe` would hold frames with secrets.
+
+- **At run time, whatever question 14's answer**: the helper calls
+  `WerSetFlags(WER_FAULT_REPORTING_FLAG_NOHEAP)` (kernel32) at start, so a report Windows makes leaves
+  out its heap, where frames, crops and lines live; and it installs `SetUnhandledExceptionFilter`
+  with a filter that ends the process with `TerminateProcess` and no report. Neither writes the
+  registry nor imports `wer.dll` (test 89 reads the source for both calls; R8's Windows run checks
+  that a forced crash leaves no report in `%LOCALAPPDATA%\Microsoft\Windows\WER`).
+- **The registry value (question 14, recommended (a))**: `build/installer.nsh` gains, in
+  `customInstall`, the DWORD `ssw-ocr.exe = 1` under `…\Windows Error Reporting\ExcludedApplications`:
+  under `HKLM\SOFTWARE\Microsoft\Windows` when the install is for all users, under
+  `HKCU\Software\Microsoft\Windows` when it is for the installing user. The installer is assisted
+  (`oneClick: false`, `electron-builder.config.cjs:79`) and offers both; the macro reads the mode the
+  installer chose. A new `customUnInstall` macro deletes the value from the same place. The file has
+  no uninstall macro today (`build/installer.nsh:44-51` holds `customInstall` only).
+- **Main and the renderer** (`Flown.exe`) hold the screen's text during Find (main) and the frames
+  while editing (the renderer), as they hold every frame of every export today. Their crash dumps stay
+  under Windows' own consent settings; this wave does not change them, and §15 says so (risk 14).
 
 ### 10.6 Logs and diagnostics
 
 - No log line holds recognised text, a QR payload, a group key or a listed name. Main's scan logs
   counts and times only (`privacy: read 37 lines in 2.81 s`).
+- **Main never logs the helper's stderr or its lines.** Unlike the speech and local AI helpers, whose
+  last stderr lines go to the log on a crash (`src/main/speech/localClient.ts:185`;
+  `src/main/localAi/engine.ts:336-337` keeps them), the reader's exits are logged as an exit code and
+  an error kind only. A helper line that fails to parse is counted (`privacy: 2 helper lines
+  refused`), and the parse error's message, which V8 writes with part of its input, is never logged
+  or shown (test 216).
 - The listed names (Settings and the open project's) join `secretValues()`, which `redactLine` already
   takes (`src/main/appLog.ts:57`, `src/main/diagnostics.ts:93-96`), through a getter
   `privateNames(): string[]` in `src/main/privacy/names.ts` (contracts) that the renderer updates with
@@ -2037,10 +2840,20 @@ A crash dump of `ssw-ocr.exe` would hold frames with secrets. `build/installer.n
 
 New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy:downloadReader`,
 `privacy:cancelReaderDownload`, `privacy:removeReader`, `privacy:find`, `privacy:stopFind`,
-`privacy:follow`, `privacy:everywhere`, `privacy:names`, and the events `privacy:readerProgress` and
-`privacy:findProgress`. Every handler validates its request (`validateFindRequest`, contracts): a
-project id of the project folder's form, kinds from `PRIVATE_KINDS`, at most 400 names of 80
-characters, regions of two letters, no paths. Main finds the project's files itself.
+`privacy:follow`, `privacy:underCover`, `privacy:everywhere`, `privacy:copies`,
+`privacy:coverCopies`, `privacy:originCovers`, `privacy:names`, and the events
+`privacy:readerProgress` and `privacy:findProgress`.
+
+- **Every handler checks its sender first**, as `analysisIpc.ts:216-218` does (`fromApp`, through
+  `isAppUrl`): a frame that is not Flown's own page can neither start the model download (network)
+  nor a Find (test 32).
+- **Every request is validated** by a contracts function before main touches anything:
+  `validateFindRequest` (a project id of the project folder's form, kinds from `PRIVATE_KINDS`, at
+  most 400 names of 80 characters, regions of two letters, no paths), `validateFollowRequest` and
+  `validateEverywhereRequest` (finite boxes inside 0..1, times inside the recording, a path that
+  `parsePath` accepts within §4.2's limits, `remember` one of its three values),
+  `validateCopiesRequest` (at most 200 project ids of the folder's form), and `setPrivateNames`'s
+  array (as `readPrivacyPrefs`' names). Main finds every file itself from the project id.
 
 ---
 
@@ -2048,36 +2861,49 @@ characters, regions of two letters, no paths. Main finds the project's files its
 
 - **Keyboard**: every control of §2 is reachable by Tab in reading order. The Covers row is one tab
   stop with roving focus (`aria-activedescendant` is not used; the focused bar has `tabindex=0`):
-  Left and Right move between bars, Home and End go to the first and last, Enter selects, Delete
-  removes, Shift+Left and Shift+Right move the nearer end by one frame, Escape returns focus to the
+  Left and Right move between bars and thin-span marks, Home and End go to the first and last, Enter
+  selects (a group's bar selects the group), Ctrl+Enter toggles one cover in the selection, Delete
+  uncovers, Shift+Left and Shift+Right move the nearer end by one frame, Escape returns focus to the
   row. Selection follows focus on the row (finding 36).
+- **Review by keyboard**: N or ↓ and P or ↑ move, K keeps covered, Delete uncovers, V turns *Peek
+  while reviewing* on and off (private rows only, §2.8), Enter on a row with places expands them
+  (Review's parts). A pass over 200 private rows needs no mouse and no pressing of Peek again (test
+  246).
 - **Names**: each bar's accessible name is `privacy.track.item…` (kind, start, end, and whether it is
-  waiting or to check). Review rows read their title, place, places count and badges; *Peek* and
-  *Listen* are toggle buttons (`aria-pressed`) whose names include the row's title ("Peek: Email,
-  0:42 to 3:10"; finding 33).
+  waiting or to check). Review rows read their title, place, places count, area and badges; the row
+  buttons' names are `privacy.review.keepRow` and `uncoverRow`; *Peek* and *Listen* are toggle
+  buttons (`aria-pressed`) whose names include the row's title ("Peek: Email address · 0:42–3:10";
+  finding 33). The magnified view is a canvas named `privacy.peek.inset`.
+- **Several covers selected**: the Cover section's title (`privacy.cover.selected`) is its heading;
+  each disabled action has its reason as `aria-describedby` text (`oneForBox`, `oneForFollow`,
+  `oneForEverywhere`, `privacy.cover.outside`), never a tooltip alone.
 - **Live regions**: Find's progress is a polite status, announced at most every 10% and at each phase
   change; its result is announced once. Following announces `privacy.cover.followDone` or
-  `followNone`.
+  `followNone`. *Uncover* announces `privacy.cover.uncovered`.
 - **Focus**:
   - Opening *Find private info…* moves focus to the dialog's first checkbox; closing it returns focus
     to the control that opened it; *Find* returns focus to the section's progress line (finding 31).
   - Review's *Show all changes* and the kind filter keep focus on the control used (finding 32); with
     nothing left of a filtered kind, the list says `privacy.review.emptyKind` and focus moves to the
     filter (finding 34).
-  - *Follow*'s *Stop* and *Keep* keep focus in the Cover section; when following ends, focus moves to
-    the cover's status line (finding 37).
+  - *Follow*'s *Stop* keeps focus on *Follow what is under it*; when following ends, focus moves to
+    the cover's status line. *Keep covered* in the Cover section moves focus to the section's title,
+    because the suggestion lines it removes held it (finding 37).
+  - The confirms (*Uncover all …*, *Done reviewing*, leaving during Find) start on the button that
+    changes nothing.
   - The export note's buttons close the dialog first and move focus to Review or the Find dialog
     (finding 30).
 - **Contrast** (WCAG AA, `src/renderer/src/styles.css`): text uses `--text-1`, `--text-2` and
   `--text-3` on `--surface-1` (17:1, 7.2:1, 5.4:1). The Check edge uses `--warning` (#fbbf24) on
   `--surface-2` (10.2:1) beside a text badge, so colour is never the only sign. Waiting bars have a
-  dashed edge (a shape, not only a colour). Peek outlines use `--accent-400` 2 px wide (4.0:1 on
-  `--surface-1`, over the 3:1 that WCAG asks of graphics) with a 1 px `#000000` halo outside, so they
-  show on any frame; the banner uses `--surface-overlay` with `--text-1` (17.5:1).
+  dashed edge (a shape, not only a colour). Peek outlines and the cover outlines of *Show where covers
+  are* use `--accent-400` (2 px and 1 px dashed; 4.0:1 on `--surface-1`, over the 3:1 that WCAG asks
+  of graphics) with a 1 px `#000000` halo outside, so they show on any frame; the banner uses
+  `--surface-overlay` with `--text-1` (17.5:1).
 - **Motion**: the progress line has no animation under `prefers-reduced-motion`; Peek's outlines do
   not blink.
-- **Screen sharing**: the UI never shows a found text (§2.7), so reviewing on a shared screen does not
-  leak it; Peek shows it only in the preview, with a banner.
+- **Screen sharing**: the UI never shows a found screen text (§2.7), so reviewing on a shared screen
+  does not leak it; Peek and the magnified view show it only in the preview, with a banner.
 
 ---
 
@@ -2086,18 +2912,37 @@ characters, regions of two letters, no paths. Main finds the project's files its
 ### 12.1 Catalogues
 
 - A new namespace `privacy` (`privacy.json`, `privacy.meta.json`) holds every message of §2 that is
-  not in `review`, `commands`, `polish`, `settings` or `errors`. The contracts step writes all of
+  not in `review`, `commands`, `main`, `style`, `polish` or `errors`. The contracts step writes all of
   them, each with a meta entry (its place, its arguments and their kinds, `maxLength` where the UI
   needs one). A part that needs another message adds it to `privacy.json` only, with its meta entry.
-- New keys in existing namespaces: `review.kind.private.{chip,name,all,count}`,
-  `commands.title.{addCover,findPrivate,peekCovers}`, `settings.privacy.title`,
-  `review.polish.step.privacy`, `review.polish.hint.privacy`, `review.polish.result.privacy`,
-  `review.polish.result.privacyCheck`, `review.polish.skip.noReader`, `errors.timeline.hidden` and
-  the Versions area name `review.versions.area.covers` ("covers"). No existing message changes.
+- **No `#` anywhere.** Rule 17 of `docs/design/output-and-languages.md` (§9.3, decision 17) and the
+  checker (`scripts/i18n/lib/catalogue.cjs:114`, the `pound` problem) refuse `#`: every plural above
+  selects on `count` and shows `{n}`, formatted by `fmt.count`. Times pass as `count` (whole minutes)
+  plus `n`. Percentages pass as text formatted by `fmt` with their sign (`{percent}`).
+- **No sentence built from pieces.** A sentence that names a kind is one ICU `select` over the kind's
+  id with a whole sentence in each branch (`privacy.review.keepKind`, `uncoverKind`), as Review's
+  per-kind messages are whole (`review.kind.<k>.all`). `privacy.kind.<kind>.title` is a standalone
+  noun phrase used only as a label's value or a field of a list: the timeline bars' names ("Cover,
+  Email address, 0:42 to 3:10"), Review titles ("Email address · 0:42–3:10") and the *What it hides*
+  line. These are lists, not sentences; their meta entries say so, so a translator may order the
+  fields.
+- New keys in existing namespaces:
+  - `review.kind.private.{chip,name,all,count}`;
+  - `commands.title.{addCover,findPrivate,peekCovers,coverStartHere,coverEndHere}`;
+  - `review.polish.step.privacy`, `review.polish.hint.privacy`, `review.polish.hint.privacyChecked`,
+    `review.polish.result.privacy`, `review.polish.result.privacyCheck`,
+    `review.polish.result.privacyListened`, `review.polish.result.privacyUnfinished`,
+    `review.polish.skip.noReader`;
+  - `review.versions.area.covers` ("covers");
+  - `style.groupEdit.count.cover` (`{count, plural, one {{n} cover} other {{n} covers}}`), which
+    `KIND_WORDS: Record<GroupKind, MessageKey>` (`multiSelect.ts:239`) needs once `'cover'` is a
+    `GroupKind`, and `style.groupEdit.class.cover.one` ("cover") and `.other` ("covers"), which
+    `LOOK_CLASS_WORDS` (`groupEdit.ts:1118`) needs once `'cover'` is a `LookClass`;
+  - `main.jobs.privacyDone` (§2.6);
+  - `errors.timeline.hidden`.
+  No existing message changes (question 17 is the only proposal to change one).
 - The scanner (`scripts/i18n/config.json`: `"scan": "fail"`, `"words": "fail"`) covers every new file
   from its first commit: every new file of §16 is added to `failFor` by the contracts step.
-- Kind names inside sentences (`{kind}`) come from their own messages (`privacy.kind.<kind>.name` and
-  `.plural`), so a translator sees whole sentences with one argument each.
 - English stays the only shipped UI language until the reviewers of `docs/design/output-and-languages.md`
   §15 approve the Bangla messages; the new messages go through the same review.
 
@@ -2105,41 +2950,64 @@ characters, regions of two letters, no paths. Main finds the project's files its
 
 The English guard (`tests/e2e/english-guard.e2e.cjs`, tests 9 and 10 of `output-and-languages.md`)
 compares the whole English UI with `tests/e2e/english-guard/baseline.json` (3,748,519 bytes, 51
-screenshots). This wave adds to these captures and changes no existing text:
+screenshots): test 9 every text and accessible name exactly, test 10 every element's box, font and
+colour, and every screenshot pixel for pixel (`english-guard.e2e.cjs:4-8`). This wave adds to these
+captures and changes no existing text:
 
 | Capture | What is added |
 |---|---|
-| `tab-shapes` | the *Private info* section (§2.1) |
-| `settings` | the *Private info* nav item |
-| `palette-empty` | the three commands, once off `WAITING_COMMANDS` |
-| `shortcuts` | the same three rows |
+| `tab-shapes` | the *Private info* section (§2.1) and the *Cover* button in the add-shape row |
+| `settings-NN` | one more capture: the *Private info* section, after *AI on this PC*; the captures of the sections after it shift by one (`uiTour.cjs:427-435` numbers them by child index) |
+| `palette-empty` | the five commands, once off `WAITING_COMMANDS` |
+| `shortcuts` | the same five rows |
 | `review` | the *Private* chip in the kind list (it shows only when a fixture has private rows: none do, so no change expected) |
-| `polish`, the export dialog captures | nothing: the Polish row shows only with the reader, the export note only when something is hidden |
+| `polish`, the export dialog captures | nothing: the Polish row shows only with the reader, the export note only when one of its lines applies, and the tour has no reader |
 
-- **During the build** every part runs the guard in compare mode. It is expected to fail only on
+- **During the build** every part runs the guard in compare mode, after **one warm-up launch** (or
+  with `--twice`): the first contracts run of the first version failed only on cold-launch timing (the
+  product tour thumbnail's 6 s capture timeout, and the update check), so a difference that is timing
+  on a cold first launch is run again, never recorded. A part's run is expected to fail only on
   additions. The part runs `scripts/i18n/guard-delta.mjs` (new, contracts) on the run's output, which
-  passes only when every screen of the baseline is in the run, every text, text attribute and
-  accessible name of the baseline is unchanged in the run, every element of the baseline keeps its
-  tag, font, colour, direction and alignment, and every difference is an added element or a box that
-  moved because an added element pushed it (reported with the element that pushed it). It prints the
-  additions for the part's report.
+  passes only when:
+  - every screen of the baseline is in the run, after aligning the `settings-NN` captures by their
+    section's heading text rather than by number (the new section is reported as an added capture);
+  - every text, text attribute and accessible name of the baseline is unchanged in the run;
+  - every element of the baseline keeps its tag, font, colour, direction and alignment, and every
+    box difference is an added element or a box pushed by one (reported with the element that pushed
+    it);
+  - **every capture with no added element passes test 10's screenshot rule unchanged** (0.1% of
+    pixels may differ by at most 2 levels); the captures with additions are listed, with the
+    baseline and the run's screenshots side by side, for the lead to look at.
+  It prints the additions for the part's report.
 - **At integration** the lead runs `guard-delta.mjs` once more on the merged tree and, only when it
-  passes, re-records the baseline with `--record` (two identical runs) in a commit that names this
-  feature, as `english-guard.e2e.cjs:12-13` requires.
+  passes and the listed screenshots were looked at, re-records the baseline with `--record` (two
+  identical runs) in a commit that names this feature, as `english-guard.e2e.cjs:12-13` requires.
 
 ### 12.3 Commands waiting for their part
 
-`WAITING_COMMANDS: readonly CommandId[] = ['addCover', 'findPrivate', 'peekCovers']` (contracts,
-`commands.ts` beside `LANGUAGE_COMMANDS`, `:239`): `PALETTE_COMMANDS` and `listedCommands` leave them
-out. P1 removes `addCover` and `peekCovers`, P5 removes `findPrivate`. The tests that pin the palette
-and shortcut lists (`outputSeams.test.ts:30`, `i18nCommands.test.ts:99-100`) are extended by the
-contracts to leave out `WAITING_COMMANDS`.
+Two arrays in `commands.ts` beside `LANGUAGE_COMMANDS` (`:239`), on lines of their own with a blank
+line between them, so that P1 and P5 each edit only their own line:
+
+```ts
+export const WAITING_P1: readonly CommandId[] = ['addCover', 'peekCovers', 'coverStartHere', 'coverEndHere']
+
+export const WAITING_P5: readonly CommandId[] = ['findPrivate']
+export const WAITING_COMMANDS: readonly CommandId[] = [...WAITING_P1, ...WAITING_P5]
+```
+
+`PALETTE_COMMANDS` and `listedCommands` leave `WAITING_COMMANDS` out. P1 empties `WAITING_P1`, P5
+empties `WAITING_P5`. The contracts write every command's runner case in `Editor.tsx` (each calling a
+stub that does nothing until its part, `findPrivate` opening the `FindDialog` stub), so no part edits
+the runner. The tests that pin the palette and shortcut lists (`outputSeams.test.ts:30`,
+`i18nCommands.test.ts:99-100`) are extended by the contracts to leave out `WAITING_COMMANDS`.
 
 ### 12.4 Bangla and other scripts
 
 - The PP-OCRv6 character lists hold all 94 printable ASCII characters and no Bengali, Cyrillic,
   Arabic or Devanagari: Bangla on screen is not read in this wave (§2.9).
-- Bangla speech is handled (§7.2). Its word lists need the native review of decision 8.
+- Bangla speech is handled (§7.2). Decision 8's native Bangla review covers its spoken word lists,
+  the Bangla label tables of `detect/tables.ts` (used on captions and kept ready for a reader that
+  reads Bangla) and the `privacy` catalogue's Bangla messages, through `output-and-languages.md` §15.
 
 ---
 
@@ -2150,6 +3018,11 @@ contracts to leave out `WAITING_COMMANDS`.
 - **Cover index** (`coverIndex(covers)`, contracts): built once per `covers` array (WeakMap); covers
   sorted by start in buckets of one second. `coversAt(index, t, slack)` is O(log n + k). Paths are
   parsed once per cover string and cached (WeakMap on the cover object).
+- **Review's index** (`privacyIndex(project)`, contracts, used by P5's hooks): built once per `covers`
+  and `bleeps` arrays (WeakMap): each group's cover ids, bleep ids and status. `ReviewPanel` works out
+  every row's status on every project change (`ReviewPanel.tsx:85`), so `privacyStatus` and
+  `privacyPendingCount` are O(1) a row through it, never a scan of every cover per row (as
+  `review.ts` already needed for automatic cuts).
 - **Drawing**: §8.6. A 2,000-cover project with 50 keys each parses in under 30 ms once.
 - **Timeline**: the Covers row draws bars for the visible time only; groups that overlap draw once.
 - **Review**: 2,000 private rows are grouped first (a scroll or a page gives one row), and the list is
@@ -2157,18 +3030,22 @@ contracts to leave out `WAITING_COMMANDS`.
 - **Saving**: a 2,000-cover project adds about 3.5 MB to `project.json` (§4.2) and up to 4,000 legacy
   shapes (about 1.4 MB).
 - **Budgets checked by tests** (×6 on CI): `readCovers` of 2,000 covers and 200,000 keys under 150 ms
-  (finding 17); `mergeCovers` of 20,000 found items under 300 ms (finding 7); `coversAt` under 0.02 ms;
-  `withLegacyShapes` under 50 ms; `maskRequest` of a 20,000-caption request under 40 ms.
+  (finding 17); `mergeCovers` of 20,000 found items under 300 ms, and twice the items at most 2.3
+  times the time (finding 7); `coversAt` under 0.02 ms; `withLegacyShapes` under 50 ms; `maskRequest`
+  of a 20,000-caption request under 40 ms; `reviewStatus` over 2,000 private groups under 20 ms;
+  `withFoundCovers` with 2,000 existing covers, 5,000 rejected paths and 2,000 new ones under 400 ms.
 
 ### 13.2 Find
 
-§5.11. On a 4-core laptop Find uses three threads at below-normal priority, leaving one core to the
-editor; the preview keeps playing at full rate on the reference PC (checked in decision 8's run).
+§5.11. On a 4-core laptop Find keeps at most three threads busy at below-normal priority, leaving a
+core to the editor; the preview keeps playing at full rate on the reference PC (checked in decision
+8's run).
 
 ### 13.3 Size
 
-- Installer: `ssw-ocr.exe`, about 3.4 MB compressed and 14.3 MB installed (the mixed profile, §16.2),
-  plus the vendored libphonenumber-js and double-metaphone in `app.asar` (403 KB, about 60 KB brotli).
+- Installer: `ssw-ocr.exe`, about 3.5 MB compressed and 14-15 MB installed (the mixed profile with
+  rqrr and the Windows reader's bindings, §16.2; the first build measured 3,497,668 bytes), plus the
+  vendored libphonenumber-js and double-metaphone in `app.asar` (403 KB, about 60 KB brotli).
 - Downloaded on request: 27,608,757 bytes of models.
 
 ---
@@ -2179,20 +3056,24 @@ editor; the preview keeps playing at full rate on the reference PC (checked in d
 
 | Action | How it is one step |
 |---|---|
-| Add cover, Turn into a cover, Cover the whole video, Keep, Remove, a colour chip | one `store.update` |
+| Add cover, the *Cover* tool, Turn into a cover, Turn them all into covers, Keep it for the whole video, Keep covered, Uncover, Start here, End here, a colour chip | one `store.update` |
 | Dragging a bar's end or a handle on the preview | one gesture (`beginGesture` … `endGesture`, `editStore.ts:282-290`), merged by key |
 | Typing in a box field | merged by key while the field has focus, then `seal` |
 | Find's results (covers, bleeps, record) | one `store.update` through `afterGestures` (§5.10, finding 16) |
+| *Stop*, *Stop Find and export*, leaving during Find | what was found: one `store.update` through `afterGestures`, then the export or the leave |
 | *Follow what is under it* | one update through `afterGestures` when it lands; *Stop* changes nothing |
-| *Cover this text everywhere* | one update through `afterGestures` |
-| Keep all or Remove all of a kind, Done reviewing | `heldInSlices` with `removeSteps` (`src/shared/review/slices.ts:103`), one step; *Remove all* keeps a version first |
+| *Cover this text everywhere*, with a name added to this video's list | one update through `afterGestures` |
+| *Bring them over* on a copy | one update |
+| *Also cover the copies* | no step in this project; each copy's file changes once, while it is closed (§5.10) |
+| Keep all … covered, Uncover all …, Done reviewing | `heldInSlices` with `removeSteps` (`src/shared/review/slices.ts:103`), one step; *Uncover all* keeps a version first |
 | Polish with *Find private info* | inside Polish's one update between seals (`polishRunner.ts:233-239`) |
-| Multi-select delete, nudge, colour, Keep | one update for the whole selection |
+| Multi-select delete, nudge, colour, Keep covered, Paste look | one update for the whole selection |
 
 **No settle step for covers.** Editing a suggestion makes it the user's inside the edit itself: every
 function of P1's `coverEdit.ts` and every group function drops `found` (and `missed`, `thin`) from the
-covers it changes. So undo, redo and opening a version never settle a suggestion (finding 19).
-`settleSaid` (§7.5) is the only new settle step; it is idempotent.
+covers it changes. So undo, redo, restoring a version and opening one never settle a suggestion
+(finding 19; test 201). There is no new settle step at all: texts made from captions are masked in
+`privateView`, which changes nothing stored (§7.5).
 
 ### 14.2 Versions
 
@@ -2202,34 +3083,46 @@ covers it changes. So undo, redo and opening a version never settle a suggestion
 - The version body is written with the legacy shapes (§4.6); `hashProject` and the summary are
   computed on the project without them. An automatic version is skipped when one with the same hash
   exists (`src/main/versions.ts:287`), unchanged.
-- `AUTO_REASONS` (`:20`) is unchanged: *Remove all* in Review uses `'review'`, Polish uses `'polish'`.
-- Restoring a version replaces `covers` and `privacy` with the version's, as any other field.
+- `AUTO_REASONS` (`:20`) is unchanged: *Uncover all* in Review uses `'review'`, Polish uses `'polish'`.
+- Restoring a version replaces `covers` and `privacy` with the version's, as any other field, and
+  keeps `found`, `missed` and the bleeps' `auto` as the version holds them.
 
 ### 14.3 Review
 
 - `ReviewKind` gains `'private'`, inserted **before `'chapter'`** in `REVIEW_KINDS`
   (`src/shared/review/copy.ts:22`), so `REVIEW_KINDS.slice(-2)` stays `['chapter', 'short']`
   (`smartContracts.test.ts:328`). `KIND_WORDS` takes its four keys (§2.7).
-- `src/shared/review/privacyReview.ts` (P5; contracts stub returns the project itself) gives the four
-  hooks `review.ts` calls for each aggregator, as `smartReview.ts` does: `privacyReviewItems`,
-  `privacyPendingCount`, `privacyStatus`, `privacyKeep` and `privacyRemove`. A row's status is read
-  from the project (`found` on its covers, `auto` on its bleeps), so undo and redo need nothing more.
-- Private bleeps are not listed under *Bleep* (`captionReview.ts:212-213` skips `isPrivateBleep`).
-- `clipCopy.withinRange` (`clips/clipCopy.ts:106-113`) Keeps pending rows outside a short clip's
-  range; it skips the `private` kind, so a clip copy's private rows stay waiting.
-- *Remove* writes the removed suggestions' places to `privacy.rejected` (§5.10), in the same update.
+- `src/shared/review/privacyReview.ts` (P5; contracts stubs) gives the hooks `review.ts` calls for
+  each aggregator, with the same shapes as `smartReview.ts` (`smartItemStatus(project, item)`,
+  `keepSmartItems(project, items)`, `smartReview.ts:34-39`): `privacyReviewItems(project)`,
+  `privacyPendingCount(project)`, `privacyStatus(project, item: ReviewItem)`,
+  `privacyKeep(project, items: readonly ReviewItem[])` and `privacyRemove(project, items: readonly
+  ReviewItem[])`. A row's status is read from the project (`found` on its covers, `auto` on its
+  bleeps) through `privacyIndex` (§13.1), so undo and redo need nothing more.
+- A private row's places are its `parts` (`ReviewItem.parts`, `review.ts:68`), one per cover, so
+  Review's existing parts expansion, part actions and part previews serve them (§2.7).
+- `reviewItems` keeps its time order (`review.ts:108`); the Check-first order of the *Private* filter
+  is applied by `ReviewPanel` (§2.7).
+- Private bleeps are not listed under *Bleep* (`captionReview.ts:212-213` skips `isPrivateBleep`);
+  each said text is a private row of its own (§4.4).
+- `clipCopy.withinRange` (`clips/clipCopy.ts:106-113`) settles pending rows wholly outside a short
+  clip's range by Keep, private rows included; their covers stay (§4.7).
+- *Uncover* writes the removed suggestions' paths to `privacy.rejected` (§5.10), in the same update.
 
 ### 14.4 Multi-select and group edit (P1)
 
 `'cover'` joins `GROUP_KINDS` (`src/shared/editor/multiSelect.ts:12`) after `'graphic'`, with its own
-track (`ItemTrack` `'covers'`). Each switch that lists the kinds gains its branch, as `'graphic'`
-joined (`docs/design/captions-studio.md` §10.5):
+track (`ItemTrack` `'covers'`), and `LookClass` (`groupEdit.ts:36`) gains `'cover'`. Each switch that
+lists the kinds gains its branch, as `'graphic'` joined (`docs/design/captions-studio.md` §10.5). The
+items are `ItemEntry` (`multiSelect.ts:32`) and the look is `Look` with `LookClass` `'cover'`
+(`groupEdit.ts:78`); the preview's outlines take the `SceneView` the shapes' handles take
+(`CalloutHandles.tsx:29`).
 
 | File | What covers do there |
 |---|---|
-| `multiSelect.ts` (`GROUP_KINDS`, `ItemTrack`, `TRACK_OF`, `projectItems`, `idsOf`) | covers are items of the Covers row |
-| `selection.ts` (renderer: `Selection`, `validSelection`, `groupKeyOf`) | `{ kind: 'cover', id }` |
-| `groupEdit.ts` (`LookClass` `'cover'`, `GROUP_FIELDS`, `KIND_OF`, `listOf`, `withList`, `mapItems`, `deleteItems`, `lookName`, `copyLook`, `pasteLook`, `LOOK_CLASS_WORDS`) | the colour is the group field; *Copy look* copies it; delete writes rejected places for suggestions; every change drops `found` |
+| `multiSelect.ts` (`GROUP_KINDS`, `ItemTrack`, `TRACK_OF`, `projectItems`, `idsOf`, `KIND_WORDS`) | covers are items of the Covers row; `style.groupEdit.count.cover` (§12.1) |
+| `selection.ts` (renderer: `Selection`, `validSelection`, `groupKeyOf`) | `{ kind: 'cover', id }`; a group's bar selects its covers (§2.3) |
+| `groupEdit.ts` (`LookClass` `'cover'`, `GROUP_FIELDS`, `KIND_OF`, `listOf`, `withList`, `mapItems`, `deleteItems`, `lookName`, `copyLook`, `pasteLook`, `LOOK_CLASS_WORDS`) | the colour is the group field; *Copy look* copies it; delete writes rejected paths for suggestions; every change drops `found` |
 | `groupClipboard.ts` (`ClipItem`, `copy`, `paste`) | covers paste only into their own project, like freezes (`projectId`, `:41-42`); a copy is a snapshot of each cover at copy time (finding 18); paste never reads the OS clipboard |
 | `groupMove.ts` (`listOf`, the moves) | a time move applies only to covers with one key; followed covers are left in place and the status line says `privacy.cover.timeKept` |
 | `nudge.ts` | arrow keys on the preview move the selected covers' whole paths by one pixel (Shift: ten) |
@@ -2237,6 +3130,10 @@ joined (`docs/design/captions-studio.md` §10.5):
 | `PreviewStage.tsx` (`previewBoxes`, `EditItem`) | group outlines on the preview |
 | `Editor.tsx` (single delete `:906-932`, `TAB_TRACK` `:1112`) | the Shapes tab maps to `'covers'` when a cover is selected |
 | `itemClipboard.ts` | a single cover's copy is its snapshot, for its own project only |
+
+The Cover section's multi-selection state (title, actions, disabled actions with reasons) is §2.2's.
+Selected blur and pixelate shapes offer *Turn into covers* (`privacy.weak.turnSelected`), one undo
+step.
 
 Tests that pin these lists are extended: `multiSelectContracts.test.ts:42`, `graphicsSelection.test.ts:89`
 (now `GROUP_KINDS.at(-2) === 'graphic'`), `multiSelect.test.ts:58`, `multiSelectCopy.test.ts:18`.
@@ -2246,11 +3143,17 @@ Tests that pin these lists are extended: `multiSelectContracts.test.ts:42`, `gra
 `PolishStep` gains `'privacy'`, appended after `'director'` in `POLISH_STEPS` (`polish.ts:49`; the
 adjacency tests at `smartContracts.test.ts:352`, `studioContracts.test.ts:318-319` and
 `editingContracts.test.ts:922` hold). `PolishOptions.privacy: boolean`, `DEFAULT_POLISH_OPTIONS.privacy:
-true`, `readPolishOptions` reads a missing value as `false`. `PolishSkip` gains `'no-reader'` (`SKIP_TEXT`, `polishCopy.ts:113`).
-`PolishInput.privacy?: PrivacyGathered` (the found covers and bleeps, or null). `polishRunner.ts`
-gathers it with `gatherPrivacy(project, captions, signal)` (P5; contracts stub returns `null`) after
-that run's captions arrive (`:183`), as a fourth gather; `planPolish` applies it with
-`withFoundCovers` in its single update.
+true`, `readPolishOptions` reads a missing value as `false`. `PolishSkip` gains `'no-reader'`
+(`SKIP_TEXT`, `polishCopy.ts:113`). `PolishInput.privacy?: PrivacyGathered` (the found covers and
+bleeps, or null). `polishRunner.ts` gathers it with `gatherPrivacy(project, captions, signal)` (P5;
+contracts stub returns `null`) after that run's captions arrive (`:183`), as a fourth gather;
+`planPolish` applies it with `withFoundCovers` in its single update.
+
+`gatherPrivacy` reads the screen unless the project's `privacy.find` has the same kinds and reader
+and finished (not stopped, no failed reads); in that case it only listens on the run's captions
+(`detectSaid`) and the result line says `privacyListened` (§2.10). `screen.mp4` never changes after
+recording, so a screen pass already made with the same choices stays valid. While it runs, Polish's
+progress shows Find's phase lines.
 
 ---
 
@@ -2258,25 +3161,29 @@ that run's captions arrive (`:183`), as a fourth gather; `planPolish` applies it
 
 | # | Risk | Mitigation |
 |---|---|---|
-| 1 | Old projects, settings or presets draw, sound or save differently through shared code (`drawFramePicture`, `maskedSegments`, `migrateProject`, the project writers, AI requests). | Every new path is behind a field absent today; `coverScreen` returns its input with no cover active; test 20 is written first, alone, and never regenerated. |
-| 2 | A secret shows through: next to a cover (blur, lens, scaling), at a frame boundary, under motion blur, in a join or a freeze. | The fill is in the screen picture before anything samples it, and again on the output (§8); slack of half a frame (§4.2); A2 and its variants read every pixel of every cover box in exported frames. |
-| 3 | A cover ends while the text is still there (scrolls, toasts, zoom). | Evidence of absence (§5.8); lost areas with no time limit; A16 checks every planted item in every frame. |
-| 4 | The reader misses text (small fonts, odd fonts, video compression, ClearType). | careful-long; the padded box of §6.1; the 30 real recordings of decision 8; §2.9 says what is not seen; the export note asks to check. |
-| 5 | Too many false covers make users turn Find off. | Measured false-hit rates (§6.15); unlabelled random strings off; one Review row per text; *Keep all* and *Remove all* of a kind; removed places are remembered. |
-| 6 | A secret said aloud leaks through text made from captions. | Masking by time even when words do not line up (§7.4); translations masked whole; `settleSaid`; `aiTextFor` with a test that no other file calls `aiText` (test 31). |
-| 7 | An older Flown shows covered text. | Legacy shapes written by every writer (§4.6); stated residual risk during the rectangle's fades and in older guide shots; older Flown masks private bleeps by time but not by word. |
-| 8 | The raw recordings leave through the timeline. | Refused in the renderer and in main, which reads `project.json` itself (§9 row 10). |
-| 9 | The models are swapped or damaged. | Size and SHA-256 in main and again in the helper before parsing (§10.2); downloads checked hop by hop. |
+| 1 | Old projects, settings or presets draw, sound or save differently through shared code (`drawFramePicture`, `maskedSegments`, `migrateProject`, the project writers, AI requests, `privateView`). | Every new path is behind a field absent today; `coverScreen` returns its input with no cover active; `privateView` returns its input without private bleeps; test 20 is written first, alone, and never regenerated. |
+| 2 | A secret shows through: next to a cover (blur, lens, scaling), at a frame boundary, on the frame between two analysed frames, under motion blur, in a join or a freeze, in a cropped project. | The fill is in the screen picture before anything samples it, and again on the output (§8); union keys between analysed frames and starts and ends at source frames (§4.2); one coordinate rule (D19); A2 and its variants compare every output of two recordings that differ only under the covers. |
+| 3 | A cover ends, or starts, while the text is still there (scrolls, toasts, tooltips, zoom, typing). | Evidence of absence in both directions, check reads, the typing rule, lost areas over every changed region with no time limit (§5.8); A16 checks every planted item in every source frame. |
+| 4 | The reader misses text (small fonts, odd fonts, video compression, ClearType, HiDPI). | careful-long; the padded box of §6.1; sizes scaled by the display scale (§5.3); R17 and R18; the 30 real recordings of decision 8; §2.9 says what is not seen; the export note asks to check. |
+| 5 | Too many false covers make users turn Find off. | Measured false-hit rates (§6.15); unlabelled random strings off; one Review row per text with places as parts; *Peek while reviewing*; *Keep all … covered* and *Uncover all …*; removed paths are remembered. |
+| 6 | A secret said aloud leaks through text made from captions. | Masking by time even when words do not line up (§7.4); translations masked whole; `privateView` at every output (§7.5); spoken forms from the hit's own words (§7.3); `aiTextFor` with a test that no other file calls `aiText` (test 31). |
+| 7 | An older Flown shows covered text. | Legacy shapes written by every writer (§4.6); the residual risks listed in §4.6 (the fades, the lens's mosaic, raw Home thumbnails and filmstrip, the recordings timeline, first letters kept, unaligned captions, AI requests, removable private bleeps). |
+| 8 | The raw recordings leave through the timeline. | Refused in the renderer and in main, which reads `project.json` itself after the dialog's `flush` (§9 row 10). |
+| 9 | The models are swapped or damaged. | Size and SHA-256 in main, and again in the helper on the same buffer it parses (§10.2); downloads checked hop by hop. |
 | 10 | The mirror does not exist at release. | `READER_MIRROR` null fails `verify-dist` for a release build (§16.2); the upstream files serve the pinned bytes meanwhile for development. |
-| 11 | Find takes too long or slows the editor. | Budgets of §5.11; three threads at below-normal priority; two estimates; *Stop* keeps what was found. |
-| 12 | Memory on 8 GB laptops. | Helper ≤ 700 MB; small plans dropped after each careful batch; width buckets; tiles (§5.11). |
-| 13 | Windows OCR is offered before it is measured. | `WINDOWS_READER_ALLOWED = false` until decision 8's check passes. |
-| 14 | The helper or ffmpeg crashes and a dump leaves the PC. | `catch_unwind`, restart once, job object, `SetErrorMode`, the WER exclusion (question 14). |
-| 15 | Merge conflicts in shared files (`compositor.ts`, `Editor.tsx`, `review.ts`, `groupEdit.ts`, `commands.ts`, the catalogues). | The contracts step completes every shared seam; one owner per file afterwards (§16.6). |
-| 16 | The English guard is re-recorded over a real change. | `guard-delta.mjs` proves every old text and name unchanged first (§12.2). |
+| 11 | Find takes too long or slows the editor. | Budgets of §5.11 from measured parts; at most three busy threads at below-normal priority; fixed plan buckets built once; two estimates; *Stop* keeps what was found. |
+| 12 | Memory on 8 GB laptops. | Helper ≤ 600 MB at 1080p and 4K, measured per plan (§5.11); tiles; at most 3 reads in flight. |
+| 13 | Windows OCR is offered before it is measured. | Built behind `WINDOWS_READER_ALLOWED = false`, with no UI (§5.13); R10 on the reference PC decides. |
+| 14 | A crash dump with frames or text leaves the PC. | The helper: `catch_unwind`, restart once, job object, `SetErrorMode`, `WerSetFlags` with no heap, an unhandled-exception filter, and the registry exclusion of question 14 (§10.5). Main's and the renderer's dumps stay under Windows' consent settings, as for every export today. |
+| 15 | Merge conflicts in shared files (`compositor.ts`, `Editor.tsx`, `review.ts`, `groupEdit.ts`, `commands.ts`, the catalogues). | The contracts step completes every shared seam and every runner case; `WAITING_P1` and `WAITING_P5` on lines of their own; one owner per file afterwards (§16.6). |
+| 16 | The English guard is re-recorded over a real change. | `guard-delta.mjs` proves every old text and name unchanged, aligns the settings captures by heading, and holds the screenshot rule for every capture without additions (§12.2). |
 | 17 | Invented secrets in the repository are flagged or mistaken for real ones. | Compressed fixtures with a `.gitignore` and a README (question 15); every value invented. |
-| 18 | Bangla speech rules are wrong. | Native review (decision 8); Bangla vectors in `rule-vectors.json`; Bangla screen text not claimed. |
-| 19 | Pop-up notification rules cover ordinary panels. | Check tier; decision 8's limit of one false hit per 10 minutes, or the default turns off. |
+| 18 | Bangla speech rules are wrong. | Native review (decision 8, §12.4); Bangla vectors in `rule-vectors.json`; Bangla screen text not claimed. |
+| 19 | Pop-up notification rules cover ordinary panels. | Check tier; recordings only, never imported videos (§6.13); decision 8's limit of one false hit per 10 minutes, or the default turns off. |
+| 20 | A line on screen built to make a pattern slow freezes Flown. | The rules run in a worker with a 2 s limit a read (D20, §10.3); the static pattern check. |
+| 21 | A cover's width tells how long the hidden text is. | Widths rounded to 4 characters plus a random 0-2 per group (D23); §2.9 says what remains. |
+| 22 | Uncovering one false hit stops real ones from being suggested. | Suppression only inside the removed path, for its kind (D21); the count is reported. |
+| 23 | Find's work is lost, or applied to the wrong project. | One Find at a time; leaving asks and applies what was found; results checked against project and request ids (§5.1). |
 
 ---
 
@@ -2299,52 +3206,77 @@ part's agreement, recorded here.
    upstream commits, their sizes and SHA-256 checked against `scripts/privacy/reader-models.json`, and
    `score_reader.py` (careful-narrow and careful) plus `careful_long.py` run on both sets: the results
    must equal §5.6 within 0.5 points. `src/shared/privacy/readerCatalog.ts` (§16.2's signatures) is
-   written in full from that file. The contracts add a `--seed` flag to `make-eval-set.mjs`; a second
-   held-out set (`--holdout --seed 9000`) is rendered only at test time by A16 and the release check,
-   and no part tunes its rules on it.
-3. **Types and API**: §4.1 in `src/shared/types.ts`; `src/shared/api/privacy.ts`; `ProjectSummary.
-   thumbCovers?` (`src/shared/api/projects.ts`); `PrefKey` `'privacy'` and `PREF_KEYS`
-   (`src/shared/api/prefs.ts`); `RenderScene.peek?` (`compositor.ts`, the field only);
-   `src/preload/privacy.ts` and its line in `src/preload/index.ts`.
-4. **Readers, tables and boundaries in full** (with their tests): `kinds.ts`, `coverPath.ts`,
-   `coverData.ts`, `covers.ts`, `protocol.ts` (parsing every helper line strictly), `validateFindRequest`,
-   `readPrivacyPrefs` (wired into `prefsIpc.ts`'s sanitisers).
+   written in full from that file. The contracts add two flags to `make-eval-set.mjs`: `--seed`, for
+   a second held-out set (`--holdout --seed 9000`) rendered only at test time by A16 and the release
+   check, on which no part tunes its rules; and `--scale`, which renders the set at a device scale
+   (1.5 gives 2880×1620, 2 gives 3840×2160) for R18.
+3. **Types and API**: §4.1 in `src/shared/types.ts`; `src/shared/api/privacy.ts`;
+   `ProjectSummary.thumbCovers?` (`src/shared/api/projects.ts`); `PrefKey` `'privacy'` and `PREF_KEYS`
+   (`src/shared/api/prefs.ts`); `RenderScene.peek?` and `RenderScene.coverMarks?` (`compositor.ts`,
+   the fields only); `JobOutcome`'s done outcome gains `notice?: NotificationCopy`, which
+   `notificationFor` (`src/shared/jobs/longJobs.ts:160`) returns for any kind when present (no job
+   sets it today); `src/preload/privacy.ts` and its line in `src/preload/index.ts`.
+4. **Readers, tables and boundaries in full** (with their tests): `kinds.ts`, `coverPath.ts`
+   (`stepKeys`, `simplifyKeys`), `coverData.ts`, `covers.ts` (`privacyIndex` included), `protocol.ts`
+   (parsing every helper line strictly), the validators of §10.7, `readPrivacyPrefs` (wired into
+   `prefsIpc.ts`'s sanitisers), and `readBleeps` keeping private bleeps first when it cuts (§4.4).
 5. **Migration and the writers**: `migrateProject` (§4.7); `src/main/projectFile.ts` and its four
    callers (§4.6); the crop mapping (§4.8).
-6. **Drawing**: `coverLayer.ts` (`coverScreen`, `drawCoverOutput`) wired into `compositor.ts` (§8.1,
-   §8.2); the `peek` strip at every export entry point; `JoinStills.fresh` keyed on `peek`.
-7. **Masking in full** (§7): `spoken.ts`, `maskedSegments` for private bleeps, the translation masks
-   and `maskedFor` in `readCaptionTracks`, `maskBleeped` with `maskPrivate`, `search/extract.ts`,
-   `captionReview.ts`, `transcriptText.ts`, `settleSaid` at the end of the settle chain
-   (`Editor.tsx:228-230`), `aiRequest.ts` and `aiTextFor.ts` with all 9 call sites switched.
+6. **Drawing**: `coverLayer.ts` (`coverScreen`, `drawCoverOutput`, `forOutput`) wired into
+   `compositor.ts` (§8.1, §8.2); `forOutput` at every export entry point; `JoinStills.fresh` keyed on
+   `peek` and `coverMarks`; `PreviewStage.tsx`'s cover boxes in view space.
+7. **Masking in full** (§7): `spoken.ts` (`spokenForms`, `maskPrivate`, `privateView`),
+   `maskedSegments` for private bleeps, the translation masks and `maskedFor` in `readCaptionTracks`,
+   `maskBleeped` with `maskPrivate`, `search/extract.ts`, `captionReview.ts`, `transcriptText.ts`,
+   `privateView` taken at the scene (`Editor.tsx:504-511`) and at every output entry point of §7.5,
+   `aiRequest.ts` and `aiTextFor.ts` with all 9 call sites switched.
 8. **Output seams**: the guide's `shotSig` and `planActual` (§9 row 12); the timeline refusal in
-   `timelineIpc.ts`, `timelineRun.ts` and `ExportBundleOptions.tsx` (row 10); Home thumbnails (row 17:
-   `listProjects` and `captureThumbnail`); the filmstrip's draw calling `fillCoverTiles` (row 18, P1
-   stub draws nothing) from `src/renderer/src/editor/Filmstrip.tsx`.
+   `timelineIpc.ts`, `timelineRun.ts` and `ExportBundleOptions.tsx`, and `ExportDialog`'s new `flush`
+   prop passed by `Editor.tsx` and called by the bundle run before the timeline request (row 10); Home
+   thumbnails (row 17: `thumbTime`, `listProjects` and `captureThumbnail`); the filmstrip's draw
+   calling `fillCoverTiles` (row 18, P1 stub draws nothing) from
+   `src/renderer/src/editor/Filmstrip.tsx`; `LookThumb` calling `fillCoverPixels` (row 28, P1 stub
+   draws nothing).
 9. **Review, Versions, multi-select, Polish seams**: `'private'` in `REVIEW_KINDS` and `KIND_WORDS`;
-   `review.ts`'s aggregator hooks calling `privacyReview.ts` (P5 stubs return the project, zero and
-   no rows); the `covers` area in `versions.ts`; `'cover'` in `GROUP_KINDS` with every switch of §14.4
-   calling `src/shared/editor/coverGroup.ts` (P1 stubs: covers are not selectable yet,
-   `validSelection` drops them); `PolishStep` `'privacy'`, its options, `PolishInput.privacy`,
-   `polishRunner.ts` calling `gatherPrivacy` (P5 stub `null`); `clipCopy.withinRange` skipping
-   `'private'`.
-10. **Commands and mounts**: the three commands with `WAITING_COMMANDS`; mounts of every part's
-    component, each a stub rendering nothing: `PrivacySection`, `CoverSection` and `WeakBlurNote` in
-    `ShapesPanel.tsx`; `CoverTrack` in `Timeline.tsx`; `CoverHandles` and `PeekBanner` in
-    `PreviewStage.tsx`; `PrivacyExportNote` in `ExportDialog.tsx`; `PrivacySettings` in
-    `SettingsDialog.tsx` (with `'privacy'` in `SettingsSection` and its nav item hidden while
-    `showPrivacySettings()` (P5 stub) is false); `TranscribeNote` and `TranslatedNote` in the captions
-    panels (`CaptionsPanel.tsx`'s transcription choices and `LanguagesSection.tsx`); `NotCheckedNote` in
-    `src/renderer/src/guide/ShotViewer.tsx`; `FindDialog` in `Editor.tsx`.
+   `review.ts`'s aggregator hooks calling `privacyReview.ts` with `ReviewItem`s (P5 stubs return the
+   project, zero and no rows); `keys.ts`'s `peek` action for V on private rows (§2.8); the `covers`
+   area in `versions.ts`; `'cover'` in `GROUP_KINDS` and in `LookClass`, with `KIND_WORDS`' and
+   `LOOK_CLASS_WORDS`' keys (§12.1) and every switch of §14.4 calling
+   `src/shared/editor/coverGroup.ts` (P1 stubs: covers are not selectable yet, `validSelection` drops
+   them); `PolishStep` `'privacy'`, its options, `PolishInput.privacy`, `polishRunner.ts` calling
+   `gatherPrivacy` (P5 stub `null`); `clipCopy.withinRange` unchanged in code (private rows settle by
+   Keep like the rest, §4.7), with a test.
+10. **Commands and mounts**: the five commands with `WAITING_P1` and `WAITING_P5` (§12.3); every
+    command's runner case in `Editor.tsx`, each calling its stub; the leave hook in `Editor.tsx`'s
+    `leave` calling `confirmLeaveFind` (P5 stub resolves `true` at once); mounts of every part's
+    component, each a stub rendering nothing: `PrivacySection`, `CoverSection`, `WeakBlurNote` and
+    `CoverShapeButton` (in the add-shape row) in `ShapesPanel.tsx`; `CoverTrack` in `Timeline.tsx`
+    (beside the other `TrackSlotProps` rows, `:855-859`); `CoverHandles`, `PeekBanner` and
+    `PeekInset` in `PreviewStage.tsx`; `PrivacyExportNote` in `ExportDialog.tsx`; `PrivacySettings`
+    in `SettingsDialog.tsx` after `LocalAiSection`, with `'privacy'` in `SettingsSection` (it renders
+    nothing until P5, so the guard's captures do not move before integration); `TranscribeNote` and
+    `TranslatedNote` in the captions panels (`CaptionsPanel.tsx`'s transcription choices and
+    `LanguagesSection.tsx`); `NotCheckedNote` in `src/renderer/src/guide/ShotViewer.tsx` and in the
+    guide's save and copy area; `PublishMaskedNote` in `PublishDialog.tsx`; `FindDialog` in
+    `Editor.tsx`; `FindProgressLine` wherever §2 shows the progress line. The renderer hooks
+    `useReaderState` and `useFindProgress` are stubs with their final signatures (P5 fills them;
+    P1's components use them from the start).
 11. **Main**: `registerReaderIpc()` (P2 stub answers `{ status: 'none' }` and refuses downloads with
-    `errors.feature.notReady`), `registerFindIpc()` (P4 stub answers `{ ok: false, reason: 'failed' }`),
-    both called in `src/main/index.ts`; `src/main/privacy/names.ts` (`privateNames`, `setPrivateNames`)
-    joined to `secretValues()`.
+    `errors.feature.notReady`), `registerFindIpc()` (P4 stub answers `{ ok: false, reason: 'failed' }`
+    and checks the sender and the request first), both called in `src/main/index.ts`;
+    `src/main/privacy/names.ts` (`privateNames`, `setPrivateNames`) joined to `secretValues()`.
 12. **Catalogues**: `privacy.json` and `privacy.meta.json` complete for §2, the keys of §12.1 in their
-    namespaces, every new file in `failFor`; `scripts/i18n/guard-delta.mjs` (§12.2).
-13. **Tests 1-40** (§17.1), each its own test, and test 20 green throughout. Both typechecks, all of
-    vitest, `npm run i18n:check`, `npm run -s build`, and the English guard in compare mode (no
-    difference at all: every mount renders nothing and every command waits).
+    namespaces, every new file in `failFor`; `scripts/i18n/guard-delta.mjs` (§12.2: heading
+    alignment of the settings captures, the screenshot rule for captures without additions).
+13. **The tracking fixtures**: `scripts/privacy/make-track-fixtures.mjs`, from the evaluation set's
+    generator (`eval-lib.mjs`, `eval-scenes.mjs`). It renders the cases of A16 (§17.3) as lossless
+    60 fps videos (`-c:v libx264rgb -qp 0`, `-r 60`) with a truth file holding every planted item's
+    box in every source frame, read back from the page as `make-eval-set.mjs` reads its truth. Test
+    196 renders one short case and checks that its truth boxes hold the drawn ink.
+14. **Tests 1-40 and 186-197** (§17.1), each its own test, and test 20 green throughout. Both
+    typechecks, all of vitest, `npm run i18n:check`, `npm run -s build`, and the English guard in
+    compare mode after a warm-up launch (no difference at all: every mount renders nothing and every
+    command waits).
 
 **Contracts files and signatures** (all new unless marked):
 
@@ -2361,6 +3293,7 @@ export const COVER_COLOURS: Readonly<Record<'dark' | 'light' | 'black' | 'white'
 
 // src/shared/privacy/coverPath.ts
 export interface CoverKey { t: number; x: number; y: number; w: number; h: number }
+export interface Placement { t: number; box: NormRect }       // a placed or lost box on an analysed frame
 export const MAX_KEYS_PER_COVER = 4000
 export function parsePath(path: string): CoverKey[] | null
 export function writePath(keys: readonly CoverKey[]): string
@@ -2369,6 +3302,10 @@ export function boxAt(cover: Cover, t: number): NormRect | null              // 
 export function drawnBox(cover: Cover, t: number, slack: number): NormRect | null
 export function coverSlack(fps: number): number                             // 0.5 / fps + 0.001
 export function unionBox(a: NormRect, b: NormRect): NormRect
+/** Keys for placements on analysed frames, with a union key at the first source frame after each move (§4.2). */
+export function stepKeys(placements: readonly Placement[], fps: number): CoverKey[]
+/** Merges neighbouring keys of the longest paths first until the total is at most maxKeys (§4.2). */
+export function simplifyKeys(covers: readonly Cover[], maxKeys: number): Cover[]
 
 // src/shared/privacy/coverData.ts
 export const MAX_COVERS = 2000
@@ -2376,25 +3313,32 @@ export const MAX_KEYS = 200000
 export const LEGACY_PREFIX = '~cover:'
 export const MAX_LEGACY_SHAPES = 4000
 export function readCovers(raw: unknown, duration: number): Cover[] | undefined
+export function widenShort(cover: Cover, duration: number): Cover                 // at least 0.02 s, never dropped
 export function readPrivacy(raw: unknown, duration: number): ProjectPrivacy | undefined
 export function readPrivacyPrefs(raw: unknown): PrivacyPrefs | null
 export function isPrivateBleep(b: Pick<Bleep, 'word'>): boolean
-export function privateBleepWord(kind: PrivateKind): string                 // ':' + kind
+export function privateBleepWord(kind: PrivateKind, group: string): string        // ':card:k3v9q2m8xa'
 export function privateKindOf(b: Pick<Bleep, 'word'>): PrivateKind | null
+export function privateGroupOf(b: Pick<Bleep, 'word'>): string | null
 export function legacyPieces(cover: Cover, slack: number): { start: number; end: number; box: NormRect }[]
 export function withLegacyShapes(project: Project): Project
 export function withoutLegacyShapes(shapes: unknown): unknown
 export function mergeCovers(covers: readonly Cover[], max: number): Cover[]
-export function thumbCovers(project: Project, t: number): NormRect[]
-export function hidesSomething(project: Pick<Project, 'covers' | 'shapes' | 'bleeps'>): boolean
-export function coverCounts(project: Pick<Project, 'covers' | 'bleeps'>): { covers: number; waiting: number; check: number; said: number }
+export function thumbTime(duration: number): number                              // min(1, duration × 0.15)
+export function thumbCovers(project: Project, from: number, to: number): NormRect[]
+export function hidesSomething(project: Pick<Project, 'covers' | 'shapes' | 'bleeps' | 'crop'>): boolean   // the crop only if question 18 says (a)
+export interface PrivateItems { items: number; waiting: number; check: number; said: number; weak: number }
+export function privateItems(project: Pick<Project, 'covers' | 'bleeps' | 'shapes'>): PrivateItems   // §2.12's unit
 
 // src/shared/privacy/covers.ts
 export interface CoverIndex { readonly covers: readonly Cover[] }
 export function coverIndex(covers: readonly Cover[]): CoverIndex             // cached per array
 export function coversAt(index: CoverIndex, t: number, slack: number): readonly Cover[]
-export function containsOver(outer: Cover, inner: Cover, slack: number): boolean
+export function coversIn(index: CoverIndex, from: number, to: number): readonly Cover[]
+export function containsOver(outer: Pick<Cover, 'path' | 'start' | 'end'>, inner: Pick<Cover, 'path' | 'start' | 'end'>, slack: number): boolean
 export function placeOf(box: NormRect): 'topLeft' | 'top' | 'topRight' | 'left' | 'centre' | 'right' | 'bottomLeft' | 'bottom' | 'bottomRight'
+export interface PrivacyIndex { group(id: string): { covers: readonly string[]; bleeps: readonly string[]; waiting: boolean; check: boolean } | null; readonly groups: readonly string[] }
+export function privacyIndex(project: Pick<Project, 'covers' | 'bleeps'>): PrivacyIndex   // cached per covers and bleeps arrays
 
 // src/shared/privacy/protocol.ts
 export const OCR_PROTOCOL = 1
@@ -2402,41 +3346,57 @@ export type Box = [x: number, y: number, w: number, h: number]               // 
 export interface ModelPin { file: string; path: string; bytes: number; sha256: string }
 export interface LookMove { box: Box; dx: number; dy: number; score: number; alt: [dx: number, dy: number, score: number][] }
 export interface LookFrame { t: number; key: boolean; tiles: string; moves: LookMove[] }
-export interface ReadVariant { model: 'tiny' | 'small'; text: string; conf: number; spans: [number, number][] }
+export interface ReadVariant { model: 'tiny' | 'small' | 'windows'; text: string; conf: number; spans: [number, number][] }
 export interface ReadLine { box: Box; quad: [number, number][]; variants: ReadVariant[]; ring: string; spread: number }
-export interface ReadResult { id: number; t: number; lines: ReadLine[]; qr: { quad: [number, number][]; payload: string | null }[] }
-export interface FollowStep { t: number; parts: (number | null)[]; dx: number; dy: number; scale: number }
+export interface ReadResult { t: number; lines: ReadLine[]; qr: { quad: [number, number][]; payload: string | null }[]; partial?: Box[] }
+export interface Candidate { dx: number; dy: number; scale: number }
+export interface TrackMatch { track: number; parts: (number | null)[]; best: Candidate | null; second: number }
 export type HelperCommand =
-  | { op: 'open'; protocol: 1; models: ModelPin[] }
-  | { op: 'look'; id: number; video: string; ffmpeg: string; k: number; step: number; from: number; to: number }
-  | { op: 'read'; id: number; video: string; ffmpeg: string; key: number; reads: { id: number; t: number; areas: Box[] }[] }
-  | { op: 'careful'; id: number; lines: number[] }
-  | { op: 'release'; id: number }
-  | { op: 'follow'; id: number; video: string; ffmpeg: string; key: number; from: number; to: number; dir: 1 | -1; parts: Box[]; candidates: { t: number; dx: number; dy: number }[] }
-  | { op: 'suspend' } | { op: 'resume' } | { op: 'stop' }
+  | { op: 'open'; id: number; protocol: 1; reader: 'paddle' | 'windows'; models: ModelPin[]; ffmpeg: string }
+  | { op: 'look'; id: number; video: string; k: number; step: number; from: number; to: number }
+  | { op: 'read'; id: number; video: string; key: number; t: number; areas: Box[] }
+  | { op: 'careful'; id: number; read: number; lines: number[] }
+  | { op: 'release'; id: number; read: number }
+  | { op: 'followOpen'; id: number; video: string; key: number; from: number; to: number; dir: 1 | -1 }
+  | { op: 'track'; id: number; session: number; track: number; t: number; parts: Box[] }
+  | { op: 'match'; id: number; session: number; t: number; tracks: { track: number; parts: number[]; candidates: Candidate[] }[] }
+  | { op: 'closeSession'; id: number; session: number }
+  | { op: 'cancel'; id: number; target: number }
+  | { op: 'pause'; id: number } | { op: 'resume'; id: number } | { op: 'stop'; id: number }
 export type HelperEvent =
   | { alive: number }
-  | { opened: { protocol: number; version: string } }
+  | { id: number; opened: { protocol: number; version: string; reader: 'paddle' | 'windows' } }
   | { id: number; look: LookFrame[]; done: boolean }
   | { id: number; read: ReadResult }
-  | { id: number; follow: FollowStep[]; done: boolean }
-  | { id: number; error: 'model' | 'read' | 'video' | 'tooLarge' | 'stopped' | 'bad-command' }
-export function parseHelperEvent(line: string): HelperEvent | null           // strict; unknown or malformed → null
+  | { id: number; careful: ReadVariant[][] }
+  | { id: number; session: { from: number; to: number; frames: number } }
+  | { id: number; matched: TrackMatch[] }
+  | { id: number; done: true }
+  | { id: number; error: 'model' | 'read' | 'video' | 'tooLarge' | 'stopped' | 'cancelled' | 'panic' | 'bad-command' }
+export function parseHelperEvent(line: string): HelperEvent | null           // strict; unknown or malformed → null, never throws
 export function commandLine(c: HelperCommand): string
 
 // src/shared/api/privacy.ts
 export type ReaderState =
-  | { status: 'none' } | { status: 'downloading'; done: number; total: number } | { status: 'ready'; bytes: number }
+  | { status: 'none' } | { status: 'downloading'; done: number; total: number } | { status: 'ready'; bytes: number; decodeMs: number | null }
   | { status: 'damaged' } | { status: 'failed'; reason: string } | { status: 'unavailable'; reason: 'helper' | 'cpu' }
 export interface FindRequest { projectId: string; requestId: string; kinds: PrivateKind[]; regions: string[]; names: string[]; neverHide: string[]; only?: 'everywhere' }
-export interface FindProgress { projectId: string; requestId: string; phase: 'look' | 'read' | 'follow'; done: number; total: number; secondsLeft: number | null }
+export interface FindProgress { projectId: string; requestId: string; phase: 'look' | 'read' | 'follow' | 'waiting'; done: number; total: number; secondsLeft: number | null }
 export interface FoundCover { kind: PrivateKind; score: number; group: string; start: number; end: number; path: string; color: string; lost?: true; thin?: true }
+export type FindFailure = 'reader' | 'busy' | 'tooLarge' | 'helper' | 'video' | 'crashed' | 'failed'
 export type FindResult =
-  | { ok: true; found: FoundCover[]; failedReads: number; thinned: number; stopped: boolean; reader: string }
-  | { ok: false; reason: 'reader' | 'busy' | 'tooLarge' | 'failed'; message: string }
+  | { ok: true; projectId: string; requestId: string; found: FoundCover[]; failedReads: number; thinSpans: string; stopped: boolean; readTo: number | null; reader: string }
+  | { ok: false; projectId: string; requestId: string; reason: FindFailure }
 export interface FollowRequest { projectId: string; requestId: string; t: number; box: NormRect; start: number; end: number; path: string }
-export type FollowResult = { ok: true; path: string; start: number; end: number; thin: boolean } | { ok: false; reason: 'none' | 'stopped' | 'failed'; message: string }
-export interface EverywhereRequest { projectId: string; requestId: string; t: number; box: NormRect }
+export type FollowResult =
+  | { ok: true; projectId: string; requestId: string; path: string; start: number; end: number; walked: { start: number; end: number }; lostSpans: string; thin: boolean }
+  | { ok: false; projectId: string; requestId: string; reason: 'none' | 'stopped' | 'busy' | 'failed' }
+export interface UnderCoverRequest { projectId: string; requestId: string; t: number; box: NormRect }
+export type UnderCoverResult = { ok: true; nameLike: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
+export interface EverywhereRequest { projectId: string; requestId: string; remember: 'no' | 'project' | 'settings' }
+export type EverywhereResult = (Extract<FindResult, { ok: true }> & { addedName?: string }) | Extract<FindResult, { ok: false }>
+export interface CopyInfo { id: string; name: string; open: boolean }
+export interface OriginCovers { missing: number; covers: FoundCover[]; bleeps: Bleep[] }
 export interface PrivacyApi {
   readerState(): Promise<ReaderState>
   downloadReader(): Promise<ReaderState>
@@ -2447,28 +3407,45 @@ export interface PrivacyApi {
   stopFind(projectId: string): Promise<void>
   onFindProgress(listener: (progress: FindProgress) => void): () => void
   followCover(request: FollowRequest): Promise<FollowResult>
-  coverEverywhere(request: EverywhereRequest): Promise<FindResult>
+  underCover(request: UnderCoverRequest): Promise<UnderCoverResult>
+  coverEverywhere(request: EverywhereRequest): Promise<EverywhereResult>
+  copies(projectId: string): Promise<CopyInfo[]>
+  coverCopies(projectId: string, copyIds: string[]): Promise<{ covered: number; skipped: string[] }>
+  originCovers(projectId: string): Promise<OriginCovers>
   setPrivateNames(names: string[]): Promise<void>
 }
 export function validateFindRequest(raw: unknown): FindRequest | null
+export function validateFollowRequest(raw: unknown, duration: number): FollowRequest | null
+export function validateUnderCoverRequest(raw: unknown, duration: number): UnderCoverRequest | null
+export function validateEverywhereRequest(raw: unknown): EverywhereRequest | null
+export function validateCopiesRequest(raw: unknown): { projectId: string; copyIds: string[] } | null
 
 // src/shared/privacy/spoken.ts
-export interface SpokenForms { readonly forms: readonly string[]; readonly digits: readonly string[] }
+export interface SpokenForms { readonly phrases: readonly string[]; readonly digits: readonly string[] }
 export function spokenForms(project: Pick<Project, 'transcript' | 'bleeps'>): SpokenForms | null
 export function maskChars(text: string): string                             // '•' for each letter and digit
 export function maskPrivate(text: string, forms: SpokenForms | null): string
 export function maskedForOf(project: Pick<Project, 'transcript' | 'bleeps'>, segmentId: string): string
-export function settleSaid(next: Project, prev: Project): Project
+export const PRIVATE_TEXT_FIELDS: readonly string[]                         // §7.5
+export function privateView<P extends Project>(project: P): P               // memoised; `project` itself without private bleeps
 
 // src/shared/privacy/aiRequest.ts
 export function maskRequest<R extends object>(request: R, project: Pick<Project, 'transcript' | 'bleeps'>): R
 
 // src/renderer/src/ai/aiTextFor.ts
-export function aiTextFor(project: Project, providerId: string, request: AiTextRequest, requestId?: string): Promise<AiTextResult>
+export function aiTextFor(project: Project, providerId: string, request: AiTextRequest, requestId?: string): ReturnType<AiApi['aiText']>
 
 // src/renderer/src/render/coverLayer.ts
+export interface OutputView { toOut(x: number, y: number): { x: number; y: number } }
 export function coverScreen(target: CanvasRenderingContext2D, screen: FrameImage, full: FrameImage, scene: RenderScene, t: number): FrameImage
-export function drawCoverOutput(c: CanvasRenderingContext2D, scene: RenderScene, t: number, views: readonly { toOut: (r: NormRect) => Rect }[]): void
+export function drawCoverOutput(c: CanvasRenderingContext2D, scene: RenderScene, t: number, views: readonly OutputView[]): void
+export function forOutput<S extends RenderScene>(scene: S): S               // without peek and coverMarks
+
+// src/renderer/src/privacy/readerState.ts (P5 fills; stubs return null and render nothing)
+export function useReaderState(): ReaderState | null
+export function useFindProgress(projectId: string): FindProgress | null
+export function FindProgressLine(props: { projectId: string; onReview?: () => void }): JSX.Element | null
+export function confirmLeaveFind(services: EditorServices): Promise<boolean>
 
 // src/main/projectFile.ts
 export function projectFileText(project: Project, form?: 'pretty' | 'compact'): string
@@ -2485,41 +3462,41 @@ export function setPrivateNames(names: unknown): void
 
 | File | Exports or change |
 |---|---|
-| `src/shared/editor/coverEdit.ts` (new) | `type CoverLength = 'three' \| 'toEnd' \| 'whole'`; `function addCover(project: Project, at: { t: number; box: NormRect; length: CoverLength; color: string }, random?: () => number): { project: Project; id: string }`; `function coverFromShape(project: Project, shapeId: string, color: string): { project: Project; id: string } \| null`; `function setCoverBox(project: Project, id: string, t: number, box: NormRect, all: boolean): Project`; `function setCoverEnds(project: Project, id: string, start: number, end: number): Project` (holds the first and last boxes); `function moveCoverTime(project: Project, id: string, dt: number): Project \| null` (null for a cover with more than one key); `function coverWholeVideo(project: Project, id: string): Project`; `function setCoverColour(project: Project, ids: readonly string[], color: string): Project`; `function keepCovers(project: Project, ids: readonly string[]): Project`; `function deleteCovers(project: Project, ids: readonly string[]): Project` (writes `privacy.rejected` for suggestions); `function nudgeCovers(project: Project, ids: readonly string[], dx: number, dy: number): Project`; `interface CoverClip { projectId: string; at: number; covers: Cover[] }`; `function copyCovers(project: Project, ids: readonly string[], at: number): CoverClip`; `function pasteCovers(project: Project, clip: CoverClip, at: number): { project: Project; ids: string[] } \| null` (null for another project); `function duplicateCover(project: Project, id: string): { project: Project; id: string }`; `function withFollowedPath(project: Project, id: string, result: Extract<FollowResult, { ok: true }>): Project` (the union with the old path); `function newCoverId(random: () => number): string`. Every function drops `found`, `missed` and `thin` from the covers it changes |
-| `src/shared/editor/coverGroup.ts` (stub from the contracts) | the branches of §14.4: `function coverItems(project: Project): GroupItem[]`; `function coverTrackOf(): ItemTrack`; `function moveCoversInTime(project: Project, ids: readonly string[], dt: number): { project: Project; refused: string[] }`; `function deleteCoverItems(project: Project, ids: readonly string[]): Project`; `function coverLookOf(cover: Cover): CoverLook`; `function pasteCoverLook(project: Project, ids: readonly string[], look: CoverLook): Project`; `function validCoverSelection(project: Project, id: string): boolean` |
+| `src/shared/editor/coverEdit.ts` (new) | `type CoverLength = 'three' \| 'toEnd' \| 'whole'`; `function addCover(project: Project, at: { t: number; box: NormRect; length: CoverLength; color: string }, random?: () => number): { project: Project; id: string }`; `function coverFromShape(project: Project, shapeId: string, color: string): { project: Project; id: string } \| null`; `function coversFromShapes(project: Project, shapeIds: readonly string[], colours: Readonly<Record<string, string>>): { project: Project; ids: string[] }` (*Turn into covers* and *Turn them all into covers*); `interface BoxEdit { move?: { dx: number; dy: number }; edges?: { left?: number; top?: number; right?: number; bottom?: number } }`; `function editCoverBox(project: Project, id: string, t: number, edit: BoxEdit, wholePath: boolean): Project` (edges move at every key; the move at every key with `wholePath`, else from `t` to the next key, §2.2); `function setCoverEnds(project: Project, id: string, start: number, end: number): Project` (holds the first and last boxes); `function coverStartHere(project: Project, id: string, t: number): Project \| null` and `function coverEndHere(project: Project, id: string, t: number): Project \| null` (null outside the cover); `function moveCoverTime(project: Project, id: string, dt: number): Project \| null` (null for a cover with more than one key); `function coverWholeVideo(project: Project, id: string): Project`; `function setCoverColour(project: Project, ids: readonly string[], color: string): Project`; `function keepCovers(project: Project, ids: readonly string[]): Project`; `function deleteCovers(project: Project, ids: readonly string[]): Project` (writes each suggestion's path to `privacy.rejected`); `function nudgeCovers(project: Project, ids: readonly string[], dx: number, dy: number): Project`; `interface CoverClip { projectId: string; at: number; covers: Cover[] }`; `function copyCovers(project: Project, ids: readonly string[], at: number): CoverClip`; `function pasteCovers(project: Project, clip: CoverClip, at: number): { project: Project; ids: string[] } \| null` (null for another project); `function duplicateCover(project: Project, id: string): { project: Project; id: string }`; `function withFollowedPath(project: Project, id: string, result: Extract<FollowResult, { ok: true }>): Project` (replaces inside `walked` where placed, keeps the old box where lost and outside, §5.9); `function newCoverId(random: () => number): string`. Every function drops `found`, `missed` and `thin` from the covers it changes |
+| `src/shared/editor/coverGroup.ts` (stub from the contracts) | the branches of §14.4: `function coverItems(project: Project): ItemEntry[]`; `function coverTrackOf(): ItemTrack`; `function moveCoversInTime(project: Project, ids: readonly string[], dt: number): { project: Project; refused: string[] }`; `function deleteCoverItems(project: Project, ids: readonly string[]): Project`; `function coverLookOf(cover: Cover): Look`; `function pasteCoverLook(project: Project, ids: readonly string[], look: Look): Project`; `function validCoverSelection(project: Project, id: string): boolean`; `function groupCoverIds(project: Project, coverId: string): string[]` (a group's bar selects them) |
 | `src/shared/render/coverColour.ts` (new) | `function ringColour(pixels: Uint8ClampedArray, width: number, height: number, box: { x: number; y: number; w: number; h: number }): { color: string; spread: number }`; `function coverColourOf(ring: { color: string; spread: number }, pref: PrivacyPrefs['colour']): string` |
-| `src/renderer/src/render/coverGrade.ts` (stub from the contracts) | `function gradedCoverColour(color: string, grade: ColorGrade \| undefined, lut: CubeLut \| null, compare?: boolean): string`; `function drawCoverPeek(c: CanvasRenderingContext2D, scene: RenderScene, t: number, views: readonly { toOut: (r: NormRect) => Rect }[]): void` |
-| `src/renderer/src/privacy/peek.ts` (new) | `interface PeekState { ids: readonly string[] \| 'all' \| null; listen: string \| null }`; `function peekCovers(ids: readonly string[] \| 'all' \| null): void`; `function listenBleep(id: string \| null): void`; `function clearPeek(): void`; `function peekNow(): PeekState`; `function usePeek(): PeekState`; `function peekedScene<S extends RenderScene>(scene: S): S`; `function listenedGains(gains: readonly SoundGain[], project: Pick<Project, 'bleeps'>): readonly SoundGain[]` |
+| `src/renderer/src/render/coverGrade.ts` (stub from the contracts) | `function gradedCoverColour(color: string, grade: ColorGrade \| undefined, lut: CubeLut \| null, compare?: boolean): string`; `function drawCoverPeek(c: CanvasRenderingContext2D, scene: RenderScene, t: number, views: readonly OutputView[]): void`; `function drawCoverMarks(c: CanvasRenderingContext2D, scene: RenderScene, t: number, views: readonly OutputView[]): void` |
+| `src/renderer/src/privacy/peek.ts` (new) | `interface PeekState { ids: readonly string[] \| 'all' \| null; review: boolean; listen: string \| null; marks: boolean }`; `function peekCovers(ids: readonly string[] \| 'all' \| null): void`; `function peekWhileReviewing(on: boolean): void`; `function listenBleep(id: string \| null): void`; `function showCoverMarks(on: boolean): void`; `function clearPeek(): void`; `function peekNow(): PeekState`; `function usePeek(): PeekState`; `function peekedScene<S extends RenderScene>(scene: S): S`; `function listenedGains(gains: readonly SoundGain[], project: Pick<Project, 'bleeps'>): readonly SoundGain[]` |
 | `src/renderer/src/privacy/coverPick.ts` (new) | `function ringColourAt(projectId: string, t: number, box: NormRect): Promise<string>` |
-| `src/renderer/src/privacy/followRun.ts` (new) | `function runFollow(services: EditorServices, coverId: string, signal: AbortSignal): Promise<'done' \| 'none' \| 'stopped' \| 'failed'>`; `function runEverywhere(services: EditorServices, coverId: string, remember: boolean, signal: AbortSignal): Promise<number \| null>` |
-| `src/renderer/src/privacy/filmstripCovers.ts` (stub from the contracts) | `function fillCoverTiles(ctx: CanvasRenderingContext2D, project: Project, tiles: readonly { t: number; x: number; y: number; w: number; h: number }[]): void` |
-| `src/renderer/src/privacy/PrivacySection.tsx`, `CoverSection.tsx`, `WeakBlurNote.tsx`, `CoverTrack.tsx`, `CoverHandles.tsx`, `PeekBanner.tsx`, `EverywhereDialog.tsx`, `covers.css` (stubs from the contracts) | `function PrivacySection(props: { services: EditorServices; onFind: () => void }): JSX.Element \| null`; `function CoverSection(props: { services: EditorServices; coverId: string }): JSX.Element \| null`; `function WeakBlurNote(props: { services: EditorServices; shapeId: string }): JSX.Element \| null`; `function CoverTrack(props: CoverTrackProps): JSX.Element \| null`; `function CoverHandles(props: { services: EditorServices; view: PreviewView }): JSX.Element \| null`; `function PeekBanner(): JSX.Element \| null`; `function EverywhereDialog(props: { services: EditorServices; coverId: string; onClose: () => void }): JSX.Element` |
-| `src/renderer/src/editor/player.ts`, `joinStills.ts`, `previewAudio.ts` | the preview scene through `peekedScene`; the listened bleep left out of the preview's gains |
-| `src/renderer/src/guide/guideRun.ts` | `blurArea` and `blurTypedText` add covers (§2.11), colour from `ringColourAt` at the step's shot time |
+| `src/renderer/src/privacy/followRun.ts` (new) | `function runFollow(services: EditorServices, coverId: string, signal: AbortSignal): Promise<'done' \| 'none' \| 'stopped' \| 'busy' \| 'failed'>`; `function runEverywhere(services: EditorServices, coverId: string, remember: EverywhereRequest['remember'], signal: AbortSignal): Promise<{ added: number; name: string \| null } \| null>` |
+| `src/renderer/src/privacy/filmstripCovers.ts` (stub from the contracts) | `function fillCoverTiles(ctx: CanvasRenderingContext2D, project: Project, fps: number, tiles: readonly { t: number; x: number; y: number; w: number; h: number }[]): void` (window `[t − 15 / fps − 0.02, t]`); `function fillCoverPixels(pixels: Uint8ClampedArray, width: number, height: number, project: Project, t: number): void` (look chips) |
+| `src/renderer/src/privacy/PrivacySection.tsx`, `CoverSection.tsx`, `WeakBlurNote.tsx`, `CoverShapeButton.tsx`, `CoverTrack.tsx`, `CoverHandles.tsx`, `PeekBanner.tsx`, `PeekInset.tsx`, `EverywhereDialog.tsx`, `covers.css` (stubs from the contracts) | `function PrivacySection(props: { services: EditorServices; onFind: () => void }): JSX.Element \| null`; `function CoverSection(props: { services: EditorServices; coverIds: readonly string[]; shapeIds: readonly string[] }): JSX.Element \| null`; `function WeakBlurNote(props: { services: EditorServices; shapeId: string }): JSX.Element \| null`; `function CoverShapeButton(props: { services: EditorServices }): JSX.Element \| null`; `function CoverTrack(props: TrackSlotProps): JSX.Element \| null` (the props every timeline row takes, `Timeline.tsx:855-859`); `function CoverHandles(props: { project: Project; selection: Selection; view: SceneView }): JSX.Element \| null`; `function PeekBanner(): JSX.Element \| null`; `function PeekInset(props: { services: EditorServices; view: SceneView }): JSX.Element \| null`; `function EverywhereDialog(props: { services: EditorServices; coverId: string; onClose: () => void }): JSX.Element` |
+| `src/renderer/src/editor/player.ts`, `joinStills.ts`, `previewAudio.ts` | the preview scene through `peekedScene` (peek and marks); the listened bleep left out of the preview's gains |
+| `src/renderer/src/guide/guideRun.ts` | `export async function blurArea(services: EditorServices, step: GuideStep, opts: { after: boolean; scale: number; onSelect(sel: Selection): void }): Promise<string>` (the cover's id) and `export async function blurTypedText(store: EditStore<Project>, typing: GuideStep, marked: { t: number }, scan: SceneScan \| null, scale: number, colourAt: (t: number, box: NormRect) => Promise<string>): Promise<void>`: each awaits `ringColourAt` at the step's own shot time, then makes one update (§2.11) |
 | the files of §14.4 | the `'cover'` branches, through `coverGroup.ts` |
-| Tests | 41-75 |
+| Tests | 41-75 and 201-215 |
 
-P1 removes `addCover` and `peekCovers` from `WAITING_COMMANDS` and wires them (`Editor.tsx`'s command
-runner, beside `addBlur` at `:1278-1279`).
+P1 empties `WAITING_P1` and fills the runner's stubs for its four commands (`commands.ts`, its one
+line only).
 
 ### 16.2 Part P2 · The reader
 
 | File | Exports or change |
 |---|---|
-| `native/ocr/Cargo.toml`, `Cargo.lock` (new) | its own `[workspace]`, `license = "MIT"`, `publish = false`, `rust-version = "1.91"`; `tract-onnx = { version = "=0.23.10", default-features = false }`, `rqrr = "=0.11.0"`, `sha2`, `serde_json`, `windows-sys` (job objects, `SetErrorMode`); profile `release` with `opt-level = "s"`, `lto = true`, `codegen-units = 1`, `strip = true`, `panic = "unwind"` (needed for `catch_unwind`), and `opt-level = 3` for `tract-linalg` and `tract-core` (the mixed profile); feature `fixture` (test builds only) |
-| `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs` (new) | the commands and events of `protocol.ts`; heartbeat every 2 s from start (also during `open`); `open` hashes every pin before parsing any; `tooLarge`; look (§5.2); read with tiles, joins, buckets, chunks, spans, rings and QR (§5.5); `careful` and `release` (§5.6); follow with per-part gradient NCC, uniqueness, candidates and scales (§5.8); ffmpeg in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `suspend` and `resume`; `catch_unwind` around each read; `SetErrorMode` at start. The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
-| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R16 (§17.1); the README records the pins, the tract parity method and the measurements of §5.6 |
+| `native/ocr/Cargo.toml`, `Cargo.lock` (new) | its own `[workspace]`, `license = "MIT"`, `publish = false`, `rust-version = "1.91"`; `tract-onnx = { version = "=0.23.10", default-features = false }`, `rqrr = "=0.11.0"`, `sha2`, `serde_json`, `windows-sys` (job objects, `SetErrorMode`, `WerSetFlags`, `SetUnhandledExceptionFilter`, `TerminateProcess`), `windows` (`Media_Ocr`, `Graphics_Imaging`, `Storage_Streams`, `Foundation` for §5.13); profile `release` with `opt-level = "s"`, `lto = true`, `codegen-units = 1`, `strip = true`, `panic = "unwind"` (needed for `catch_unwind`), and `opt-level = 3` for `tract-linalg` and `tract-core` (the mixed profile); feature `fixture` (test builds only) |
+| `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs`, `winocr.rs` (new) | the commands and events of `protocol.ts`; the three threads of §5.5 with `careful`, `release` and `cancel` handled between commands; heartbeat every 2 s from start (also during `open`); exit on stdin end and on a failed heartbeat write; `open` reads each model once, hashes the buffer and parses that buffer, every pin before any parse; the three detector buckets and both recognisers' five plans built at open and kept; `tooLarge`; look (§5.2); read with buckets, packing, tiles, joins, chunks, spans, rings and QR, `partial` at a cap (§5.5); `careful` as its own event (§5.6); the follow session (§5.8); the Windows reader behind `reader: 'windows'` (§5.13); ffmpeg with `-threads 1` (2 for look) in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `pause` and `resume` (§5.11); `catch_unwind` around each read with plans rebuilt after a panic; the panic hook, `SetErrorMode`, `WerSetFlags` and the unhandled-exception filter at start (§10.4, §10.5). The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
+| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R22 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
 | `scripts/build-native.mjs` | `--ocr` and `--ocr-host` flags; `cargoOcr`, `buildOcrWindows` (MinGW POSIX, the import allow-list, the budget, copied to `native/bin/ssw-ocr.exe`), `buildOcrHost` |
-| `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll']`; `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
+| `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
 | `scripts/verify-dist.mjs` | §4d: the helper's imports, budget and no `readImage` string; for a release build (`FLOWN_RELEASE=1`), `READER_MIRROR` must not be null |
 | `scripts/notices.mjs` | `CRATES` gains `native/ocr/Cargo.toml`; `RUST_TITLE` names `ssw-ocr.exe`; `resources/notices/41-paddleocr-models.txt` (Apache-2.0 text, NOTICE, "downloaded when you ask for it") |
-| `build/installer.nsh` | the WER exclusion in `customInstall` and a new `customUnInstall` (§10.5) |
+| `build/installer.nsh` | the WER value in `customInstall` under HKLM or HKCU by install mode, and a new `customUnInstall` removing it from the same place (§10.5) |
 | `src/shared/privacy/readerCatalog.ts` (written by the contracts in full; P2 reads it) | `interface ReaderFile { file: string; bytes: number; sha256: string; repo: string; commit: string }`; `const READER_FILES: readonly ReaderFile[]`; `const READER_BYTES = 27608757`; `const READER_ID = 'pp-ocrv6-tiny+small-careful-long'`; `const READER_MIRROR: { repo: string; commit: string } \| null = null`; `const WINDOWS_READER_ALLOWED = false`; `function readerUrls(f: ReaderFile, mirror?: { repo: string; commit: string } \| null): string[]` |
-| `src/main/privacy/readerModels.ts` (new) | `function readerDir(): string`; `function readerState(): ReaderState`; `function downloadReader(onState: (s: ReaderState) => void, signal: AbortSignal, deps?: DownloadDeps): Promise<ReaderState>`; `function removeReader(): Promise<ReaderState>`; `function checkReader(): Promise<ModelPin[] \| null>` (sizes and hashes; null and `damaged` on a mismatch); `function recordDecodeSpeed(msPerMegapixel: number): void`; `function decodeSpeed(): number \| null` |
-| `src/main/privacy/readerHelper.ts` (new) | `function helperPath(): string \| null`; `class OcrHelper { static start(deps?: HelperDeps): Promise<OcrHelper>; open(pins: ModelPin[]): Promise<void>; look(req: Omit<Extract<HelperCommand, { op: 'look' }>, 'op' \| 'id'>, onFrames: (f: LookFrame[]) => void, signal: AbortSignal): Promise<void>; read(req: Omit<Extract<HelperCommand, { op: 'read' }>, 'op' \| 'id'>, onRead: (r: ReadResult) => void, signal: AbortSignal): Promise<void>; careful(readId: number, lines: number[]): Promise<ReadResult>; release(readId: number): void; follow(req: Omit<Extract<HelperCommand, { op: 'follow' }>, 'op' \| 'id'>, signal: AbortSignal): Promise<FollowStep[]>; suspend(): void; resume(): void; stop(): Promise<void>; kill(): void; readonly exited: Promise<number \| null> }` (20 s silence kills it) |
-| `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` |
-| `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, or answer a bad hash |
-| Tests | 76-100; Rust R1-R16 |
+| `src/main/privacy/readerModels.ts` (new) | `function readerDir(): string`; `function readerState(): ReaderState`; `function downloadReader(onState: (s: ReaderState) => void, signal: AbortSignal, deps?: DownloadDeps): Promise<ReaderState>`; `function removeReader(): Promise<ReaderState>`; `function checkReader(): Promise<ModelPin[] \| null>` (sizes and hashes; null and `damaged` on a mismatch); `function recordDecodeSpeed(msPerFrame1080: number): void`; `function decodeSpeed(): number \| null` |
+| `src/main/privacy/readerHelper.ts` (new) | `function helperPath(): string \| null`; `interface FollowSession { readonly id: number; track(track: number, t: number, parts: readonly Box[]): Promise<void>; match(t: number, tracks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]>; close(): Promise<void> }`; `class OcrHelper { static start(deps?: HelperDeps): Promise<OcrHelper>; open(pins: ModelPin[], ffmpeg: string, reader?: 'paddle' \| 'windows'): Promise<void>; look(req: Omit<Extract<HelperCommand, { op: 'look' }>, 'op' \| 'id'>, onFrames: (f: LookFrame[]) => void, signal: AbortSignal): Promise<void>; read(req: Omit<Extract<HelperCommand, { op: 'read' }>, 'op' \| 'id'>, signal: AbortSignal): Promise<{ id: number; result: ReadResult }>; careful(readId: number, lines: readonly number[]): Promise<ReadVariant[][]>; release(readId: number): void; followOpen(req: Omit<Extract<HelperCommand, { op: 'followOpen' }>, 'op' \| 'id'>, signal: AbortSignal): Promise<FollowSession>; cancel(id: number): void; pause(): void; resume(): void; stop(): Promise<void>; kill(): void; readonly exited: Promise<number \| null>; readonly refusedLines: number }` (20 s silence kills it; at most 3 reads unreleased; never logs stderr or a line) |
+| `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` (sender check first) |
+| `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, answer a bad hash, answer `partial`, or write a marker string to stderr |
+| Tests | 76-100 and 216-222; Rust R1-R22 |
 
 ### 16.3 Part P3 · The text rules
 
@@ -2528,98 +3505,104 @@ runner, beside `addBlur` at `:1278-1279`).
 | `src/shared/privacy/detect/clean.ts` (new) | `interface CleanLine { text: string; map: Int32Array; digit: string; prefix: string; url: string; label: string }`; `function cleanLine(raw: string): CleanLine`; `function foldText(s: string): string` |
 | `detect/email.ts`, `cards.ts`, `phones.ts`, `ids.ts`, `keys.ts`, `links.ts`, `labels.ts`, `extra.ts` (new) | one `function find<Kind>(line: CleanLine, ctx: LineContext): Hit[]` each: emails (§6.3); cards, CVV and IBAN (§6.8); phones (§6.8); IDs (§6.8); strong prefixes and PEM lines (§6.4); link secrets (§6.5); strong labels, passwords, PINs and codes (§6.6, §6.7); addresses, dots and random strings (§6.12) |
 | `detect/rows.ts` (new) | `function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameContext): Hit[]` (beside, under, code under a sentence, recovery blocks and grids, PEM blocks, continuation, JWT head, one space in a key, wrap join, §6.10) |
-| `detect/names.ts` (new) | `function compileNames(entries: readonly string[], neverHide: readonly string[]): NameMatcher`; `function findNames(line: CleanLine, m: NameMatcher): Hit[]`; `function saidNames(words: readonly CaptionWord[], m: NameMatcher): SaidHit[]` |
+| `detect/windows.ts` (new) | `function lineWindows(text: string): { start: number; text: string }[]` (512 characters overlapping by 256); `function extendAtEdges(hits: Hit[], line: CleanLine): Hit[]` (§10.3) |
+| `detect/names.ts` (new) | `function compileNames(entries: readonly string[], neverHide: readonly string[]): NameMatcher`; `function findNames(line: CleanLine, m: NameMatcher): Hit[]`; `function saidNames(words: readonly CaptionWord[], m: NameMatcher): SaidHit[]`; `function looksLikeName(text: string): boolean` (§5.9: at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits it) |
 | `detect/qr.ts` (new) | `function classQr(payload: string \| null): { kind: 'qr'; score: number; class: 'secret' \| 'personal' \| 'other' \| 'undecoded' }` |
-| `detect/score.ts`, `detect/detect.ts` (new) | `interface Hit { kind: PrivateKind; rule: string; score: number; spans: { line: number; start: number; end: number }[]; box: Box }`; `interface DetectOptions { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher; frame: { width: number; height: number } }`; `function detectFrame(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Hit[]` (every variant, union, dedupe, cover boxes); `function needsCareful(line: ReadLine, hits: readonly Hit[], index: number): boolean` (careful-long's trigger) |
-| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string }`; `function digitRuns(words: readonly CaptionWord[]): DigitRun[]`; `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): Bleep[]` |
+| `detect/score.ts`, `detect/detect.ts` (new) | `interface Hit { kind: PrivateKind; rule: string; score: number; spans: { line: number; start: number; end: number }[]; box: Box }`; `interface DetectOptions { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher; frame: { width: number; height: number } }`; `function detectFrame(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Hit[]` (every variant, union, dedupe, padded cover boxes; the width rounding is `found.ts`'s); `function needsCareful(line: ReadLine, hits: readonly Hit[], index: number): boolean` (careful-long's trigger) |
+| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[]): DigitRun[]`; `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
 | `detect/tables.ts` (new) | the label lists (en, bn, es, hi), issuer prefixes, IBAN lengths, gitleaks-derived patterns, allow lists, region names per language code |
 | `src/shared/privacy/vendor/libphonenumber/**`, `vendor/double-metaphone.js` (generated) | vendored, each file with a GENERATED header naming the package, version and SHA-256 |
 | `scripts/vendor-privacy.mjs` (new) | downloads the pinned tarballs, checks SHA-512 integrity and SHA-256, copies the files of §6.14, drops `//# sourceMappingURL` lines; `--check` compares |
+| `scripts/privacy/regexCheck.mjs` (new) | refuses a pattern with nested unbounded quantifiers or a quantified alternation whose branches can match the same text; run by test 224 over every pattern of `detect/tables.ts` |
 | `resources/notices/38-libphonenumber-js.txt`, `39-double-metaphone.txt`, `40-gitleaks-rules.txt` (new) | MIT and Apache-2.0 texts, AUTHORS, versions and hashes |
 | `scripts/i18n/allow.json` | the rule tables' word lists as data, each with its reason (P3 only) |
-| Tests | 101-135 |
+| Tests | 101-135 and 223-228 |
 
 ### 16.4 Part P4 · The scan
 
 | File | Exports or change |
 |---|---|
-| `src/shared/privacy/look.ts` (new) | `function lookScale(width: number, height: number): number`; `function lookStep(fps: number): number`; `interface LookData { k: number; step: number; size: Size; frames: LookFrame[]; keys: number[] }`; `function addLookFrames(data: LookData, frames: readonly LookFrame[]): void`; `function changedTiles(frame: LookFrame, data: LookData): Uint8Array`; `function changedIn(data: LookData, box: Box, from: number, to: number): number[]` (frame indices); `function keyBefore(data: LookData, t: number): number` |
-| `src/shared/privacy/plan.ts` (new) | `interface ReadHints { typing: { t: number; end: number }[]; clicks: { t: number; x: number; y: number }[]; pastes: number[]; textCursor: { t: number; end: number }[]; valid: boolean }`; `function hintsOf(cursor: CursorTrack \| null): ReadHints`; `interface PlannedRead { t: number; areas: Box[]; why: 'first' \| 'settle' \| 'reveal' \| 'typing' \| 'periodic'; thin: boolean }`; `interface ReadPlan { reads: PlannedRead[]; units: number; thinned: number }`; `function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number): ReadPlan`; `function readBudget(duration: number, size: Size): number`; `function firstEstimate(duration: number, fps: number, size: Size, decodeMs: number \| null): number`; `function secondEstimate(plan: ReadPlan, look: LookData, measured: { readSeconds: number \| null }): number` |
-| `src/shared/privacy/paths.ts` (new) | `interface Track { keys: CoverKey[]; start: number; end: number; lost: boolean; thin: boolean }`; `interface Matcher { match(t: number, parts: readonly Box[], candidates: readonly Candidate[]): Promise<MatchResult> }`; `function walkForward(start: Placed, look: LookData, reads: ReadIndex, m: Matcher, size: Size): Promise<Track>`; `function walkBackward(start: Placed, look: LookData, m: Matcher, size: Size): Promise<Track>`; `function lostBox(box: Box, candidates: readonly Candidate[], regions: readonly Box[], scored: boolean): Box`; `function absent(group: string, read: ReadResult \| null, best: number \| null): boolean`; `function joinTracks(back: Track, fwd: Track): Track` |
-| `src/shared/privacy/notices.ts` (new) | `function findNotices(look: LookData, capture: CaptureInfo): { start: number; end: number; box: Box; stacked: boolean }[]` |
-| `src/shared/privacy/found.ts` (new) | `function foundCovers(result: Extract<FindResult, { ok: true }>, size: Size, random: () => number): Cover[]`; `function withFoundCovers(project: Project, result: Extract<FindResult, { ok: true }>, said: readonly Bleep[], record: FindRecord, random: () => number): Project` (§5.10: containment, missed, rejected places, groups, merging, limits); `function limitCovers(covers: readonly Cover[]): Cover[]` |
-| `src/main/privacy/scan.ts` (new) | `interface ScanDeps { helper?: () => Promise<OcrHelper>; projectDir?: (id: string) => string; readProject?: (id: string) => Promise<Project>; ffmpeg?: () => string; now?: () => number }`; `function runFind(request: FindRequest, onProgress: (p: FindProgress) => void, signal: AbortSignal, deps?: ScanDeps): Promise<FindResult>`; `function followCover(request: FollowRequest, signal: AbortSignal, deps?: ScanDeps): Promise<FollowResult>`; `function coverEverywhere(request: EverywhereRequest, signal: AbortSignal, deps?: ScanDeps): Promise<FindResult>`; `function forgetReads(projectId: string): void` (called by `stopAnalyses` and when the project closes) |
-| `src/main/privacy/findIpc.ts` (stub from the contracts) | `function registerFindIpc(): void` (one Find per project, `privacy:find`, `privacy:stopFind`, `privacy:follow`, `privacy:everywhere`, progress events; `stopAnalyses` stops it) |
+| `src/shared/privacy/look.ts` (new) | `function lookScale(width: number, height: number): number`; `function lookStep(fps: number): number`; `interface LookData { k: number; step: number; fps: number; size: Size; frames: LookFrame[]; keys: number[] }`; `function addLookFrames(data: LookData, frames: readonly LookFrame[]): void`; `function changedTiles(frame: LookFrame, data: LookData): Uint8Array`; `function changedIn(data: LookData, box: Box, from: number, to: number): number[]` (frame indices); `function keyBefore(data: LookData, t: number): number`; `function regionsAt(data: LookData, index: number): Box[]` |
+| `src/shared/privacy/plan.ts` (new) | `interface ReadHints { typing: { t: number; end: number }[]; clicks: { t: number; x: number; y: number }[]; pastes: number[]; textCursor: { t: number; end: number }[]; valid: boolean; scale: number }`; `function hintsOf(cursor: CursorTrack \| null): ReadHints`; `const BUCKETS: readonly { w: number; h: number; units: number }[]` (640×352 0.1, 960×544 0.2, 1920×1088 1); `interface PlannedRead { t: number; areas: Box[]; packed: { bucket: number; areas: Box[] }[]; why: 'first' \| 'settle' \| 'reveal' \| 'typing' \| 'periodic' \| 'check' \| 'partial'; units: number; thin: boolean }`; `interface ReadPlan { reads: PlannedRead[]; units: number; thinned: number; thinSpans: string }`; `function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number): ReadPlan`; `function packAreas(areas: readonly Box[]): { bucket: number; areas: Box[] }[]`; `function readBudget(duration: number, size: Size): number`; `function firstEstimate(duration: number, fps: number, size: Size, decodeMs: number \| null): number`; `function secondEstimate(plan: ReadPlan, look: LookData, measured: { readSeconds: number \| null }): number` |
+| `src/shared/privacy/paths.ts` (new) | `interface Track { placements: Placement[]; start: number; end: number; lost: boolean; thin: boolean; lostSpans: string }`; `interface Matcher { track(track: number, t: number, parts: readonly Box[]): Promise<void>; match(t: number, tracks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]>; checkRead(t: number, area: Box): Promise<ReadResult \| null> }` (maps one to one onto `FollowSession` and a check read); `function walkSpan(starts: readonly Placed[], dir: 1 \| -1, look: LookData, reads: ReadIndex, m: Matcher, hints: ReadHints, size: Size): Promise<Track[]>` (every hit of a span together, frame by frame; evidence of absence both ways, check reads, the typing rule, §5.8); `function lostBox(box: Box, candidates: readonly Candidate[], changed: readonly Box[]): Box` (the 2-D union of the box, every candidate's box and every changed region it overlaps); `function holdsText(own: string, line: string): boolean` (the generous rule of §5.8); `function joinTracks(back: Track, fwd: Track): Track` |
+| `src/shared/privacy/notices.ts` (new) | `function findNotices(look: LookData, project: Pick<Project, 'capture' \| 'source'>): { start: number; end: number; box: Box; stacked: boolean }[]` (nothing for an imported video) |
+| `src/shared/privacy/found.ts` (new) | `function foundCovers(result: Extract<FindResult, { ok: true }>, size: Size, random: () => number): Cover[]` (groups, tiers, colours, the width rounding of §6.1); `function withFoundCovers(project: Project, result: Extract<FindResult, { ok: true }>, said: readonly Bleep[], record: FindRecord, random: () => number): { project: Project; suppressed: number }` (§5.10: containment through the time and grid index, missed, rejected paths, groups, merging, limits); `function limitCovers(covers: readonly Cover[]): Cover[]`; `function originCoversFor(original: Project, copy: Project): OriginCovers` |
+| `src/main/privacy/scan.ts` (new) | `interface ScanDeps { helper?: () => Promise<OcrHelper>; projectDir?: (id: string) => string; readProject?: (id: string) => Promise<Project>; ffmpeg?: () => string; now?: () => number; recording?: () => boolean }`; `function runFind(request: FindRequest, onProgress: (p: FindProgress) => void, signal: AbortSignal, deps?: ScanDeps): Promise<FindResult>` (phases, at most 3 reads in flight, careful, partial and check reads, restart from the next read, pause while recording); `function followCover(request: FollowRequest, signal: AbortSignal, deps?: ScanDeps): Promise<FollowResult>`; `function underCover(request: UnderCoverRequest, signal: AbortSignal, deps?: ScanDeps): Promise<UnderCoverResult>`; `function coverEverywhere(request: EverywhereRequest, onProgress: (p: FindProgress) => void, signal: AbortSignal, deps?: ScanDeps): Promise<EverywhereResult>`; `function forgetReads(): void` (the kept folded texts, D22; also on its 10-minute timer) |
+| `src/main/privacy/rulesWorker.ts`, `rulesHost.ts` (new) | the worker running `detectFrame` and `classQr`; `class RulesHost { detect(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Promise<Hit[] \| 'timeout'>; close(): void }` (2 s a read, a new worker after a timeout) |
+| `src/main/privacy/copies.ts` (new) | `function listCopies(projectId: string): Promise<CopyInfo[]>`; `function coverCopies(projectId: string, copyIds: readonly string[]): Promise<{ covered: number; skipped: string[] }>`; `function originCovers(projectId: string): Promise<OriginCovers>` |
+| `src/main/privacy/findIpc.ts` (stub from the contracts) | `function registerFindIpc(): void` (one Find in Flown; `privacy:find`, `stopFind`, `follow`, `underCover`, `everywhere`, `copies`, `coverCopies`, `originCovers`; the progress events; the sender check and the validators first; `stopAnalyses` and `render-process-gone` stop it and call `forgetReads`; Find's job ends with `notice` = `main.jobs.privacyDone`) |
 | `src/main/privacy/lookCache.ts` (new) | `function readLookCache(projectDir: string, key: LookKey): Promise<LookData \| null>`; `function writeLookCache(projectDir: string, key: LookKey, data: LookData): Promise<void>` |
 | `src/main/analysisIpc.ts` | `stopAnalyses` (`:210`) also stops Find and calls `forgetReads` |
-| Tests | 136-160 |
+| Tests | 136-160 and 229-240 |
 
 ### 16.5 Part P5 · Panel, Review, export notes, Polish and Settings
 
 | File | Exports or change |
 |---|---|
-| `src/shared/review/privacyReview.ts` (stub from the contracts) | `function privacyReviewItems(project: Project): ReviewItem[]` (one row per group, Check rows first); `function privacyPendingCount(project: Project): number`; `function privacyStatus(project: Project, id: string): ReviewStatus`; `function privacyKeep(project: Project, ids: readonly string[]): Project`; `function privacyRemove(project: Project, ids: readonly string[]): Project`; `function privacyKinds(project: Project): PrivateKind[]`; `function doneReviewing(project: Project): Project` |
-| `src/renderer/src/privacy/privacyRun.ts` (new; `gatherPrivacy` stub from the contracts) | `function startFind(services: EditorServices, choices: FindChoices): Promise<'done' \| 'stopped' \| 'failed'>` (saves, calls main, runs `detectSaid`, applies through `afterGestures`); `function gatherPrivacy(project: Project, captions: Transcript \| null, signal: AbortSignal): Promise<PrivacyGathered \| null>`; `function useFindProgress(projectId: string): FindProgress \| null` |
-| `src/renderer/src/privacy/useReaderState.ts` (new) | `function useReaderState(): ReaderState \| null` (one shared state for the panel, the dialog and Settings, finding 29) |
+| `src/shared/review/privacyReview.ts` (stub from the contracts) | `function privacyReviewItems(project: Project): ReviewItem[]` (one row per group, its places as `parts`, titles with kind, times, place and area); `function privacyPendingCount(project: Project): number`; `function privacyStatus(project: Project, item: ReviewItem): ReviewStatus`; `function privacyKeep(project: Project, items: readonly ReviewItem[]): Project`; `function privacyRemove(project: Project, items: readonly ReviewItem[]): Project` (rejected paths); `function privacyOrder(items: readonly ReviewItem[], project: Project): ReviewItem[]` (Check rows first, for `ReviewPanel`); `function privacyKinds(project: Project): PrivateKind[]`; `function doneReviewing(project: Project): Project` |
+| `src/renderer/src/privacy/privacyRun.ts` (new; `gatherPrivacy` stub from the contracts) | `function startFind(services: EditorServices, choices: FindChoices): Promise<'done' \| 'stopped' \| 'busy' \| 'failed'>` (saves, calls main, runs `detectSaid`, applies through `afterGestures` only when the project and request ids match); `function stopAndApply(services: EditorServices): Promise<void>` (*Stop*, *Stop Find and export*, leaving); `function gatherPrivacy(project: Project, captions: Transcript \| null, signal: AbortSignal): Promise<PrivacyGathered \| null>` (listens only when the screen pass is already valid, §14.5) |
+| `src/renderer/src/privacy/readerState.ts` (stubs from the contracts) | `useReaderState`, `useFindProgress`, `FindProgressLine`, `confirmLeaveFind` (§16.0) filled: one shared reader state for every user (finding 29), the progress line of §2.6, the leave question of §2.6 |
 | `src/renderer/src/privacy/FindDialog.tsx`, `RegionsDialog.tsx` (new; `FindDialog` stub from the contracts) | `function FindDialog(props: { services: EditorServices; onClose: () => void; mode: 'find' \| 'again' }): JSX.Element`; `function RegionsDialog(props: { regions: readonly string[]; onDone: (regions: string[]) => void; onCancel: () => void }): JSX.Element` |
-| `src/renderer/src/privacy/PrivacyExportNote.tsx`, `TranscribeNote.tsx`, `TranslatedNote.tsx`, `NotCheckedNote.tsx`, `PrivacySettings.tsx` (stubs from the contracts) | `function PrivacyExportNote(props: { project: Project; onReview: () => void; onFind: () => void; onWait: (waiting: boolean) => void }): JSX.Element \| null`; `function TranscribeNote(props: { project: Project; place: 'service' \| 'local' }): JSX.Element \| null`; `function TranslatedNote(props: { project: Project; language: string }): JSX.Element \| null`; `function NotCheckedNote(props: { project: Project }): JSX.Element \| null`; `function PrivacySettings(): JSX.Element`; `function showPrivacySettings(): boolean` |
-| `src/renderer/src/review/ReviewPanel.tsx` | the header (kind filter, *Keep all…*, *Remove all…*, *Done reviewing*, *Find again…*, the progress line), the rows' *Peek* and *Listen*, focus rules of §11 |
-| `src/renderer/src/editor/PolishDialog.tsx`, `src/shared/editor/polishCopy.ts` | the row (shown with the reader), its skip reason and result lines (§2.10) |
-| `src/renderer/src/privacy/privacyPanel.css` (new) | the dialog, the note and the rows |
-| Tests | 161-185 |
+| `src/renderer/src/privacy/PrivacyExportNote.tsx`, `TranscribeNote.tsx`, `TranslatedNote.tsx`, `NotCheckedNote.tsx`, `PublishMaskedNote.tsx`, `CopiesOffer.tsx`, `PrivacySettings.tsx` (stubs from the contracts) | `function PrivacyExportNote(props: { project: Project; onReview: () => void; onFind: () => void; onWait: (waiting: boolean) => void; onStopAndExport: () => void }): JSX.Element \| null`; `function TranscribeNote(props: { project: Project; place: 'service' \| 'local' }): JSX.Element \| null`; `function TranslatedNote(props: { project: Project; language: string }): JSX.Element \| null`; `function NotCheckedNote(props: { project: Project; place: 'send' \| 'save' }): JSX.Element \| null`; `function PublishMaskedNote(props: { project: Project; text: string }): JSX.Element \| null`; `function CopiesOffer(props: { services: EditorServices }): JSX.Element \| null`; `function PrivacySettings(props: { reveal: boolean }): JSX.Element \| null` |
+| `src/renderer/src/review/ReviewPanel.tsx` | the header (kind filter, *Keep all … covered*, *Uncover all …* with its confirm, *Done reviewing*, *Find again…*, *Peek while reviewing*, the progress line, the unfinished line, the copies offer), the private order (`privacyOrder`), the rows' *Keep covered*, *Uncover*, *Select on the timeline*, *Peek* and *Listen*, V through `keys.ts`'s `peek` action, the focus rules of §11 |
+| `src/renderer/src/editor/PolishDialog.tsx`, `src/shared/editor/polishCopy.ts` | the row (shown with the reader), its hint with the estimate or *already checked*, its skip reason and result lines (§2.10) |
+| `src/renderer/src/privacy/privacyPanel.css` (new) | the dialog, the notes and the rows |
+| Tests | 161-185 and 241-258 |
 
-P5 removes `findPrivate` from `WAITING_COMMANDS`.
+P5 empties `WAITING_P5` (`commands.ts`, its one line only).
 
 ### 16.6 Ownership of shared files, and merge order
 
 **Completed by the contracts and edited by no part afterwards**: `types.ts`, `api/privacy.ts`,
-`api/projects.ts`, `api/prefs.ts`, `kinds.ts`, `coverPath.ts`, `coverData.ts`, `covers.ts`,
-`readerCatalog.ts`,
-`protocol.ts`, `spoken.ts`, `aiRequest.ts`, `aiTextFor.ts`, `coverLayer.ts`, `compositor.ts`,
-`engine/project.ts`, `engine/crop.ts`, `projectFile.ts` and its four callers, `cleanup.ts`,
-`captionTracks.ts`, `studioData.ts`, `search/extract.ts`, `captionReview.ts`, `transcriptText.ts`,
-`guide/shots.ts`, `timelineIpc.ts`, `timelineRun.ts`, `ExportBundleOptions.tsx`, `Home.tsx`,
-`projects.ts`, `review/copy.ts`, `review.ts`, `versions.ts`, `polish.ts`, `polishRunner.ts`,
-`clipCopy.ts`, `commands.ts`, `ShapesPanel.tsx`, `Timeline.tsx`, `ExportDialog.tsx`,
-`SettingsDialog.tsx`, `ShotViewer.tsx`, `Filmstrip.tsx`, the captions panels' mounts, `Editor.tsx` (mounts, the settle
-chain), `src/main/index.ts`, `prefsIpc.ts`, `appLog.ts`, `diagnostics.ts`, `preload/*`, the catalogues'
-existing namespaces, `guard-delta.mjs`.
+`api/projects.ts`, `api/prefs.ts`, `jobs/longJobs.ts`, `kinds.ts`, `coverPath.ts`, `coverData.ts`,
+`covers.ts`, `readerCatalog.ts`, `protocol.ts`, `spoken.ts`, `aiRequest.ts`, `aiTextFor.ts`,
+`coverLayer.ts`, `compositor.ts`, `engine/project.ts`, `engine/crop.ts`, `projectFile.ts` and its
+four callers, `cleanup.ts`, `captionTracks.ts`, `studioData.ts`, `search/extract.ts`,
+`captionReview.ts`, `transcriptText.ts`, `guide/shots.ts`, `timelineIpc.ts`, `timelineRun.ts`,
+`exportBundleRun.ts`, `ExportBundleOptions.tsx`, `Home.tsx`, `projects.ts`, `review/copy.ts`,
+`review.ts`, `review/keys.ts`, `versions.ts`, `polish.ts`, `polishRunner.ts`, `clipCopy.ts`,
+`ShapesPanel.tsx`, `Timeline.tsx`, `ExportDialog.tsx`, `SettingsDialog.tsx`, `ShotViewer.tsx`,
+`PublishDialog.tsx`, `Filmstrip.tsx`, `ColourControls.tsx`, the captions panels' mounts,
+`Editor.tsx` (mounts, the scene's `privateView`, every runner case, the leave hook, the `flush`
+prop), `src/main/index.ts`, `prefsIpc.ts`, `appLog.ts`, `diagnostics.ts`, `preload/*`, the
+catalogues' existing namespaces, `guard-delta.mjs`, `make-track-fixtures.mjs`.
 
 **Edited by one part below the contracts' lines**:
 
 | Part | Existing files it edits |
 |---|---|
-| P1 | `player.ts`, `joinStills.ts`, `previewAudio.ts`, `guideRun.ts`, `PreviewStage.tsx` (handles and group outlines), the files of §14.4, `Editor.tsx` (the command runner's two cases only), `commands.ts` (`WAITING_COMMANDS` only) |
+| P1 | `player.ts`, `joinStills.ts`, `previewAudio.ts`, `guideRun.ts`, `PreviewStage.tsx` (handles, group outlines, the inset), the files of §14.4, `commands.ts` (`WAITING_P1`'s line only) |
 | P2 | `scripts/build-native.mjs`, `scripts/lib/packaging.cjs`, `scripts/verify-dist.mjs`, `scripts/notices.mjs`, `build/installer.nsh`, `electron-builder.config.cjs` (only if `speechResources` cannot carry the helper), `vitest.native.config.ts`, `.gitignore` (`native/ocr/target/`) |
 | P3 | `scripts/i18n/allow.json` |
 | P4 | `src/main/analysisIpc.ts` (`stopAnalyses`) |
-| P5 | `ReviewPanel.tsx`, `PolishDialog.tsx`, `polishCopy.ts`, `commands.ts` (`WAITING_COMMANDS` only) |
+| P5 | `ReviewPanel.tsx`, `PolishDialog.tsx`, `polishCopy.ts`, `commands.ts` (`WAITING_P5`'s line only) |
 
 **Who writes the code behind each seam**:
 
 | Seam | Code behind it |
 |---|---|
-| `coverLayer.ts` → `gradedCoverColour`, `drawCoverPeek` | P1 `coverGrade.ts` |
-| `ShapesPanel.tsx`, `Timeline.tsx`, `PreviewStage.tsx` mounts; the filmstrip's `fillCoverTiles`; `coverGroup.ts` | P1 |
-| `registerReaderIpc`; the reader's state | P2 `readerIpc.ts`, `readerModels.ts` |
-| `detectFrame`, `detectSaid`, `classQr`, `needsCareful` | P3 |
-| `registerFindIpc`; `withFoundCovers` | P4 |
-| `privacyReview.ts`; `gatherPrivacy`; `FindDialog`, the notes, `PrivacySettings` | P5 |
+| `coverLayer.ts` → `gradedCoverColour`, `drawCoverPeek`, `drawCoverMarks` | P1 `coverGrade.ts` |
+| `ShapesPanel.tsx`, `Timeline.tsx`, `PreviewStage.tsx` mounts; `fillCoverTiles` and `fillCoverPixels`; `coverGroup.ts`; the runner's cover commands | P1 |
+| `registerReaderIpc`; the reader's state in main | P2 `readerIpc.ts`, `readerModels.ts` |
+| `detectFrame`, `detectSaid`, `saidBleeps`, `classQr`, `needsCareful`, `looksLikeName` | P3 |
+| `registerFindIpc`; `withFoundCovers`; the copies channels | P4 |
+| `privacyReview.ts`; `gatherPrivacy`; `readerState.ts`'s hooks and `confirmLeaveFind`; `FindDialog`, the notes, `CopiesOffer`, `PrivacySettings`; the runner's `findPrivate` | P5 |
 
 **Merge order**: P1, P3, P2, P4, P5. P3 before P2 because P2's tests use P3's `needsCareful` on fixture
 reads; P4 needs both; P5 mounts on everything. After each merge the lead runs both typechecks, all
-of vitest, `npm run i18n:check`, `npm run -s build`, the English guard in compare mode with
-`guard-delta.mjs`, and the e2e files the part touches.
+of vitest, `npm run i18n:check`, `npm run -s build`, the English guard in compare mode (after a
+warm-up launch) with `guard-delta.mjs`, and the e2e files the part touches.
 
-**Integration** (after P5): A1-A17 under `xvfb-run` (§17.3) with the host helper (`build-native
+**Integration** (after P5): A1-A21 under `xvfb-run` (§17.3) with the host helper (`build-native
 --ocr-host`) and the downloaded models in a fixed `userData`; then `guard-delta.mjs` on the merged
 tree and the baseline re-recorded in a commit naming this feature (§12.2); then `npm run notices --
---check` and `verify-dist`.
+--check` and `verify-dist`. If the owner answered question 17 (a), the three messages change in a
+commit of their own before the baseline is re-recorded.
 
 **For a person, before release**: the Hugging Face mirror (`READER_MIRROR`); the Windows-only checks
 (R8 and R10, Windows OCR, speed and memory at 1080p, 4K and 7680×2160 on the reference PC, the WER
-value, the 30 real recordings, pop-up false hits); the native Bangla review; the other account's
-optional `private.json` (§18).
+value and the run-time flags, the 30 real recordings with their units distribution, pop-up false
+hits); the native Bangla review (§12.4); the other account's optional `private.json` (§18).
 
 ---
 
@@ -2627,8 +3610,10 @@ optional `private.json` (§18).
 
 ### 17.1 Unit tests (vitest). Each is its own test and fails without the code of its rule.
 
-By owner: contracts 1-40 (test 20 is the guard, §17.2), P1 41-75, P2 76-100 and Rust R1-R16, P3
-101-135, P4 136-160, P5 161-185. Test files are named `tests/autoBlur<Area>.test.ts`; each numbered test
+By owner: contracts 1-40 and 186-197 (test 20 is the guard, §17.2), P1 41-75 and 201-215, P2
+76-100, 216-222 and Rust R1-R22, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
+241-258. The numbers added by this revision follow each part's first block, so every earlier number
+keeps its meaning. Test files are named `tests/autoBlur<Area>.test.ts`; each numbered test
 is one `it` whose title starts with its number, and `tests/autoBlurNumbers.test.ts` checks that every
 number of this list exists exactly once.
 
@@ -2642,7 +3627,9 @@ number of this list exists exactly once.
    with exponents, non-increasing times or 4,001 keys, boxes past the frame, colours that are not
    `#rrggbb`: limits held, nothing thrown, unknown fields dropped; a cover with 4,001 keys becomes one
    key holding their union; 2,001 covers become 2,000 and every input box at every input key is inside
-   some output cover's drawn box (finding 20).
+   some output cover's drawn box (finding 20); 2,000 covers of 150 keys each are cut to at most
+   200,000 keys by `simplifyKeys`, with every input box inside an output drawn box and no cover cut to
+   one key while a longer one keeps more (test 188 holds the rule itself).
 3. **`readCovers` is linear** (finding 17): 2,000 covers with 100 keys each read in under 150 ms (×6
    on CI), and doubling the input at most 2.2 times the time.
 4. **Paths**: `writePath` rounds outward (for 10,000 random boxes the parsed box contains the input);
@@ -2668,7 +3655,7 @@ number of this list exists exactly once.
    after a write and a read through `projectFileText` and `migrateProject`.
 10. **Crop**: `cropProject` maps every key's box through `rectToCrop`; the same covers array gives the
     same mapped array (memoised); without a crop the covers are returned unchanged; a cover wholly
-    outside the crop is left out of the view only.
+    outside the crop is left out of the view only; `project.covers` itself is never changed.
 11. **Cover index**: `coversAt` equals a brute-force scan for 2,000 random covers at 10,000 times with
     slack, in under 0.02 ms a call.
 12. **`containsOver`**: a path inside an existing cover at every key is contained; one that leaves it at
@@ -2676,22 +3663,25 @@ number of this list exists exactly once.
 13. **`mergeCovers`** (finding 7): 20,000 found items to 2,000 in under 300 ms, and twice the items take
     at most 2.3 times as long; every input box at every input key is inside an output cover's drawn
     box.
-14. **`thumbCovers` and `hidesSomething`**: the boxes of covers and of blur and pixelate shapes active at
-    `t` (with slack); a project with only a bleep hides something and has no thumbnail boxes;
+14. **`thumbCovers` and `hidesSomething`**: the boxes of covers and of blur and pixelate shapes active
+    anywhere in the window; a project with only a bleep hides something and has no thumbnail boxes;
     `listProjects` adds `thumbCovers` only when there are boxes, so other summaries are unchanged.
-15. **`coverScreen`**: with no cover active it returns its input (the same object) and makes no canvas;
-    with a crop it fills the crop's copy in place at the mapped, outward-rounded pixels; with no crop and
-    no grade it copies into a per-target canvas and never draws into the video element or an
-    `ImageBitmap` (spies on both).
+15. **`coverScreen`, through the view** (D19): the scene is built with `cropView` as `Editor.tsx`
+    builds it. With no cover active it returns its input (the same object) and makes no canvas. For a
+    cropped project, and for a cropped, graded project with a LUT, the filled pixels are exactly the
+    cover's view box mapped to the picture and rounded outward, never mapped through the crop a second
+    time (a cover over text 10 px inside the crop's edge is checked). With no crop and no grade it
+    copies into a per-target canvas and never draws into the video element or an `ImageBitmap` (spies
+    on both).
 16. **Everything samples the covered picture**: in the recording fake context's call log
     (`verticalEquivalence.test.ts`'s), a blur shape beside a cover, a magnifier lens over it, every
     motion-blur sub-frame, a title card's blurred background and a join still all draw after the
     cover's fill into the picture they read; `drawCoverOutput` fills once per sub-frame camera;
     nothing is drawn in the `'overlays'` alpha mode.
-17. **Peek never reaches an output**: `exportVideo`, `ExportPreview`, `renderThumbnail`,
-    `renderGuideStills` and `composeJoinStill` given a scene with `peek` draw the fills;
-    `JoinStills.fresh` is false when the peek state changes, and its fallback never returns a still
-    of another peek state.
+17. **Peek and the cover outlines never reach an output**: `exportVideo`, `ExportPreview`,
+    `renderThumbnail`, `renderGuideStills` and `composeJoinStill` given a scene with `peek` and
+    `coverMarks` draw the fills and no outline (`forOutput`); `JoinStills.fresh` is false when either
+    changes, and its fallback never returns a still of another state.
 18. **Captions**: `maskedSegments` masks the words under a private bleep with `•`, by time; a caption
     whose words and times do not line up is masked from the first to the last word touching the
     bleep; one with no word times is masked whole; ordinary bleeps give exactly today's output.
@@ -2702,9 +3692,11 @@ number of this list exists exactly once.
 21. **Spoken forms**: a card said "4917 6123 4567 eight nine zero four" gives the digit string and its
     groupings; `maskPrivate` masks "4917-6123-4567-8904" and "4917 6123 4567 8904" in a chapter title; a
     form of 3 characters masks only a whole word; without private bleeps it returns its input.
-22. **`settleSaid`**: adding a private bleep masks its forms in chapter titles, chapter title cards
-    (finding 12), the pack's saved description and the guide's edited titles and notes, in the same
-    update; a second run changes nothing; without private bleeps it returns `next` itself.
+22. **`privateView` at every output** (finding 12): with a private bleep, the chapter bar and a
+    chapter title card drawn in the preview scene and in an export, the file's chapter metadata
+    (`chaptersOf`), the chapters and description sidecars, the pack's copy, the guide's outputs and
+    the timeline's markers hold no form; the stored `chapters`, `titles`, `publish` and `guide` are
+    unchanged.
 23. **`maskRequest`**: every string is walked (a form inside an unknown nested field is masked);
     segments are masked by time; without private bleeps it returns the same object; for each request
     shape (cleanup, translate, chapters, marks, names, title, summary, youtube, posts) a fixture with a
@@ -2712,43 +3704,89 @@ number of this list exists exactly once.
 24. **Other texts**: the search index, Review's caption titles and the transcript text hold no form;
     private bleeps are not listed as *Bleep* rows.
 25. **The timeline refusal**: `writeTimeline` in recordings mode reads a `project.json` with a cover, a
-    blur shape or a bleep and refuses with `errors.timeline.hidden`, writing nothing, whatever the
-    request says; a saved preset and bundle choice of `'recordings'` normalise unchanged; `timelineRun`
-    skips the step and reports it; the chip is disabled with its description.
+    blur shape or a bleep (and a crop or a muted part as question 18 decides) and refuses with
+    `errors.timeline.hidden`, writing nothing, whatever the request says; a saved preset and bundle
+    choice of `'recordings'` normalise unchanged; `writeTimelineStep` skips the step and reports it;
+    the chip is disabled with its description; the export dialog's `flush` runs before
+    `writeTimeline` is called (call order recorded).
 26. **Guide shots**: `shotSig` and `planActual` change when a cover active at `t` changes its box or
     colour, and not when a cover elsewhere in time changes; `guideProject` keeps `covers`.
 27. **Review wiring**: `REVIEW_KINDS` has `'private'` before `'chapter'` and `slice(-2)` is unchanged;
-    `KIND_WORDS.private` has its four keys; `clipCopy.withinRange` leaves private rows waiting;
-    `captionReview` skips private bleeps.
+    `KIND_WORDS.private` has its four keys; `clipCopy.withinRange` settles private rows wholly outside
+    the clip by Keep and every cover stays (a clip copy whose clip is widened again still covers the
+    footage that comes back); `captionReview` skips private bleeps; `keys.ts` gives `peek` for V only
+    on a private row and `null` elsewhere.
 28. **Versions**: `changedAreas` gives "covers" for a changed `covers` or `privacy`;
     `CHANGED_AREA_NAMES` holds it; every old fixture pair gives what it gave before.
 29. **Polish seam**: `POLISH_STEPS` ends with `'privacy'` and the adjacency tests hold;
     `DEFAULT_POLISH_OPTIONS.privacy` is true; `readPolishOptions({})` reads it as false; `planPolish`
     with `privacy: null` equals today's plan; with a gathered result it adds the covers and bleeps in
     its one update.
-30. **Commands**: the three commands are in `COMMAND_LIST`, left out of `PALETTE_COMMANDS` and
-    `listedCommands` by `WAITING_COMMANDS`, and have no default key.
+30. **Commands**: the five commands are in `COMMAND_LIST`, left out of `PALETTE_COMMANDS` and
+    `listedCommands` by `WAITING_COMMANDS` (`WAITING_P1` and `WAITING_P5` on lines of their own), have
+    no default key, and each has its runner case in `Editor.tsx`.
 31. **One AI chokepoint**: no file under `src/renderer` but `aiTextFor.ts` contains
     `window.api.aiText(`; each of the 9 call sites calls `aiTextFor`.
-32. **`validateFindRequest`**: refuses paths, unknown kinds, 401 names, an 81-character name, regions
-    that are not two capital letters and project ids not of the project folder's form; accepts a valid
-    request unchanged.
+32. **Validators and senders**: `validateFindRequest` refuses paths, unknown kinds, 401 names, an
+    81-character name, regions that are not two capital letters and project ids not of the project
+    folder's form; `validateFollowRequest`, `validateUnderCoverRequest`, `validateEverywhereRequest` and
+    `validateCopiesRequest` refuse non-finite or out-of-frame boxes, times outside the recording, a
+    path over §4.2's limits and an unknown `remember`; each accepts a valid request unchanged. Every
+    `privacy:*` handler refuses a sender frame that is not Flown's page (`isAppUrl`) before
+    validating, the download channel included.
 33. **`parseHelperEvent`**: strict; unknown keys, wrong types and lines over 16 MB give `null`;
     `commandLine` and parsing round-trip every command.
 34. **Preferences**: `prefsIpc.ts` sanitises `privacy` with `readPrivacyPrefs`; an older
     `editor-prefs.json` without it is written back byte for byte.
 35. **Names in logs** (finding 24): with "Priya Raman" listed, a log line holding it is written with
     `<secret>`; `*Acme` redacts "Acme"; a two-letter entry is not used; diagnostics hold no name.
-36. **Multi-select seam**: `GROUP_KINDS` ends with `'cover'` (the pinned tests extended); while
+36. **Multi-select seam**: `GROUP_KINDS` ends with `'cover'` and `LookClass` has `'cover'` (the pinned
+    tests extended); `KIND_WORDS.cover` and `LOOK_CLASS_WORDS.cover` read their messages; while
     `coverGroup.ts` is the stub, `validSelection` drops covers and every other kind behaves as before.
-37. **Stubs render nothing**: every mounted stub returns `null` and every seam stub returns its input.
-38. **Catalogues**: every key of §2 and §12.1 is in its catalogue with a meta entry; no English message
-    of `37f9355` changed (compared with the catalogues at that commit); every new file is in `failFor`.
+37. **Stubs render nothing**: every mounted stub returns `null`, every seam stub returns its input,
+    `useReaderState` and `useFindProgress` return `null`, and `confirmLeaveFind` resolves `true`.
+38. **Catalogues**: every key of §2 and §12.1 is in its catalogue with a meta entry; no message holds
+    `#`; the kind sentences select on every kind id; no English message of `37f9355` changed (compared
+    with the catalogues at that commit); every new file is in `failFor`.
 39. **`guard-delta.mjs`**: on synthetic baseline and run pairs it passes an added element and a box
     pushed by it, and fails a changed text, a changed accessible name, a removed element, a restyled
-    element and a box moved with no added element.
+    element and a box moved with no added element; with a settings section inserted, it aligns the
+    later `settings-NN` captures by heading and reports one added capture; a capture with no added
+    element and one screenshot pixel off by 3 levels in 1% of pixels fails.
 40. **Pins**: `READER_FILES` equals the shipping entries of `scripts/privacy/reader-models.json` (bytes,
     SHA-256, repository, commit) and the files sum to 27,608,757 bytes.
+186. **Union keys at step 2**: a 60 fps path from placements on analysed frames moving 30 px a frame
+     pair (a 1,800 px/s scroll) through `stepKeys`: at every source frame, analysed or not, the
+     planted box of that frame lies inside `drawnBox` with `coverSlack(60)`; without the union keys
+     the odd frames fail (the test checks that too).
+187. **Union keys at step 4, starts and ends**: the same at 120 fps (step 4); a cover whose text
+     appears on an unanalysed frame covers it from that source frame; one whose text leaves on an
+     unanalysed frame covers it to that frame.
+188. **`simplifyKeys`**: 2,000 covers of 150 keys fit 200,000 keys; the longest paths are merged first;
+     every input box at every input time is inside an output drawn box.
+189. **Short covers are widened, never dropped**: a 16.7 ms cover and one clamped to 0.01 s at the
+     recording's end read as at least 0.02 s, inside the recording, and survive a write and a read.
+190. **`privateItems`**: a group of found covers, a user cover and a group of private bleeps are three
+     items; ordinary bleeps are none; blur and pixelate shapes count as `weak` only; the numbers the
+     section, Review's count and the export note show are equal for the same project.
+191. **`privateView`**: masks the forms in every field of `PRIVATE_TEXT_FIELDS`; returns the project
+     itself without private bleeps or without a form; the same object for the same project (memoised);
+     removing the private bleep gives the stored texts back unchanged.
+192. **Spoken forms from the own words**: a card said "four nine one seven …" gives its digit string
+     and groupings and no number word; "weight", "fourteen" and "Four ways to save" stay unmasked; a
+     padded neighbour ("is") is not a form; a multi-word hit masks only as the whole phrase.
+193. **Home thumbnails**: `thumbTime` is the one time both sides use; `thumbCovers(project, t − 0.1,
+     t + 0.1)` holds a cover active only 0.05 s before `t`.
+194. **`readBleeps` keeps private bleeps first** when it cuts at 2,000; a project with no private bleep
+     is cut exactly as at `37f9355`.
+195. **Private bleep words**: `privateBleepWord`, `privateKindOf` and `privateGroupOf` round-trip
+     through `readBleeps`' lower-casing; a word of `':' + kind` alone reads with no group; no caption
+     word's `bleepKey` parses as one.
+196. **Tracking fixtures**: `make-track-fixtures.mjs` renders a 2 s list scroll; its truth file has a box
+     for every planted item in every one of the 120 frames, and each box holds that item's ink in the
+     decoded frame (no ink outside the box within its line).
+197. **Job notices**: a done outcome with `notice` gives that notification for an `analysis` job when
+     the window is not focused; every old kind and outcome gives what it gave at `37f9355`.
 
 **P1 · Covers in the editor**
 
@@ -2756,20 +3794,22 @@ number of this list exists exactly once.
     whole video*; centred on the frame when the cursor is invalid; one undo step; the new cover is
     selected.
 42. `coverFromShape`: a blur shape becomes a cover over its box and times, the shape removed, one step.
-43. `setCoverBox`: with `all` false it changes the box from `t` to the next key; with `all` true it
-    moves every key; both drop `found`.
+43. `editCoverBox`: a move with `wholePath` false changes the box from `t` to the next key, with
+    `wholePath` true every key; an edge change moves that edge at every key whatever `wholePath` says
+    (widening a followed cover's right edge holds at every playhead); both drop `found`.
 44. `setCoverEnds` holds the first and last boxes; `moveCoverTime` is null for a cover with two or more
     keys and moves a one-key cover.
 45. `coverWholeVideo` covers 0 to the recording's end with the path's ends held.
-46. `deleteCovers` writes a rejected place (kind, union box, times) for each suggestion and none for a
-    user's cover.
+46. `deleteCovers` writes a rejected place (kind, times, the removed cover's own path, simplified to 400
+    keys at most) for each suggestion and none for a user's cover.
 47. `keepCovers` drops `found`, `missed` and `thin`.
 48. `nudgeCovers` moves whole paths by pixels in normalised units, clamped to the frame.
 49. Copy and paste (finding 18): a paste holds the cover as it was when copied, even after the source is
     edited; pasting into another project gives null and `privacy.cover.oneProject`; no OS clipboard
     API is called.
 50. `duplicateCover` gives a new id and the same path.
-51. `withFollowedPath` never covers less than the old path at any time.
+51. `withFollowedPath` never covers less than the old path where the walk was lost or outside the time
+    it walked.
 52. Every exported edit function of `coverEdit.ts` and `coverGroup.ts` drops `found` from what it
     changes (one property test over all of them).
 53. `ringColour` gives the median and spread of synthetic rings; a spread over 24 gives Dark through
@@ -2786,17 +3826,22 @@ number of this list exists exactly once.
 60. The guide's buttons add covers over the old box and times in one update; their labels are unchanged;
     the hint shows.
 61. `runFollow` lands through `afterGestures` while a drag is open, and both the drag's and the follow's
-    results are kept (finding 16); *Stop* changes nothing; focus moves to the cover's status line
-    (finding 37).
-62. `runEverywhere` adds `text` covers in one step; with *remember* it adds the text to
-    `privacy.names` and the open dialogs show the new list (finding 28).
-63. `PrivacySection`: its buttons, the remembered length, the count lines, the disclosure with
-    `aria-expanded`, the reader line.
-64. `CoverSection`: the box fields in percent; the colour chips; *Follow*, *Everywhere*, *Whole video*,
-    *Keep* and *Remove*; the lines for found, check, lost, missed and thin.
+    results are kept (finding 16); *Stop* changes nothing and keeps focus on *Follow what is under
+    it*; when it ends, focus moves to the cover's status line (finding 37).
+62. `runEverywhere` adds `text` covers in one step; with `remember: 'project'` and a name-like text it
+    adds the returned name to `privacy.names` in the same step, with `'settings'` to Settings' names,
+    and the open dialogs show the new list (finding 28); with a text that is not name-like nothing is
+    added.
+63. `PrivacySection`: its buttons, the remembered length, the private-item count and the to-check
+    line, *Show where covers are*, the weak line and *Turn them all into covers*, the reader line, and
+    the disclosure with `aria-expanded` listing every `privacy.notSee.*` message, `folder` included.
+64. `CoverSection`: the box fields in percent; the colour chips; *Change the whole path*; *Start here*
+    and *End here*; *Follow*, *Everywhere*, *Keep it for the whole video*, *Keep covered* and
+    *Uncover*; the lines for found, what it hides, check, lost, missed and thin.
 65. `WeakBlurNote`: the note and *Turn into a cover*; `text.calloutSection.privacyNote` unchanged.
 66. `CoverTrack` draws only with covers: bars, dashed waiting edges, the warning edge for Check, hatched
-    lost areas, one bar with a count for a group's overlapping covers; each bar's accessible name.
+    lost areas, one bar with a count for a group's overlapping covers; clicking it selects the group,
+    Ctrl+click toggles one cover; each bar's accessible name.
 67. `CoverTrack` keys: roving focus, Left, Right, Home, End, Enter, Delete and Shift+arrows; selection
     follows focus (finding 36); dragging a followed cover in time is refused with the status line.
 68. `CoverHandles`: a drag moves the box at the playhead in one undo step.
@@ -2807,10 +3852,43 @@ number of this list exists exactly once.
     preview move whole paths.
 72. The group clipboard pastes covers only into their own project, as snapshots.
 73. `fillCoverTiles` fills each tile's active cover boxes in Dark; with no covers it makes no draw call.
-74. *Add a cover* and *Peek under covers* run from the palette and are off `WAITING_COMMANDS`.
+74. *Add a cover*, *Peek under covers*, *Start the selected cover here* and *End the selected cover
+    here* run from the palette and `WAITING_P1` is empty.
 75. The pinned list tests hold with `'cover'`: `multiSelectContracts.test.ts:42`,
     `graphicsSelection.test.ts:89` (`at(-2) === 'graphic'`), `multiSelect.test.ts:58`,
     `multiSelectCopy.test.ts:18`.
+201. **Versions and undo never settle** (finding 19): restoring a version, opening one, and undo and
+     redo across a Find leave every cover's `found`, `missed` and `thin` and every private bleep's
+     `auto` exactly as they were.
+202. A size change on a 40-key followed cover, by an edge handle and by the *Width* field, holds at the
+     playhead and at every other key; a move with *Change the whole path* off moves one span only.
+203. `coverStartHere` and `coverEndHere` hold the box at the playhead, are one undo step each, and are
+     null (the buttons disabled with `privacy.cover.outside`) outside the cover.
+204. *Follow* on a *To the end of the video* cover over an email that then scrolls: after the scroll no
+     frame has a box at the old place; where the walk was lost, the old box stays.
+205. The *Cover* button sits after *Pixelate* in the add-shape row with its tooltip and does what *Add
+     cover* does.
+206. *Turn into covers* on three selected blur shapes, and *Turn them all into covers*, are one undo
+     step each and leave no blur or pixelate shape behind.
+207. *Show where covers are* draws dashed outlines on the preview scene only, is on by default, and when
+     turned off is remembered in the preferences (`showCovers: false`).
+208. `PeekInset` draws the selected cover's area at 2× to 8× the preview's scale, never past the
+     recording's own pixels, only while a row is peeked, and is not drawn by any export path.
+209. Several covers selected: the title reads `privacy.cover.selected`; colour, *Keep covered*,
+     *Uncover*, nudge and *Paste look* act on all in one step; the box fields, *Follow* and
+     *Everywhere* are disabled with their reasons as descriptions.
+210. `fillCoverPixels` fills the active covers into the look chips' 96×54 pixels before grading; with no
+     cover it touches nothing.
+211. `fillCoverTiles` fills, for a tile at `t`, every cover active anywhere in `[t − 15 / fps − 0.02,
+     t]`, so a cover that ended 10 frames before `t` is filled on a tile showing the key frame before
+     it.
+212. `EverywhereDialog`'s states: reading, `needsReader` with *Download*, `noText`, the remember choice
+     only when `nameLike`, progress with *Stop*, `done` and `failed`.
+213. *Keep covered* in the Cover section moves focus to the section's title (finding 37's *Keep*).
+214. The Covers row's thin-span marks are items of its roving focus with their names, and Enter seeks
+     to their start.
+215. *Uncover* says `privacy.cover.uncovered` in the status line, deletes the cover and writes its path
+     to `privacy.rejected` in the same undo step.
 
 **P2 · The reader**
 
@@ -2826,49 +3904,76 @@ number of this list exists exactly once.
 81. `OcrHelper` with the fake helper: `open` sends the pins; heartbeats arrive during `open` (finding 25);
     20 s of silence kills it; an exit is reported.
 82. Malformed helper lines are dropped; a line over 16 MB kills the helper.
-83. `read`, `careful` and `release`: the fake helper checks that at most 3 reads' crops are kept.
+83. `read`, `careful` and `release`: main never has more than 3 reads unreleased; a `careful` answers
+    as its own event while a fourth read waits, so no read blocks the careful pass that frees it.
 84. A read error comes back as `{ id, error }` for that read only (finding 23).
 85. The helper's detector constants (`native/ocr/src/read.rs`, read as text) equal the tiny detector's
     pinned `inference.yml` values in `reader-models.json`.
-86. `ocrHelperProblems`: a fixture importing `wer.dll` fails the allow-list; the budget is measured at
-    brotli 11; `speechResources` carries `ssw-ocr.exe`; a build without it says so.
+86. `ocrHelperProblems`: a fixture importing `wer.dll` fails the allow-list and one importing the
+    WinRT three passes; the budget is measured at brotli 11; `speechResources` carries `ssw-ocr.exe`;
+    a build without it says so.
 87. `verify-dist` §4d: a release build with `READER_MIRROR` null fails; a binary containing `readImage`
     fails; `OCR_IMPORTS` is checked.
 88. Notices: `CRATES` holds `native/ocr/Cargo.toml`, `RUST_TITLE` names `ssw-ocr.exe`,
     `41-paddleocr-models.txt` exists, and `npm run notices -- --check` is up to date.
-89. `installer.nsh`: `customInstall` writes the WER value and `customUnInstall` deletes it.
+89. `installer.nsh`: `customInstall` writes the WER value under HKLM for an install for all users and
+    under HKCU for one user, and `customUnInstall` deletes it from the same place; the helper's source
+    calls `WerSetFlags` with `WER_FAULT_REPORTING_FLAG_NOHEAP` and `SetUnhandledExceptionFilter`.
 90. `helperPath`: the packaged path, `native/bin` in development, and `SSW_OCR_HELPER` honoured only
     unpackaged.
 91. `readerIpc`: requests validated; one state shared by every window (finding 29).
 92. The decode speed is recorded after a Find and used by `firstEstimate`.
-93. `suspend` and `resume` reach the fake helper when `isToolbarVisible()` turns true and false.
+93. `pause` and `resume` reach the fake helper when the recording state turns true and false (read as
+    `isToolbarVisible()` from `src/main/recording/toolbarWindow.ts`); the progress shows `waiting`.
 94. `OcrHelper.start` refuses a helper that answers another protocol number.
 95. A model pin mismatch reported by the helper (`error: 'model'`) sets the state to `damaged`.
 96. The helper is started with `shell: false`, `windowsHide` and below-normal priority.
 97. `careful` re-reads exactly the lines `needsCareful` picked on the committed main-set tiny reads (P3's
     function on `tests/fixtures/privacy-eval/reads/main-tiny.json.gz`).
-98. The fake helper's crash on one read makes `runFind` (with P4's stub matcher) restart it once and
-    continue.
+98. The fake helper's crash on one read makes `runFind` (with P4's stub matcher) mark every read in
+    flight failed, restart it once and continue from the next planned read, never the one that
+    crashed; a second crash ends Find with `crashed`.
 99. The look batches' frame times and key flags parse into `LookData` without loss.
-100. `tooLarge` from the helper ends Find with `privacy.run.failed` and the reason.
+100. `tooLarge` from the helper ends Find with `privacy.run.tooLarge`; `model` with
+     `privacy.run.readerDamaged`.
+216. **Nothing the helper says is logged**: the fake helper writes a marker string to stderr and a
+     malformed line holding it; after a crash and a refused line, `app.log` and the diagnostics
+     report hold no marker, and `refusedLines` counts the line.
+217. `OcrHelper` numbers every command from one counter; every event is matched to its command by id,
+     whatever order the answers come in; `cancel` drops a queued read.
+218. A helper death with 3 reads in flight marks those 3 as failed reads (lost areas) and the restarted
+     helper is sent the next planned read.
+219. The follow session API: `followOpen`, `track`, `match` and `close` round-trip with the fake helper,
+     and every track of a frame is answered in one `matched` event.
+220. `ReaderState` `ready` carries this PC's decode speed once a Find recorded it; `firstEstimate` uses
+     it.
+221. With `WINDOWS_READER_ALLOWED` false, main never sends `reader: 'windows'` and no message of §2
+     mentions the Windows reader.
+222. **Partial reads**: the fake helper answers `partial` for a read; main reads the unread areas as
+     extra reads; when those fail too, a lost area is made and `failedReads` counts it.
 
 **Rust (`native/ocr`, `cargo test`, host build with the `fixture` feature and `SSW_OCR_MODELS`)**
 
-- R1. `open` with intact models answers `opened`; the heartbeat runs throughout.
+- R1. `open` with intact models answers `opened`; the heartbeat runs throughout; every plan (three
+  detector buckets, ten recogniser widths) is built at open and none during reads (a build counter).
 - R2. `open` with one changed byte in any model answers `error: 'model'` and parses nothing (a parse
-  counter stays 0).
+  counter stays 0); each file is read once (a read counter) and the parsed buffer is the hashed one.
 - R3. `tooLarge` for 7681×4320 and for 41 megapixels, before ffmpeg starts.
 - R4. On the 24 evaluation PNGs (`readImage`), careful-long's reads scored with `score_reader.py`'s rules
   give pattern recall and padded coverage within 1 point of §5.6 (ONNX Runtime 100.0 and 100.0).
-- R5. Tiles: a 3840×2160 frame is read as 4 tiles; a line across a tile edge comes back as one line.
+- R5. Tiles and buckets: a 3840×2160 frame is read as 4 tiles; a line across a tile edge comes back as
+  one line; a 300×80 area runs the 640×352 bucket and three small areas share it.
 - R6. A 4,333 px wide line is read in chunks and its text equals ONNX Runtime's within the parity
   tolerance of §5.6.
 - R7. Spans: every character's span lies inside its line's box; spans are increasing.
 - R8. (Windows) killing the helper kills its ffmpeg (job object).
-- R9. A read that panics answers `error: 'read'` and the next read succeeds.
-- R10. (Windows) the Windows build reads the evaluation PNGs as the host build does.
+- R9. A read that panics answers `error: 'panic'`, the plans are rebuilt (a build counter), and the
+  next read succeeds with the same results as before the panic.
+- R10. (Windows, reference PC) the Windows build reads the evaluation PNGs as the host build does;
+  then the Windows reader (§5.13) reads them and is scored with `score_reader.py`'s rules: decision
+  8's 95% pattern recall and 99% padded coverage, with its speed and memory.
 - R11. Look on a synthetic scroll video (made by the test with ffmpeg from one PNG) reports the scroll's
-  shift per frame within one pixel.
+  shift per frame within one pixel, and prints the analysis time a look frame.
 - R12. Look on a window dragged diagonally reports both dx and dy.
 - R13. Follow places parts on a selected (inverted) copy of the text.
 - R14. Follow refuses a match when two places score within 0.15.
@@ -2876,6 +3981,22 @@ number of this list exists exactly once.
   `read` answer, never on stderr.
 - R16. Reads seek to the key frame before them: decoding a read at 19 minutes in a 20-minute clip
   decodes at most one key frame interval (counted with `showinfo`).
+- R17. **Through the planned areas**: the 24 evaluation frames read through the areas `planReads`
+  cuts (padded to buckets, packed and tiled) give pattern recall and padded coverage within 0.5 points
+  of the same frames read whole (the first build's scan was 1.0 point lower, §5.6).
+- R18. **Display scale** (finding 6): the evaluation frames rendered at 150% and 200%
+  (`make-eval-set.mjs --scale`, 2880×1620 and 3840×2160) are read; each planted item's ink lies
+  inside its line's padded box, and the typing box of `planReads` at that scale holds the field and
+  its label.
+- R19. **Nothing reaches stderr**: a read forced to panic on a line holding a marker string, and a
+  malformed command holding it, leave no marker on stderr (the panic hook prints a code and a
+  location only).
+- R20. **The helper exits when main is gone**: closing its stdin ends it within 2 s; so does a closed
+  stdout when a heartbeat is written.
+- R21. **Caps answer `partial`**: a synthetic 3840×2160 frame of 1,500 short lines answers `partial`
+  with its unread areas, and reading those areas finds the rest.
+- R22. **The follow session decodes each frame once**: 20 tracks walked over 300 frames decode 300
+  frames (a decode counter), and match in under 0.1 ms a part a frame (printed).
 
 **P3 · The text rules**
 
@@ -2888,8 +4009,8 @@ number of this list exists exactly once.
      text items found and at least 230 fully covered, at most 2 visible items touched (the prototype,
      reading only each line's first read and without §6.10's new rules, gave 229 and 224 on the tiny
      reads).
-104. Every pattern runs in under 50 ms on 64 KB adversarial strings; lines are cut to 512 characters in
-     overlapping windows.
+104. Every pattern runs in under 50 ms on 64 KB adversarial strings; lines are matched in windows of
+     512 characters overlapping by 256.
 105. `cleanLine`: NFKC, dashes, bullets, zero-width characters, θ and ø as 0 inside tokens, Cyrillic look-
      alikes; every view has the cleaned text's length and maps back.
 106. `foldText` folds O/0, I/l/1, rn/m, vv/w, cl/d and drops spaces and `_`.
@@ -2935,79 +4056,139 @@ number of this list exists exactly once.
      aloud and as one token, names by double metaphone.
 131. Bangla: NFC with য়, ড় and ঢ়; punctuation stripped without vowel signs; the Bangla digit words and
      English digits said in Bangla script.
-132. `saidBleeps`: widening of 0.05 s and 0.15 s for estimated times, kind markers, no bleep inside an
-     existing one, merging over 2,000 without dropping a hit.
+132. `saidBleeps`: widening of 0.05 s and 0.15 s for estimated times, kind and group markers, no
+     bleep inside an existing one.
 133. Speech false hits: Flown's docs read as speech give at most 10 hits.
 134. Screen false hits: Flown's English UI catalogue gives 0; `docs` at most 2 per 10,000 lines.
 135. `scripts/vendor-privacy.mjs --check` passes and every vendored file carries its header.
+223. **Window edges**: a 900-character JWT on one line is one hit covering the whole token; a hit that
+     touches a window's edge is extended to the end of its token run.
+224. **Pattern check**: `regexCheck.mjs` refuses `(a+)+`, `(a|a)*` and `(\w+\s?)*` and passes every
+     pattern of `detect/tables.ts`.
+225. **The bleep limit**: with 1,999 ordinary bleeps and 5 said hits, `saidBleeps` keeps the total at
+     2,000 by merging private bleeps (across groups when needed, only growing them) and reports the
+     hits it could not place.
+226. **Said groups**: two hits of the same said digit string share a group, a different one gets
+     another; the group is in each bleep's word.
+227. **`looksLikeName`**: "Priya Raman", "O'Neil" and "Mei-Lin" are names; a GitHub token, a password
+     with a digit, a six-digit code, an email and a 41-character text are not.
+228. **Rules in a worker are the same rules**: `detectFrame` run through `RulesHost` on the committed
+     main-set reads gives exactly the hits it gives in-process.
 
 **P4 · The scan**
 
 136. `lookScale` and `lookStep` for 1080p, 4K and 7680×2160 at 30 and 60 fps.
 137. `changedIn` and `keyBefore` on synthetic look data.
 138. `planReads`: the first frame; settle reads 0.3 s after bursts; reveals every 0.75 s in a long scroll;
-     typing reads after bursts and pastes, with valid and invalid cursor data; periodic reads.
-139. The budget: over it, reveals and periodic reads thin and the plan reports `thinned`; settle reads of a
-     region within 1 s merge first; first, settle and typing reads are never dropped.
+     typing reads after bursts and pastes, with valid and invalid cursor data; periodic reads; at
+     display scale 1.5 and 2 the typing box and the settle padding grow by that scale (finding 6).
+139. The budget: settle and typing areas less than 1 s apart are always merged; over budget, reveals,
+     then periodic reads, then 3 s and 5 s merging thin in that order; thinning stops at twice the
+     budget and no read is dropped; `thinSpans` holds every thinned span.
 140. Estimates: `firstEstimate` from length, size and rate; `secondEstimate` from the plan and measured
      speeds.
-141. `walkForward` on a scripted matcher: holds without changes; follows a clear move; refuses an
+141. `walkSpan` forward on a scripted matcher: holds without changes; follows a clear move; refuses an
      ambiguous one (two within 0.15) and becomes lost.
 142. Lost areas (finding 4): a diagonal move with no clear candidate gives a 2-D union box, never a band
-     along one axis.
+     along one axis; a move outside every candidate, with one candidate at 0.45, still leaves the
+     planted text inside the lost area in every frame (the changed region is in the union).
 143. The speed guide: a scroll whose profile is ambiguous keeps the last speed as a candidate.
 144. Evidence of absence: a cover ends only when the next read lacks the text and the template search
-     fails; it ends at the first changed frame with no match; with a match it goes on.
+     fails at every scale; it ends one analysed frame after the first changed frame with no match;
+     with a match it goes on; after an in-app zoom, a read that gives a six-digit code with one
+     misread digit keeps the cover going.
 145. Re-anchoring: a read finding the group again corrects the path backward and keeps the lost area.
-146. `walkBackward` (finding 3): a scroll before the first read is followed back with the move between f
-     and f + 1; the cover covers the text in every frame from its appearance.
+146. The backward walk (finding 3): a scroll before the first read is followed back with the move
+     between f and the next analysed frame; the cover covers the text in every source frame from its
+     appearance, which is where the box left its region.
 147. Zoom: a whole-region change matched at scale 1.25 places the cover.
 148. Toasts over a cover: the cover is lost under the toast and placed again after it.
-149. `findNotices`: a toast in the bottom right for 5 s is found; one lasting 40 s, one in the middle and
-     one in a window recording are not; stacked toasts (finding 5) give each box and the union.
+149. `findNotices`: a toast in the bottom right for 5 s is found; one lasting 40 s, one in the middle,
+     one in a window recording and one in an imported video are not; stacked toasts (finding 5) give
+     each box and the union.
 150. `foundCovers`: groups by group key, scores to tiers, colours from rings.
-151. `withFoundCovers`: containment drops duplicates, overlap does not; `missed` set and cleared; rejected
-     places suppress only their kind; user covers untouched; Find again never covers less anywhere.
-152. `limitCovers` keeps at most 2,000 covers without uncovering anything.
+151. `withFoundCovers`: containment drops duplicates, overlap does not; `missed` set and cleared; user
+     covers untouched; Find again never covers less anywhere; with 2,000 existing covers, 5,000
+     rejected paths and 2,000 new ones it runs in under 400 ms (×6 on CI).
+152. `limitCovers` keeps at most 2,000 covers without uncovering anything, and twice the input takes at
+     most 2.3 times as long (finding 7).
 153. `runFind` with the fake helper: progress phases; the result holds no text (a JSON scan of it finds none
      of the planted strings).
 154. `runFind` and a failed read: a lost area from that frame until the next good read; `failedReads`
      counted (finding 23).
-155. *Stop*: the found covers come back with unfinished walks run to the end as lost areas.
-156. `followCover` returns a path never smaller than the cover's old one; without the reader, a
-     template-only path marked `thin`.
-157. `coverEverywhere` uses the last Find's reads when there are some, else a limited Find.
+155. *Stop*: the found covers come back with unfinished walks run to the end as lost areas over their
+     last box and region; `stopped` and `readTo` are set.
+156. `followCover` returns `walked` and `lostSpans` with its path; without the reader, a template-only
+     path marked `thin`.
+157. `coverEverywhere` uses the kept folded reads within 10 minutes of Find, else a limited Find with
+     progress and *Stop*.
 158. `lookCache` round-trips and is ignored when `screen.mp4`'s size or mtime changes.
 159. `stopAnalyses` stops Find and forgets its reads.
-160. A second `privacy:find` for the same project while one runs answers `busy`.
+160. A second `privacy:find`, for the same project or another, while one runs answers `busy`; *Follow*
+     and *Everywhere* go through the same helper's queue ahead of Find's reads.
+229. **Walks write union keys**: `walkSpan` on a scripted 60 fps fast scroll (1,500 px/s) returns
+     placements whose `stepKeys` path covers the planted text on every source frame.
+230. **Backward evidence**: a tooltip over the text for 1.5 s before its first read does not start the
+     cover after the tooltip; the walk asks for a check read before the earliest frame with no match,
+     and starts the cover one source frame after the frame the check read proved empty; a page change
+     with no match stops it at once.
+231. **Holding the text**: `holdsText` accepts one misread character of a 5-11 character text, a run of
+     4 of its characters, and a third of a longer one; it refuses an unrelated line.
+232. **Typed text**: a code typed one character every 0.2 s inside a typing burst before its first read
+     is covered from the burst's start with one box over the line band (marked `lost`); text deleted
+     inside a burst stays covered until the band has been still for 1.0 s.
+233. **No text leaves main**: a JSON scan of every `FindResult`, `FollowResult`, `UnderCoverResult` and
+     `EverywhereResult` of the e2e fixtures finds none of the planted strings, except `addedName` for a
+     name-like text with `remember` set; the kept folded texts are gone after 10 minutes (a fake
+     clock), on *Stop*, on `stopAnalyses`, on `render-process-gone` and on a new Find.
+234. **Hiding the length**: two names of 9 and 11 characters in one font get covers of the same width
+     with the random part fixed at 0; every place of one group gets the same extra.
+235. **Removed paths suppress only what they hold** (D21): uncovering one email that scrolled through a
+     list does not stop a different email shown later in the same area from being suggested; a new
+     path inside the removed one at every key is suppressed and counted.
+236. **Buckets and packing**: `packAreas` puts three 300×80 areas in one 640×352 bucket at 0.1 unit and
+     a 1200×500 area in the 1920×1088 bucket at 1 unit; the plan's units are the sum.
+237. **Partial and check reads count**: extra reads for a `partial` answer and check reads are in the
+     plan's units and its report.
+238. **The rules worker's limit**: a read whose rules take over 2 s (a test rule that spins) is
+     counted as failed, its area becomes a lost area, and the next read runs in a new worker.
+239. **Results are tagged**: every result carries the request's `projectId` and `requestId`.
+240. **Copies**: `listCopies` finds the copies by `copyOf.id`; `coverCopies` adds the original's covers
+     and private bleeps to a closed copy as suggestions through `projectFileText` and skips an open one;
+     `originCovers` counts what a copy lacks.
 
 **P5 · Panel, Review, export notes, Polish and Settings**
 
-161. `privacyReviewItems`: one row per group; Check rows first; titles with kind, times and place;
-     badges.
-162. `privacyKeep` and `privacyRemove` act on a row's covers and bleeps; Remove writes rejected places.
-163. `privacyPendingCount` counts without making rows.
-164. Keep all and Remove all of a kind are one undo step through `heldInSlices`; Remove all keeps a version
-     first.
+161. `privacyReviewItems`: one row per group with its places as parts; titles with the kind's title,
+     times, place and the largest lost area's size; badges; `privacyOrder` puts Check rows first.
+162. `privacyKeep` and `privacyRemove` take `ReviewItem`s and act on a row's or a part's covers and
+     bleeps; Remove writes rejected paths.
+163. `privacyPendingCount` counts without making rows; `reviewStatus` over 2,000 private groups runs in
+     under 20 ms (×6 on CI) through `privacyIndex`.
+164. *Keep all … covered* and *Uncover all …* of a kind are one undo step through `heldInSlices`;
+     *Uncover all* asks first (focus on *Cancel*) and keeps a version first.
 165. `doneReviewing` keeps every waiting suggestion in one step; its confirm names the Check rows and
      starts on *Cancel*.
 166. The kind filter; with nothing left of a kind, `privacy.review.emptyKind` and focus on the filter
      (finding 34); *Show all changes* keeps focus (finding 32).
 167. *Peek* and *Listen* are toggle buttons whose names include the row's title (finding 33).
-168. `FindDialog`: defaults from Settings and the project; *listen* disabled without captions; the reader
-     line, download and retry; the estimate; focus in and back (finding 31).
+168. `FindDialog`: defaults from Settings and the project; *listen* on with captions, off when unticked
+     for this project, unchecked and disabled without captions; the reader line, download and retry;
+     the estimate; focus in and back (finding 31).
 169. `RegionsDialog`: at most 5 added; the PC's and the UI language's regions always on.
 170. `startFind` saves first, runs `detectSaid` on the captions, applies one update through
      `afterGestures`, and records `captionsSig` at the start (finding 14).
 171. The progress line: phases, the second estimate, announcements at most every 10%.
 172. `gatherPrivacy` runs on the run's captions and returns covers and bleeps for Polish.
 173. Polish: the row shows only with the reader; on for new options, off for saved ones; the result lines.
-174. `PrivacyExportNote`: hides, to check, running and captions-changed lines; absent for a project hiding
-     nothing; its buttons close the dialog first (finding 30).
+174. `PrivacyExportNote`: the hides, to-check and captions-changed lines; absent for a project hiding
+     nothing when the reader is not downloaded; its buttons close the dialog first (finding 30).
 175. The export dialog of a project hiding nothing renders exactly as before (snapshot).
 176. `TranscribeNote` shows for a service when Find listened or private bleeps exist.
 177. `TranslatedNote` shows for a translation not translated again since a private bleep.
-178. `NotCheckedNote` shows in `ShotViewer` with *Also send the screenshots* and no Find.
+178. `NotCheckedNote` shows in `ShotViewer` with *Also send the screenshots* and no Find, shows
+     `privacy.guide.unfinished` after a stopped Find, and shows in the guide's save and copy area when
+     the reader is downloaded.
 179. `PrivacySettings`: the reader's states and buttons; the lists; regions; colour; one shared state with
      the dialog (finding 29).
 180. *Find private info…* runs from the palette and is off `WAITING_COMMANDS`.
@@ -3015,7 +4196,44 @@ number of this list exists exactly once.
 182. The said rows: *Said aloud* badge and *Listen*; their titles never hold a word.
 183. The export note counts a Check row reviewed by *Keep* as done.
 184. `useReaderState` updates every mounted user on one event.
-185. The Settings nav item shows only when `showPrivacySettings()` is true and leads to the section.
+185. `PrivacySettings` is the child of `.settings-body` after `LocalAiSection`, with its heading, and
+     `SettingsSection` `'privacy'` opens Settings scrolled to it.
+241. **Places as parts**: a group with three places shows *Show the 3 items* (Review's parts); each part
+     has its own preview stretch, *Keep covered* and *Uncover*; uncovering one part leaves the others.
+242. **The verbs**: private rows' buttons read *Keep covered* and *Uncover*, with the names
+     `privacy.review.keepRow` and `uncoverRow`; every other kind's buttons are unchanged; *Uncover*
+     says `privacy.review.uncovered`.
+243. **Kind sentences**: `keepKind` and `uncoverKind` give a whole sentence for every kind id.
+244. *Select on the timeline* selects every cover of the row.
+245. **Peek while reviewing**: with it on, moving with N peeks the next row and stops peeking the last;
+     V turns it on and off on private rows; on a row of another kind V goes on to the editor.
+246. **A keyboard pass**: 200 private rows are reviewed with N, V, K and Delete only; no mouse event and
+     no second press of Peek are needed, and every row ends kept or uncovered.
+247. **Results land only where they belong**: a `FindResult`, `FollowResult` or `EverywhereResult` whose
+     `projectId` or `requestId` is not the open project's current request changes nothing.
+248. **Leaving during Find**: confirming stops Find, applies what it found (one undo step) and only then
+     saves and leaves; declining keeps the editor and Find running.
+249. **The export note's new lines**: *Wait for Find* keeps *Export* disabled until the results are
+     applied; *Stop Find and export* applies what was found, then exports; `notChecked` shows only with
+     the reader; `unfinished`, `thinned` and `saidRemoved` follow `FindRecord`; `weak` with *Turn them
+     all into covers*; `hides` only with a private item; `recordingsOff` by `hidesSomething` alone.
+250. **Copies**: after Find on a project with two copies the offer shows and covers both closed copies;
+     a copy's export note shows `fromOriginal`, and *Bring them over* adds the covers in one undo step.
+251. **Find dialog choices**: *Find* is disabled with `privacy.run.busy` while another Find runs; the
+     *Notifications* box is hidden for area, window and imported recordings.
+252. **Polish**: the hint names the first estimate; with a valid screen pass the step only listens and
+     the result line is `privacyListened`; a stopped run gives `privacyUnfinished`.
+253. **Settings states**: the reader's `unavailable` reasons show their messages; the colour of new
+     covers and *Show where covers are* are remembered.
+254. **The progress line**: phases, `waiting` while recording, the second estimate, *Stop*.
+255. **Publish dialog**: `PublishMaskedNote` shows when the saved description holds a spoken form;
+     *Copy* puts the masked text on the clipboard.
+256. **Done notification**: when the window is not focused as Find ends, `main.jobs.privacyDone` is
+     shown with the count to review; when it is focused, none.
+257. **Find's result line**: `foundNone` with the *What Find does not see* link; `thinned`,
+     `suppressed`, `saidFull` and `stopped` as separate sentences when they apply.
+258. **Review's unfinished line**: after a stopped Find, Review's header shows
+     `privacy.review.unfinished` with *Find again…*.
 
 ### 17.2 The equivalence guard (test 20)
 
@@ -3034,8 +4252,14 @@ regenerated. For every old fixture project and stored setting:
 - **Captions and text**: `maskedSegments`, `burnedSegments`, `trackCues` output, `maskBleeped`,
   the search extract, Review items, `pendingCount`, `changedAreas` and the transcript text equal their
   digests.
-- **AI**: for every fixture and every one of the 9 request builders, the request reaching
-  `window.api.aiText` equals its digest.
+- **AI**: for every fixture, the requests made by the pure request builders (the pack's, the
+  chapters' and names' requests, `captionsToTranslate`, the guide's step names, the marks request)
+  equal their digests, and `maskRequest` returns each of them as the same object. Three requests are
+  built inline in React handlers (`CleanupSection.tsx:197`, `LanguagesSection.tsx:228`,
+  `CaptionsPanel.tsx:1144`), where a test written before any change cannot reach them; test 31's
+  per-call-site check covers them once they call `aiTextFor`.
+- **Texts made from captions**: `privateView` of every fixture is the fixture itself (the same
+  object).
 - **Settings and presets**: stored export settings, bundle choices (`timelineMedia: 'recordings'`
   included), user presets and `editor-prefs.json` normalise and write back byte for byte.
 - **Polish**: `planPolish` with saved options equals its digest.
@@ -3048,22 +4272,37 @@ The host helper (`build-native --ocr-host`) and the pinned models in a fixed `us
 made by the test from the evaluation PNGs with ffmpeg (lossless, `-c:v libx264rgb -qp 0`). Exported
 frames are read back with ffmpeg as raw RGB.
 
+**How an output is shown to cover** (A1, A2 and its variants). A colour check alone cannot prove
+nothing leaks: lossy codecs never reproduce a solid colour exactly, and it would never look outside
+the boxes, where a blur shape, a lens, a title card's background or the Glass caption look could
+carry the text. So each output is made **twice**, from two fixture recordings that differ only in the
+pixels under the covers (two different secrets, same everything else), and the two are compared:
+
+- lossless and deterministic routes (PNG thumbnails and guide pictures, raw canvas readback of the
+  preview and the export dialog's preview, x264 and libvpx run with `-threads 1`, `-fflags +bitexact`
+  and `-map_metadata -1`, GIF): **byte-identical** outputs;
+- the WebCodecs and hardware encoder routes: every decoded frame identical within 2 levels on 99.9% of
+  pixels of the **whole frame**;
+- and, for the lossless routes, each cover box is filled exactly with its graded cover colour, as a
+  second check.
+
 - **A1. Find on a recorded fixture.** A 60 s video of eight evaluation frames with scrolls between them:
   *Find private info* with the defaults; Review lists the rows, Check rows first; *Done reviewing*; the
-  export's every frame has every planted on-by-default item's box filled with its cover colour exactly
-  (no pixel of the item's ink inside its box differs from the fill).
+  export passes the comparison above against the same video with other secrets planted, and every
+  planted on-by-default item's ink is inside a cover in every source frame.
 - **A2. Every output covers.** One project with three covers (one moving): MP4, WebM, MOV CineForm, GIF,
   transparent `background`, 120 fps, a batch, a per-chapter part, the thumbnail PNG, the export
   dialog's preview canvas, the guide's shots and its PDF and HTML pictures, a short clip copy and the
-  timeline's *This export* mode: every cover box is the cover colour in every frame or picture.
-  Variants:
+  timeline's *This export* mode, each compared as above. Variants:
   - **A2a joins**: a crossfade and a slide over a cut inside a cover's time.
   - **A2b vertical follow**: the 9:16 copy with the follow camera.
   - **A2c title-card background**: a title card with the blurred-frame background over a cover.
   - **A2d WebM and hardware raw frames**: the raw-frame route to ffmpeg and the WebCodecs route.
   - **A2e guide pictures**: the PDF's and the HTML folder's images, decoded.
-  - **A2f motion blur, a magnifier and a blur shape** beside a cover: no pixel of the text inside the
-    cover's box anywhere.
+  - **A2f motion blur, a magnifier and a blur shape** beside a cover: the whole frame is compared, not
+    only the cover's box.
+  - **A2g a cropped project**, then cropped with a grade and a LUT, with a moving cover over text 10 px
+    inside the crop's edge (D19).
 - **A3. Peek and Listen never reach an output.** With Peek on, an export and a thumbnail are covered;
   with Listen on, the export's sound is muted under the private bleep.
 - **A4. The original recordings.** With a cover, the chip is disabled; a preset choosing it exports with
@@ -3082,20 +4321,37 @@ frames are read back with ffmpeg as raw RGB.
   and a lost area over that part.
 - **A11. Keyboard and screen reader.** The whole flow with the keyboard only; axe finds no violation in
   the dialog, the section, the Covers row and Review.
-- **A12. Multi-select.** Select three covers; delete, undo, nudge, copy and paste them.
+- **A12. Multi-select.** Select three covers (Ctrl+click, and a group's bar); the section shows the
+  count and the disabled actions' reasons; change their colour, nudge, delete, undo, copy and paste
+  them; select three blur shapes and *Turn into covers*.
 - **A13. Polish.** Polish with *Find private info* on a fixture with captions.
 - **A14. The guide's buttons.** *Blur an area…* adds a cover coloured from the step's shot frame.
 - **A15. Follow and Everywhere.** A user cover over a scrolled email follows it; *Cover this text
   everywhere* covers its other places.
-- **A16. The rendered tracking set** (`scripts/privacy/make-track-fixtures.mjs`, new, written in the
-  contracts step from the evaluation set's generator): lossless videos at 60 fps of a scrolling list,
-  browser zoom in and out, text selected and deselected, a sticky header over a scrolling page, a window
-  dragged diagonally, stacked toasts sliding in and out, and the new-seed held-out frames, with every
-  planted item's box known in every frame. After Find, every on-by-default item is covered (its whole
-  ink inside a cover) in **every frame** it shows in, for every video. A failure prints the item, frame
-  and uncovered pixels.
+- **A16. The rendered tracking set** (`scripts/privacy/make-track-fixtures.mjs`, written in the
+  contracts step, §16.0 item 13): lossless videos at 60 fps of a scrolling list, a fast flick scroll
+  of 1,500 px a second or more, browser zoom in and out, text selected and deselected, a sticky header
+  over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out, a toast and a
+  tooltip passing over text before its first read, an email typed into a form field and a key typed
+  into a terminal (and deleted again), the evaluation frames at 150% and 200% display scale, and the
+  new-seed held-out frames, with every planted item's box known in every frame. After Find, every
+  on-by-default item is covered (its whole ink inside a cover) in **every source frame** it shows in,
+  the frames between analysed frames included, for every video; each typed character is covered from
+  the frame it appears. A failure prints the item, frame and uncovered pixels. The plan's units for
+  each video are printed, for §5.11's units distribution.
 - **A17. The English guard.** `guard-delta.mjs` on the merged tree passes; the baseline is re-recorded
   only then (§12.2).
+- **A18. Export during Find.** With Find running, the export note shows `running`; *Wait for Find*
+  keeps *Export* disabled until the results are applied and the export then covers them; *Stop Find
+  and export* applies what was found and the export covers it.
+- **A19. Leaving during Find.** Going Home while Find runs asks first; confirming applies what was found
+  before the project is saved, and reopening the project shows those covers.
+- **A20. Copies made before Find.** Make a short clip, run Find on the original, choose *Also cover the
+  copy*; the clip's export covers the planted items; a second copy made earlier shows `fromOriginal`
+  and *Bring them over* does the same.
+- **A21. Review at speed.** 200 private rows reviewed by keyboard with *Peek while reviewing* on; the
+  magnified view shows the text under the selected cover; an export and a thumbnail made meanwhile
+  have no outline and no magnified view.
 
 ---
 
@@ -3157,50 +4413,58 @@ interface PrivateCapture {
 
 | Finding | What went wrong | Prevented by |
 |---|---|---|
-| 3 | A cover lagged one move behind before the first read when following backward | §5.8 backward walk uses the move between f and f + 1; test 146 |
-| 4 | A diagonal lost area was drawn as a band along one axis | §5.8 step 5: a 2-D union box; test 142 |
-| 5 | Stacked toasts | §6.13 each notice and the stack's union; test 149 |
-| 6 | The helper's display scale: reads of HiDPI frames landed off the text | §5.5 reads at the recording's own pixels, tiled, never scaled; covers normalised by the video's size; tests R5, 102 |
-| 7 | `limitCovers` was quadratic | §5.10 heap merging, O(n log n); tests 13, 152 |
+| 3 | A cover lagged one move behind before the first read when following backward | §5.8 the backward walk uses the move between f and the next analysed frame; union keys between analysed frames (§4.2); tests 146, 186, 187 |
+| 4 | A diagonal lost area was drawn as a band along one axis | §5.8 step 5: a 2-D union of the box, every candidate and every changed region, whatever the candidates scored; tests 142, 230 |
+| 5 | Stacked toasts | §6.13 each notice and the stack's union; test 149; A16's stacked toasts |
+| 6 | The helper's display scale: reads of HiDPI frames landed off the text | §5.5 reads at the recording's own pixels, tiled, never scaled; §5.3 every size in screen pixels multiplied by the display scale; tests 138 (scale 1.5 and 2), R18 (frames rendered at 150% and 200%), A16 |
+| 7 | `limitCovers` was quadratic | §5.10 heap merging over each cover's 8 nearest in its grid cells, O(n log n); tests 13 and 152, each with a "twice the input, at most 2.3 times the time" check |
 | 10 | A spoken number said across sentences and number words was not found | §7.2 the digit stream across captions and full stops; test 129 |
-| 11 | The matcher was built from the padded span | §6.1 own spans for everything that finds text again; test 127 |
-| 12 | Chapter title cards were not masked for spoken secrets | §7.5 `settleSaid` masks `titles[]`; test 22 |
+| 11 | The matcher was built from the padded span | §6.1 own spans for everything that finds text again on screen; §7.3 spoken forms from the hit's own words, by word midpoints inside the unpadded bleep; tests 127, 192 |
+| 12 | Chapter title cards were not masked for spoken secrets | §7.5 `privateView` masks `titles[]` where they are drawn, in the preview and every output; tests 22, 191 |
 | 13 | Tidy captions kept real words under private bleeps | §7.4 masking by time, whole span when words do not line up; masked requests; tests 18, 23 |
 | 14 | `saidStale` was lost when captions changed during Find | §7.7 `captionsSig` taken at Find's start; test 170 |
 | 16 | A cover drag overwrote Find or Follow results arriving meanwhile | §5.10 and §14.1 results through `afterGestures`, merged against the current project; tests 61, 170 |
 | 17 | `readCovers` was quadratic on huge projects | §4.3 one linear pass; test 3 |
 | 18 | Copy and paste of a cover pasted old items or an image | §14.4 snapshots at copy time, own project only, no OS clipboard; tests 49, 72 |
-| 19 | Opening a version settled its suggestions | §14.1 no settle step for covers; edits drop `found` themselves; test 52 |
-| 20 | Covers past the key limit loaded coarser | §4.2 writers never exceed the limits; §4.3 readers only ever grow boxes; test 2 |
+| 19 | Opening a version settled its suggestions | §14.1 no settle step for covers, nor any new settle step; edits drop `found` themselves; tests 52, 201 |
+| 20 | Covers past the total-key limit loaded coarser | §4.2 writers never exceed the limits, `simplifyKeys` merges the longest paths first; §4.3 readers only ever grow boxes; tests 2, 188 |
 | 22 | A line box rounded past the frame's edge | §6.1 clipped, never rounded past the edge; test 127 |
-| 23 | A failed read was dropped silently | §5.6 a lost area and the failed-reads line; tests 84, 154, A10 |
+| 23 | A failed read was dropped silently | §5.6 a lost area and the failed-reads line; §10.3 caps answer `partial` and are completed; tests 84, 154, 222, R21, A10 |
 | 24 | Names with a leading star were written to logs | §10.6 stars stripped, names joined to `secretValues()`; test 35 |
 | 25 | No heartbeat during the helper's open phase | §10.4 heartbeat from start; tests 81, R1 |
 | 26 | A failed reader download was not shown | §2.5 `privacy.find.readerFailed` with *Try again*; test 79 |
 | 28 | The names list was not reloaded after *Cover this text everywhere* | §5.9 dialogs read the list again; test 62 |
-| 29 | The panel and Settings kept separate reader states | §16.5 `useReaderState`, one shared state; tests 91, 179, 184 |
-| 30 | The export note's buttons did not close the dialog | §2.12 and §11 close first, then open; test 174 |
+| 29 | The panel and Settings kept separate reader states | `useReaderState`, one shared state, a contracts stub with its final signature (§16.0 item 10); tests 91, 179, 184 |
+| 30 | The export note's buttons did not close the dialog | §2.12 and §11 close first, then open; tests 174, 249 |
 | 31 | Focus going into and back from the Private info panel | §11 focus rules; test 168 |
 | 32 | Review's *Show all changes* lost focus | §11; test 166 |
 | 33 | Peek and Listen's labels were missing from their accessible names | §2.8 and §11 names include the row's title; test 167 |
 | 34 | The filtered empty Review list had no message | §2.7 `privacy.review.emptyKind`; test 166 |
 | 35 | The Check bar's line style | §2.3 and §11: dashed waiting edges, `--warning` for Check, a text badge; test 66 |
 | 36 | Selection did not follow focus on the Covers row | §11; test 67 |
-| 37 | Focus after Follow's *Stop* and *Keep* | §11; test 61 |
-| 1, 2, 8, 9, 15, 21, 27 | Not recorded by name (they were in the outputs and finding lenses) | §9's row for every output path, A2 and its variants, and test 20 cover the output lenses; §5.6, §5.10 and §17.1 tests 141-160 the finding lenses |
+| 37 | Focus after Follow's *Stop* and *Keep* | §11: *Stop* keeps focus on *Follow*, *Keep covered* moves it to the section's title; tests 61, 213 |
+| 1, 2, 8, 9, 15, 21, 27 | Not recorded by name (they were in the outputs and finding lenses) | §9's row for every output path, A2 and its variants compared against a second recording, and test 20 cover the output lenses; §5.6, §5.8, §5.10 and the P4 tests 141-160 and 229-240 the finding lenses |
 
 ### 19.2 What the first build left undone, and where it is done now
 
 | Left undone | Done here |
 |---|---|
-| Multi-select and group edit of covers | §14.4; P1 tests 70-72, 75; A12 |
-| A16, the rendered tracking set, run end to end | §17.3 A16; `make-track-fixtures.mjs` written in the contracts step |
-| The guide's *Blur an area…* coloured from the step's own shot frame | §8.4 `ringColourAt` at the shot time; test 59; A14 |
-| Re-reads decoding from the start of the recording | §5.5 and §5.8 seek to the key frame before; test R16 |
+| Multi-select and group edit of covers | §2.2's multi-selection state, §14.4's branches; tests 70-72, 75, 209; A12 |
+| A16, the rendered tracking set, run end to end | `make-track-fixtures.mjs` is contracts item 13 (§16.0) with test 196; A16 checks every source frame, with the fast scroll, typed text, a tooltip before the first read and HiDPI cases added |
+| The guide's *Blur an area…* coloured from whatever frame was paused | §2.11 and §8.4: `ringColourAt` at the step's own shot time, `blurArea` async (§16.1); test 59; A14 |
+| Re-reads decoding from the start of the recording | §5.5: a seek to the key frame before each read, measured at 0.1 s a read; R16 |
 | Numbered tests folded into one file | §17.1: one `it` per number, checked by `autoBlurNumbers.test.ts` |
-| A2's variants only as unit tests | §17.3 A2a-A2f end to end |
+| A2's variants only as unit tests | §17.3 A2a-A2g end to end, each compared against a recording with other secrets |
+| R4 passed only at the edge of its tolerance through a real scan | R17 checks the planned-area path alone, within 0.5 points of whole frames (§5.6) |
+| `useReaderState` was still P5's stub returning null, so Follow and Everywhere stayed enabled | the reader-state and progress hooks are contracts stubs with final signatures that P1 uses from the start (§16.0 item 10) |
+| The timeline flush needed a new `ExportDialog` prop | named in §9 row 10 and contracts item 8; test 25 checks the order |
+| The folder notice of the first design | `privacy.notSee.folder` in §2.9's list (§9 row 27); test 63 |
+| The English guard's first run failed on cold-launch timing | §12.2: a warm-up launch before every compare run; timing differences are run again, never recorded |
+| `WAITING_COMMANDS` edited by two parts | `WAITING_P1` and `WAITING_P5` on lines of their own (§12.3) |
+| `bcryptprimitives.dll` and the WinRT imports measured late | `OCR_IMPORTS` lists all eight (§16.2) |
 | libphonenumber-js and double-metaphone not added | §6.14 vendored by `scripts/vendor-privacy.mjs` (no `npm install` needed), with notices |
 | tract against ONNX Runtime not measured on the shipped bytes | measured on PaddlePaddle's own files, which are the shipped bytes (§5.6); the contracts step repeats it |
 | Character list counts written wrongly (6,908 and 18,712) | 6,904 and 18,708, read from the pinned `inference.yml` files (§0 decision 1) |
 | `aiTextFor` masked only private forms | still so, on purpose: ordinary bleeps would change old projects' requests (§7.6) |
+| R8 and R10 not run (Windows only) | still for the reference PC; R10 now also scores the Windows reader built behind its flag (§5.13) |
 | Still for a person | the mirror, the Windows-only checks, the native Bangla review and the other account's `private.json` (§16.6) |
