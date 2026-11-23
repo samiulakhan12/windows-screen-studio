@@ -3455,8 +3455,57 @@ export function privateNames(): string[]
 export function setPrivateNames(names: unknown): void
 ```
 
-**What the contracts step settled** is recorded here when it is done, as in
-`docs/design/output-and-languages.md` §21.0.
+**What the contracts step settled** (branch `feat/wave13`, from `d92ce61`; recorded as in
+`docs/design/output-and-languages.md` §21.0):
+
+- **The guard first.** Test 20 was committed alone (`f4cd44c`) and its digests were never made
+  again. Home's summaries are compared without the two fields this wave adds to them
+  (`thumbCovers` and `thumbCrop`); the test checks each of them on its own.
+- **The reader's pins.** `readerCatalog.ts` holds the five files of §5.12 (27,608,757 bytes),
+  `READER_MIRROR` stays null and `WINDOWS_READER_ALLOWED` false. The scores were measured again on
+  both sets and equal §5.6 (`scripts/privacy/results/contracts-rescore.txt`). `make-eval-set.mjs`
+  takes `--seed` and `--scale`; without them it writes the committed frames byte for byte.
+- **Question 13 (a)** is built: `ProjectSummary.thumbCrop`, and Home draws a thumbnail through the
+  crop with the covers' boxes. Questions 17 and 18 are built as (b): no English message changes,
+  and a crop or a muted part alone hides nothing (`CROP_HIDES = false`).
+- **Polish.** `PrivacyGathered` is `{ covers, said, privacy, found, check, listenedOnly, unfinished }`:
+  the covers as Find's merge leaves them, the private bleeps to add (by id), and the run's record.
+  `planPolish` applies it in its one update; `summary.privacy` is set only when the step ran. The
+  dialog shows the row only once `useReaderState()` is not null, and runs the step only then; with
+  nothing gathered the step is skipped as `no-reader`.
+- **Commands.** No category is named *View*, and a new one would change the palette's list, so
+  `peekCovers` is in *Effects*; `addCover` and `findPrivate` in *Add*; the two trims in *Edit*. The
+  runner's four cover commands come from `src/renderer/src/privacy/coverCommands.ts`
+  (`coverCommands({ services, cursor, scene, selection, select, reveal, notice })`, stubs that part
+  P1 fills); `findPrivate` opens the `FindDialog` stub. Leaving asks `confirmLeaveFind` before the
+  save.
+- **Multi-select.** A group move moves covers through `moveCoversInTime` by the move's delta; a
+  length change leaves covers alone; a group copy leaves covers out until P1; deleting covers in a
+  group goes through `deleteCoverItems`. The Selection view names a cover section with
+  `privacy.track.title` and a cover row with `privacy.cover.title`; Select only the… has no cover
+  branch (its message is not changed), which P1 meets when covers become selectable.
+- **AI requests.** `maskRequest` leaves the ids, the task and a caption's id as they are and
+  masks every other string by time; `marks.captions` word lists are made again from the masked
+  text. The nine call sites go through `aiTextFor`.
+- **Main.** The privacy channels check their sender before anything else, validate, and answer a
+  valid request as failed until P2 and P4; Follow's and the text under a cover's times are checked
+  against the duration main reads from `project.json`. The listed names join `secretValues()`,
+  `scrubSecrets` and every log and diagnostics line take them out first, in any case. A job's
+  `notice` is set only in main (`validOutcome` drops one sent by a page).
+- **Merging and reading paths.** `mergeCovers` keeps each round's covers in start order as arrays
+  and writes merged keys into one pool; `parsePath` reads each field's digits as it scans. Tests 3
+  and 13 time processor time.
+- **The scanner and the guard.** Every new file of §16 (77, those of later parts included) is in
+  `failFor`. `guard-delta.mjs` reads a settings capture's section as the first section heading
+  below the dialog's own, its words from the accessibility tree; a moved box passes when an element
+  was added before it, above it or beside it.
+- **Tracking fixtures.** `make-track-fixtures.mjs` renders ten cases (list scroll, flick, browser
+  zoom, selection, sticky header, dragged window, toasts, tooltip, typed email, typed key); a part of
+  an item under a toast, a tooltip or a header is left out of its box. Test 196 needs Chromium
+  through Playwright, as `make-eval-set.mjs` does.
+- **Old outputs pinned for the tests.** `tests/fixtures/autoblur-english-37f9355.json` (each English
+  namespace's digest at `37f9355`) and `tests/fixtures/autoblur-job-notices-37f9355.json` (what that
+  commit's `notificationFor` gave for every kind and ending).
 
 ### 16.1 Part P1 · Covers in the editor
 
