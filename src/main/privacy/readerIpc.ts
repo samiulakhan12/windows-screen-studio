@@ -6,10 +6,10 @@
  * each change, at most every 250 ms while a download runs, so Find's dialog and Settings always
  * show the same one, a failure with its reason included (finding 26).
  */
-import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { PRIVACY_CHANNELS, type ReaderState } from '../../shared/api/privacy'
 import { isAppUrl } from '../security'
-import { cancelReaderDownload, downloadReader, onReaderState, readerState, removeReader } from './readerModels'
+import { cancelReaderDownload, downloadReader, onReaderState, readerState, removeReader, type DownloadDeps } from './readerModels'
 
 /** State to every app window at most this often while it changes. */
 export const READER_STATE_EVERY_MS = 250
@@ -56,6 +56,18 @@ export function throttled(send: (s: ReaderState) => void, everyMs = READER_STATE
   }
 }
 
+/**
+ * SSW_READER_BASE_URL, in an unpackaged app only (the end-to-end test of the download, A9): the files
+ * come from there, at <base>/<repository>/<file>, still checked by size and SHA-256, as
+ * SSW_SPEECH_MODEL_BASE_URL does for the speech models. A packaged app never reads it.
+ */
+export function testMirror(packaged: boolean = app.isPackaged, env: NodeJS.ProcessEnv = process.env): DownloadDeps {
+  const base = packaged ? null : env.SSW_READER_BASE_URL || null
+  if (!base) return {}
+  const root = base.replace(/\/+$/, '')
+  return { testBase: base, sources: (f) => [`${root}/${f.file.split('/').map(encodeURIComponent).join('/')}`] }
+}
+
 export function registerReaderIpc(): void {
   onReaderState(throttled((s) => sendReaderState(s)))
   ipcMain.handle(PRIVACY_CHANNELS.readerState, (e, ...args: unknown[]) => {
@@ -66,7 +78,7 @@ export function registerReaderIpc(): void {
   ipcMain.handle(PRIVACY_CHANNELS.downloadReader, (e, ...args: unknown[]) => {
     fromApp(e)
     noArgs(args)
-    return downloadReader(() => undefined, new AbortController().signal)
+    return downloadReader(() => undefined, new AbortController().signal, testMirror())
   })
   ipcMain.handle(PRIVACY_CHANNELS.cancelReaderDownload, async (e, ...args: unknown[]) => {
     fromApp(e)
