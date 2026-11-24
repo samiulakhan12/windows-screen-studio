@@ -318,9 +318,12 @@ messages; no sentence is made of pieces (the words rule, `scripts/i18n/config.js
 
 ### 2.1 Shapes tab › Private info
 
-A new section at the top of the Shapes tab (`tab-shapes` in the English guard), above the existing
-shape buttons. It is always there, so a project without covers shows it too (§12.2 lists the guard
-captures this adds to).
+A new section of the Shapes tab (`tab-shapes` in the English guard), right after the add-shape buttons
+(*Add at playhead*) and before *Spotlight*, with the Cover section of §2.2 under it. It is always there,
+so a project without covers shows it too (§12.2 lists the guard captures this adds to). This section
+first put it at the top, above the shape buttons; that moves every existing element of `tab-shapes`,
+which the English guard's compare mode refuses and `guard-delta` reports as old texts changed, so it
+follows them (tried at integration and taken back).
 
 | Key | English |
 |---|---|
