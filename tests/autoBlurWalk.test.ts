@@ -463,6 +463,38 @@ describe('auto-blur P4: following', () => {
     expect(track.lost).toBe(false)
     expect(near(pathBox(track, 30)(2.5), [340, 380, 250, 50])).toBe(true)
   })
+
+  it('A copy of the text further away never outbids where the text was going: a list showing one email on every twelfth row is followed row by row, and text leaving the frame is not moved onto a copy (found end to end: every walk on such a list was ambiguous and lost over the whole column)', async () => {
+    const column: Box = [0, 0, 352, 1080]
+    const period = 336
+    const yAt = (t: number): number => 500 - 8 * Math.max(0, Math.round((t - 1) * 30))
+    // Copies 336 px apart scroll up 8 px an analysed frame; the look pass offers the scroll and its aliases.
+    const copies = (t: number): Box[] => [-2, -1, 0, 1, 2].map((k) => [16, yAt(t) + k * period, 200, 24] as Box)
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.round((t - 1) * 30) >= 1 ? { changed: [column], moves: [move(column, 0, -8, 0.98, [[0, period - 8, 0.92], [0, -period - 8, 0.9]])] } : {}))
+    const score = (t: number, b: Box): number => (copies(t).some((c) => at(b, c) && c[1] >= 0 && c[1] + 24 <= 1080) ? 1 : 0.2)
+    const own: Box = [16, 500, 200, 24]
+    const [followed] = await walkSpan([start(0.5, own)], 1, look, readIndex(), placeMatcher(own, score), NO_HINTS, HD)
+    const mine: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) + 24 > 0 ? [16, yAt(t), 200, 24] : null) }
+    expect(followed.lost).toBe(false)
+    expect(near(pathBox(followed, 30)(2), [16, yAt(2), 200, 24])).toBe(true)
+    // Its own row reaches the top edge and leaves: covered until then, never moved onto the copy below.
+    const leaves = sourceFrames(30, 0.5, 4).find((t) => mine.at(t) === null)!
+    expect(uncovered(followed, 30, mine, 0.5, leaves, [0, 0, 1920, 1080])).toEqual([])
+    expect(followed.end).toBeLessThanOrEqual(leaves + 2 / 30 + 1e-9)
+  })
+
+  it('Text a scroll carries out of the frame between two analysed frames is covered in the source frames between them (found end to end: at 60 fps the frame between showed it cut at the edge)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    // 60 fps, every second frame analysed; the page scrolls up 40 px a source frame from 1 s: placed whole at one analysed frame, the text is
+    // cut at the top edge in the source frame after it and gone by the next analysed frame.
+    const yAt = (t: number): number => 100 - 40 * Math.max(0, Math.round((t - 1) * 60))
+    const shown: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) + 30 > 0 ? [400, yAt(t), 200, 30] : null) }
+    const whole: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) >= 0 ? [400, yAt(t), 200, 30] : null) }
+    const look = lookOf(HD, 60, 3, (_i, t) => (Math.round((t - 1) * 60) >= 1 && t < 2 ? { changed: [page], moves: [move(page, 0, -80)] } : {}))
+    const [track] = await walkSpan([start(0.5, [400, 100, 200, 30])], 1, look, readIndex(), matcherOf([whole]), NO_HINTS, HD)
+    const leaves = sourceFrames(60, 0.5, 3).find((t) => shown.at(t) === null)!
+    expect(uncovered(track, 60, shown, 0.5, leaves, page)).toEqual([])
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

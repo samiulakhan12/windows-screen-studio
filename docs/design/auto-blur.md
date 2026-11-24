@@ -1830,7 +1830,13 @@ inverted (dark mode, a highlight), so one template serves both.
 3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 × `scale`
    template pixels (§5.3).
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
-   more (one clear best match), and the placed parts agree within 2 px. The box moves by that
+   more (one clear best match), and the placed parts agree within 2 px. **Near first**: each frame's
+   match is asked first with only the candidates landing where the walker's own predictions put the
+   text (the predicted place, no move and the speed guide), so a copy of the same text further away
+   (a list showing one email on every twelfth row, its look moves offering the scroll and its
+   aliases) never makes the match ambiguous; only when no clear match is there are all candidates
+   asked, and not when the walker's own motion takes the text partly out of the frame, where a match
+   elsewhere is a copy, not where it went. The box moves by that
    candidate; `stepKeys` writes the key at f and, when the box moved, the union key before it (§4.2).
 5. **Not placed** while the region changed: the cover becomes a **lost area**. Its box at f is the 2-D
    union of the box, the box moved by **every** candidate, and **every changed region the box
@@ -1869,6 +1875,14 @@ and the source frames up to the next analysed frame stay covered (§4.2). Until 
 placed or lost, with no time limit. A read that finds the same group key again re-anchors the cover
 there, and the walk backward from that read corrects the path to the last placed frame (the lost
 area between them stays).
+
+**Carried out of the frame.** Going forward, a cover also ends where the real move of the region the
+text moved with carries its box wholly out of the frame (scrolled or dragged out of view), with no
+read needed: the mirror of the backward walk's rule. That frame's box is the union of the last box
+and the moved one, clipped to the frame, so the source frames before it, which show the text cut at
+the edge, stay covered, and the cover ends one analysed frame after it: a text cut at the edge is
+not fading, so no earlier end frame applies (at 60 fps the frame between two analysed frames showed
+it, and a text lost at the edge for a few frames ended at the first of them).
 
 **Backward walk.** From R back to the start: the box at f is the box at the next analysed frame
 moved back by the move the look pass found **between f and that frame** (finding 3: never the move

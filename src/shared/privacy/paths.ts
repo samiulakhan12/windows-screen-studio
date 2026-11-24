@@ -352,7 +352,9 @@ const floorMs = (t: number): number => Math.floor(t * 1000 + 1e-6) / 1000
  * again by one clear match; it ends only with evidence of absence (its region changed, the next read
  * covering it lacks the text, the template search finds it nowhere at any scale outside the lines that
  * read read, and the next change does not bring it back), one analysed frame after the first changed
- * frame where the match did not find it. A move the look pass scored weakly is a candidate only.
+ * frame where the match did not find it, or one after the frame its region carried it out of the
+ * frame. A move the look pass scored weakly is a candidate only. Each frame asks first where the
+ * walker's own motion puts the text; a copy of it elsewhere is asked only when that finds nothing.
  * Backward: the box at f is the box at the next analysed frame moved back by the move between them
  * (finding 3); it goes on, placed or lost, through tooltips and toasts, until evidence of absence
  * going back (a read or a check read lacking the text), a page change with no match, the text leaving
@@ -516,6 +518,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     for (const q of w.tpl.parts) own = union(own, q)
     return own
   }
+  /** The speed guide: the last placed move per frame times the frames since. */
+  const guide = (w: Walker, f: number): Xf => {
+    const k = f - (w.lastPlaced >= 0 ? w.lastPlaced : f)
+    return { dx: w.off.dx + w.v.dx * k, dy: w.off.dy + w.v.dy * k, scale: w.off.scale }
+  }
 
   /** Candidates searching the whole of `area` (and around), at scale 1 on a grid and at the zoom scales about its centre. */
   const searchCandidates = (w: Walker, area: Box, explained: readonly Box[] = []): Xf[] => {
@@ -579,11 +586,12 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
   }
 
   /** Forward: the end of a walk whose text was shown gone at S (§5.8). */
-  const endForward = (w: Walker, S: number): void => {
+  const endForward = (w: Walker, S: number, carried = false): void => {
     let e = S
     const from = w.C ?? S
     let checked = 0
-    for (const [f, present] of w.history) {
+    // Carried out of the frame by its region (cut at the edge, never fading): shown until S itself.
+    for (const [f, present] of carried ? [] : w.history) {
       if (f < from) continue
       if (++checked > END_FRAMES) break
       if (!present) {
@@ -602,7 +610,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const te = frames[e].t
     const at = w.placements.findIndex((p) => Math.abs(p.t - te) < 1e-9)
     const movedSince = w.drift.dx !== 0 || w.drift.dy !== 0
-    if (at > 0 && w.holdEnd <= te && !movedSince) w.placements[at] = { t: te, box: w.placements[at - 1].box }
+    if (at > 0 && w.holdEnd <= te && !movedSince && !carried) w.placements[at] = { t: te, box: w.placements[at - 1].box }
     w.done = true
   }
 
@@ -660,7 +668,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (dir === 1 && best && !w.hold && w.pending === null) {
       const gone = moved(xfBox(w, w.tpl.box, w.off), { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy, scale: best.scale })
       if (right(gone) <= 0 || bottom(gone) <= 0 || gone[0] >= size.width || gone[1] >= size.height) {
-        endForward(w, f)
+        setBox(w, f, clip(union(w.box, gone), size))
+        endForward(w, f, true)
         return
       }
     }
@@ -727,13 +736,44 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       asks.push({ w, rel, best, region, xfs: candidatesFor(w, f, rel) })
     }
     if (asks.length) {
-      const res = await m.match(
+      // Near first: the candidates landing where the walker's own predictions put the text. A copy of
+      // the same text further away (a list showing one email on many rows) never outbids them.
+      const nearOf = (a: (typeof asks)[number]): Xf[] => {
+        const own = ownBox(a.w)
+        const anchors = [predicted(a.w), a.w.off, guide(a.w, f)].map((x) => xfBox(a.w, own, x))
+        return a.xfs.filter((x) => anchors.some((b) => overlaps(xfBox(a.w, own, x), b)))
+      }
+      const first = await m.match(
         t,
-        asks.map((a) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: a.xfs }))
+        asks.map((a) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: nearOf(a) }))
       )
-      const zoom: typeof asks = []
+      const rest: typeof asks = []
+      const nearRes = new Map<Walker, TrackMatch | undefined>()
       for (const a of asks) {
-        const r = res.find((x) => x.track === a.w.index)
+        const r = first.find((x) => x.track === a.w.index)
+        if (clear(r)) {
+          place(a.w, f, r!.best!)
+          a.w.region = a.region
+          continue
+        }
+        nearRes.set(a.w, r)
+        rest.push(a)
+      }
+      // Leaving the frame where the walker's own motion takes it: a match far away is a copy, not where it went.
+      const leaving = (a: (typeof asks)[number]): boolean => {
+        const own = ownBox(a.w)
+        const pred = predicted(a.w)
+        const ways = [guide(a.w, f), ...(a.best ? [{ dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }] : [])]
+        return ways.some((x) => { const b = xfBox(a.w, own, x); return b[0] < 0 || b[1] < 0 || right(b) > size.width || bottom(b) > size.height })
+      }
+      const far = rest.filter((a) => !leaving(a))
+      const res = far.length ? await m.match(
+        t,
+        far.map((a) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: a.xfs }))
+      ) : []
+      const zoom: typeof asks = []
+      for (const a of rest) {
+        const r = far.includes(a) ? res.find((x) => x.track === a.w.index) : nearRes.get(a.w)
         if (clear(r)) {
           place(a.w, f, r!.best!)
           a.w.region = a.region
