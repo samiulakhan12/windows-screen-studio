@@ -2442,7 +2442,12 @@ the rules (the first version kept a second copy in the helper for this).
   token characters that are not a plain word. The prototype required the line to reach its block's
   right edge; **new**: that requirement is dropped for JWT, link and key hits whose last character is
   a token character or a dash, which closes the held-out misses of a token wrapped after `R7-` and of
-  JWTs wrapped inside a box. At most 6 lines are chained.
+  JWTs wrapped inside a box. At most 6 lines are chained. The left edge is the start of the hit's
+  row, its leftmost box: the reader splits a row at a wide gap (a log line's time and level apart
+  from its message), and the rest of the token starts the next row there. A JWT, link or key hit
+  whose line reaches its block's right edge also continues onto its last one to three characters
+  when they stand alone on the next row but for a closing quote or bracket (on the held-out logs
+  page a JWT's last character went to the next row and stayed uncovered).
 - **JWT head** (**new**, 0.90): `e[yv][JIl1][A-Za-z0-9_-]{10,}\.e[yv][JIl1][A-Za-z0-9_-]{4,}` at the
   end of a line, a JWT whose third part is on later lines; it starts a continuation.
 - **One space in a key** (**new**): on the prefix view, a strong-prefix token followed by a single

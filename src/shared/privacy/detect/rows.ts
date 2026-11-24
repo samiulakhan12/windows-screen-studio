@@ -20,6 +20,8 @@ const PEM_WIDEN = 5
 const PEM_BODY = 66
 /** The largest gap between two lines of wrapped text, in line heights. */
 const WRAP_GAP = 0.6
+/** The last one to three characters of a wrapped token, alone on their line but for closing marks. */
+const SHORT_TAIL = /^\s{0,8}([A-Za-z0-9_+/=-]{1,3})["'\u2032\u2033\u201d\u2019`)\]}>]*\s*$/
 
 const right = (l: DetectLine): number => l.box[0] + l.box[2]
 const bottom = (l: DetectLine): number => l.box[1] + l.box[3]
@@ -158,25 +160,41 @@ export function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameCo
     if (h.kind !== 'key' && h.kind !== 'link') return h
     if (h.rule.startsWith('private-key')) return h
     let last = h.spans[h.spans.length - 1]
-    let line = read(last.line, last.variant)
-    if (!line || !runsToEnd(last, line)) return h
+    const first = read(last.line, last.variant)
+    if (!first || !runsToEnd(last, first)) return h
+    let line: DetectLine = first
     const tail = line.raw.slice(0, last.end).replace(/[\s.,;"'`]+$/, '')
     const lastChar = tail[tail.length - 1] ?? ''
     const relaxed = /[A-Za-z0-9_+/=.~-]/.test(lastChar)
     const spans = [...h.spans]
     for (let k = 0; k < CHAIN; k++) {
-      const belowIndex = ctx.below[line.index]
+      // The row a line is on starts at its leftmost box: the reader splits a row at a wide gap (a log
+      // line's time and level apart from its message), and the rest of a wrapped token starts the next
+      // row at that left edge, below the row's first box.
+      const leftmost = ctx.left[line.index]?.[0]
+      const rowStart: DetectLine = (leftmost === undefined ? undefined : read(leftmost)) ?? line
+      const belowIndex = ctx.below[line.index] ?? (rowStart !== line ? ctx.below[rowStart.index] : null)
       if (belowIndex === null) break
-      const b = read(belowIndex)
+      let b = read(belowIndex)
       if (!b) break
       const hh = heightOf(line.box)
+      if (rowStart !== line && Math.abs(b.box[0] - line.box[0]) > hh) {
+        const under = ctx.below[rowStart.index]
+        const u = under === null ? null : read(under)
+        if (u) b = u
+      }
       const gap = b.box[1] - bottom(line)
       // Wrapped text is set tight: a value in the next field of a form is not the rest of this one.
-      if (gap > WRAP_GAP * hh || Math.abs(b.box[0] - line.box[0]) > hh) break
+      if (gap > WRAP_GAP * hh || (Math.abs(b.box[0] - line.box[0]) > hh && Math.abs(b.box[0] - rowStart.box[0]) > hh)) break
       // A line short of its block's right edge continues only for a token (§6.10, new).
-      if (!relaxed && right(line) < blockRight(line, all) - 1.2 * hh) break
-      const cont = TOKEN_AT_START.exec(b.clean.text)
-      if (!cont || PLAIN_WORD.test(cont[0])) break
+      const atEdge = right(line) >= blockRight(line, all) - 1.2 * hh
+      if (!relaxed && !atEdge) break
+      let cont = TOKEN_AT_START.exec(b.clean.text)
+      // The last one to three characters of a token wrapped at its block's right edge, alone on their
+      // line but for a closing quote or bracket (a JWT's last character on the held-out logs page).
+      if (!cont && relaxed && atEdge) cont = SHORT_TAIL.exec(b.clean.text)
+      else if (cont && PLAIN_WORD.test(cont[0])) cont = null
+      if (!cont) break
       // The rest of a token, not a line of its own: no '=' inside it (padding at its end only), no ':' or '=' after it.
       if (/=[^=]/.test(cont[1]) || /^\s{0,2}[:=]/.test(b.clean.text.slice(cont.index + cont[0].length))) break
       const s = cont.index + cont[0].indexOf(cont[1])
