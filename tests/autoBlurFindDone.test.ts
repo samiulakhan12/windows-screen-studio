@@ -22,7 +22,9 @@ vi.mock('../src/main/privacy/scan', () => ({
   followCover: async () => ({ ok: false, reason: 'failed' }),
   underCover: async () => ({ ok: false, reason: 'failed' }),
   coverEverywhere: async () => ({ ok: false, reason: 'failed' }),
-  forgetReads: () => undefined
+  forgetReads: () => undefined,
+  // registerFindIpc gives the scan its start of the reader; this fake scan starts none.
+  setReaderStart: () => undefined
 }))
 
 const { PRIVACY_CHANNELS } = await import('../src/shared/api/privacy')
