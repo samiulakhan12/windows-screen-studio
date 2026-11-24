@@ -148,6 +148,7 @@ export const PRIVACY_COPY = {
     foundCheck: 'privacy.run.foundCheck',
     said: 'privacy.run.said',
     failedReads: 'privacy.run.failedReads',
+    notFollowed: 'privacy.run.notFollowed',
     thinned: 'privacy.run.thinned',
     suppressed: 'privacy.run.suppressed',
     saidFull: 'privacy.run.saidFull',

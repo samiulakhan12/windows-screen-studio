@@ -5,7 +5,7 @@ import type { FindProgress, FindRequest, FindResult, FoundCover, ReaderState } f
 import { EditStore } from '../src/shared/editor/editStore'
 import { DEFAULT_KEYMAP } from '../src/shared/editor/shortcuts'
 import { PALETTE_COMMANDS, WAITING_COMMANDS, commandInfo } from '../src/shared/editor/commands'
-import { captionsSig } from '../src/shared/privacy/findState'
+import { captionsSig, outcomeOf } from '../src/shared/privacy/findState'
 import { isPrivateBleep } from '../src/shared/privacy/coverData'
 import type { Project, Transcript } from '../src/shared/types'
 import { allByTestId, byTestId, contexts, focused, mockReact, render, settle, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
@@ -486,6 +486,27 @@ describe('auto-blur P5: Find', () => {
     expect(await pending).toBe('stopped')
     await flush()
     expect(line()).toEqual([])
+  })
+
+  it('Find’s result line says, after the failed reads, how many found items Flown could not follow, as the result counted them (a walk that failed is never silent)', () => {
+    const view = (): El[] => render({ type: FindResultLine, props: { projectId: 'nf' } })
+    const result = (notFollowed?: number): Extract<FindResult, { ok: true }> => ({ ok: true, projectId: 'nf', requestId: 'x', found: [], failedReads: 1, thinSpans: '', stopped: false, readTo: null, reader: READER, ...(notFollowed ? { notFollowed } : {}) })
+    for (const [n, said] of [
+      [2, 'Flown could not follow 2 private items as they moved. They are covered to the end of the video until you check them.'],
+      [1, 'Flown could not follow 1 private item as it moved. It is covered to the end of the video until you check it.']
+    ] as const) {
+      const outcome = outcomeOf({ covers: [] }, { covers: [] }, [], { result: result(n), unplaced: 0, suppressed: 0 })
+      expect(outcome.notFollowed).toBe(n)
+      unmountAll()
+      runs.beginRun({ projectId: 'nf', requestId: `nf${n}`, by: 'find', stop: async () => undefined })
+      runs.endRun(`nf${n}`, outcome)
+      expect(allByTestId(view(), 'find-sentence').map((x) => textOf(x).trim())).toEqual(['Find private info found nothing private.', 'Flown could not read 1 part of the video. It is covered until you check it.', said])
+    }
+    // Every item followed: no such sentence.
+    unmountAll()
+    runs.beginRun({ projectId: 'nf', requestId: 'nf0', by: 'find', stop: async () => undefined })
+    runs.endRun('nf0', outcomeOf({ covers: [] }, { covers: [] }, [], { result: result(), unplaced: 0, suppressed: 0 }))
+    expect(allByTestId(view(), 'find-sentence').map((x) => textOf(x).trim()).some((x) => x.includes('could not follow'))).toBe(false)
   })
 
   it('257. Find’s result line: foundNone with the What Find does not see link; thinned, suppressed, saidFull and stopped as separate sentences when they apply', () => {

@@ -51,11 +51,13 @@ export type FindFailure = 'reader' | 'busy' | 'tooLarge' | 'helper' | 'video' | 
 
 /*
  * A Find that ended because the text reader stopped twice keeps what it had found (§5.6): its result
- * is ok and stopped, with `crashed` set, so privacy.run.failed.crashed can say so.
+ * is ok and stopped, with `crashed` set, so privacy.run.failed.crashed can say so. `notFollowed`
+ * counts the found items whose following failed (§2.6): each is covered from the last read of its
+ * place without it to the end, and privacy.run.notFollowed says so.
  */
 
 export type FindResult =
-  | { ok: true; projectId: string; requestId: string; found: FoundCover[]; failedReads: number; thinSpans: string; stopped: boolean; readTo: number | null; reader: string; crashed?: true }
+  | { ok: true; projectId: string; requestId: string; found: FoundCover[]; failedReads: number; thinSpans: string; stopped: boolean; readTo: number | null; reader: string; crashed?: true; notFollowed?: number }
   | { ok: false; projectId: string; requestId: string; reason: FindFailure }
 
 export interface FollowRequest {

@@ -31,7 +31,7 @@ import { READER_ID } from '../../shared/privacy/readerCatalog'
 import type { CursorTrack, Project } from '../../shared/types'
 import { ffmpegPath } from '../ffmpeg'
 import * as projects from '../projects'
-import { pauseWhileRecording, withCareful } from './helperUse'
+import { failureKind, pauseWhileRecording, withCareful } from './helperUse'
 import { lookKeyOf, readLookCache, writeLookCache } from './lookCache'
 import { RulesHost } from './rulesHost'
 
@@ -643,6 +643,8 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       else spans.push([h])
     }
     let spanDone = 0
+    /** The found items (group keys) whose following failed (§2.6): covered to the end below, and said in the result. */
+    const notFollowedKeys = new Set<string>()
     const coverOf = (h: Found, track: Track): void => {
       if (!track.placements.length || !(track.end > track.start)) return
       const end = Math.min(duration, track.end)
@@ -662,8 +664,15 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       let tracks: Track[]
       try {
         tracks = await followAll(todo.map(toPlaced), look, index, open, hints, size, { duration, stopped })
-      } catch {
+      } catch (err) {
+        // Never silently: its items are covered from the last read without them to the end (below),
+        // the log names the error's kind (never what was read), and the result counts them. A Stop
+        // meanwhile is no failure: the stopped result says that.
         tracks = []
+        if (!stopped()) {
+          for (const h of todo) notFollowedKeys.add(h.key)
+          d.log(`privacy: following ${todo.length} found ${todo.length === 1 ? 'place' : 'places'} failed (${failureKind(err)}); covered to the end`)
+        }
       }
       todo.forEach((h, i) => {
         const tr = tracks[i]
@@ -698,9 +707,10 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     if (!req.target && req.kinds.includes('notice') && !stopped())
       for (const n of findNotices(look, project)) found.push({ kind: 'notice', score: 0.7, group: randomGroup(d.random), start: floorMs(n.start), end: ceilMs(Math.min(duration, n.end)), path: pathOfBox(floorMs(n.start), n.box, size, fps), color: COVER_DARK })
     const stoppedRun = signal.aborted || crashed
+    const notFollowed = notFollowedKeys.size
     const extras = (why: PlannedRead['why']): number => plan.reads.filter((x) => x.why === why).length
-    d.log(`privacy: ${req.target ? 'cover everywhere' : 'find'} read ${done.length} areas (${plan.units} units, ${extras('partial')} partial, ${extras('check')} check), ${lines} lines, ${failedReads} failed, ${found.length} covers in ${((d.now() - started) / 1000).toFixed(2)} s${stoppedRun ? ', stopped' : ''}`)
-    return { ok: true, ...tag, found: found.sort((a, b) => a.start - b.start), failedReads, thinSpans: plan.thinSpans, stopped: stoppedRun, readTo: stoppedRun ? (readTo ?? null) : null, reader: READER_ID, ...(crashed ? { crashed: true as const } : {}) }
+    d.log(`privacy: ${req.target ? 'cover everywhere' : 'find'} read ${done.length} areas (${plan.units} units, ${extras('partial')} partial, ${extras('check')} check), ${lines} lines, ${failedReads} failed, ${notFollowed} not followed, ${found.length} covers in ${((d.now() - started) / 1000).toFixed(2)} s${stoppedRun ? ', stopped' : ''}`)
+    return { ok: true, ...tag, found: found.sort((a, b) => a.start - b.start), failedReads, thinSpans: plan.thinSpans, stopped: stoppedRun, readTo: stoppedRun ? (readTo ?? null) : null, reader: READER_ID, ...(crashed ? { crashed: true as const } : {}), ...(notFollowed ? { notFollowed } : {}) }
   } finally {
     finished = true
     unpause()

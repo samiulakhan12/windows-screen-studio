@@ -108,6 +108,7 @@ export function outcomeSentences(o: FindOutcome): string[] {
   if (o.check > 0) out.push(counted(PRIVACY_COPY.run.foundCheck, o.check))
   if (o.said > 0) out.push(counted(PRIVACY_COPY.run.said, o.said))
   if (o.failedReads > 0) out.push(counted(PRIVACY_COPY.run.failedReads, o.failedReads))
+  if ((o.notFollowed ?? 0) > 0) out.push(counted(PRIVACY_COPY.run.notFollowed, o.notFollowed!))
   if (o.thinned !== null) out.push(counted(PRIVACY_COPY.run.thinned, o.thinned))
   if (o.suppressed > 0) out.push(counted(PRIVACY_COPY.run.suppressed, o.suppressed))
   if (o.saidFull) out.push(t(PRIVACY_COPY.run.saidFull))

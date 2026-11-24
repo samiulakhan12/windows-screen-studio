@@ -194,6 +194,48 @@ describe('auto-blur P4: the scan', () => {
     expect(w.log.lastIndexOf('resume')).toBeGreaterThan(w.log.lastIndexOf('pause'))
   })
 
+  it('A walk that fails is never silent: its found items are covered to the end, the log names the error\'s kind and nothing it read, and the result counts the items (notFollowed); a Stop meanwhile is no failure', async () => {
+    const { HelperError } = await import('../src/main/privacy/helperUse')
+    const failing = (onMatch: () => void = () => undefined) =>
+      scene({}, 20, (h) => {
+        const open = h.followOpen.bind(h)
+        h.followOpen = async (req) => {
+          const session = await open(req)
+          return {
+            ...session,
+            match: async () => {
+              onMatch()
+              throw new HelperError('video')
+            }
+          }
+        }
+      })
+    const s = failing()
+    const logs: string[] = []
+    const r = await runFind(request({ requestId: 'r-walk' }), noProgress, never, { ...s.deps, log: (l) => logs.push(l) })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    // Every item found (the email, and the name, alone and inside the email's line), each once however often it was read.
+    expect(r.notFollowed).toBe(new Set(r.found.map((f) => f.group)).size)
+    expect(r.notFollowed).toBeGreaterThanOrEqual(2)
+    expect(logs.some((l) => /^privacy: following \d+ found places? failed \(video\); covered to the end$/.test(l))).toBe(true)
+    expect(logs.some((l) => l.includes(` ${r.notFollowed} not followed, `))).toBe(true)
+    expect(holdsSecret(logs)).toBeNull()
+    // Each is covered from the last read without it to the end, over its region.
+    for (const kind of ['email', 'name'] as const) {
+      const c = r.found.filter((f) => f.kind === kind)
+      expect(c.length, kind).toBeGreaterThan(0)
+      for (const f of c) expect(f.lost && f.end, kind).toBe(20)
+    }
+    expect(inside(EMAIL, boxOf(r.found.find((f) => f.kind === 'email')!, 11))).toBe(true)
+    // Stopped while following: the stopped result says so, and nothing is counted as not followed.
+    const controller = new AbortController()
+    const t = failing(() => controller.abort())
+    const stopped = await runFind(request({ requestId: 'r-walk-stop' }), noProgress, controller.signal, t.deps)
+    expect(stopped.ok && stopped.stopped).toBe(true)
+    expect(stopped.ok && stopped.notFollowed).toBeUndefined()
+  })
+
   it('154. runFind and a failed read: a lost area from that frame until the next good read; failedReads counted (finding 23)', async () => {
     const s = scene({ read: (t) => (Math.abs(t - 2.3) < 0.01 ? 'fail' : undefined) })
     const r = await runFind(request(), noProgress, never, s.deps)

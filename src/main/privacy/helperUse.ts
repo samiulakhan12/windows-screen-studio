@@ -45,6 +45,16 @@ export function findFailureOf(err: unknown): FindFailure {
 }
 
 /**
+ * The kind of a failure, for a log line (§10.6): the helper's error kind, else the error's own name
+ * (`TypeError`), else `unknown`. Never its message, which can quote what was read.
+ */
+export function failureKind(err: unknown): string {
+  if (err instanceof HelperError) return err.kind
+  if (err instanceof Error && /^[A-Za-z]{1,40}$/.test(err.name)) return err.name
+  return 'unknown'
+}
+
+/**
  * Polls whether Flown records (every `everyMs`, 2 s) and pauses the helper while it does (§5.11):
  * `onWaiting` gets true and false as it turns. `helper` is asked each time, so a helper the scan
  * started again after a death is the one paused. Returns the stop, which resumes a paused helper.

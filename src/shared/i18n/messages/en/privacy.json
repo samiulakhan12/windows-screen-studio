@@ -119,6 +119,7 @@
   "run.foundCheck": "{count, plural, one {{n} of them is to check.} other {{n} of them are to check.}}",
   "run.said": "{count, plural, one {{n} was said aloud and is bleeped.} other {{n} were said aloud and are bleeped.}}",
   "run.failedReads": "{count, plural, one {Flown could not read {n} part of the video. It is covered until you check it.} other {Flown could not read {n} parts of the video. They are covered until you check them.}}",
+  "run.notFollowed": "{count, plural, one {Flown could not follow {n} private item as it moved. It is covered to the end of the video until you check it.} other {Flown could not follow {n} private items as they moved. They are covered to the end of the video until you check them.}}",
   "run.thinned": "{count, plural, =0 {Flown read part of this video less often, so it may have missed text there.} one {Flown read {n} minute of this video less often, so it may have missed text there.} other {Flown read {n} minutes of this video less often, so it may have missed text there.}}",
   "run.suppressed": "{count, plural, one {{n} was not suggested again, because you uncovered the same kind there before.} other {{n} were not suggested again, because you uncovered the same kind there before.}}",
   "run.saidFull": "Too many bleeps: some secrets said aloud could not be bleeped. Remove bleeps you do not need and find again.",

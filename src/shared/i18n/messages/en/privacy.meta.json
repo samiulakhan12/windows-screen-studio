@@ -359,6 +359,9 @@
   "run.failedReads": {
     "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
   },
+  "run.notFollowed": {
+    "description": "Auto-blur private info, While Find runs, and when it ends: found items whose following on screen failed, covered to the end of the video. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
   "run.thinned": {
     "description": "Auto-blur private info, While Find runs, and when it ends. {count} selects the plural; {n} is the count as shown (formatted)."
   },

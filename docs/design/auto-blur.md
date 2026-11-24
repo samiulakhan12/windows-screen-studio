@@ -621,6 +621,7 @@ and its results are applied only to the project and request that started it.
 | `privacy.run.foundCheck` | `{count, plural, one {{n} of them is to check.} other {{n} of them are to check.}}` |
 | `privacy.run.said` | `{count, plural, one {{n} was said aloud and is bleeped.} other {{n} were said aloud and are bleeped.}}` |
 | `privacy.run.failedReads` | `{count, plural, one {Flown could not read {n} part of the video. It is covered until you check it.} other {Flown could not read {n} parts of the video. They are covered until you check them.}}` |
+| `privacy.run.notFollowed` | `{count, plural, one {Flown could not follow {n} private item as it moved. It is covered to the end of the video until you check it.} other {Flown could not follow {n} private items as they moved. They are covered to the end of the video until you check them.}}` |
 | `privacy.run.thinned` | `{count, plural, =0 {Flown read part of this video less often, so it may have missed text there.} one {Flown read {n} minute of this video less often, so it may have missed text there.} other {Flown read {n} minutes of this video less often, so it may have missed text there.}}` |
 | `privacy.run.suppressed` | `{count, plural, one {{n} was not suggested again, because you uncovered the same kind there before.} other {{n} were not suggested again, because you uncovered the same kind there before.}}` |
 | `privacy.run.saidFull` | Too many bleeps: some secrets said aloud could not be bleeped. Remove bleeps you do not need and find again. |
@@ -640,7 +641,8 @@ and its results are applied only to the project and request that started it.
 
 - When results land, they are applied in one undo step (§14.1) and the line shows `found` (or
   `foundNone` followed by the link `notSeeLink`, which opens §2.9's list) with `foundCheck`, `said`,
-  `failedReads`, `thinned` and `suppressed` as separate sentences when they apply, and *Review*.
+  `failedReads`, `notFollowed`, `thinned` and `suppressed` as separate sentences when they apply, and
+  *Review*.
 - While a recording runs, the line shows `waiting` (§5.11).
 - *Stop* ends the scan. What was found and followed so far is applied as one undo step. A cover whose
   following was not finished is extended to the end of the recording as a lost area over the place it
@@ -658,6 +660,12 @@ and its results are applied only to the project and request that started it.
   notification today).
 - A failed read never drops silently: its area becomes a lost area until the next good read there,
   and `failedReads` says so (§5.6).
+- Nor does a failed walk (§5.8: the follow session's error, such as the helper dying mid-walk or
+  refusing a session): each item of its span is covered from the last read of its place without it
+  to the end of the video, over its region, the log names the error's kind (§10.6), and
+  `notFollowed` says how many items (`FindResult.notFollowed`). Found end to end: a refused session
+  turned every item into a lost area to the end with nothing said, and the video was blacked out. A
+  Stop meanwhile is no failure; `stopped` says that.
 - Failures name their cause in one whole sentence (`failed.helper`, `failed.video`,
   `failed.crashed`, `failed.other`, `tooLarge`, `readerDamaged` with *Download again*); none takes a
   raw reason string.
@@ -2911,7 +2919,9 @@ A crash dump of `ssw-ocr.exe` would hold frames with secrets.
 ### 10.6 Logs and diagnostics
 
 - No log line holds recognised text, a QR payload, a group key or a listed name. Main's scan logs
-  counts and times only (`privacy: read 37 lines in 2.81 s`).
+  counts and times only (`privacy: read 37 lines in 2.81 s`), and a walk that failed as its error's
+  kind only (`privacy: following 4 found places failed (crashed); covered to the end`: the helper's
+  error kind, else the error's name, never its message).
 - **Main never logs the helper's stderr or its lines.** Unlike the speech and local AI helpers, whose
   last stderr lines go to the log on a crash (`src/main/speech/localClient.ts:185`;
   `src/main/localAi/engine.ts:336-337` keeps them), the reader's exits are logged as an exit code and
@@ -3477,7 +3487,7 @@ export interface FindProgress { projectId: string; requestId: string; phase: 'lo
 export interface FoundCover { kind: PrivateKind; score: number; group: string; start: number; end: number; path: string; color: string; lost?: true; thin?: true }
 export type FindFailure = 'reader' | 'busy' | 'tooLarge' | 'helper' | 'video' | 'crashed' | 'failed'
 export type FindResult =
-  | { ok: true; projectId: string; requestId: string; found: FoundCover[]; failedReads: number; thinSpans: string; stopped: boolean; readTo: number | null; reader: string }
+  | { ok: true; projectId: string; requestId: string; found: FoundCover[]; failedReads: number; thinSpans: string; stopped: boolean; readTo: number | null; reader: string; crashed?: true; notFollowed?: number }
   | { ok: false; projectId: string; requestId: string; reason: FindFailure }
 export interface FollowRequest { projectId: string; requestId: string; t: number; box: NormRect; start: number; end: number; path: string }
 export type FollowResult =
@@ -3638,7 +3648,7 @@ line only).
 | `src/shared/privacy/readerCatalog.ts` (written by the contracts in full; P2 reads it) | `interface ReaderFile { file: string; bytes: number; sha256: string; repo: string; commit: string }`; `const READER_FILES: readonly ReaderFile[]`; `const READER_BYTES = 27608757`; `const READER_ID = 'pp-ocrv6-tiny+small-careful-long'`; `const READER_MIRROR: { repo: string; commit: string } \| null = null`; `const WINDOWS_READER_ALLOWED = false`; `function readerUrls(f: ReaderFile, mirror?: { repo: string; commit: string } \| null): string[]` |
 | `src/main/privacy/readerModels.ts` (new) | `function readerDir(): string`; `function readerState(): ReaderState`; `function downloadReader(onState: (s: ReaderState) => void, signal: AbortSignal, deps?: DownloadDeps): Promise<ReaderState>`; `function removeReader(): Promise<ReaderState>`; `function checkReader(): Promise<ModelPin[] \| null>` (sizes and hashes; null and `damaged` on a mismatch); `function recordDecodeSpeed(msPerFrame1080: number): void`; `function decodeSpeed(): number \| null` |
 | `src/main/privacy/readerHelper.ts` (new) | `function helperPath(): string \| null`; `interface FollowSession { readonly id: number; track(track: number, t: number, parts: readonly Box[]): Promise<void>; match(t: number, tracks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]>; close(): Promise<void> }`; `class OcrHelper { static start(deps?: HelperDeps): Promise<OcrHelper>; open(pins: ModelPin[], ffmpeg: string, reader?: 'paddle' \| 'windows'): Promise<void>; look(req: Omit<Extract<HelperCommand, { op: 'look' }>, 'op' \| 'id'>, onFrames: (f: LookFrame[]) => void, signal: AbortSignal): Promise<void>; read(req: Omit<Extract<HelperCommand, { op: 'read' }>, 'op' \| 'id'>, signal: AbortSignal): Promise<{ id: number; result: ReadResult }>; careful(readId: number, lines: readonly number[]): Promise<ReadVariant[][]>; release(readId: number): void; followOpen(req: Omit<Extract<HelperCommand, { op: 'followOpen' }>, 'op' \| 'id'>, signal: AbortSignal): Promise<FollowSession>; cancel(id: number): void; pause(): void; resume(): void; stop(): Promise<void>; kill(): void; readonly exited: Promise<number \| null>; readonly refusedLines: number }` (20 s silence kills it; at most 3 reads unreleased; never logs stderr or a line) |
-| `src/main/privacy/helperUse.ts` (new) | What the helper's users share, in one place with no Electron (readerHelper re-exports it; the scan, findIpc and the rules' worker take it from here): `type HelperFailure`; `class HelperError extends Error { readonly kind: HelperFailure }`; `function findFailureOf(err: unknown): FindFailure`; `function pauseWhileRecording(helper: { pause(): void; resume(): void }, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs?: number): () => void` (checked at once, then every 2 s; the scan passes the helper it has now, which a restart replaces); `function carefulLines(result: Pick<ReadResult, 'lines'>, hits: readonly Hit[]): number[]`; `function withCareful(result, lines, careful)` |
+| `src/main/privacy/helperUse.ts` (new) | What the helper's users share, in one place with no Electron (readerHelper re-exports it; the scan, findIpc and the rules' worker take it from here): `type HelperFailure`; `class HelperError extends Error { readonly kind: HelperFailure }`; `function findFailureOf(err: unknown): FindFailure`; `function failureKind(err: unknown): string` (a failure's kind for a log line: the helper's error kind or the error's name, never its message); `function pauseWhileRecording(helper: { pause(): void; resume(): void }, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs?: number): () => void` (checked at once, then every 2 s; the scan passes the helper it has now, which a restart replaces); `function carefulLines(result: Pick<ReadResult, 'lines'>, hits: readonly Hit[]): number[]`; `function withCareful(result, lines, careful)` |
 | `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` (sender check first) |
 | `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, answer a bad hash, answer `partial`, or write a marker string to stderr |
 | Tests | 76-100 and 216-222; Rust R1-R25 |

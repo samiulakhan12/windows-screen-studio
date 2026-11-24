@@ -225,7 +225,7 @@ export const anyExportLine = (l: ExportNoteLines): boolean =>
 
 /** What a run ended with, for its result line (§2.6). */
 export type FindOutcome =
-  | { ok: true; found: number; check: number; said: number; failedReads: number; thinned: number | null; suppressed: number; saidFull: boolean; stopped: boolean; crashed: boolean }
+  | { ok: true; found: number; check: number; said: number; failedReads: number; thinned: number | null; suppressed: number; saidFull: boolean; stopped: boolean; crashed: boolean; notFollowed?: number }
   | { ok: false; reason: 'reader' | 'busy' | 'tooLarge' | 'helper' | 'video' | 'crashed' | 'failed' }
 
 /**
@@ -255,6 +255,7 @@ export function outcomeOf(before: Pick<Project, 'covers'>, after: Pick<Project, 
     check: [...groups.values()].filter(Boolean).length + loneCheck,
     said: saidGroups.size,
     failedReads: r?.failedReads ?? 0,
+    notFollowed: r?.notFollowed ?? 0,
     thinned: r?.thinSpans ? thinMinutes(r.thinSpans) : null,
     suppressed: o.suppressed,
     saidFull: o.unplaced > 0,
