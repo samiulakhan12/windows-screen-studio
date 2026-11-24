@@ -300,6 +300,8 @@ interface Walker {
   /** Forward: the first changed frame with no match since the last placement, and the best part score at each changed frame since. */
   C: number | null
   history: [number, boolean][]
+  /** The best part score where the walker's own motion put the text at this frame's match (near). */
+  near: number
   /** A read lacked the text there and the template search failed: proven once the next change fails too. */
   pending: number | null
   /** Backward: the step before this one failed to place (a still frame next asks for a check read). */
@@ -394,6 +396,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       lastOff: ident,
       C: null,
       history: [],
+      near: 0,
       pending: null,
       justFailed: false,
       hold: null,
@@ -522,6 +525,13 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
   const guide = (w: Walker, f: number): Xf => {
     const k = f - (w.lastPlaced >= 0 ? w.lastPlaced : f)
     return { dx: w.off.dx + w.v.dx * k, dy: w.off.dy + w.v.dy * k, scale: w.off.scale }
+  }
+
+  /** Where the walker's own motion puts the text: the predicted place, no move and the speed guide. */
+  const ownPlaces = (w: Walker, f: number): Xf[] => {
+    const out: Xf[] = []
+    for (const c of [predicted(w), w.off, guide(w, f)]) if (!out.some((o) => sameXf(o, c))) out.push(c)
+    return out
   }
 
   /** Candidates searching the whole of `area` (and around), at scale 1 on a grid and at the zoom scales about its centre. */
@@ -689,7 +699,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (best) w.drift = { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy }
     if (dir === 1) {
       if (w.C === null) w.C = f
-      w.history.push([f, found(r)])
+      w.history.push([f, found(r) || w.near >= ABSENT_SCORE])
     }
     w.justFailed = true
     if (reads.templateOnly) w.bare = true
@@ -757,6 +767,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           continue
         }
         nearRes.set(a.w, r)
+        a.w.near = maxPart(r)
         rest.push(a)
       }
       // Leaving the frame where the walker's own motion takes it: a match far away is a copy, not where it went.
@@ -860,15 +871,20 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       if (!w.done && !searches.includes(w)) searches.push(w)
     }
 
-    // 4. Template searches: no part at 0.5 anywhere in the region, at any scale.
+    // 4. Template searches: no part at 0.5 where the walker's own motion puts the text (a text partly
+    // under a tooltip still matches there), and nowhere in the region a place the walk would place it.
     if (searches.length) {
+      const own = await m.match(
+        t,
+        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: ownPlaces(w, f) }))
+      )
       const res = await m.match(
         t,
         searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))
       )
       for (const w of searches) {
         const r = res.find((x) => x.track === w.index)
-        if (found(r)) continue
+        if (found(r) || maxPart(own.find((x) => x.track === w.index)) >= ABSENT_SCORE) continue
         // The first evidence holds (the frame nearest the text); later evidence only waits behind it.
         if (!reads.templateOnly) w.pending ??= f
         else if (dir === 1) endForward(w, f)

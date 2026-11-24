@@ -4,7 +4,7 @@ import { foldText } from '../src/shared/privacy/detect/clean'
 import { areaOf, intersect } from '../src/shared/privacy/look'
 import { followAll, holdsText, lostBox, partsOf, walkSpan, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../src/shared/privacy/paths'
 import { hintsOf, type ReadHints } from '../src/shared/privacy/plan'
-import type { Box, LookMove } from '../src/shared/privacy/protocol'
+import type { Box, LookMove, ReadResult } from '../src/shared/privacy/protocol'
 import type { CursorTrack } from '../src/shared/types'
 import { HD, inside, lookOf, move, ScriptedMatcher, type FrameScript, type Planted } from './autoBlurScanFixtures'
 
@@ -404,7 +404,7 @@ describe('auto-blur P4: following', () => {
   })
 
   /** A matcher scoring each candidate by where it puts the text's own box (`own`) at t, searching ±8 px around it; second is the best score of a place more than 2 px from the best. */
-  const placeMatcher = (own: Box, score: (t: number, at: Box) => number): Matcher & { asked: number[] } => {
+  const placeMatcher = (own: Box, score: (t: number, at: Box) => number, check: (t: number, area: Box) => ReadResult | null = () => null): Matcher & { asked: number[] } => {
     const cx = own[0] + own[2] / 2
     const cy = own[1] + own[3] / 2
     const asked: number[] = []
@@ -422,7 +422,7 @@ describe('auto-blur P4: following', () => {
           const second = scored.filter((x) => Math.abs(x.c.dx - top.c.dx) > 2 || Math.abs(x.c.dy - top.c.dy) > 2).reduce((m, x) => Math.max(m, x.s), 0)
           return { track: a.track, parts: a.parts.map(() => top.s), best: top.c, second }
         }),
-      checkRead: async () => null
+      checkRead: async (t, area) => check(t, area)
     }
   }
   const at = (a: Box, b: Box): boolean => Math.abs(a[0] - b[0]) <= 2 && Math.abs(a[1] - b[1]) <= 2
@@ -434,7 +434,8 @@ describe('auto-blur P4: following', () => {
     // A cut to another page at 2 s; the read at 2.5 s reads it whole: one line, a near copy of the text's look (0.9), and other text everywhere else (0.7).
     const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page] } : {}))
     const read = readOf(2.5, [page], [{ box: line, text: 'Quarterly report' }])
-    const busy = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : intersect(b, line) && areaOf(intersect(b, line)!) >= 0.5 * areaOf(b) ? 0.9 : 0.7)
+    // Where the text was, the new page shows other content too, scoring as little as such places do (0.4).
+    const busy = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : intersect(b, line) && areaOf(intersect(b, line)!) >= 0.5 * areaOf(b) ? 0.9 : Math.abs(b[0] - T[0]) <= 8 && Math.abs(b[1] - T[1]) <= 8 ? 0.4 : 0.7)
     const [gone] = await walkSpan([start(1, T)], 1, look, readIndex([read]), placeMatcher(T, busy), NO_HINTS, HD)
     expect(gone.end).toBeCloseTo(2 + 1 / 30, 4)
     // The text itself on the new page, unread, matches clearly where the search reaches it (0.97 against 0.7): no evidence, the lost area holds it to the end.
@@ -494,6 +495,19 @@ describe('auto-blur P4: following', () => {
     const [track] = await walkSpan([start(0.5, [400, 100, 200, 30])], 1, look, readIndex(), matcherOf([whole]), NO_HINTS, HD)
     const leaves = sourceFrames(60, 0.5, 3).find((t) => shown.at(t) === null)!
     expect(uncovered(track, 60, shown, 0.5, leaves, page)).toEqual([])
+  })
+
+  it('A text partly under a tooltip is still there: a part at 0.5 where the walker\'s own motion puts it is evidence of the text, however busy the page (found end to end: a tooltip over an email before its first read started the cover a frame late)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const tip: Box = [352, 256, 320, 128]
+    // Until 1 s a tooltip hides part of the text: it matches 0.7 where it is, the busy page 0.6 everywhere else.
+    const look = lookOf(HD, 60, 5, (_i, t) => (Math.abs(t - 1) < 1e-6 ? { changed: [tip] } : {}))
+    const score = (t: number, b: Box): number => (at(b, T) ? (t < 1 ? 0.7 : 0.95) : 0.6)
+    // A check read under the tooltip reads the tooltip's own words only.
+    const check = (t: number): ReadResult => ({ t, lines: [{ box: [360, 270, 300, 24], quad: [], variants: [{ model: 'tiny', text: 'Copied to the clipboard', conf: 0.9, spans: [] }], ring: '#000000', spread: 0 }], qr: [] })
+    const [track] = await walkSpan([start(2, T)], -1, look, readIndex(), placeMatcher(T, score, check), NO_HINTS, HD)
+    expect(track.start).toBe(0)
+    expect(uncovered({ ...track, end: 2 }, 60, { key: KEY, text: 'x', at: () => T }, 0, 2)).toEqual([])
   })
 })
 

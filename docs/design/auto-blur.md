@@ -1852,6 +1852,9 @@ inverted (dark mode, a highlight), so one template serves both.
 
 - its region changed at frame C, and
 - the next read covering its box or lost area, at frame S, finds no line holding the text, and
+- no part scores 0.5 or more where the walker's own motion puts the text at S (the predicted place,
+  no move and the speed guide: a text partly under a tooltip or a toast still matches there, and at
+  the first frame of a recording one under a tooltip was taken for gone and showed for a frame), and
 - the template search at S, anywhere in the region at scale 1 and at the zoom scales of step 6, finds
   no place where the walk would place the text (no part at 0.6 or more beating every other place by
   0.15, step 4) and no part at 0.85 or more, leaving out the places whose search window (±8 video
@@ -1869,8 +1872,8 @@ characters; or for a shorter text, the text itself. One misread digit of a six-d
 never ends its cover.
 
 It then ends at the analysed frame after the first changed frame e from C on at which the walk's
-match did not find the text by the same rule (one clear match or a part at 0.85; at most 16 frames
-are checked; at S when more): frame e itself, which may show a fading glyph,
+match did not find the text by the same rules (no part at 0.5 where its own motion puts it, no clear
+match and no part at 0.85 anywhere it was asked; at most 16 frames are checked; at S when more): frame e itself, which may show a fading glyph,
 and the source frames up to the next analysed frame stay covered (§4.2). Until then it goes on,
 placed or lost, with no time limit. A read that finds the same group key again re-anchors the cover
 there, and the walk backward from that read corrects the path to the last placed frame (the lost
