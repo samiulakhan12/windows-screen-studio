@@ -104,6 +104,8 @@ const PLACE_SCORE = 0.6
 const CLEAR_BY = 0.15
 /** Below this, no part of the text is there (evidence of absence). */
 const ABSENT_SCORE = 0.5
+/** A part scoring this in a template search is a copy of the text, clear of other places or not. */
+const PRESENT_SCORE = 0.85
 /** Changed frames from C checked for the end frame e (§5.8). */
 const END_FRAMES = 16
 /** Zoom inside the recorded app: the scales tried about the region's centre (§5.8 step 6). */
@@ -117,6 +119,12 @@ const MAX_PARTS = 3
 const MAX_SEARCH = 1200
 /** A read covers a box when this share of it lies in the read's areas. */
 const COVERED = 0.95
+/** A move scoring this is its region's move; a weaker one only when a move of this score in the same frame agrees with it within a look pixel. */
+const MOVE_SCORE = 0.5
+/** A place of the template search lying this much on lines the read read (none holding the text) is explained: other text is there. */
+const EXPLAINED = 0.5
+/** How far the helper looks around each candidate, in video pixels (±4 template pixels). */
+const WINDOW = 8
 /** Most check reads one walk asks for (each about 0.1 unit, §5.4); past them it waits for planned reads and stops. */
 const MAX_CHECKS = 8
 
@@ -291,7 +299,7 @@ interface Walker {
   lastOff: Xf
   /** Forward: the first changed frame with no match since the last placement, and the best part score at each changed frame since. */
   C: number | null
-  history: [number, number][]
+  history: [number, boolean][]
   /** A read lacked the text there and the template search failed: proven once the next change fails too. */
   pending: number | null
   /** Backward: the step before this one failed to place (a still frame next asks for a check read). */
@@ -342,8 +350,9 @@ const floorMs = (t: number): number => Math.floor(t * 1000 + 1e-6) / 1000
  * while nothing under it changes; it follows a clear match among the moves of the regions under it,
  * no move and the speed guide; it becomes a lost area (lostBox) when nothing is clear, and is placed
  * again by one clear match; it ends only with evidence of absence (its region changed, the next read
- * covering it lacks the text, the template search fails everywhere at every scale, and the next change
- * does not bring it back), one analysed frame after the first changed frame with no part at 0.5.
+ * covering it lacks the text, the template search finds it nowhere at any scale outside the lines that
+ * read read, and the next change does not bring it back), one analysed frame after the first changed
+ * frame where the match did not find it. A move the look pass scored weakly is a candidate only.
  * Backward: the box at f is the box at the next analysed frame moved back by the move between them
  * (finding 3); it goes on, placed or lost, through tooltips and toasts, until evidence of absence
  * going back (a read or a check read lacking the text), a page change with no match, the text leaving
@@ -471,14 +480,17 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     let best: Candidate | null = null
     let bestScore = -Infinity
     let region: Box | null = null
-    for (const mv of frames[cf]?.moves ?? []) {
+    const moves = frames[cf]?.moves ?? []
+    const strong = moves.flatMap((mv): [number, number][] => [[mv.dx, mv.dy, mv.score] as [number, number, number], ...mv.alt].filter((x) => x[2] >= MOVE_SCORE).map((x) => [x[0], x[1]]))
+    const real = (dx: number, dy: number, score: number): boolean => score >= MOVE_SCORE || strong.some(([sx, sy]) => Math.abs(sx - dx) <= look.k && Math.abs(sy - dy) <= look.k)
+    for (const mv of moves) {
       const before: Box = [mv.box[0] - mv.dx, mv.box[1] - mv.dy, mv.box[2], mv.box[3]]
       if (!overlaps(mv.box, area) && !overlaps(before, area)) continue
       const all: [number, number, number][] = [[mv.dx, mv.dy, mv.score], ...mv.alt]
       for (const [dx, dy, score] of all) {
         const c = { dx: dir * dx, dy: dir * dy, scale: 1 }
         rel.push(c)
-        if (score > bestScore) {
+        if (score > bestScore && real(dx, dy, score)) {
           bestScore = score
           best = c
           region = mv.box
@@ -499,8 +511,14 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     return out
   }
 
+  const ownBox = (w: Walker): Box => {
+    let own = w.tpl.parts[0]
+    for (const q of w.tpl.parts) own = union(own, q)
+    return own
+  }
+
   /** Candidates searching the whole of `area` (and around), at scale 1 on a grid and at the zoom scales about its centre. */
-  const searchCandidates = (w: Walker, area: Box): Xf[] => {
+  const searchCandidates = (w: Walker, area: Box, explained: readonly Box[] = []): Xf[] => {
     const s = w.off.scale
     const b = xfBox(w, w.tpl.box, { dx: 0, dy: 0, scale: s })
     const zone = clip([area[0] - b[2] / 2, area[1] - b[3] / 2, area[2] + b[2], area[3] + b[3]], size)
@@ -512,11 +530,27 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const zx = area[0] + area[2] / 2
     const zy = area[1] + area[3] / 2
     for (const z of ZOOMS) out.push(zoomed(w, pred, z, zx, zy))
-    return out
+    if (!explained.length) return out
+    // A place whose window (the helper searches ±4 template pixels, 8 video pixels, around each
+    // candidate) reaches half onto a line the read read is explained: other text is there.
+    const own = ownBox(w)
+    return out.filter((xf) => {
+      const b = xfBox(w, own, xf)
+      const reach: Box = [b[0] - WINDOW, b[1] - WINDOW, b[2] + 2 * WINDOW, b[3] + 2 * WINDOW]
+      let on = 0
+      for (const l of explained) {
+        const i = intersect(l, reach)
+        if (i) on += areaOf(i)
+      }
+      return on < EXPLAINED * areaOf(b)
+    })
   }
 
   const maxPart = (r: TrackMatch | undefined): number => (r ? r.parts.reduce<number>((mx, p) => (p !== null && p > mx ? p : mx), 0) : 0)
   const clear = (r: TrackMatch | undefined): boolean => !!r && !!r.best && maxPart(r) >= PLACE_SCORE && maxPart(r) - r.second >= CLEAR_BY
+
+  /** Whether a match shows the text there: one clear match, or a part at 0.85 (a copy of it). Without the reader, any part at 0.5. */
+  const found = (r: TrackMatch | undefined): boolean => (reads.templateOnly ? maxPart(r) >= ABSENT_SCORE : clear(r) || maxPart(r) >= PRESENT_SCORE)
 
   const lineBand = (w: Walker): Box => {
     const b = w.start.box
@@ -549,10 +583,10 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     let e = S
     const from = w.C ?? S
     let checked = 0
-    for (const [f, score] of w.history) {
+    for (const [f, present] of w.history) {
       if (f < from) continue
       if (++checked > END_FRAMES) break
-      if (score < ABSENT_SCORE) {
+      if (!present) {
         e = f
         break
       }
@@ -593,7 +627,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       // of the text's region (a scroll, a drag) is no page change: the text moved with it. Found end to
       // end: a fast scroll that brought the text in was taken for a page change, and the cover started
       // after the scroll, with the text already on screen.
-      if (changedShare(frames[cf], look) >= 0.3 && !best) {
+      if (changedShare(frames[cf], look) >= 0.3 && !rel.length) {
         startBackward(w, f, null)
         return
       }
@@ -646,7 +680,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (best) w.drift = { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy }
     if (dir === 1) {
       if (w.C === null) w.C = f
-      w.history.push([f, maxPart(r)])
+      w.history.push([f, found(r)])
     }
     w.justFailed = true
     if (reads.templateOnly) w.bare = true
@@ -705,10 +739,10 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           a.w.region = a.region
           continue
         }
-        // Zoom inside the recorded app: the whole region changed with no move.
+        // Zoom inside the recorded app: the whole region changed with no real move.
         const cf = stepFrame(f)
         const whole = regionsAt(look, cf).find((g) => overlaps(g, a.w.box) && areaOf(intersect(g, a.w.box) ?? [0, 0, 0, 0]) >= 0.5 * areaOf(a.w.box))
-        if (whole && !a.rel.length) zoom.push({ ...a, region: whole })
+        if (whole && !a.best) zoom.push({ ...a, region: whole })
         else fail(a.w, f, r, a.rel, a.best, a.region)
       }
       if (zoom.length) {
@@ -730,6 +764,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
 
     // 2. Reads at this frame: the same text found again re-anchors; a read lacking it is evidence once the template fails everywhere.
     const searches: Walker[] = []
+    const explainedBy = new Map<Walker, Box[]>()
     for (const r of readsAt.get(f) ?? []) {
       if (r.failed) continue
       for (const w of walkers) {
@@ -755,7 +790,10 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         }
         if (!w.lost || w.hold || w.pending !== null || reads.templateOnly || coverage(r.areas, w.box) < COVERED) continue
         const holds = r.lines.some((l) => overlaps(l.box, w.box) && l.texts.some((x) => holdsText(w.start.own, x)))
-        if (!holds && !searches.includes(w)) searches.push(w)
+        if (!holds && !searches.includes(w)) {
+          searches.push(w)
+          explainedBy.set(w, r.lines.filter((l) => overlaps(l.box, w.box)).map((l) => l.box))
+        }
       }
     }
 
@@ -769,7 +807,10 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       if (line) {
         const box = intersect(line.box, w.box) ?? line.box
         await anchor(w, f, box, partsOf(box, line.box[3]))
-      } else if (!searches.includes(w)) searches.push(w)
+      } else if (!searches.includes(w)) {
+        searches.push(w)
+        explainedBy.set(w, res.lines.filter((l) => overlaps(l.box, w.box)).map((l) => l.box))
+      }
     }
 
     // Without the reader, a failed frame's template search alone is the evidence.
@@ -783,11 +824,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (searches.length) {
       const res = await m.match(
         t,
-        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: searchCandidates(w, w.box) }))
+        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))
       )
       for (const w of searches) {
         const r = res.find((x) => x.track === w.index)
-        if (maxPart(r) >= ABSENT_SCORE) continue
+        if (found(r)) continue
         // The first evidence holds (the frame nearest the text); later evidence only waits behind it.
         if (!reads.templateOnly) w.pending ??= f
         else if (dir === 1) endForward(w, f)

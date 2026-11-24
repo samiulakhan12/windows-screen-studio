@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { stepKeys } from '../src/shared/privacy/coverPath'
 import { foldText } from '../src/shared/privacy/detect/clean'
-import { intersect } from '../src/shared/privacy/look'
+import { areaOf, intersect } from '../src/shared/privacy/look'
 import { followAll, holdsText, lostBox, partsOf, walkSpan, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../src/shared/privacy/paths'
 import { hintsOf, type ReadHints } from '../src/shared/privacy/plan'
 import type { Box, LookMove } from '../src/shared/privacy/protocol'
@@ -401,6 +401,67 @@ describe('auto-blur P4: following', () => {
     expect(fwd.end).toBeGreaterThanOrEqual(deletedAt(5) + 1)
     const f = pathBox(fwd, 30)
     for (const t of [5, 5.5, 6, 6.5, 6.9]) expect(inside(own, f(t)!), `deleting at ${t}`).toBe(true)
+  })
+
+  /** A matcher scoring each candidate by where it puts the text's own box (`own`) at t, searching ±8 px around it; second is the best score of a place more than 2 px from the best. */
+  const placeMatcher = (own: Box, score: (t: number, at: Box) => number): Matcher & { asked: number[] } => {
+    const cx = own[0] + own[2] / 2
+    const cy = own[1] + own[3] / 2
+    const asked: number[] = []
+    return {
+      asked,
+      track: async () => undefined,
+      match: async (t, asks) =>
+        asks.map((a) => {
+          asked.push(a.candidates.length)
+          // Each candidate's window (±8 px, as the helper's ±4 template pixels) is searched too: its other places can be the second.
+          const places = a.candidates.flatMap((c) => [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8]].map(([x, y]) => ({ ...c, dx: c.dx + x, dy: c.dy + y })))
+          const scored = places.map((c) => ({ c, s: score(t, [cx + c.scale * (own[0] - cx) + c.dx, cy + c.scale * (own[1] - cy) + c.dy, own[2] * c.scale, own[3] * c.scale]) }))
+          if (!scored.length) return { track: a.track, parts: a.parts.map(() => null), best: null, second: 0 }
+          const top = scored.reduce((x, y) => (y.s > x.s ? y : x))
+          const second = scored.filter((x) => Math.abs(x.c.dx - top.c.dx) > 2 || Math.abs(x.c.dy - top.c.dy) > 2).reduce((m, x) => Math.max(m, x.s), 0)
+          return { track: a.track, parts: a.parts.map(() => top.s), best: top.c, second }
+        }),
+      checkRead: async () => null
+    }
+  }
+  const at = (a: Box, b: Box): boolean => Math.abs(a[0] - b[0]) <= 2 && Math.abs(a[1] - b[1]) <= 2
+
+  it('Evidence of absence on a page of other text: the template search finds the text only where it would place it (one clear match, or a part at 0.85), and never on a line the read read (found end to end: a search over a page of text always found a part at 0.5, and the cover blacked out the video to its end)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    const line: Box = [800, 600, 300, 30]
+    // A cut to another page at 2 s; the read at 2.5 s reads it whole: one line, a near copy of the text's look (0.9), and other text everywhere else (0.7).
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page] } : {}))
+    const read = readOf(2.5, [page], [{ box: line, text: 'Quarterly report' }])
+    const busy = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : intersect(b, line) && areaOf(intersect(b, line)!) >= 0.5 * areaOf(b) ? 0.9 : 0.7)
+    const [gone] = await walkSpan([start(1, T)], 1, look, readIndex([read]), placeMatcher(T, busy), NO_HINTS, HD)
+    expect(gone.end).toBeCloseTo(2 + 1 / 30, 4)
+    // The text itself on the new page, unread, matches clearly where the search reaches it (0.97 against 0.7): no evidence, the lost area holds it to the end.
+    const moved: Box = [1200, 800, 200, 30]
+    const there = (t: number, b: Box): number => (t >= 2 && Math.abs(b[0] - moved[0]) <= 40 && Math.abs(b[1] - moved[1]) <= 40 ? 0.97 : busy(t, b))
+    const [kept] = await walkSpan([start(1, T)], 1, look, readIndex([read]), placeMatcher(T, there), NO_HINTS, HD)
+    expect(kept.end).toBeCloseTo(4, 4)
+    expect(uncovered(kept, 30, { key: KEY, text: 'x', at: (t) => (t < 2 ? T : moved) }, 1, 4)).toEqual([])
+  })
+
+  it('A weak move is no move: a page change the look pass scored 0.2 neither carries the text out of the frame nor stops the zoom trial (found end to end: the spurious moves of every page change ended covers by chance and kept zooms from being tried)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    // The page changes at 2 s, the text now elsewhere and no read after: the cover must hold it. The look pass scores its best shift 0.2.
+    const relaid: Planted = { key: KEY, text: 'x', at: (t) => (t < 2 ? T : [1200, 800, 200, 30]) }
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page], moves: [move(page, 0, -900, 0.2)] } : {}))
+    const [held] = await walkSpan([start(1, T)], 1, look, readIndex(), matcherOf([relaid]), NO_HINTS, HD)
+    expect(held.end).toBeCloseTo(4, 4)
+    expect(uncovered(held, 30, relaid, 1, 4)).toEqual([])
+    // An in-app zoom whose region the look pass gives a weak shift: the zoom trial still places the cover.
+    const region: Box = [320, 320, 640, 320]
+    const code: Box = [400, 400, 200, 40]
+    const zoomed: Planted = { key: KEY, text: 'x', at: (t) => (t < 2 ? code : [340, 380, 250, 50]) }
+    const zoomLook = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [region], moves: [move(region, 0, 150, 0.25)] } : {}))
+    const [track] = await walkSpan([start(1, code)], 1, zoomLook, readIndex(), matcherOf([zoomed]), NO_HINTS, HD)
+    expect(track.lost).toBe(false)
+    expect(near(pathBox(track, 30)(2.5), [340, 380, 250, 50])).toBe(true)
   })
 })
 

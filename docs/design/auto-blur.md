@@ -1819,7 +1819,14 @@ inverted (dark mode, a highlight), so one template serves both.
 
 1. If no tile under the cover's box changed, the box holds (no key).
 2. **Candidates**: the moves of the regions overlapping the box at f (best and alternatives), no
-   move, and the **speed guide**: the last placed move per frame times the frames since.
+   move, and the **speed guide**: the last placed move per frame times the frames since. A move is
+   its region's **real move** (the one that carries a lost box, ends or starts a walk by carrying the
+   text out of its region or the frame, and rules out a zoom) when the look pass scored it 0.5 or
+   more, or when a move scored so in the same frame agrees with it within a look pixel (a scroll's
+   strip of new content scores lower than the body moving with it). A weaker shift stays a candidate
+   only: every page change and in-app zoom gets one (0.06-0.45 on the evaluation frames, against
+   0.75-1.0 for real scrolls), and taken for a move it ended walks by chance and kept zooms from
+   being tried.
 3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 × `scale`
    template pixels (§5.3).
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
@@ -1832,15 +1839,22 @@ inverted (dark mode, a highlight), so one template serves both.
    in dense text) therefore still lands inside the lost area, because the text stays inside the
    region that changed. The last placed templates are tried at every later changed frame; one clear
    match places the cover again.
-6. **Zoom inside the recorded app** (the whole region changed with no profile match): the parts are
+6. **Zoom inside the recorded app** (the whole region changed with no real move): the parts are
    also tried at scales 0.8, 0.9, 1.1 and 1.25 about the region's centre before the cover is lost.
 
 **Evidence of absence.** A cover ends only when the text is shown to be gone:
 
 - its region changed at frame C, and
 - the next read covering its box or lost area, at frame S, finds no line holding the text, and
-- the template search at S finds no part scoring 0.5 or more anywhere in the region, at scale 1 and
-  at the zoom scales of step 6.
+- the template search at S, anywhere in the region at scale 1 and at the zoom scales of step 6, finds
+  no place where the walk would place the text (no part at 0.6 or more beating every other place by
+  0.15, step 4) and no part at 0.85 or more, leaving out the places whose search window (±8 video
+  pixels) reaches half onto a line the read at S read: none of those lines holds the text, so other
+  text is there. On a page of other text a part at 0.5 is always found (0.57-0.84 on the held-out
+  frames, with the second best within 0.07 of the best), so the old rule, no part at 0.5, never gave
+  evidence after a page change and the lost area, the whole page, lasted to the end; the text
+  itself scores 0.87 or more. Without the reader (Follow, §5.9) the search alone is the evidence and
+  keeps the old rule.
 
 "Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
 §5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any
@@ -1848,8 +1862,9 @@ third of it; or for a text of 5-11 characters, the text within edit distance 1 o
 characters; or for a shorter text, the text itself. One misread digit of a six-digit code therefore
 never ends its cover.
 
-It then ends at the analysed frame after the first changed frame e from C on at which no part scores
-0.5 (at most 16 frames are checked; at S when more): frame e itself, which may show a fading glyph,
+It then ends at the analysed frame after the first changed frame e from C on at which the walk's
+match did not find the text by the same rule (one clear match or a part at 0.85; at most 16 frames
+are checked; at S when more): frame e itself, which may show a fading glyph,
 and the source frames up to the next analysed frame stay covered (§4.2). Until then it goes on,
 placed or lost, with no time limit. A read that finds the same group key again re-anchors the cover
 there, and the walk backward from that read corrects the path to the last placed frame (the lost
@@ -1862,7 +1877,8 @@ where no part matches**: a tooltip, a hover highlight, the cursor, a toast or a 
 makes frames with no match while the text is still there. It goes on, placed or lost, until one of:
 
 - **evidence of absence going back**: at an earlier frame S′, a read covering the box or lost area
-  lacks the text (with the same generous rule) and the template search there fails at every scale.
+  lacks the text (with the same generous rule) and the template search there finds no place for it
+  (the same rule as going forward).
   When no read covers it, the walk asks for a **check read**: the box's padded area (or the lost
   area) at the analysed frame before the earliest frame with no match, read alone (about 0.1 unit,
   §5.4). A check read that finds the text re-anchors the walk, which goes on back;
