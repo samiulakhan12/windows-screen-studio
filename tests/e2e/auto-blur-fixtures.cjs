@@ -222,7 +222,12 @@ function evalTruth(file = 'truth.json.gz') {
 
 /** Every on-by-default planted item of an evaluation frame with its ink, from the frame's own pixels. */
 function plantedInk(img, frame) {
-  return frame.items.filter((it) => it.on).map((it) => ({ id: it.id, kind: it.kind, text: it.text, ink: inkRect(img, it.box) })).filter((it) => it.ink)
+  // Each of an item's own rectangles (a token wrapped onto a second line has two): their union would
+  // take in the line's other words, which are no part of the item (a log line's time before a JWT).
+  return frame.items
+    .filter((it) => it.on)
+    .flatMap((it) => (it.rects?.length ? it.rects : [it.box]).map((r) => ({ id: it.id, kind: it.kind, text: it.text, ink: inkRect(img, r) })))
+    .filter((it) => it.ink)
 }
 
 /* ---------- projects ---------- */

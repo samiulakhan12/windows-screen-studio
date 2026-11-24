@@ -4585,7 +4585,9 @@ pixels under the covers (two different secrets, same everything else), and the t
   are cached under a key of their generator, so a changed fixture is rendered afresh; Find runs with
   the phone regions the evaluation set's truth was scored with (the United States, which an English
   UI has, and Great Britain and Bangladesh, added in the dialog). After Find, every
-  on-by-default item is covered (its whole ink inside a cover) in **every source frame** it shows in,
+  on-by-default item is covered (its whole ink inside a cover, the ink of each of its own rectangles:
+  a token wrapped onto a second line has two, and the box holding both takes in the line's other
+  words) in **every source frame** it shows in,
   the frames between analysed frames included, for every video; each typed character is covered from
   the frame it appears. A failure prints the item, frame and uncovered pixels. The plan's units for
   each video are printed, for §5.11's units distribution.
