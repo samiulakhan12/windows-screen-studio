@@ -1940,8 +1940,10 @@ tooltip over text before its first read, and text typed into a field or a termin
   template is the raw box itself, following is by template only, the cover ends only where the region
   changed and the template fails, and the result is marked `thin`.
 - **Everywhere** (`underCover` then `coverEverywhere`, P4; P1's `EverywhereDialog.tsx`):
-  1. `underCover { projectId, requestId, t, box }` reads the cover's box at the playhead's frame and
-     answers `{ ok: true, nameLike } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
+  1. `underCover { projectId, requestId, t, box }` reads the cover's box at the playhead's frame,
+     keeps the characters of its lines that lie inside the box (the read's margin reaches the words
+     beside the cover on the same line, and "to priya.raman@example.com" was then looked for
+     everywhere, never finding the email standing alone), and answers `{ ok: true, nameLike } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
      keeps the text for that request id only, until the dialog closes. `nameLike` is true when the
      text is at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits
      it. A key, a password, a code or a number is never name-like.

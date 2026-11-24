@@ -864,8 +864,15 @@ export async function underCover(request: UnderCoverRequest, signal: AbortSignal
     const box: Box = [request.box.x * size.width, request.box.y * size.height, request.box.w * size.width, request.box.h * size.height]
     const r = await s.helper.read({ video: path.join(dir, 'screen.mp4'), key: cached ? keyBefore(cached, t) : t, t, areas: [clip([box[0] - 16, box[1] - 16, box[2] + 32, box[3] + 32], size)] }, signal)
     s.helper.release(r.id)
+    // Only the characters inside the box: the read's margin reaches the words beside the cover on the
+    // same line, which are not the text ("to priya.raman@example.com" was looked for everywhere).
     const text = linesUnder(r.result, box)
-      .map((l) => bestVariant(l)?.text ?? '')
+      .map((l) => {
+        const v = bestVariant(l)
+        if (!v) return ''
+        const at = charRanges(l, v)
+        return v.text.split('').filter((_c, i) => (at[2 * i] + at[2 * i + 1]) / 2 >= box[0] && (at[2 * i] + at[2 * i + 1]) / 2 <= box[0] + box[2]).join('')
+      })
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim()

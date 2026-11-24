@@ -413,6 +413,26 @@ describe('auto-blur P4: test numbers', () => {
       for (const m of fs.readFileSync(path.join(__dirname, file), 'utf8').matchAll(/\bit\(\s*(['"`])(\d+)\. /g)) found.set(Number(m[2]), (found.get(Number(m[2])) ?? 0) + 1)
     for (const n of numbers) expect(found.get(n), `test ${n}`).toBe(1)
   })
+
+  it('The text under a cover is the text inside its box: a word of the same line beside the cover is not part of it, so Cover this text everywhere finds the text where it stands alone (found end to end: "to priya.raman@example.com" was looked for, and the email\'s other place was never covered)', async () => {
+    forgetReads()
+    const line: Box = [560, 400, 500, 30]
+    const alone: Box = [300, 200, 460, 30]
+    const s = scene({
+      planted: [
+        { key: 'email', text: `to ${ADDRESS}`, at: (t) => (t >= 2 && t < 12 ? line : null) },
+        { key: 'alone', text: ADDRESS, at: (t) => (t >= 14 && t < 18 ? alone : null) }
+      ],
+      look: lookOf(HD, 30, 20, (_i, t) => ({ changed: Math.abs(t - 2) < 1e-6 || Math.abs(t - 12) < 1e-6 ? [[544, 384, 544, 64]] : Math.abs(t - 14) < 1e-6 || Math.abs(t - 18) < 1e-6 ? [[288, 192, 512, 64]] : [] }))
+    })
+    // The cover sits on the email only: "to " lies just left of it, inside the read's 16 px margin.
+    const cover: Box = [line[0] + 60, line[1], line[2] - 60, line[3]]
+    expect(await underCover({ projectId: 'rec-1', requestId: 'w1', t: 6, box: { x: cover[0] / 1920, y: cover[1] / 1080, w: cover[2] / 1920, h: cover[3] / 1080 } }, never, s.deps)).toMatchObject({ ok: true })
+    const result = await coverEverywhere({ projectId: 'rec-1', requestId: 'w1', remember: 'no' }, noProgress, never, s.deps)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.found.some((f) => f.start <= 15 && f.end > 15 && inside(alone, boxOf(f, 15)))).toBe(true)
+  })
 })
 
 export type { FindResult }
