@@ -1,7 +1,7 @@
 //! The look pass (docs/design/auto-blur.md §5.2): every frame is decoded once, every analysed frame
 //! (each `step`-th) scaled to the look size (1/k) in grey, and compared with the last analysed one.
 //! It answers, per analysed frame, its time, whether it is a key frame, which 8×8 look-pixel tiles
-//! changed, and how each changed region of at least 12×6 tiles moved. No pixels and no text leave
+//! changed, and how each changed region of at least 4×6 tiles moved. No pixels and no text leave
 //! the pass.
 //!
 //! Conventions main reads (P4 `look.ts`):
@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 pub const TILE: usize = 8;
 const CHANGED_MEAN: f32 = 2.0;
 const CHANGED_MAX: u8 = 24;
-const MIN_REGION: (usize, usize) = (12, 6);
+const MIN_REGION: (usize, usize) = (4, 6);
 const BATCH_FRAMES: usize = 1000;
 const BATCH_BYTES: usize = 1 << 20;
 

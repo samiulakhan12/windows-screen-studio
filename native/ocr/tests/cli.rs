@@ -917,3 +917,28 @@ fn r24_a_backward_session_answers_each_frame_itself_across_its_pieces() {
     }
     let _ = std::fs::remove_dir_all(w);
 }
+
+#[test]
+fn r25_look_reports_the_scroll_of_a_column_four_tiles_wide() {
+    let w = work("r25");
+    let (fw, fh, a) = load_rgb(&eval_png("01-editor-0-dark-100.png"));
+    let (_, _, b) = load_rgb(&eval_png("23-docs-0-light-100.png"));
+    let mut tall = vec![0u8; fw * fh * 2 * 3];
+    blit(&mut tall, fw, fh * 2, &a, fw, fh, 0, 0);
+    blit(&mut tall, fw, fh * 2, &b, fw, fh, 0, fh as i64);
+    let page = w.join("tall.png");
+    write_png(&page, fw, fh * 2, &tall);
+    let still = eval_png("16-settings-1-dark-100.png");
+    // A 128 px column (4 tiles at k = 4) of the tall page scrolling 6 px a frame over a still frame.
+    let video = w.join("column.mp4");
+    run_ffmpeg(&["-loop", "1", "-framerate", "60", "-i", still.to_str().unwrap(), "-loop", "1", "-framerate", "60", "-i", page.to_str().unwrap(), "-filter_complex", "[1]crop=128:1080:384:n*6[c];[0][c]overlay=384:0", "-frames:v", "30", "-c:v", "libx264rgb", "-qp", "0", video.to_str().unwrap()]);
+    let mut h = opened();
+    let frames = look(&mut h, &video, 4, 1);
+    let mut good = 0;
+    for f in &frames[1..] {
+        let hit = f["moves"].as_array().unwrap().iter().any(|m| m["box"][2].as_f64().unwrap() <= 192.0 && (m["dy"].as_f64().unwrap() + 6.0).abs() <= 1.0 && m["dx"].as_f64().unwrap().abs() <= 1.0);
+        good += usize::from(hit);
+    }
+    assert!(good + 2 >= frames.len() - 1, "{good} of {} frames report the column's move (0, -6)", frames.len() - 1);
+    let _ = std::fs::remove_dir_all(w);
+}

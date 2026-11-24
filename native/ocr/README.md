@@ -72,10 +72,10 @@ caught panic the plans are built again from the parsed models (R9).
   recogniser and frees them; `release { read }` frees them without.
 - **The look pass** (§5.2): every `step`-th frame scaled to 1/k in grey; 8×8 tiles changed when
   their mean absolute difference is over 2 levels or their largest over 24; changed tiles joined
-  into regions (8-connected, boxes within 2 tiles merged); for a region of 12×6 tiles or more, the
+  into regions (8-connected, boxes within 2 tiles merged); for a region of 4×6 tiles or more, the
   move found from its gradient's row and column profiles, refined to an eighth of a look pixel, the
   best and up to two alternatives at 0.85 of it scored by 2-D gradient NCC, and the diagonal one
-  when that NCC is 0.9 or more (R11, R12).
+  when that NCC is 0.9 or more (R11, R12, R25).
   `tiles` is base64 of the bit string over the tile grid, row by row, tile i in bit i % 8 of byte
   i / 8 (lowest bit first); the first frame has every tile changed. A move's `dx`, `dy` are how far
   the region's content moved since the last analysed frame, in video pixels, positive right and
