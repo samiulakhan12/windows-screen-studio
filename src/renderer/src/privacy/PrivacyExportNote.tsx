@@ -26,7 +26,15 @@ const counted = (key: MessageKey, count: number): string => t(key, { count, n: f
  * applies, so the dialog of a project hiding nothing, for a user who never downloaded the reader,
  * is as before. *Review* and *Find…* close the dialog first (finding 30): the dialog's callbacks.
  */
-export function PrivacyExportNote(props: { project: Project; onReview: () => void; onFind: () => void; onWait: (waiting: boolean) => void; onStopAndExport: () => void }): JSX.Element | null {
+export function PrivacyExportNote(props: {
+  project: Project
+  onReview: () => void
+  onFind: () => void
+  onWait: (waiting: boolean) => void
+  onStopAndExport: () => void
+  /** Writes the editor's project to project.json now: main compares this copy's file with its original's (§9 row 10's flush). */
+  flush?: () => void
+}): JSX.Element | null {
   const services = useContext(EditorContext)
   const { project } = props
   const reader = useReaderState()
@@ -47,12 +55,16 @@ export function PrivacyExportNote(props: { project: Project; onReview: () => voi
     if (!running) setWaited(false)
   }, [running])
 
-  // A copy made before Find: what its original has that it lacks (main compares the two files).
+  // A copy made before Find: what its original has that it lacks (main compares the two files, this
+  // copy's written first as the user sees it).
   const copyOf = !!project.copyOf
+  const flush = useRef(props.flush)
+  flush.current = props.flush
   useEffect(() => {
     setOrigin(null)
     if (!copyOf) return
     let live = true
+    flush.current?.()
     window.api.originCovers(project.id).then(
       (o) => live && setOrigin(o && o.missing > 0 ? o : null),
       () => undefined

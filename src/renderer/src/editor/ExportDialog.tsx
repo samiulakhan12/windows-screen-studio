@@ -1068,6 +1068,7 @@ export function ExportDialog(props: Props): JSX.Element {
             {/* What Find private info has not checked or is still checking (docs/design/auto-blur.md §2.8); part P5 wires its actions. */}
             <PrivacyExportNote
               project={props.project}
+              {...(props.flush ? { flush: props.flush } : {})}
               onReview={() => {
                 props.onClose()
                 openPrivateReview(group.command)

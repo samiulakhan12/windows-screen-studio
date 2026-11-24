@@ -76,7 +76,17 @@ import { clearPeek, listenBleep, peekCovers, peekNow, peekWhileReviewing, usePee
 import { onPrivateReview, takePrivateReview } from '../privacy/reviewRequest'
 import '../privacy/privacyPanel.css'
 
-export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Shows a notice in the editor (said once the panel is gone). */ onNotice?: (text: string) => void }): JSX.Element {
+export function ReviewPanel({
+  onClose,
+  onNotice,
+  flush
+}: {
+  onClose: () => void
+  /** Shows a notice in the editor (said once the panel is gone). */
+  onNotice?: (text: string) => void
+  /** Writes the editor's project to project.json now (the copies offer: main reads this project's file, auto-blur §5.10). */
+  flush?: () => unknown
+}): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const group = useGroup()
@@ -870,7 +880,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
               {t(PRIVACY_COPY.review.done)}
             </button>
           )}
-          <CopiesOffer services={services} />
+          <CopiesOffer services={services} {...(flush ? { flush } : {})} />
         </div>
       )}
       {total > 0 && (

@@ -1973,7 +1973,11 @@ tooltip over text before its first read, and text typed into a field or a termin
   rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor
   is skipped and says so; it can use *Bring them over* (§2.12). `privacy:originCovers { projectId }`
   answers how many of the original's covers and private bleeps a copy lacks, and returns them for
-  *Bring them over*.
+  *Bring them over*. Main reads the project open in the editor from its `project.json` for both, so
+  the renderer first writes it as the user sees it, as the export's timeline does (§9 row 10): the
+  offer awaits the editor saver's `flush` before `privacy:coverCopies` (a press before the autosave
+  would give the copies the covers of the last save), and the export note calls the dialog's `flush`
+  before `privacy:originCovers`.
 
 ### 5.11 CPU and memory budgets
 
