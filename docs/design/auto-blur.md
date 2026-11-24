@@ -4597,12 +4597,14 @@ pixels under the covers (two different secrets, same everything else), and the t
   everywhere* covers its other places.
 - **A16. The rendered tracking set** (`scripts/privacy/make-track-fixtures.mjs`, written in the
   contracts step, §16.0 item 13): lossless videos at 60 fps of a scrolling list, a fast flick scroll
-  of 1,500 px a second or more (1,800 px at 1,600 px a second between a second at rest on the list's
-  top and one on rows 64-89, its planted items on the rows at rest there, each on screen 1.0-1.5 s:
-  a row the flick only carries past is on screen under half a second and never still, a page
-  scrolled past quickly that §2.9 and §5.4 point 6 say Find may miss, and is ordinary text; the
-  flick first started after 0.2 s, and its 19 planted rows in between, each on screen 0.45-0.47 s,
-  were never read), browser zoom in and out, text selected and deselected, a sticky header
+  of 1,500 px a second or more (three flicks at 1,600 px a second, 672, 672 and 456 px, from the
+  list's top to 1,800 px, each after 5.2 s at rest, and 1.075 s at rest at the end, 17.8 s in all:
+  every other row of rows 0-89 is planted, 45 items, and each is at rest, whole, at one of the stops,
+  on screen 1.1-10.9 s and still 1.07-5.22 s; the case first flicked 1,800 px once after 0.2 s, and
+  its 19 planted rows in between were each on screen 0.45-0.47 s and never still, a page scrolled
+  past quickly that §2.9 and §5.4 point 6 say Find may miss, and never read; stops less than 5 s
+  apart would be read once by a plan over its budget, §5.4 point 7; the end-to-end check decodes the
+  case a gigabyte at a time), browser zoom in and out, text selected and deselected, a sticky header
   over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out (toast-shaped,
   each living 2.8 s in a 3.5 s recording, as notifications do: §6.13 finds a notice living 2-30 s,
   and the reads of §5.4 point 6 may miss text shown under about a second; they were first 652 px

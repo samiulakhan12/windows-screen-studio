@@ -740,18 +740,25 @@ const TRACK_KEY = require('node:crypto')
   .digest('hex')
   .slice(0, 12)
 
-/** Renders the tracking set once (scripts/privacy/make-track-fixtures.mjs, 2 s a case, the flick 3.2 s and the toasts 3.5 s, at 1280x720, seed 7000). */
+/** Renders the tracking set once (scripts/privacy/make-track-fixtures.mjs, 2 s a case, the flick 17.8 s and the toasts 3.5 s, at 1280x720, seed 7000). */
 function trackDir() {
   const dir = path.join(af.CACHE, `track-${TRACK_KEY}`)
   if (!TRACK_CASES.every((id) => fs.existsSync(path.join(dir, `${id}.truth.json`)))) execFileSync(process.execPath, [path.join(af.ROOT, 'scripts', 'privacy', 'make-track-fixtures.mjs'), dir], { stdio: 'inherit' })
   return dir
 }
 
-/** Every frame of a lossless recording as RGB. */
-function decodeAll(file, width, height) {
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 2 ** 31 })
+/**
+ * Every frame of a lossless recording as RGB, handed to `each` in order, decoded a gigabyte at a time
+ * (the flick's 1,068 frames at 1280x720 are 2.95 GB, more than one decode can hand back).
+ */
+function decodeEach(file, width, height, total, each) {
   const size = width * height * 3
-  return Array.from({ length: Math.floor(raw.length / size) }, (_, n) => ({ width, height, data: raw.subarray(n * size, (n + 1) * size) }))
+  const per = Math.max(1, Math.floor(2 ** 30 / size))
+  for (let a = 0; a < total; a += per) {
+    const b = Math.min(total, a + per) - 1
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select=between(n\\,${a}\\,${b})`, '-vsync', '0', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: (b - a + 1) * size + 1024 })
+    for (let n = a; n <= b && (n - a + 1) * size <= raw.length; n++) each(n, { width, height, data: raw.subarray((n - a) * size, (n - a + 1) * size) })
+  }
 }
 
 /** One case of the tracking set: the app's recording (4:4:4, as the others) and every on-by-default item's ink on every frame. */
@@ -761,8 +768,11 @@ function trackCase(id) {
   const src = path.join(dir, `${id}.mp4`)
   const media = path.join(af.CACHE, `track-${TRACK_KEY}-${id}.mp4`)
   if (!fs.existsSync(media)) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:v', 'libx264', '-preset', 'ultrafast', '-qp', '0', '-pix_fmt', 'yuv444p', '-g', String(truth.fps), media])
-  const frames = decodeAll(src, truth.width, truth.height)
-  const items = truth.frames.map((f) => f.items.filter((it) => it.on).map((it) => ({ ...it, ink: af.inkRect(frames[f.n], it.box) })).filter((it) => it.ink))
+  const byN = new Map(truth.frames.map((f) => [f.n, f]))
+  const items = []
+  decodeEach(src, truth.width, truth.height, truth.frames.length, (n, img) => {
+    items[n] = (byN.get(n)?.items ?? []).filter((it) => it.on).map((it) => ({ ...it, ink: af.inkRect(img, it.box) })).filter((it) => it.ink)
+  })
   return { media, total: truth.frames.length, fps: truth.fps, width: truth.width, height: truth.height, seconds: truth.frames.length / truth.fps, itemsAt: (n) => items[n] ?? [] }
 }
 

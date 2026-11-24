@@ -9,8 +9,8 @@
 //
 //   node scripts/privacy/make-track-fixtures.mjs <out_dir> [--case <id>] [--seconds <s>] [--size <w>x<h>] [--seed <n>]
 //
-// A case may hold its own length (the toasts, whose notifications live 2.8 s; the flick, at rest 1 s
-// before and after it). Writes <id>.mp4
+// A case may hold its own length (the toasts, whose notifications live 2.8 s; the flick, at rest 5.2 s
+// before each of its three flicks). Writes <id>.mp4
 // (-c:v libx264rgb -qp 0 -r 60) and <id>.truth.json per case: { fps, width, height,
 // frames: [{ n, items: [{ id, kind, on, text, box: [x, y, w, h] }] }] }, an item listed in the frames
 // it shows in. The evaluation frames at 150% and 200% display scale and the held-out frames come from
@@ -63,10 +63,9 @@ export function plantValues(tok) {
  * A list of `n` rows, every other one a planted item alone on its line, the rest ordinary text. The
  * row above a password is its label, "Password": a password is found by its label (§6.7, decision 2;
  * an unlabelled one is a random-looking string, off by default), and planted alone with ordinary text
- * above it Find never found it, so A16 counted it uncovered in every frame. `plantedAt(i)` false makes
- * row i ordinary text too (a row a flick only carries past).
+ * above it Find never found it, so A16 counted it uncovered in every frame.
  */
-function listRows(v, n, plantedAt = () => true) {
+function listRows(v, n) {
   const planted = [
     ['email', v.email],
     ['key', v.key],
@@ -76,10 +75,8 @@ function listRows(v, n, plantedAt = () => true) {
     ['password', v.password]
   ]
   const rows = []
-  const ticket = (i) => `<div class="row">${O(`Ticket ${1000 + i} · updated by the support team`)}</div>`
   for (let i = 0; i < n; i++) {
-    if (i % 2) rows.push(plantedAt(i + 1) && planted[((i + 1) / 2) % planted.length][0] === 'password' ? `<div class="row">${O('Password')}</div>` : ticket(i))
-    else if (!plantedAt(i)) rows.push(ticket(i))
+    if (i % 2) rows.push(`<div class="row">${O(planted[((i + 1) / 2) % planted.length][0] === 'password' ? 'Password' : `Ticket ${1000 + i} · updated by the support team`)}</div>`)
     else {
       const [kind, text] = planted[(i / 2) % planted.length]
       rows.push(`<div class="row">${P(kind, text)}</div>`)
@@ -99,14 +96,19 @@ export const CASES = {
     script: 'window.setFrame=(n)=>{document.getElementById("l").scrollTop=Math.round(n*240/60)}'
   }),
   'flick-scroll': (v) => ({
-    // At rest 1 s on the list's top, a flick of 1,800 px at 1,600 px a second, at rest 1.075 s on rows
-    // 64-89. The planted items are on the rows at rest, at the start or the end (rows 0-25 and 64-89):
-    // a row the flick only carries past is on screen under half a second, never still, as a page
-    // scrolled past quickly is (§2.9, §5.4 point 6), and is ordinary text.
-    seconds: 3.2,
+    // Three flicks at 1,600 px a second, 672, 672 and 456 px (0.42, 0.42 and 0.29 s), from the list's
+    // top to 1,800 px, each after 5.2 s at rest, and 1.075 s at rest at the end. Every other row is a
+    // planted item, as in the first version (one flick of 1,800 px after 0.2 s), and every row the
+    // flicks carry past is also at rest, whole, for 5.2 s or more at one of the stops (0, 672, 1,344,
+    // 1,800 px, 24 rows apart, a frame showing 25): a row only carried past is on screen under half a
+    // second, never still, as a page scrolled past quickly is, which Find may miss (§2.9, §5.4 point
+    // 6), and reads of stops less than 5 s apart are merged when the plan is over its budget (§5.4
+    // point 7).
+    seconds: 17.8,
     css: '.list{position:absolute;inset:0;overflow:hidden}.row{height:28px;line-height:28px;padding:0 16px;white-space:nowrap}',
-    html: `<div class="list" id="l">${listRows(v, 400, (i) => i < 26 || (i >= 64 && i < 90))}</div>`,
-    script: 'window.setFrame=(n)=>{const t=n/60;document.getElementById("l").scrollTop=Math.round(t<1?0:Math.min(1800,1600*(t-1)))}'
+    html: `<div class="list" id="l">${listRows(v, 400)}</div>`,
+    script:
+      'window.setFrame=(n)=>{let t=n/60,y=1800;const s=[0,672,1344,1800];for(let i=0;i<3;i++){if(t<5.2){y=s[i];break}t-=5.2;const d=(s[i+1]-s[i])/1600;if(t<d){y=s[i]+1600*t;break}t-=d}document.getElementById("l").scrollTop=Math.round(y)}'
   }),
   'browser-zoom': (v) => ({
     css: '.page{position:absolute;inset:0;overflow:hidden;transform-origin:0 0;padding:16px}.row{line-height:28px;white-space:nowrap}',
