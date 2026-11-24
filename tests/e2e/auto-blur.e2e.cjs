@@ -1275,7 +1275,10 @@ async function main() {
     }
     // Over the moving secret: one more row whose magnified view must show the noise under it.
     covers.push(fixture.covers[2] && { ...fixture.covers[2], id: 'f200', found: 'check', kind: 'key', group: 'gsecret' })
-    for (const side of ['a', 'b']) af.seed(home, { id: `rec-a21-${side}`, name: `Many ${side}`, media: fixture[side], seconds: A2.seconds, width: A2.width, height: A2.height, fps: A2.fps, extra: { covers } })
+    // The fixture's other two secrets under the user's own covers (not Review rows), so the exports
+    // made meanwhile differ over the two recordings only if an outline or the magnified view reached them.
+    const mine = [fixture.covers[0], fixture.covers[1]]
+    for (const side of ['a', 'b']) af.seed(home, { id: `rec-a21-${side}`, name: `Many ${side}`, media: fixture[side], seconds: A2.seconds, width: A2.width, height: A2.height, fps: A2.fps, extra: { covers: [...mine, ...covers] } })
     const { app, win } = await start(ctx, home)
     const outs = {}
     for (const side of ['a', 'b']) {

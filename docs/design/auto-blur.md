@@ -772,7 +772,13 @@ Selecting a place plays that place's stretch. *Peek* and *Listen* are toggle but
   peeked, then the next one when N or ↓ moves on. V in the list turns it on and off (`keys.ts`
   gains the action `peek` for V, given only when the selected row is of kind `private`, so V goes on
   to the editor everywhere else as today; V has no editor shortcut). A keyboard pass over 200 rows
-  is N, look, K or Delete, with no mouse and no pressing of Peek again.
+  is N, look, K or Delete, with no mouse and no pressing of Peek again. While it is on, moving to a
+  private row (N, P, ↑, ↓, K and Delete moving on, a click, V turning it on) holds the playhead still
+  inside the row's earliest cover that the edit shows, half a frame after its start (`peekStill`),
+  instead of playing the row's stretch: the magnified view is drawn from the frame at the playhead,
+  so it shows the row only there (K moves on without seeking, and a stretch ends 1.5 s after the
+  row). Space on the row plays its stretch. *Peek* on a row holds the playhead inside that row the
+  same way.
 - **The magnified view.** While a row is peeked, a panel under the banner shows the selected
   cover's area at the playhead from the raw frame, cut with a margin of half its height and drawn at
   twice the preview's scale (at least 2×, at most 8×, and never past the recording's own pixels), so

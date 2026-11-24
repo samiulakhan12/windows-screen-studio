@@ -390,3 +390,31 @@ export function privateRowView(project: Project, item: ReviewItem): PrivateRowVi
   const places = key.cover ? 1 : Math.max(covers.length, item.parts?.length ?? 0)
   return { kind: key.kind, badges, places, area, coverIds: covers.map((c) => c.id), bleepId: bleeps[0]?.id ?? null }
 }
+
+/**
+ * Where *Peek while reviewing* holds the playhead for a private row (§2.8): inside the row's earliest
+ * cover that the edit shows, half a frame after the later of its start and its clip's, so the
+ * magnified view, drawn from the frame at the playhead, shows what is under that cover. Null when no
+ * cover of the row is inside the edit (cut away, or gone).
+ */
+export function peekStill(project: Pick<Project, 'covers' | 'clips'> & { capture?: Pick<Project['capture'], 'fps'> }, coverIds: readonly string[]): number | null {
+  if (!coverIds.length) return null
+  const ids = new Set(coverIds)
+  const covers = (project.covers ?? []).filter((c) => ids.has(c.id) && c.end > c.start).sort((a, b) => a.start - b.start)
+  const clips = [...project.clips].sort((a, b) => a.start - b.start)
+  const fps = project.capture?.fps
+  const half = 0.5 / (fps && fps > 0 ? fps : 60)
+  let best: number | null = null
+  for (const c of covers) {
+    if (best !== null && c.start >= best) break
+    for (const k of clips) {
+      const lo = Math.max(c.start, k.start)
+      const hi = Math.min(c.end, k.end)
+      if (hi <= lo) continue
+      const t = lo + Math.min(half, (hi - lo) / 2)
+      if (best === null || t < best) best = t
+      break
+    }
+  }
+  return best
+}
