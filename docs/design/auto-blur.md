@@ -1623,7 +1623,11 @@ to the smallest bucket that holds it; an area larger than 1920×1088 is cut into
 small areas of one read that fit together in one bucket are packed into it (shelf packing, a 32 px
 gap between them, no area cut). A unit with its lines and careful re-reads costs about 2.9 s (§5.6).
 
-1. **First frame**: the first non-black frame, whole.
+1. **First frame**: the first non-black frame, whole: the first analysed frame after the changes of
+   the opening (black frames giving way to the screen, a screen fading in), each changing 90% or more
+   of the frame. A change of part of the frame is the screen's own: a page zoomed in its browser,
+   changing 21-32% of the frame every 0.2 s, moved the first read past four steps (to 0.8 s), and the
+   rows the zoom then pushed off the frame were never read at their first places.
 2. **Settle reads**: for each burst of changes in a region (changed frames less than 0.3 s apart), the
    first analysed frame at least 0.3 s after the burst in which the region is still, or the frame just
    before the next burst when it comes sooner. A burst the recording ends in is read at the

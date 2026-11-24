@@ -484,7 +484,16 @@ function typingReads(data: LookData, hints: ReadHints): PlannedRead[] {
   return out
 }
 
-/** The first frame (§5.4 point 1): the first analysed frame after the page changes of the opening (black frames, a screen fading in). */
+/** An opening's change: nearly the whole frame (black frames giving way to the screen, a screen fading in). */
+const OPENING_SHARE = 0.9
+
+/**
+ * The first frame (§5.4 point 1): the first analysed frame after the changes of the opening (black
+ * frames, a screen fading in), each changing nearly the whole frame. A change of part of the frame is
+ * the screen's own (a page zoomed in its browser changed 21-32% of the frame every 0.2 s, and its first
+ * read moved past the four steps to 0.8 s, so the rows the zoom then pushed off the frame were never
+ * read at their first places).
+ */
 function firstRead(data: LookData): PlannedRead | null {
   const frames = data.frames
   if (!frames.length) return null
@@ -492,7 +501,7 @@ function firstRead(data: LookData): PlannedRead | null {
   for (;;) {
     if (frames[i].t > frames[0].t + 10) break
     let next = -1
-    for (let j = i + 1; j < frames.length && frames[j].t <= frames[i].t + 1; j++) if (changedShare(frames[j], data) >= PAGE_SHARE) next = j
+    for (let j = i + 1; j < frames.length && frames[j].t <= frames[i].t + 1; j++) if (changedShare(frames[j], data) >= OPENING_SHARE) next = j
     if (next < 0) break
     i = next
   }

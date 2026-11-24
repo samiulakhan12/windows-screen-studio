@@ -118,6 +118,13 @@ describe('auto-blur P4: look and plan', () => {
     for (const r of periodic) expect(r.areas).toEqual([[0, 0, 1920, 1080]])
   })
 
+
+  it('The first read is the first frame when the screen shows from the start: a page zoomed in its browser, 44% of the frame changing every 0.2 s, is no opening (found end to end: A16\'s browser zoom was first read at 0.8 s, after four steps, and rows the zoom then pushed off the frame were never read at their first places)', () => {
+    const page: Box = [0, 0, 1280, 720]
+    const zooming = lookOf(HD, 30, 3, (i) => ({ changed: i > 0 && i % 6 === 0 && i <= 24 ? [page] : [] }))
+    const first = planReads(zooming, NO_HINTS, HD, 30, 1e9).reads.find((r) => r.why === 'first')!
+    expect(first.t).toBe(0)
+  })
   it('139. The budget: settle and typing areas less than 1 s apart are always merged; over budget, reveals, then periodic reads, then 3 s and 5 s merging thin in that order; thinning stops once it fits, no read is dropped (a plan over twice its budget after every step runs whole), and thinSpans holds every thinned span', () => {
     const a: Box = [100, 100, 300, 40]
     const b: Box = [120, 110, 300, 40]
