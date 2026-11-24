@@ -6,12 +6,15 @@
 //!
 //!   ssw-ocr [--low-priority]
 //!
-//! Threads (§5.5): this one reads stdin and handles `careful` (to the front of the queue),
+//! Threads (§5.5, §5.11): this one reads stdin and handles `careful` (to the front of the queue),
 //! `release`, `cancel`, `pause`, `resume` and `stop` between commands; a look worker runs the look
 //! pass with its own ffmpeg; one inference worker runs `open`, reads, careful re-reads and follow
-//! sessions from one queue, decoding the next read's frame while the current one is read. A
-//! heartbeat line goes out every 2 s from the start, also while `open` hashes and parses. The
-//! helper ends when stdin ends or a write to stdout fails, so nothing it holds outlives the app.
+//! sessions from one queue; a careful worker runs careful re-reads beside it, so the next read is
+//! read while the last one's lines are read again. The careful worker's re-read and the decoding of
+//! the next read's frame ahead of time share one slot, so the read phase keeps at most two threads
+//! of this process busy. A heartbeat line goes out every 2 s from the start, also while `open`
+//! hashes and parses. The helper ends when stdin ends or a write to stdout fails, so nothing it
+//! holds outlives the app.
 
 mod control;
 mod ctc;
@@ -34,7 +37,8 @@ use serde_json::json;
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, Read as _};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::{Condvar, Mutex, MutexGuard};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -97,9 +101,57 @@ fn ffmpeg_path() -> Option<String> {
     lock(&FFMPEG).clone()
 }
 
+/// The PaddleOCR reader, shared by the inference and careful workers. After a caught panic its
+/// plans are replaced whole: a run already holding the old ones finishes with them.
+struct Paddle {
+    parsed: models::Parsed,
+    plans: Mutex<Option<Arc<models::Plans>>>,
+}
+
+impl Paddle {
+    fn plans(&self) -> Option<Arc<models::Plans>> {
+        lock(&self.plans).clone()
+    }
+
+    /// Drops the plans and builds them again from the parsed models: tract's state inside a
+    /// panicked run is not trusted.
+    fn rebuild(&self) {
+        *lock(&self.plans) = None;
+        let fresh = self.parsed.plans().ok().map(Arc::new);
+        *lock(&self.plans) = fresh;
+    }
+}
+
+/// The reader `open` made, for the careful worker (None for the Windows reader, which keeps no crops).
+static PADDLE: Mutex<Option<Arc<Paddle>>> = Mutex::new(None);
+
 enum Engine {
-    Paddle { parsed: models::Parsed, plans: Option<models::Plans> },
+    Paddle(Arc<Paddle>),
     Windows(winocr::WinReader),
+}
+
+/// The second busy thread of the read phase (§5.11): a careful re-read, or ffmpeg decoding the
+/// next read's frame ahead of time, never both, so with the inference worker (or its own decoding)
+/// and main's rules worker Find keeps at most three threads busy.
+static SLOT: Mutex<bool> = Mutex::new(false);
+static SLOT_FREE: Condvar = Condvar::new();
+
+fn take_slot() {
+    let mut busy = lock(&SLOT);
+    while *busy {
+        busy = SLOT_FREE.wait(busy).unwrap_or_else(|e| e.into_inner());
+    }
+    *busy = true;
+}
+
+fn try_slot() -> bool {
+    let mut busy = lock(&SLOT);
+    !std::mem::replace(&mut *busy, true)
+}
+
+fn free_slot() {
+    *lock(&SLOT) = false;
+    SLOT_FREE.notify_all();
 }
 
 /// A read taken from the queue: its id, time and areas.
@@ -129,14 +181,17 @@ impl Worker {
             let job = {
                 let mut q = lock(&INFER.q);
                 loop {
-                    if let Some(i) = q.iter().position(|c| matches!(c, Command::Careful { .. })) {
-                        break q.remove(i);
+                    // A careful re-read first, when the careful worker is busy with another one.
+                    if CAREFUL_BUSY.load(Ordering::SeqCst) {
+                        if let Some(i) = q.iter().position(|c| matches!(c, Command::Careful { .. })) {
+                            break q.remove(i);
+                        }
                     }
                     if !self.ready.is_empty() || self.prefetch.is_some() {
                         break None;
                     }
-                    if let Some(c) = q.pop_front() {
-                        break Some(c);
+                    if let Some(i) = q.iter().position(|c| !matches!(c, Command::Careful { .. })) {
+                        break q.remove(i);
                     }
                     q = INFER.cv.wait(q).unwrap_or_else(|e| e.into_inner());
                 }
@@ -170,6 +225,9 @@ impl Worker {
         if self.prefetch.is_some() {
             return;
         }
+        if !matches!(lock(&INFER.q).front(), Some(Command::Read { .. })) || !try_slot() {
+            return;
+        }
         let next = {
             let mut q = lock(&INFER.q);
             match q.front() {
@@ -177,10 +235,17 @@ impl Worker {
                 _ => None,
             }
         };
-        let Some(Command::Read { id, video, key, t, areas }) = next else { return };
+        let Some(Command::Read { id, video, key, t, areas }) = next else {
+            free_slot();
+            return;
+        };
         let group = take_group(Ask { id, t, areas }, &video);
         let g2 = group.clone();
-        let handle = std::thread::spawn(move || decode_group(&video, key, &g2));
+        let handle = std::thread::spawn(move || {
+            let frames = decode_group(&video, key, &g2);
+            free_slot();
+            frames
+        });
         self.prefetch = Some((group, handle));
     }
 
@@ -201,9 +266,9 @@ impl Worker {
         let check = || control::checkpoint(id);
         let outcome = match self.engine.as_ref() {
             None => return Err(Failure::BadCommand),
-            Some(Engine::Paddle { plans: None, .. }) => return Err(Failure::Read),
-            Some(Engine::Paddle { parsed, plans: Some(p) }) => {
-                let e = read::Engine { plans: p, chars_tiny: &parsed.chars_tiny, chars_small: &parsed.chars_small };
+            Some(Engine::Paddle(pd)) => {
+                let Some(p) = pd.plans() else { return Err(Failure::Read) };
+                let e = read::Engine { plans: &p, chars_tiny: &pd.parsed.chars_tiny, chars_small: &pd.parsed.chars_small };
                 catch_unwind(AssertUnwindSafe(|| e.read(frame, areas, &check)))
             }
             Some(Engine::Windows(w)) => catch_unwind(AssertUnwindSafe(|| read_windows(w, frame, areas, &check))),
@@ -220,39 +285,10 @@ impl Worker {
             Ok(Err(f)) => Err(f),
             Err(_) => {
                 stats::add(&stats::PANICS, 1);
-                self.rebuild();
+                if let Some(Engine::Paddle(pd)) = self.engine.as_ref() {
+                    pd.rebuild();
+                }
                 Err(Failure::Panic)
-            }
-        }
-    }
-
-    /// Drops the plans and builds them again from the parsed models: tract's state inside a
-    /// panicked run is not trusted.
-    fn rebuild(&mut self) {
-        if let Some(Engine::Paddle { parsed, plans }) = self.engine.as_mut() {
-            *plans = None;
-            *plans = parsed.plans().ok();
-        }
-    }
-
-    fn careful(&mut self, id: u64, read_id: u64, lines: &[usize]) {
-        let taken = lock(&CROPS).as_mut().and_then(|m| m.remove(&read_id));
-        let Some(cs) = taken else {
-            out().error(id, Failure::Read);
-            return;
-        };
-        let Some(Engine::Paddle { parsed, plans: Some(p) }) = self.engine.as_ref() else {
-            out().send(json!({ "id": id, "careful": lines.iter().map(|_| json!([])).collect::<Vec<_>>() }));
-            return;
-        };
-        let e = read::Engine { plans: p, chars_tiny: &parsed.chars_tiny, chars_small: &parsed.chars_small };
-        let outcome = catch_unwind(AssertUnwindSafe(|| lines.iter().map(|&i| cs.get(i).map_or(json!([]), |c| read::variants_json(&[e.recognise(c, true)]))).collect::<Vec<_>>()));
-        match outcome {
-            Ok(v) => out().send(json!({ "id": id, "careful": v })),
-            Err(_) => {
-                stats::add(&stats::PANICS, 1);
-                self.rebuild();
-                out().error(id, Failure::Panic);
             }
         }
     }
@@ -264,15 +300,19 @@ impl Worker {
             Command::Open { reader, models, ffmpeg, .. } => {
                 *lock(&FFMPEG) = Some(ffmpeg);
                 self.engine = None;
+                *lock(&PADDLE) = None;
                 let engine = match reader {
                     Reader::Paddle => models::open(&models).and_then(|parsed| {
                         let plans = parsed.plans()?;
-                        Ok(Engine::Paddle { parsed, plans: Some(plans) })
+                        Ok(Engine::Paddle(Arc::new(Paddle { parsed, plans: Mutex::new(Some(Arc::new(plans))) })))
                     }),
                     Reader::Windows => winocr::WinReader::new().map(Engine::Windows).map_err(|_| ()),
                 };
                 match engine {
                     Ok(e) => {
+                        if let Engine::Paddle(pd) = &e {
+                            *lock(&PADDLE) = Some(pd.clone());
+                        }
                         self.engine = Some(e);
                         let r = if reader == Reader::Paddle { "paddle" } else { "windows" };
                         out().send(json!({ "id": id, "opened": { "protocol": protocol::PROTOCOL, "version": VERSION, "reader": r } }));
@@ -280,7 +320,7 @@ impl Worker {
                     Err(()) => out().error(id, if reader == Reader::Windows && !cfg!(windows) { Failure::BadCommand } else { Failure::Model }),
                 }
             }
-            Command::Careful { read, lines, .. } => self.careful(id, read, &lines),
+            Command::Careful { read, lines, .. } => careful(id, read, &lines),
             Command::FollowOpen { video, key, from, to, dir, .. } => match ffmpeg_path() {
                 None => out().error(id, Failure::BadCommand),
                 Some(f) => match catch_unwind(AssertUnwindSafe(|| follow::Session::open(&f, &video, key, from, to, dir))) {
@@ -321,6 +361,68 @@ impl Worker {
             _ => out().error(id, Failure::BadCommand),
         }
         control::end(id);
+    }
+}
+
+/// Reads `lines` of read `read_id` again with the small recogniser (§5.6), waiting between lines
+/// while paused; answers empty lists when the reader keeps no crops (the Windows reader).
+fn careful(id: u64, read_id: u64, lines: &[usize]) {
+    let taken = lock(&CROPS).as_mut().and_then(|m| m.remove(&read_id));
+    let Some(cs) = taken else {
+        out().error(id, Failure::Read);
+        return;
+    };
+    let reader = lock(&PADDLE).clone().and_then(|pd| pd.plans().map(|p| (pd, p)));
+    let Some((pd, p)) = reader else {
+        out().send(json!({ "id": id, "careful": lines.iter().map(|_| json!([])).collect::<Vec<_>>() }));
+        return;
+    };
+    let e = read::Engine { plans: &p, chars_tiny: &pd.parsed.chars_tiny, chars_small: &pd.parsed.chars_small };
+    let outcome = catch_unwind(AssertUnwindSafe(|| {
+        lines
+            .iter()
+            .map(|&i| {
+                control::wait_if_paused();
+                cs.get(i).map_or(json!([]), |c| read::variants_json(&[e.recognise(c, true)]))
+            })
+            .collect::<Vec<_>>()
+    }));
+    match outcome {
+        Ok(v) => out().send(json!({ "id": id, "careful": v })),
+        Err(_) => {
+            stats::add(&stats::PANICS, 1);
+            pd.rebuild();
+            out().error(id, Failure::Panic);
+        }
+    }
+}
+
+/// Set while the careful worker holds a careful re-read: the inference worker then takes the next one.
+static CAREFUL_BUSY: AtomicBool = AtomicBool::new(false);
+
+/// The careful worker: each careful re-read as it comes, in the slot it shares with the decoding
+/// of the next read's frame. A second one that comes while it is busy goes to the inference worker
+/// when that is free first; neither worker ever leaves one waiting behind a read.
+fn careful_worker() {
+    loop {
+        let job = {
+            let mut q = lock(&INFER.q);
+            loop {
+                if let Some(i) = q.iter().position(|c| matches!(c, Command::Careful { .. })) {
+                    CAREFUL_BUSY.store(true, Ordering::SeqCst);
+                    break q.remove(i);
+                }
+                q = INFER.cv.wait(q).unwrap_or_else(|e| e.into_inner());
+            }
+        };
+        if let Some(Command::Careful { id, read, lines }) = job {
+            take_slot();
+            control::begin(id);
+            careful(id, read, &lines);
+            control::end(id);
+            free_slot();
+        }
+        CAREFUL_BUSY.store(false, Ordering::SeqCst);
     }
 }
 
@@ -474,6 +576,7 @@ fn main() {
     });
     std::thread::spawn(look_worker);
     std::thread::spawn(|| Worker::new().run());
+    std::thread::spawn(careful_worker);
 
     let stdin = std::io::stdin();
     let mut r = stdin.lock();

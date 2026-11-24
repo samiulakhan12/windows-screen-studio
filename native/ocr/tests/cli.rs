@@ -1,4 +1,4 @@
-//! The helper's tests R1-R30 (docs/design/auto-blur.md §17.1), against the fixture build:
+//! The helper's tests R1-R31 (docs/design/auto-blur.md §17.1), against the fixture build:
 //!
 //!   SSW_OCR_MODELS=<folder with the five pinned files> SSW_OCR_PYTHON=<python with numpy,
 //!   opencv-python-headless, pyyaml> cargo test --profile test-fast --features fixture
@@ -1080,4 +1080,34 @@ fn r30_a_backward_session_decodes_whole_key_frame_intervals_once_each() {
     assert!(runs <= 7, "{runs} ffmpeg runs");
     assert!(decoded <= 181 + 2 * runs + 1, "{decoded} frames decoded");
     let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r31_a_careful_re_read_runs_beside_the_next_read() {
+    let mut h = opened();
+    let (read, a) = h.read_png(&eval_png("06-terminal-1-light-125.png"), json!([]));
+    let n = a["read"]["lines"].as_array().unwrap().len();
+    assert!(n >= 20, "{n} lines");
+    // Every line read again with the small recogniser (seconds), then a small read of another frame.
+    let started = Instant::now();
+    let careful = h.send(json!({ "op": "careful", "read": read, "lines": (0..n).collect::<Vec<_>>() }));
+    let next = h.send(json!({ "op": "readImage", "png": eval_png("01-editor-0-dark-100.png").to_string_lossy(), "areas": [[0, 0, 640, 352]] }));
+    let mut order = vec![];
+    while order.len() < 2 {
+        let (at, e) = h.events.recv_timeout(Duration::from_secs(300)).expect("both answered");
+        let Some(id) = e["id"].as_u64() else { continue };
+        if id == careful {
+            assert_eq!(e["careful"].as_array().map(Vec::len), Some(n), "{e}");
+        } else if id == next {
+            assert!(e["read"]["lines"].as_array().is_some_and(|l| !l.is_empty()), "{e}");
+        } else {
+            continue;
+        }
+        order.push((id, at - started));
+    }
+    println!("R31: {order:?}");
+    // The careful worker re-reads while the inference worker reads the next frame: the small read
+    // is answered first, not after every line of the careful pass.
+    assert_eq!(order[0].0, next, "the next read waited for the careful pass: {order:?}");
+    let _ = h;
 }

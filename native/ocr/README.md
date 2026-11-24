@@ -39,11 +39,14 @@ caught panic the plans are built again from the parsed models (R9).
 
 - **Threads** (§5.5): the stdin dispatcher (it handles `careful` first, `release`, `cancel`,
   `pause`, `resume` and `stop` between commands), a look worker with its own ffmpeg, one inference
-  worker for `open`, reads, careful re-reads and follow sessions, and a heartbeat every 2 s from
-  the start. The helper ends when stdin ends or a write to stdout fails (R20).
+  worker for `open`, reads and follow sessions, a careful worker that re-reads a read's lines beside
+  the next read (a second careful re-read that comes meanwhile goes to the inference worker when it
+  is free first; R31), and a heartbeat every 2 s from the start. The careful worker's re-read and the
+  decoding of the next read's frame ahead of time share one slot, so the read phase keeps at most two
+  of the helper's threads busy. The helper ends when stdin ends or a write to stdout fails (R20).
 - **Reads**: ffmpeg seeks to the key frame main names (`-ss <key> -copyts`), decodes with one thread
   and keeps the frames selected by time; reads less than a second apart share one run, and the next
-  read's frame is decoded while the current one is read. Frame times are each frame's pts times its
+  read's frame is decoded while the current one is read when the careful worker is not re-reading. Frame times are each frame's pts times its
   filter's time base (showinfo's `pts_time` has six significant digits). A recording over
   7680 px on a side or 40 megapixels is refused from its MP4 header before ffmpeg starts (R3).
 - **Buckets, packing and tiles**: an area is padded to the smallest bucket that holds it; small

@@ -1520,7 +1520,8 @@ FindDialog ── privacy:find ────▶ load project.json (saved first)
                                  ◀── lines: boxes, text, spans, ring      the key frame → tiles, detector,
                                                                           recogniser, QR
                                  rules worker: detectFrame (P3, pure)
-                                 careful (lines to read again) ──────▶ small recogniser, ahead of reads
+                                 careful (lines to read again) ──────▶ careful worker: small recogniser,
+                                                                          beside the next read
                                  ◀── careful variants
                                  followOpen / match (per frame) ─────▶ follow session: half-size frames
                                  ◀── matches for every track            decoded once, templates per part
@@ -1676,12 +1677,18 @@ whole-frame reads by R17: the reader must find the same items through them (§17
 ### 5.5 Reading a frame (helper `read`, P2)
 
 - **The helper's threads.** A stdin dispatcher reads commands; a **look worker** runs the look pass
-  with its own ffmpeg (§5.2); one **inference worker** runs reads, careful re-reads and follow
-  matches from one queue. `careful`, `release` and `cancel { id }` are handled by the dispatcher
-  between commands, never queued behind a read: `careful` goes to the front of the inference queue,
-  `release` frees a read's crops at once, `cancel` drops a queued command or stops a running one at
-  its next tile or frame. So a read waiting for its careful pass can never block the command that
-  would finish it.
+  with its own ffmpeg (§5.2); one **inference worker** runs reads and follow matches from one queue;
+  a **careful worker** runs careful re-reads beside it, so the next read is read while the last
+  one's lines are read again (a careful pass is about half of a read's work: on A1's recording 8
+  reads took 12.2 s and their careful passes 12.4 s, one after the other on one thread). A careful
+  re-read that comes while the careful worker is busy goes to the inference worker when that is free
+  first. The careful worker's re-read and ffmpeg decoding the next read's frame ahead of time share
+  one slot, so the helper keeps at most two threads busy in the read phase (§5.11). `careful`,
+  `release` and `cancel { id }` are handled by the dispatcher between commands, never queued behind
+  a read: `careful` goes to the front of the queue, `release` frees a read's crops at once, `cancel`
+  drops a queued command or stops a running one at its next tile or frame. So a read waiting for its
+  careful pass can never block the command that would finish it (R31: a careful pass of every line
+  of a frame and a small read sent after it, the read is answered first).
 - **One read per command.** Main sends one `read { id, video, key, t, areas }` per planned read (the
   ffmpeg path was given once, at `open`) and keeps at most 3 reads sent and not yet released, so
   the helper holds at most 3 reads' line crops. One counter numbers every command; every event
@@ -1737,8 +1744,8 @@ whole-frame reads by R17: the reader must find the same items through them (§17
 Main runs the text rules (§6) on each line's tiny read and sends `careful { id, read, lines }` (its own
 command id, the read's id, the line indices) for every line that has a rule hit, a confidence under
 0.9, or a run of 16 or more token characters (`[A-Za-z0-9_\-+/.~]`) after cleaning (§6.2):
-**careful-long** (question 16). The helper reads those lines again with the small recogniser, ahead of
-any queued read, and answers with its own event `{ id, careful: ReadVariant[][] }` (one list per line
+**careful-long** (question 16). The helper reads those lines again with the small recogniser in its
+careful worker, beside the next read and never behind one (§5.5), and answers with its own event `{ id, careful: ReadVariant[][] }` (one list per line
 asked, in the order asked), then frees that read's crops. A read with no line to re-read gets
 `release { read }`. Main runs the rules on every variant and keeps the union of the hits (§6.1).
 
@@ -2159,8 +2166,10 @@ editor keeps a core:
 - **Look phase** first: the look ffmpeg on 2 threads (the only ffmpeg with more than one) and the
   look worker's analysis on 1.
 - **Read and follow phase** next, minute by minute (the reads of a minute, then its follow sessions):
-  the inference worker on 1 thread; one ffmpeg with `-threads 1` decoding the next read's frame or
-  the session's frames while the current one is inferred; the rules worker in short bursts between.
+  the inference worker on 1 thread (or its ffmpeg with `-threads 1` decoding the read's frame or the
+  session's frames while it waits); in the read phase, one second thread in the helper: the careful
+  worker re-reading the last read's lines, or ffmpeg decoding the next read's frame while the current
+  one is inferred, never both (§5.5); the rules worker in short bursts between.
 
 | Stage | Work | CPU | Basis |
 |---|---|---|---|
@@ -2997,7 +3006,8 @@ applies with no change of its own. Line numbers are at `37f9355`.
   (finding 25); main kills a helper silent for 20 s.
 - **It exits when main is gone**: on end of input on stdin, and when writing a heartbeat fails. So no
   helper keeps frames and text in memory after Flown has closed or crashed (tests R1, R20).
-- Its threads are those of §5.5: the stdin dispatcher, the look worker, the inference worker.
+- Its threads are those of §5.5: the stdin dispatcher, the look worker, the inference worker, the
+  careful worker.
 - ffmpeg runs inside a Windows job object created by the helper with
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, so killing the helper kills ffmpeg (test R8, Windows only).
   ffmpeg runs with `-loglevel error`, and the helper reads its stderr only to classify an exit
@@ -3756,7 +3766,7 @@ line only).
 |---|---|
 | `native/ocr/Cargo.toml`, `Cargo.lock` (new) | its own `[workspace]`, `license = "MIT"`, `publish = false`, `rust-version = "1.91"`; `tract-onnx = { version = "=0.23.10", default-features = false }`, `rqrr = "=0.11.0"`, `sha2`, `serde_json`, `windows-sys` (job objects, `SetErrorMode`, `WerSetFlags`, `SetUnhandledExceptionFilter`, `TerminateProcess`), `windows` (`Media_Ocr`, `Graphics_Imaging`, `Storage_Streams`, `Foundation` for §5.13); profile `release` with `opt-level = "s"`, `lto = true`, `codegen-units = 1`, `strip = true`, `panic = "unwind"` (needed for `catch_unwind`), and `opt-level = 3` for `tract-linalg` and `tract-core` (the mixed profile); feature `fixture` (test builds only) |
 | `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs`, `winocr.rs` (new) | the commands and events of `protocol.ts`; the three threads of §5.5 with `careful`, `release` and `cancel` handled between commands; heartbeat every 2 s from start (also during `open`); exit on stdin end and on a failed heartbeat write; `open` reads each model once, hashes the buffer and parses that buffer, every pin before any parse; the three detector buckets and both recognisers' five plans built at open and kept; `tooLarge`; look (§5.2); read with buckets, packing, tiles, joins, chunks, spans, rings and QR, `partial` at a cap (§5.5); `careful` as its own event (§5.6); the follow session (§5.8); the Windows reader behind `reader: 'windows'` (§5.13); ffmpeg with `-threads 1` (2 for look) in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `pause` and `resume` (§5.11); `catch_unwind` around each read with plans rebuilt after a panic; the panic hook, `SetErrorMode`, `WerSetFlags` and the unhandled-exception filter at start (§10.4, §10.5). The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
-| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R30 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
+| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R31 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
 | `scripts/build-native.mjs` | `--ocr` and `--ocr-host` flags; `cargoOcr`, `buildOcrWindows` (MinGW POSIX, the import allow-list, the budget, copied to `native/bin/ssw-ocr.exe`), `buildOcrHost` |
 | `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
 | `scripts/verify-dist.mjs` | §4d: the helper's imports, budget and no `readImage` string; for a release build (`FLOWN_RELEASE=1`), `READER_MIRROR` must not be null |
@@ -3768,7 +3778,7 @@ line only).
 | `src/main/privacy/helperUse.ts` (new) | What the helper's users share, in one place with no Electron (readerHelper re-exports it; the scan, findIpc and the rules' worker take it from here): `type HelperFailure`; `class HelperError extends Error { readonly kind: HelperFailure }`; `function findFailureOf(err: unknown): FindFailure`; `function failureKind(err: unknown): string` (a failure's kind for a log line: the helper's error kind or the error's name, never its message); `function pauseWhileRecording(helper: { pause(): void; resume(): void }, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs?: number): () => void` (checked at once, then every 2 s; the scan passes the helper it has now, which a restart replaces); `function carefulLines(result: Pick<ReadResult, 'lines'>, hits: readonly Hit[]): number[]`; `function withCareful(result, lines, careful)` |
 | `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` (sender check first) |
 | `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, answer a bad hash, answer `partial`, or write a marker string to stderr |
-| Tests | 76-100 and 216-222; Rust R1-R30 |
+| Tests | 76-100 and 216-222; Rust R1-R31 |
 
 ### 16.3 Part P3 · The text rules
 
@@ -3883,7 +3893,7 @@ hits); the native Bangla review (§12.4); the other account's optional `private.
 ### 17.1 Unit tests (vitest). Each is its own test and fails without the code of its rule.
 
 By owner: contracts 1-40 and 186-197 (test 20 is the guard, §17.2), P1 41-75 and 201-215, P2
-76-100, 216-222 and Rust R1-R30, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
+76-100, 216-222 and Rust R1-R31, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
 241-258. The numbers added by this revision follow each part's first block, so every earlier number
 keeps its meaning. Test files are named `tests/autoBlur<Area>.test.ts`; each numbered test
 is one `it` whose title starts with its number, and `tests/autoBlurNumbers.test.ts` checks that every
@@ -4279,6 +4289,9 @@ number of this list exists exactly once.
 - R26. **A backward piece decodes only up to its own end**: a backward session over 0.4 s at 10 s of
   a four-minute 1280×720 recording decodes at most its frames and a key-frame interval before them (a
   decode counter) and answers within 3 s, neither decoding nor waiting for the 230 s after it.
+- R31. **A careful re-read runs beside the next read**: a careful pass of every line of the terminal
+  frame and a small read of another frame sent after it: the read is answered first (with one worker
+  it waited for every line of the careful pass).
 - R27. **A backward session decodes only the pieces holding the frames it is asked**: a track at 50 s
   of a minute-long 1280×720 recording and matches at 20 s keep and decode at most two pieces' frames
   (counters), not the 900 frames between (the walk asks nothing there).
