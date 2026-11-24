@@ -4678,8 +4678,16 @@ pixels under the covers (two different secrets, same everything else), and the t
 - lossless and deterministic routes (PNG thumbnails and guide pictures, raw canvas readback of the
   preview and the export dialog's preview, x264 and libvpx run with `-threads 1`, `-fflags +bitexact`
   and `-map_metadata -1`, GIF): **byte-identical** outputs;
-- the WebCodecs and hardware encoder routes: every decoded frame identical within 2 levels on 99.9% of
-  pixels of the **whole frame**;
+- the WebCodecs and hardware encoder routes: every decoded frame identical within 2 levels on 99.5% of
+  pixels of the **whole frame** and on 98% of the pixels where the secrets are, and in each output
+  every secret's place a **solid fill**: at most 0.1% of its pixels more than 12 levels off its median
+  colour in any frame. The 99.9% first written here cannot hold: the WebCodecs encoder is not
+  repeatable, and one recording exported twice differs by 0.16-0.31% of a frame's pixels and by up to
+  1.33% where the secrets are (measured 24 November 2026; the covered pair, 0.13-0.31% and up to
+  1.47%). Those two numbers pool the encoder's noise with whatever shows, so they cannot prove the
+  covers alone: a cover 3 px short of its secret passed them (0.39% and 1.93%). The fill check does:
+  covered, no pixel of a secret's place was 12 levels off its fill; the 3 px strip gave 0.7-1.2% of
+  that secret's pixels and fails it; without covers 94-99.9%;
 - and, for the lossless routes, each cover box is filled exactly with its graded cover colour, as a
   second check.
 

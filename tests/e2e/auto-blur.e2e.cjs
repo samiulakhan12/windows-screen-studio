@@ -693,11 +693,24 @@ async function compareSides(outA, outB, name, { lossy = [], differ = false } = {
     }
     const exact = !lossy.some((l) => a.label.includes(l))
     // A lossy route whose encoder is not repeatable (WebCodecs: the same recording exported twice
-    // differs by up to about 0.2% of a frame's pixels): the whole frame within 2 levels on 99.5%, and
-    // where the secrets are, no more than 2% (the planted noise showing would make nearly all differ).
-    const lossyOpts = exact ? {} : { share: 0.005, regions: (n) => a2Secrets(Math.min(A2.seconds * A2.fps - 1, n)).map((r) => [r.x, r.y, r.x + r.w, r.y + r.h]), regionShare: 0.02 }
+    // differs by up to 0.31% of a frame's pixels and 1.33% where the secrets are, measured on 24 Nov
+    // 2026): the whole frame within 2 levels on 99.5%, and where the secrets are, no more than 2% (the
+    // planted noise showing would make nearly all differ).
+    const secrets = (n) => a2Secrets(Math.min(A2.seconds * A2.fps - 1, n)).map((r) => [r.x, r.y, r.x + r.w, r.y + r.h])
+    const lossyOpts = exact ? {} : { share: 0.005, regions: secrets, regionShare: 0.02 }
     const cmp = await af.compareOutputs(a.file, b.file, { exact, alpha: !!a.alpha, label: a.label, ...lossyOpts })
     console.log(`    ${a.label}: ${cmp.frames} frame(s), ${cmp.same} identical${cmp.bytes ? ', files byte-identical' : ''}${cmp.worst.frame >= 0 ? `, worst frame ${(cmp.worst.share * 100).toFixed(4)}% over 2 levels` : ''}${cmp.worstRegion ? `, where the secrets are at most ${(cmp.worstRegion.share * 100).toFixed(3)}%` : ''}`)
+    if (exact) continue
+    // That comparison pools the encoder's noise with whatever shows, so a strip of a secret past its
+    // cover's edge (3 px of one: 0.8% where the secrets are) passes it. Each output must also show a
+    // solid fill there: at most 0.1% of each secret's pixels more than 12 levels off its median colour
+    // in any frame (covered, none were; the 3 px strip, 0.7-1.2%; no covers, 94-99.9%).
+    for (const [side, file] of [['one', a.file], ['two', b.file]]) {
+      const fill = await af.offFill(file, secrets, { levels: 12 })
+      h.assert(fill.frames === cmp.frames, `${a.label}: every frame of the output from recording ${side} read (${fill.frames} of ${cmp.frames})`)
+      h.assert(fill.worst.share <= 0.001, `${a.label}: frame #${fill.worst.frame} from recording ${side} shows ${(fill.worst.share * 100).toFixed(2)}% of secret ${fill.worst.box + 1}'s pixels more than 12 levels off its cover's fill`)
+      console.log(`    ${a.label}, recording ${side}: where the secrets are, at most ${(fill.worst.share * 100).toFixed(3)}% of the pixels off their cover's fill`)
+    }
   }
 }
 

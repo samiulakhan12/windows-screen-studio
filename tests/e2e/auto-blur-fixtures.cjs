@@ -421,6 +421,56 @@ async function compareOutputs(a, b, { exact = true, levels = 2, share = 0.001, a
   return { frames: frame, same: sameFrames, bytes, worst, worstRegion }
 }
 
+/**
+ * How far an output is from a solid fill where the secrets are (§17.3): in each decoded frame of
+ * `file` and each box of `boxes(frame)` (x0, y0, x1, y1, inside a cover), the share of its pixels
+ * more than `levels` from the box's own median colour in any channel. A cover shows as one colour
+ * within an encoder's noise; text past its edge, even a column of pixels, does not. Returns the
+ * worst { frame, box, share }.
+ */
+async function offFill(file, boxes, { levels = 12 } = {}) {
+  const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', file]).toString()).streams[0]
+  const { width, height } = probe
+  const size = width * height * 3
+  const ff = spawn('ffmpeg', ['-v', 'error', '-i', file, '-map', '0:v:0', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { stdio: ['ignore', 'pipe', 'inherit'] })
+  let pending = Buffer.alloc(0)
+  let frame = 0
+  let worst = { frame: -1, box: -1, share: 0 }
+  const median = (v) => {
+    const s = Uint8Array.from(v).sort()
+    return s[s.length >> 1]
+  }
+  const check = (buf) => {
+    boxes(frame).forEach(([x0, y0, x1, y1], box) => {
+      const xs = Math.max(0, x0)
+      const ys = Math.max(0, y0)
+      const xe = Math.min(width, x1)
+      const ye = Math.min(height, y1)
+      if (xe <= xs || ye <= ys) return
+      const ch = [[], [], []]
+      for (let y = ys; y < ye; y++) for (let x = xs; x < xe; x++) for (let c = 0; c < 3; c++) ch[c].push(buf[(y * width + x) * 3 + c])
+      const mid = ch.map(median)
+      let off = 0
+      const n = ch[0].length
+      for (let i = 0; i < n; i++) if (Math.abs(ch[0][i] - mid[0]) > levels || Math.abs(ch[1][i] - mid[1]) > levels || Math.abs(ch[2][i] - mid[2]) > levels) off++
+      if (off / n > worst.share) worst = { frame, box, share: off / n }
+    })
+    frame++
+  }
+  await new Promise((resolve, reject) => {
+    ff.stdout.on('data', (d) => {
+      pending = pending.length ? Buffer.concat([pending, d]) : d
+      while (pending.length >= size) {
+        check(pending.subarray(0, size))
+        pending = pending.subarray(size)
+      }
+    })
+    ff.on('error', reject)
+    ff.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code} reading ${file}`))))
+  })
+  return { frames: frame, worst }
+}
+
 /** The video stream's first decoded frame of `file` at `seconds`, as RGB. */
 function frameAt(file, seconds, { width, height }) {
   const data = execFileSync('ffmpeg', ['-v', 'error', '-ss', String(seconds), '-i', file, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: width * height * 3 + 1024 })
@@ -477,6 +527,7 @@ async function docShot(win, name, locator = null) {
 }
 
 module.exports = {
+  offFill,
   CACHE,
   EVAL,
   ROOT,
