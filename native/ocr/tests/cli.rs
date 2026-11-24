@@ -1,4 +1,4 @@
-//! The helper's tests R1-R31 (docs/design/auto-blur.md §17.1), against the fixture build:
+//! The helper's tests R1-R32 (docs/design/auto-blur.md §17.1), against the fixture build:
 //!
 //!   SSW_OCR_MODELS=<folder with the five pinned files> SSW_OCR_PYTHON=<python with numpy,
 //!   opencv-python-headless, pyyaml> cargo test --profile test-fast --features fixture
@@ -1110,4 +1110,25 @@ fn r31_a_careful_re_read_runs_beside_the_next_read() {
     // is answered first, not after every line of the careful pass.
     assert_eq!(order[0].0, next, "the next read waited for the careful pass: {order:?}");
     let _ = h;
+}
+
+#[test]
+fn r32_a_backward_session_keeps_one_piece_and_the_frames_just_above_what_it_was_asked() {
+    let w = work("r32");
+    // A key frame every second at 30 fps: a piece is a second, 30 frames.
+    let video = pattern_video(&w, "ten.mp4", 30, 30, 10);
+    let mut h = opened();
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 2.0, "to": 8.0, "dir": -1 }));
+    h.wait(s, Duration::from_secs(60));
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": 8.0, "parts": [[200, 200, 240, 60]] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(60))["done"], true);
+    for n in (60..240).rev() {
+        match_at(&mut h, s, n as f64 / 30.0);
+    }
+    let kept = h.stats()["followKeptMax"].as_u64().unwrap();
+    println!("R32: at most {kept} frames kept");
+    // One piece (31 frames with the one it starts at) and the frames 0.1 s above the frame asked:
+    // the frames above them are never asked again by a walk going back (two whole pieces held 61).
+    assert!(kept <= 31 + 4, "{kept} frames kept at once");
+    let _ = std::fs::remove_dir_all(w);
 }

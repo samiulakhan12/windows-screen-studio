@@ -195,6 +195,10 @@ impl Session {
         Arc::new(Gray { t, w, h, img })
     }
 
+    fn note_kept(&self) {
+        stats::FOLLOW_KEPT_MAX.fetch_max(self.frames.len() as u64, std::sync::atomic::Ordering::Relaxed);
+    }
+
     /// The gradient of a frame asked, worked out once (the last few are kept).
     fn grad(&mut self, g: &Gray) -> Arc<Grad> {
         if let Some((_, d)) = self.grads.iter().find(|(t, _)| (t - g.t).abs() < EPS) {
@@ -237,6 +241,7 @@ impl Session {
                 while self.frames.len() > KEEP_FORWARD {
                     self.frames.pop_front();
                 }
+                self.note_kept();
                 Ok(Some(g))
             }
             None => {
@@ -304,6 +309,7 @@ impl Session {
         for g in got.into_iter().rev() {
             self.frames.push_front(g);
         }
+        self.note_kept();
         Ok(true)
     }
 
@@ -331,8 +337,15 @@ impl Session {
             if t >= self.low - EPS && t < self.high {
                 // Pieces are contiguous: the first kept frame at or after t is the one at t, never a
                 // frame of a newer piece standing in for it.
-                if let Some(f) = self.frames.iter().find(|f| f.t >= t - EPS && f.t < t + 0.1) {
-                    return Ok(f.clone());
+                if let Some(f) = self.frames.iter().find(|f| f.t >= t - EPS && f.t < t + 0.1).cloned() {
+                    // A walk back never asks above this again: what is kept is one piece and the
+                    // frames just above the frame asked (an ask above them starts again there).
+                    let cut = t + 0.1 + EPS;
+                    if cut < self.high {
+                        self.frames.retain(|g| g.t < cut);
+                        self.high = cut;
+                    }
+                    return Ok(f);
                 }
                 if self.high >= self.to + EPS {
                     return Err(Failure::Video);

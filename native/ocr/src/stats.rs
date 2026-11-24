@@ -1,5 +1,5 @@
 //! Counters the tests read through the `stats` command of the fixture build (R1, R2, R9, R16,
-//! R22, R26-R30): how many model files were read and parsed, how many plans were built, how many frames
+//! R22, R26-R32): how many model files were read and parsed, how many plans were built, how many frames
 //! each decode produced. They hold numbers only.
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -19,6 +19,8 @@ pub static FOLLOW_DECODED: AtomicU64 = AtomicU64::new(0);
 pub static FOLLOW_RUNS: AtomicU64 = AtomicU64::new(0);
 /// Frames of follow sessions whose gradient was worked out (only frames a track or match asked).
 pub static FOLLOW_GRADIENTS: AtomicU64 = AtomicU64::new(0);
+/// The most frames one follow session has kept at once.
+pub static FOLLOW_KEPT_MAX: AtomicU64 = AtomicU64::new(0);
 /// Template matches made (one part at one candidate in one frame).
 pub static MATCHES: AtomicU64 = AtomicU64::new(0);
 /// Nanoseconds spent matching.
@@ -59,6 +61,7 @@ pub fn json() -> serde_json::Value {
         "followDecoded": get(&FOLLOW_DECODED),
         "followRuns": get(&FOLLOW_RUNS),
         "followGradients": get(&FOLLOW_GRADIENTS),
+        "followKeptMax": get(&FOLLOW_KEPT_MAX),
         "matches": get(&MATCHES),
         "matchNs": get(&MATCH_NS),
         "lookNs": get(&LOOK_NS),

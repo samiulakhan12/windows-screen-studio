@@ -84,8 +84,9 @@ caught panic the plans are built again from the parsed models (R9).
   the region's content moved since the last analysed frame, in video pixels, positive right and
   down; its `box` is the region at this frame.
 - **Follow sessions** (§5.8): a session decodes the frames asked of its span once each at half size
-  in grey (R22), forward as asked, backward a piece at a time newest first with two pieces kept, each
-  piece every frame from a key frame to its end (`-noaccurate_seek`, R30); it seeks over a stretch it
+  in grey (R22), forward as asked keeping the last 8 frames, backward a piece at a time newest first,
+  each piece every frame from a key frame to its end (`-noaccurate_seek`, R30), keeping the piece it
+  is in and the frames a tenth of a second above the frame last asked (R32); it seeks over a stretch it
   is not asked (forward more than a second, backward more than a piece; R27, R28) and works out a
   frame's gradient only when a track or match asks it (R29); a span of one instant holds its frame
   (R23), and a backward frame is always the frame itself, never a newer one (R24). A track's parts are
