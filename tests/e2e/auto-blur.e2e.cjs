@@ -1760,7 +1760,11 @@ async function main() {
   await test('A16: the held-out frames of a new seed (9000)', async (ctx) => trackFind(ctx, 'held-out 9000', await evalSetCase('h9000', ['--holdout', '--seed', '9000'], 1)))
 
   await test('A17: the English guard passes on the merged tree (guard-delta first, the baseline re-recorded only then)', async () => {
-    const r = require('node:child_process').spawnSync(process.execPath, [path.join(af.ROOT, 'tests', 'e2e', 'english-guard.e2e.cjs')], { stdio: 'inherit', env: { ...process.env, SSW_E2E_ONLY: '' } })
+    // The guard's tour runs as its baseline was recorded: without this file's reader helper and models
+    // (with SSW_OCR_HELPER set, Settings › Private info offers the download instead of saying the reader
+    // cannot run on this PC, and the guard sees the English UI changed).
+    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('SSW_OCR_')))
+    const r = require('node:child_process').spawnSync(process.execPath, [path.join(af.ROOT, 'tests', 'e2e', 'english-guard.e2e.cjs')], { stdio: 'inherit', env: { ...env, SSW_E2E_ONLY: '' } })
     if (r.status !== 0) {
       const d = require('node:child_process').spawnSync(process.execPath, [path.join(af.ROOT, 'scripts', 'i18n', 'guard-delta.mjs')], { encoding: 'utf8' })
       console.log(d.stdout.split('\n').slice(-12).join('\n'))
