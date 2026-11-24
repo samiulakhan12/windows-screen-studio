@@ -2645,6 +2645,16 @@ P3 each add their own files.
 | 5,000 order, invoice and `Ref dddd …` lines | 5,000 | 26 | 52 | Luhn-valid random references, all Check |
 | Flown's docs read as speech | 455,764 words | 8 | 0.18 per 10,000 words | numbers in technical prose |
 
+The table is the prototype's (`scripts/privacy/detect/corpus.mjs`, `results/detect-corpus.txt`), before
+this design was in `docs/`. Measured again with the rules as built (`src/shared/privacy/detect/`, 24
+November 2026, tests 133 and 134 measure the same way): the English UI catalogue, 5,787 lines, 0 hits;
+`docs/**/*.md` without this file, 35,941 lines, 5 hits (1.39 per 10,000: the same four sample emails and
+sample key); this file alone, 4,835 lines, 11 hits, every one a vector or example it quotes (a planted
+email, PINs, cards, a password), which should be found, as the `tests/` row's are, so tests 133 and 134
+leave it out; `src/**/*.ts(x)`, 188,381 lines, 31 hits (1.65): the font licences' emails as before, the rest the
+privacy code's own examples (`2580`, `jsmith@gmail.com`) and identifiers under a password label;
+Flown's docs read as speech, §7.2.
+
 ---
 
 ## 7. Spoken secrets, and every text made from captions
@@ -2696,15 +2706,24 @@ just made (decision 11).
   | phone | 7-15 digits with a phone word, valid for one of the user's regions by the same libphonenumber check as the screen (§6.8), or a Bangladeshi mobile `01[3-9]` + 8 digits (or `8801…`) with no label |
   | id | 6-20 digits with an ID word (social security, SSN, account, routing, passport, licence, national insurance, Aadhaar, NID, অ্যাকাউন্ট, হিসাব, পাসপোর্ট, এনআইডি, cuenta, खाता, आधार) |
   | password | a password word followed at once by `is`, `was`, `=`, `:`, হলো, হল, হচ্ছে, `es`, है, `it's`; then up to 6 words, ending at a pause over 1.0 s or the sentence's end. "it skips password boxes" gives nothing |
-  | email | `<1-4 words> (at, at the rate, অ্যাট, এট, arroba, एट) <domain word> (dot, ডট, punto, डॉट) <tld word>`; and every caption's text run through the screen's email and key rules (Whisper writes `jsmith@gmail.com` as one token) |
+  | email | `<1-4 words> (at, at the rate, অ্যাট, এট, arroba, एट) <domain word> (dot, ডট, punto, डॉट) <tld word>`; and each caption word holding an `@` or a run of 16 token characters, run alone through the screen's email, key and link rules and kept when a hit of the Auto tier (0.85 or more) is the whole word (Whisper writes `jsmith@gmail.com` as one token; see below) |
   | name | a caption word whose double-metaphone codes equal a listed word's and within edit distance 2 (Latin script); Bangla-script words against Bangla entries by edit distance of their NFC forms |
 
 - Bangla and Hindi words are compared in NFC with punctuation and symbols removed only
   (`[\p{P}\p{S}]`, as `bareWord`, `numbers.ts:42-49`), never "everything not a letter or digit", which
   strips vowel signs and the nukta. য়, ড় and ঢ় are composition exclusions, so every word list is
   normalised with the same NFC at build time. The Bangla lists need the native review of decision 8.
-- Measured on Flown's docs read as speech (455,764 words): 8 hits, 0.18 per 10,000 words. A 20-minute
-  talk is about 3,000 words.
+- **One word written as a secret** (`said.ts`): the screen's rules run on such a word alone, never
+  on a caption's whole text, and only their Auto tier counts, because a private bleep mutes the
+  speech: a role or reserved address said as one token (`billing@example.com`, 0.60 on screen, where a
+  box costs little) is no bleep (test 130). Run over each caption's whole text at every tier, as this
+  row first said, Flown's docs read as speech gave 12 hits where test 133 allows 10, and test 130's
+  role address was bleeped.
+- Measured on Flown's docs read as speech (455,764 words): 8 hits, 0.18 per 10,000 words, with the
+  prototype. With the rules as built (24 November 2026, `docs/**/*.md` without this design, which
+  quotes the spoken vectors and alone gives 14 hits, every one its own examples): 10 hits in 456,506
+  words, 0.22 per 10,000, two of them the one-word rule finding `anna.li@acme.de`, a sample address
+  in a doc. A 20-minute talk is about 3,000 words.
 - **Each hit becomes a private bleep** (§4.4) from its first word's start − 0.05 s to its last word's
   end + 0.05 s (0.15 s for estimated times, as `Bleep` widens), `auto: true`, kind and group in
   `word`. Hits of the same said text (the same digit string, or the same folded words) share one
@@ -4429,8 +4448,10 @@ number of this list exists exactly once.
      English digits said in Bangla script.
 132. `saidBleeps`: widening of 0.05 s and 0.15 s for estimated times, kind and group markers, no
      bleep inside an existing one.
-133. Speech false hits: Flown's docs read as speech give at most 10 hits.
-134. Screen false hits: Flown's English UI catalogue gives 0; `docs` at most 2 per 10,000 lines.
+133. Speech false hits: Flown's docs read as speech give at most 10 hits (this design left out: it quotes
+     the spoken vectors, §6.15).
+134. Screen false hits: Flown's English UI catalogue gives 0; `docs` at most 2 per 10,000 lines (this
+     design left out, §6.15).
 135. `scripts/vendor-privacy.mjs --check` passes and every vendored file carries its header.
 223. **Window edges**: a 900-character JWT on one line is one hit covering the whole token; a hit that
      touches a window's edge is extended to the end of its token run.
