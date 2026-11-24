@@ -611,6 +611,17 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       w.hold = { until, lastChange: t }
       return
     }
+    // Forward, the backward rule's mirror: the region the text moved with carried it out of the frame
+    // (scrolled or dragged out of view), from where it was last placed: it is gone from here on. Found
+    // end to end: without it, text scrolled off the screen was lost, its lost area the whole scrolled
+    // region, to the end of the recording (a template search over a whole page always finds a part).
+    if (dir === 1 && best && !w.hold && w.pending === null) {
+      const gone = moved(xfBox(w, w.tpl.box, w.off), { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy, scale: best.scale })
+      if (right(gone) <= 0 || bottom(gone) <= 0 || gone[0] >= size.width || gone[1] >= size.height) {
+        endForward(w, f)
+        return
+      }
+    }
     if (w.pending !== null && dir === 1) {
       endForward(w, w.pending)
       return

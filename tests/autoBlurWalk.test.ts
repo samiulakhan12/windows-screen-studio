@@ -202,6 +202,18 @@ describe('auto-blur P4: following', () => {
     expect(sessions.map((s) => s.dir)).toEqual([-1, 1, -1])
   })
 
+  it('Forward, text scrolled out of the frame ends its cover there, the mirror of the backward rule (found end to end: it was lost, its lost area the whole page, to the end of the recording)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    // From 1 s the whole page scrolls up 40 px an analysed frame (30 fps): the text, at 300, is gone after 9 frames.
+    const yAt = (t: number): number => 300 - 40 * Math.max(0, Math.round((t - 1) * 30))
+    const text: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) + 30 > 0 ? [400, yAt(t), 200, 30] : null) }
+    const look = lookOf(HD, 30, 6, (_i, t) => (Math.round((t - 1) * 30) >= 1 && t < 3 ? { changed: [page], moves: [move(page, 0, -40)] } : {}))
+    const [track] = await walkSpan([start(0.5, [400, 300, 200, 30])], 1, look, readIndex(), matcherOf([text]), NO_HINTS, HD)
+    const leaves = sourceFrames(30, 0.5, 6).find((t) => text.at(t) === null)!
+    expect(track.end).toBeLessThanOrEqual(leaves + 2 / 30 + 1e-9)
+    expect(uncovered(track, 30, text, 0.5, leaves, page)).toEqual([])
+  })
+
   it('146. The backward walk (finding 3): a scroll before the first read is followed back with the move between f and the next analysed frame; the cover covers the text in every source frame from its appearance, which is where the box left its region', async () => {
     const list: Box = [192, 192, 832, 576]
     // A jerky scroll from 1 s: the content moves up 10 px, then 40 px, then 10 px… an analysed frame (60 fps).
