@@ -1959,8 +1959,14 @@ most of a part is there, so the rules above would leave its first characters unc
   piece is marked `lost` (it covers an area). The cover's start then follows the evidence rule above
   from there.
 - Going forward, when the parts stop matching while the line band changes inside a typing burst (the
-  text is being deleted or changed), the cover holds as the same union until the burst ends and the
-  band has been still for 1.0 s; only then does the evidence of absence apply.
+  text is being deleted or changed), or, with no typing hint, while only the line band changes in a
+  burst (changed again less than 0.3 s after it last changed, as text deleted one key at a time is:
+  the backward rule's mirror), the cover holds as the same union until the burst ends and the band
+  has been still for 1.0 s; only then does the evidence of absence apply. A key typed into a terminal
+  and deleted again one key a frame, with no cursor data, was taken for gone once its last characters
+  matched no part: the read after the deletion lacked it, and its first character showed in the last
+  frame. Text cleared in one change is gone, and the evidence applies as before.
+- The read that finds such text is §5.4 point 2's in-place read, where its line showed the most of it.
 
 **What this handles** (each is a case of A16, §17.3): scrolling lists and pages (vertical moves), a
 fast scroll of 1,500 px a second checked on every source frame, horizontal scrolling, a window

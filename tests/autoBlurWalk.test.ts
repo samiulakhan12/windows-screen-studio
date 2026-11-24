@@ -403,6 +403,37 @@ describe('auto-blur P4: following', () => {
     for (const t of [5, 5.5, 6, 6.5, 6.9]) expect(inside(own, f(t)!), `deleting at ${t}`).toBe(true)
   })
 
+  it('Text deleted one key a frame with no typing hint stays covered over its line band until the band has been still for 1.0 s, the backward rule\'s mirror; cleared at once, its cover ends as before (found end to end: a key typed into a terminal and deleted again was taken for gone once its last characters matched no part, and its first character showed in the last frame)', async () => {
+    const line: Box = [600, 500, 600, 40]
+    const cell = (i: number): Box => [620 + 20 * i, 505, 20, 30]
+    const own: Box = [620, 505, 120, 30]
+    const cover: Box = [610, 495, 140, 50]
+    const typedAt = (i: number): number => 2 + 0.2 * i
+    const deletedAt = (i: number): number => 5 + i / 30
+    const s = { ...start(3.6, cover, line, 'h0', '482913'), parts: partsOf(own, 30) }
+    const lacking = readIndex([readOf(8, [[0, 0, 1920, 1080]], [{ box: line, text: 'Enter the code' }])])
+    const walk = (clearedAtOnce: boolean) => {
+      const text: Planted = { key: KEY, text: '482913', at: (t) => (t >= typedAt(5) && t < deletedAt(0) ? own : null) }
+      const look = lookOf(HD, 30, 10, (_i, t) => {
+        const changed: Box[] = []
+        for (let i = 0; i < 6; i++) if (Math.abs(t - typedAt(i)) < 1e-6) changed.push(cell(i))
+        if (clearedAtOnce && Math.abs(t - deletedAt(0)) < 1e-6) changed.push(own)
+        if (!clearedAtOnce) for (let i = 0; i < 6; i++) if (Math.abs(t - deletedAt(i)) < 1e-4) changed.push(cell(5 - i))
+        return { changed }
+      })
+      return walkSpan([s], 1, look, lacking, matcherOf([text]), NO_HINTS, HD)
+    }
+    // Deleted one key a frame from 5 s, no cursor data: covered over the band while it goes, and for 1 s after.
+    const [fwd] = await walk(false)
+    expect(fwd.end).toBeGreaterThanOrEqual(deletedAt(5) + 1 - 1e-6)
+    const f = pathBox(fwd, 30)
+    for (let i = 0; i <= 5; i++) expect(inside(own, f(deletedAt(i))!), `deleting ${i}`).toBe(true)
+    expect(inside(own, f(deletedAt(5) + 0.5)!)).toBe(true)
+    // Cleared in one change, no burst: the read at 8 s is evidence, and the cover ends one analysed frame after it went.
+    const [once] = await walk(true)
+    expect(once.end).toBeLessThan(deletedAt(0) + 0.1)
+  })
+
   /** A matcher scoring each candidate by where it puts the text's own box (`own`) at t, searching ±8 px around it; second is the best score of a place more than 2 px from the best. */
   const placeMatcher = (own: Box, score: (t: number, at: Box) => number, check: (t: number, area: Box) => ReadResult | null = () => null): Matcher & { asked: number[] } => {
     const cx = own[0] + own[2] / 2

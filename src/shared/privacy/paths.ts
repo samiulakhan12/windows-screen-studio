@@ -112,6 +112,8 @@ const END_FRAMES = 16
 const ZOOMS = [0.8, 0.9, 1.1, 1.25]
 /** A typing band still this long ends a burst of typing (§5.8). */
 const BAND_STILL_S = 1.0
+/** Changes less than this apart are one burst (the plan's settle gap, §5.4). */
+const BURST_S = 0.3
 /** Part width at most this many line heights, at most 3 parts (§5.8). */
 const PART_LINES = 6
 const MAX_PARTS = 3
@@ -603,6 +605,17 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     return changed.length > 0 && changed.every((c) => overlaps(c, band))
   }
 
+  /**
+   * Whether the walker's line band is in a burst of changes in place at frame `cf` with no typing hint:
+   * only the band changed there, and at an analysed frame less than 0.3 s before it (a burst, §5.4),
+   * as text being deleted or changed one key at a time is.
+   */
+  const bandBurst = (w: Walker, cf: number): boolean => {
+    if (!bandOnly(w, cf)) return false
+    for (let j = cf - 1; j >= 0 && frames[cf].t - frames[j].t < BURST_S - 1e-9; j--) if (bandOnly(w, j)) return true
+    return false
+  }
+
   /** Forward: the end of a walk whose text was shown gone at S (§5.8). */
   const endForward = (w: Walker, S: number, carried = false): void => {
     let e = S
@@ -707,8 +720,12 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         return
       }
     }
-    // Text typed or deleted in place, inside a burst of typing: the band's union holds until the band is still for 1 s.
-    if (dir === 1 && (w.hold || (inTyping(t) && bandOnly(w, cf)))) {
+    // Text typed or deleted in place, inside a burst of typing or, with no typing hint, in a burst of
+    // changes of its line band alone (the backward rule's mirror): the band's union holds until the
+    // band is still for 1 s. Found end to end: a key typed into a terminal and deleted again one key a
+    // frame, with no cursor data, was taken for gone once its last characters matched no part: the read
+    // after the deletion lacked it, the cover ended, and its first character showed in the last frame.
+    if (dir === 1 && (w.hold || (inTyping(t) ? bandOnly(w, cf) : bandBurst(w, cf)))) {
       const typing = inTyping(t)
       const until = Math.max(w.hold?.until ?? -Infinity, typing?.until ?? t)
       becomeLost(w, f)
