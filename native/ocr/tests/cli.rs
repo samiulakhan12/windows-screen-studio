@@ -857,3 +857,63 @@ fn r22_a_follow_session_decodes_each_frame_once_for_twenty_tracks() {
     assert!(per < 0.1, "{per} ms a part a frame");
     let _ = std::fs::remove_dir_all(w);
 }
+
+/// A part of a line of the editor frame whose top lies in [y0, y1), at most six line heights wide (§5.8), as a box.
+fn editor_part(h: &mut Helper, y0: f64, y1: f64) -> Value {
+    let (_, r) = h.read_png(&eval_png("01-editor-0-dark-100.png"), json!([]));
+    let l = r["read"]["lines"].as_array().unwrap().iter().find(|l| {
+        let b = &l["box"];
+        let y = b[1].as_f64().unwrap();
+        y >= y0 && y < y1 && b[2].as_f64().unwrap() > 120.0
+    });
+    let b = &l.unwrap_or_else(|| panic!("a line between {y0} and {y1}: {:?}", texts(&r)))["box"];
+    let hh = b[3].as_f64().unwrap();
+    json!([b[0], b[1], b[2].as_f64().unwrap().min(6.0 * hh), hh])
+}
+
+/// `part` (a box of the frame scrolled by 0) where the scroll video shows it at frame `n` (`speed` px a frame).
+fn scrolled(part: &Value, speed: f64, n: usize) -> Value {
+    json!([part[0], part[1].as_f64().unwrap() - speed * n as f64, part[2], part[3]])
+}
+
+#[test]
+fn r23_a_backward_session_over_one_instant_holds_its_frame() {
+    let w = work("r23");
+    let video = scroll_video(&w, 10, 40);
+    let mut h = opened();
+    let part = editor_part(&mut h, 300.0, 900.0);
+    // Every hit of a span read at one frame walks back from that frame alone: [t, t].
+    let t = 20.0 / 60.0;
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": t, "to": t, "dir": -1 }));
+    let opened = h.wait(s, Duration::from_secs(60));
+    assert_eq!(opened["session"]["frames"], 1, "{opened}");
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": t, "parts": [scrolled(&part, 10.0, 20)] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(60))["done"], true);
+    let m = h.send(json!({ "op": "match", "session": s, "t": t, "tracks": [{ "track": 1, "parts": [0], "candidates": [{ "dx": 0, "dy": 0, "scale": 1 }] }] }));
+    let e = h.wait(m, Duration::from_secs(60));
+    assert!(e["matched"][0]["parts"][0].as_f64().unwrap_or(0.0) >= 0.99, "{e}");
+    let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r24_a_backward_session_answers_each_frame_itself_across_its_pieces() {
+    let w = work("r24");
+    // 60 frames scrolling 5 px a frame: the walk back from the last frame crosses a piece's edge.
+    let video = scroll_video(&w, 5, 60);
+    let mut h = opened();
+    let part = editor_part(&mut h, 340.0, 700.0);
+    let last = 59.0 / 60.0;
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 0, "to": last, "dir": -1 }));
+    h.wait(s, Duration::from_secs(60));
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": last, "parts": [scrolled(&part, 5.0, 59)] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(60))["done"], true);
+    for n in (0..59).rev() {
+        // Going back, the page was 5 px lower a frame earlier.
+        let dy = 5.0 * (59 - n) as f64;
+        let m = h.send(json!({ "op": "match", "session": s, "t": n as f64 / 60.0, "tracks": [{ "track": 1, "parts": [0], "candidates": [{ "dx": 0, "dy": dy, "scale": 1 }] }] }));
+        let e = h.wait(m, Duration::from_secs(60));
+        let got = &e["matched"][0];
+        assert!(got["parts"][0].as_f64().unwrap_or(0.0) >= 0.75 && (got["best"]["dy"].as_f64().unwrap_or(f64::NAN) - dy).abs() <= 2.0, "frame {n}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(w);
+}

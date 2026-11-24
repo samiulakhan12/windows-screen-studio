@@ -192,7 +192,8 @@ impl Session {
 
     /// Backward: decodes the piece just before the oldest one, dropping all but the newest two.
     fn decode_piece(&mut self) -> Result<bool, Failure> {
-        if self.low <= self.from + EPS {
+        // Done once a piece reached `from` (low is then from - EPS); a span of one instant still decodes its frame.
+        if self.low <= self.from - EPS {
             return Ok(false);
         }
         let hi = self.low;
@@ -227,6 +228,13 @@ impl Session {
     /// The frame at `t` (the first at or after it within the span).
     fn frame_at(&mut self, t: f64) -> Result<Arc<Gray>, Failure> {
         loop {
+            // Backward: the piece holding t first, so a frame of a newer piece never stands in for it.
+            if self.dir < 0 && t < self.low && self.low > self.from - EPS {
+                if !self.decode_piece()? {
+                    return Err(Failure::Video);
+                }
+                continue;
+            }
             if let Some(f) = self.frames.iter().find(|f| f.t >= t - EPS && f.t < t + 0.1) {
                 return Ok(f.clone());
             }

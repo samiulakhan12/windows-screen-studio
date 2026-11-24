@@ -81,7 +81,8 @@ caught panic the plans are built again from the parsed models (R9).
   the region's content moved since the last analysed frame, in video pixels, positive right and
   down; its `box` is the region at this frame.
 - **Follow sessions** (§5.8): a session decodes its span once at half size in grey, forward as asked,
-  backward half a second at a time newest first with two pieces kept (R22). A track's parts are
+  backward half a second at a time newest first with two pieces kept (R22); a span of one instant
+  holds its frame (R23), and a backward frame is always the frame itself, never a newer one (R24). A track's parts are
   templates of Sobel gradient magnitude (selection and dark mode do not change it, R13). A
   candidate `{ dx, dy, scale }` moves the whole track: a point p of the track at its template frame
   goes to C + scale·(p − C) + (dx, dy), C the centre of its parts then. A match searches ±4 template
