@@ -211,6 +211,13 @@
   color: var(--text-2);
 }
 
+/* A private row's places and badges, and its Select, Peek and Listen, take lines of their own under
+   its title (§2.7): the row wraps, as a group row does, so the title keeps the row's width. */
+.review-row:has(> .review-private-info),
+.review-row:has(> .review-private-actions) {
+  flex-wrap: wrap;
+}
+
 .review-private-info {
   display: flex;
   flex-wrap: wrap;
