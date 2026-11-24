@@ -175,15 +175,22 @@ function substringDistance(p: string, s: string, max: number): number {
   return best
 }
 
+/** Letters and digits only. */
+const bare = (s: string): string => s.replace(/[^\p{L}\p{N}]/gu, '')
+
 /**
  * Whether a line holds a text (§5.8), generously because reading is not exact: the line has the
  * folded text; or, for a text of 12 characters or more, a third of it; for 5-11 characters, the text
- * within edit distance 1 or any run of 4 of its characters; for a shorter text, the text itself.
+ * within edit distance 1 or any run of 4 of its characters; for 4 characters, the text itself in the
+ * line; for one to three, a line that is the text.
  */
 export function holdsText(own: string, line: string): boolean {
   const o = foldText(own)
   const l = foldText(line)
   if (!o || !l) return false
+  // A text of one to three characters (a wrapped token's last characters) is in nearly every line:
+  // only a line that is the text itself, but for marks (a closing quote), holds it.
+  if (o.length < 4) return bare(l) === bare(o)
   if (l.includes(o)) return true
   const n = o.length
   if (n >= 12) {
@@ -202,6 +209,7 @@ export function holdsAll(own: string, line: string): boolean {
   const o = foldText(own)
   const l = foldText(line)
   if (!o || !l) return false
+  if (o.length < 4) return bare(l) === bare(o)
   return l.includes(o) || (o.length >= 5 && substringDistance(o, l, 1) <= 1)
 }
 

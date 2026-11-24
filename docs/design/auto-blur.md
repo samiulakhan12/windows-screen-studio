@@ -1963,7 +1963,10 @@ inverted (dark mode, a highlight), so one template serves both.
 "Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
 §5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any
 third of it; or for a text of 5-11 characters, the text within edit distance 1 or any run of 4 of its
-characters; or for a shorter text, the text itself. One misread digit of a six-digit code therefore
+characters; or for a text of 4 characters, the text itself; for one to three (a wrapped token's last
+characters, §6.10), only a line that is the text, but for marks: such a text is in nearly every line,
+and a JWT's last character on the held-out logs page, lost at the page's end, kept the whole frame
+covered for the 102 s to the recording's end. One misread digit of a six-digit code therefore
 never ends its cover. **New**: for a text lost at a page change since it was last placed, whose lost
 area is the page, only a line holding the whole folded own text (or within edit distance 1 of it)
 holds it: on the 150% evaluation pages an email lost at a cut kept the whole frame covered for the
