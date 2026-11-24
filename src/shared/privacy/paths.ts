@@ -662,15 +662,21 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     return { box: xfBox(w, w.tpl.box, xf), xf }
   }
   const outOfFrame = (b: Box): boolean => right(b) <= 0 || bottom(b) <= 0 || b[0] >= size.width || b[1] >= size.height
+  /** Whether `xf` moves the walker's cover box out through an edge of the frame: past a side it moves toward (a box resting over an edge, its padding beyond it, moving along it, is not). */
+  const outward = (w: Walker, xf: Xf): boolean => {
+    const dx = xf.dx - w.off.dx
+    const dy = xf.dy - w.off.dy
+    const b = xfBox(w, w.tpl.box, xf)
+    return (dx < -0.25 && b[0] < 0) || (dy < -0.25 && b[1] < 0) || (dx > 0.25 && right(b) > size.width) || (dy > 0.25 && bottom(b) > size.height)
+  }
   /**
    * A text its own motion moves partly out of the frame is cut at the edge, not gone and not fading: it
    * is placed where that motion puts it, and the box holds the union of its last box and the moved one
    * (clipped), so every frame up to the one it is wholly out stays covered (§5.8). False when the motion
-   * leaves it wholly inside the frame, or does not move it.
+   * does not take it past an edge it moves toward.
    */
   const atEdge = (w: Walker, f: number, m: { box: Box; xf: Xf }): boolean => {
-    const cut = m.box[0] < 0 || m.box[1] < 0 || right(m.box) > size.width || bottom(m.box) > size.height
-    if (!cut || sameXf(m.xf, w.off)) return false
+    if (!outward(w, m.xf)) return false
     place(w, f, m.xf, clip(union(w.box, m.box), size))
     return true
   }
@@ -828,11 +834,12 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       // Leaving the frame where the walker's own motion takes it: a match far away is a copy, not where it went.
       // Judged on the cover box, not the text's own: the template is cut padded, so a text whose ink is
       // inside the frame but whose padding is not matches nowhere either (found end to end: a code at the
-      // frame's bottom edge was placed by a zoom 140 px away).
+      // frame's bottom edge was placed by a zoom 140 px away). Only a motion toward the edge it crosses:
+      // a text resting at the edge, its padding over it, is matched as any other.
       const leaving = (a: (typeof asks)[number]): boolean => {
         const pred = predicted(a.w)
         const ways = [guide(a.w, f), ...(a.best ? [{ dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }] : [])]
-        return ways.some((x) => { const b = xfBox(a.w, a.w.tpl.box, x); return b[0] < 0 || b[1] < 0 || right(b) > size.width || bottom(b) > size.height })
+        return ways.some((x) => outward(a.w, x))
       }
       const far = rest.filter((a) => !leaving(a))
       const res = far.length ? await m.match(

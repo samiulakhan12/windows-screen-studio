@@ -1860,7 +1860,9 @@ inverted (dark mode, a highlight), so one template serves both.
    region has none, the speed guide while it was placed at the step before: a strip of a page
    scrolling in or out at the frame's edge is too short for the look pass to find its move (under 6
    tiles), and the text in it is cut, so no template matches it. When that motion moves the cover box
-   partly out of the frame, the text is placed where it puts it, and the box holds the union of its
+   partly out of the frame, past an edge it moves toward (a box resting over an edge, its padding
+   beyond it, that moves along the edge is not leaving, and is matched as any other), the text is
+   placed where it puts it, and the box holds the union of its
    last box and the moved one, clipped to the frame, until the motion takes it wholly out (below and
    in the backward walk). A1's scroll-ins started their covers one or two frames late without it.
 

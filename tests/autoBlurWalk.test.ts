@@ -600,6 +600,18 @@ describe('auto-blur P4: following', () => {
     expect(uncovered({ ...track, end: 3 }, SCROLL_FPS, text, 0, 3, FRAME)).toEqual([])
   })
 
+  it('A text resting over the frame\'s edge, its padding beyond it, that moves along the edge is matched where it went, never held as cut at the edge (its own motion does not take it out of the frame)', async () => {
+    // Near the bottom edge, its cover box 2 px past it; at 1 s a horizontal scroll moves it 600 px, the look pass offering 300 px first and 600 px second.
+    const own = (t: number): Box => [400 + (t >= 1 - 1e-9 ? 600 : 0), 1046, 200, 30]
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    const band: Box = [0, 960, 1920, 120]
+    const look = lookOf(HD, SCROLL_FPS, 3, (_i, t) => (Math.abs(t - 1) < 1e-6 ? { changed: [band], moves: [move(band, 300, 0, 0.9, [[600, 0, 0.85]])] } : {}))
+    const score = (t: number, b: Box): number => (at(b, own(t)) ? 0.95 : 0.3)
+    const [track] = await walkSpan([padded(0.5, own(0.5))], 1, look, readIndex(), placeMatcher(own(0.5), score), NO_HINTS, HD)
+    expect(track.lost).toBe(false)
+    expect(uncovered(track, SCROLL_FPS, text, 0.5, 3, FRAME)).toEqual([])
+  })
+
   it('Forward, a text the old page carries out at the top after its region is too short for a move is followed by its own speed, held while cut, and its cover ends one frame after it is wholly out (found end to end: lost there, its cover lasted to the end)', async () => {
     // The old page scrolls up 36 px a frame from 1 s; its region (above rows that do not change) has a move only while 192 px or taller (to step 22).
     const own = (t: number): Box => [400, 950 - 36 * scrollStep(t), 200, 30]
