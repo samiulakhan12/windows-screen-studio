@@ -382,7 +382,7 @@ const COLOR_FNS = `
       await win.getByRole('button', { name: 'Settings' }).click()
       const d = win.locator('[role="dialog"][aria-labelledby="settings-title"]')
       await d.getByRole('button', { name: '+ Add provider' }).click()
-      await d.getByLabel('Name').fill('My OpenAI')
+      await d.getByLabel('Name', { exact: true }).fill('My OpenAI')
       await d.getByLabel('API key').fill('sk-proj-example-key')
       await win.mouse.move(1, 450)
       await shot('settings-ai')

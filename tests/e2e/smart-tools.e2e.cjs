@@ -296,7 +296,7 @@ async function main() {
       await d.getByRole('radio', { name: 'More services' }).click()
       await d.locator('[data-testid="service-preset"]').selectOption('other')
       await d.getByLabel('Base URL').fill(`http://127.0.0.1:${mock.port}/v1`)
-      await d.getByLabel('Name').fill('Mock service')
+      await d.getByLabel('Name', { exact: true }).fill('Mock service')
       await d.getByLabel('API key').fill(KEY)
       await docShot(win, 'service-form', d)
       const goesTo = await d.locator('[data-testid="ai-goes-to"]').innerText()

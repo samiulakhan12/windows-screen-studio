@@ -101,7 +101,7 @@ async function addProvider(win, kind, name, key) {
   const d = dialog(win)
   await d.getByRole('button', { name: '+ Add provider' }).click()
   await d.getByRole('radio', { name: { openai: 'OpenAI', gemini: 'Google Gemini', anthropic: 'Anthropic Claude' }[kind] }).click()
-  await d.getByLabel('Name').fill(name)
+  await d.getByLabel('Name', { exact: true }).fill(name)
   await d.getByLabel('API key').fill(key)
   await d.locator('form button[type="submit"]').click()
   await d.locator('.ai-provider', { hasText: name }).waitFor({ timeout: 10000 })
@@ -191,7 +191,7 @@ async function main() {
       // Edit: rename and change the model, keeping the stored key.
       await d.getByRole('button', { name: 'Edit My Claude' }).click()
       h.assert(/Leave empty to keep the current key \(…0003\)/.test(await d.locator('form').textContent()), 'edit keeps the key unless one is typed')
-      await d.getByLabel('Name').fill('Claude (work)')
+      await d.getByLabel('Name', { exact: true }).fill('Claude (work)')
       await d.getByLabel('Model for text tasks').fill('claude-sonnet-5-5')
       const beforeEdit = await changes()
       await d.locator('form button[type="submit"]').click()
