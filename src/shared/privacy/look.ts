@@ -14,7 +14,7 @@
  * before f to f: what was at (x, y) is at (x + dx, y + dy) at f, in video pixels; its box is the
  * region at f.
  */
-import type { Box, LookFrame } from './protocol'
+import type { Box, LookFrame, LookMove } from './protocol'
 
 export interface Size {
   width: number
@@ -59,14 +59,56 @@ export function emptyLook(size: Size, fps: number): LookData {
   return { k: lookScale(size.width, size.height), step: lookStep(fps), fps: Number.isFinite(fps) && fps > 0 ? fps : 60, size: { width: size.width, height: size.height }, frames: [], keys: [] }
 }
 
-/** Appends a batch: frames in time order after the last one; a frame at or before it is dropped. */
+/**
+ * Appends a batch: frames in time order after the last one; a frame at or before it is dropped. Each
+ * region's move continues its move of the analysed frame before (steadyMoves).
+ */
 export function addLookFrames(data: LookData, frames: readonly LookFrame[]): void {
   for (const f of frames) {
     const last = data.frames[data.frames.length - 1]
     if (!Number.isFinite(f.t) || (last && f.t <= last.t)) continue
-    data.frames.push(f)
+    const own = last && f.t - last.t <= (1.5 * data.step) / data.fps ? { ...f, moves: steadyMoves(last.moves, f.moves, data.k) } : f
+    data.frames.push(own)
     if (f.key) data.keys.push(f.t)
   }
+}
+
+/** A move this strong is its region's real move (§5.8 step 2): only such a move is continued. */
+const STEADY_SCORE = 0.5
+
+/**
+ * A region's move continues its move at the analysed frame before (§5.2): content moves smoothly, so
+ * when the region's best shift is far from the shift its region made the frame before (the move of
+ * the overlapping region there, scored 0.5 or more) and one of its alternatives is near it (within
+ * two look pixels, or a quarter of that shift), that alternative is its move and the best becomes an
+ * alternative. Found end to end: a list scrolling 10.5 px a frame under a sticky header repeats its
+ * rows every 336 px, and the shift of a whole period (-344, or +326) scored above the scroll at one
+ * frame in eight (0.73 against 0.72); taken for the region's move, it put every row on the copy a
+ * period away, and every walk on the list was lost over the whole column.
+ */
+export function steadyMoves(before: readonly LookMove[], moves: readonly LookMove[], k: number): LookMove[] {
+  return moves.map((m) => {
+    let prev: LookMove | null = null
+    let most = 0
+    for (const p of before) {
+      const i = intersect(p.box, m.box)
+      const a = i ? areaOf(i) : 0
+      if (a > most) {
+        most = a
+        prev = p
+      }
+    }
+    if (!prev || prev.score < STEADY_SCORE || (!prev.dx && !prev.dy)) return m
+    const p = prev
+    const tol = Math.max(2 * k, 0.25 * Math.max(Math.abs(p.dx), Math.abs(p.dy)))
+    const off = (dx: number, dy: number): number => Math.max(Math.abs(dx - p.dx), Math.abs(dy - p.dy))
+    if (off(m.dx, m.dy) <= tol) return m
+    let pick = -1
+    for (let i = 0; i < m.alt.length; i++) if (off(m.alt[i][0], m.alt[i][1]) <= tol && (pick < 0 || off(m.alt[i][0], m.alt[i][1]) < off(m.alt[pick][0], m.alt[pick][1]))) pick = i
+    if (pick < 0) return m
+    const [dx, dy, score] = m.alt[pick]
+    return { box: m.box, dx, dy, score, alt: [[m.dx, m.dy, m.score], ...m.alt.filter((_a, i) => i !== pick)] }
+  })
 }
 
 /* ---------- tiles ---------- */

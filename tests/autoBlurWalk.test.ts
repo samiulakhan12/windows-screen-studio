@@ -659,6 +659,23 @@ describe('auto-blur P4: following', () => {
     expect(track.end).toBeLessThanOrEqual(leaves + 2 / SCROLL_FPS + 1e-9)
     expect(uncovered(track, SCROLL_FPS, text, 0.5, leaves, FRAME)).toEqual([])
   })
+
+  it('A list scrolling under a sticky header keeps its own move when the shift of a whole period scores a little higher at a frame: each row is followed row by row, never moved onto its copy a period away (found end to end: the look pass scored the shift of 336 px above the scroll at one frame in eight, and every walk on the list was lost over the whole column)', async () => {
+    const column: Box = [0, 32, 352, 1048]
+    const period = 336
+    // The rows scroll up 10 px an analysed frame from 1 s; at every fourth frame the shift of a whole period (-346) scores 0.73 against the scroll's 0.72.
+    const k = (t: number): number => Math.max(0, Math.round((t - 1) * 30))
+    const yAt = (t: number): number => 700 - 10 * k(t)
+    const copies = (t: number): Box[] => [-2, -1, 0, 1].map((j) => [16, yAt(t) + j * period, 200, 24] as Box)
+    const look = lookOf(HD, 30, 3, (_i, t) => (k(t) >= 1 ? { changed: [column], moves: [k(t) % 4 === 0 ? move(column, 0, -346, 0.73, [[0, -10, 0.72]]) : move(column, 0, -10, 0.74, [[0, -346, 0.65]])] } : {}))
+    const score = (t: number, b: Box): number => (copies(t).some((c) => at(b, c) && c[1] >= 40) ? 1 : 0.2)
+    const own: Box = [16, 700, 200, 24]
+    const mine: Planted = { key: KEY, text: 'x', at: (t) => [16, yAt(t), 200, 24] }
+    const [followed] = await walkSpan([start(0.5, own)], 1, look, readIndex(), placeMatcher(own, score), NO_HINTS, HD)
+    expect(followed.lost).toBe(false)
+    expect(uncovered(followed, 30, mine, 0.5, 3)).toEqual([])
+    expect(near(pathBox(followed, 30)(2.5), mine.at(2.5)!)).toBe(true)
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

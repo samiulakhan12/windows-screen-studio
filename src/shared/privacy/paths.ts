@@ -502,14 +502,16 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       const before: Box = [mv.box[0] - mv.dx, mv.box[1] - mv.dy, mv.box[2], mv.box[3]]
       if (!overlaps(mv.box, area) && !overlaps(before, area)) continue
       const all: [number, number, number][] = [[mv.dx, mv.dy, mv.score], ...mv.alt]
-      for (const [dx, dy, score] of all) {
-        const c = { dx: dir * dx, dy: dir * dy, scale: 1 }
-        rel.push(c)
-        if (score > bestScore && real(dx, dy, score)) {
-          bestScore = score
-          best = c
-          region = mv.box
-        }
+      for (const [dx, dy] of all) rel.push({ dx: dir * dx, dy: dir * dy, scale: 1 })
+      // The region's own move first: its first shift, continued from the frame before (look.ts's
+      // steadyMoves), when it is real; an alternative scored a little higher (the shift of a whole
+      // period of a repeating list) is no more than an alternative. Else its best real alternative.
+      const reals = all.filter(([dx, dy, score]) => real(dx, dy, score))
+      const own = reals[0] === all[0] ? all[0] : reals.reduce<[number, number, number] | null>((a, b) => (!a || b[2] > a[2] ? b : a), null)
+      if (own && own[2] > bestScore) {
+        bestScore = own[2]
+        best = { dx: dir * own[0], dy: dir * own[1], scale: 1 }
+        region = mv.box
       }
     }
     return { rel, best, region }

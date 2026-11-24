@@ -1572,7 +1572,13 @@ tiles changed and how each changed region moved. It holds no pixels and no text 
   up to half the region's size. The best shift and up to two alternatives scoring at least 0.85 of
   the best are kept; a diagonal candidate (dx from the columns, dy from the rows) is kept when the
   region's 2-D gradient NCC at it is 0.9 or more. Each move: `{ box, dx, dy, score, alt: [dx, dy,
-  score][] }` in video pixels.
+  score][] }` in video pixels. In main (`look.ts`), a region's move **continues its move** of the
+  analysed frame before: when its best shift is far from the move of the region it overlaps most at
+  that frame (scored 0.5 or more) and one of its alternatives is within two look pixels, or a quarter
+  of that move, of it, that alternative is its move and the best becomes an alternative. A list that
+  repeats its rows (every 336 px in A16's) offers the shift of a whole period beside the scroll, and
+  under a sticky header that shift scored above the scroll at one frame in eight (0.73 against 0.72):
+  taken for the region's move, it put every row on its copy a period away.
 - **Output**: batches of at most 1,000 frames or 1 MB (`LookBatch`, §16.0 `protocol.ts`): each frame's
   `t`, `key`, its changed tiles as a bit string (base64) and its moves. A 20-minute 1080p60 recording
   gives 36,000 analysed frames and about 11 MB of look data in main.
@@ -1863,7 +1869,8 @@ inverted (dark mode, a highlight), so one template serves both.
    strip of new content scores lower than the body moving with it). A weaker shift stays a candidate
    only: every page change and in-app zoom gets one (0.06-0.45 on the evaluation frames, against
    0.75-1.0 for real scrolls), and taken for a move it ended walks by chance and kept zooms from
-   being tried.
+   being tried. Of a region's shifts, its own move (the first, continued from the frame before, §5.2)
+   is its real move when it is real; an alternative scored a little higher is not.
 3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 × `scale`
    template pixels (§5.3).
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
