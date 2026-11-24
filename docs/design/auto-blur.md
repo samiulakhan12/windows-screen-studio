@@ -2477,7 +2477,13 @@ kind's checkbox is hidden for them (§2.5). A **notice** is a changed region tha
 
 Each notice gets a Check cover (0.70, kind `notice`) over its box for its whole life, from the frame
 it starts sliding in. **Stacked notices** (finding 5): notices whose boxes touch or overlap in time and
-space are covered each, and the union of the stack is covered while two or more show. Decision 8
+space are covered each, and the union of the stack is covered while two or more show. A notice's
+stillness and its going count only its own changes: the changed tiles of regions lying half or more
+inside its box. A toast stacking under another shares a row of tiles with it (each one's shadow
+reaches into the other's), and its sliding in or out there is the other's neighbour, not a change of
+it: counted, it made the first toast never still, and neither of A16's two stacked toasts was found.
+The regions a notice slides in through are never an appearance of their own (each was found again,
+starting a frame later). Decision 8
 requires at most one false hit per 10 minutes on real recordings; above that, the default turns off.
 
 ### 6.14 Libraries and data (licences and sizes)

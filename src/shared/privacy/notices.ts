@@ -71,6 +71,20 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
     return k
   }
   const tilesOf = (b: TileBox): number => (b.c1 - b.c0 + 1) * (b.r1 - b.r0 + 1)
+  const overlapOf = (a: TileBox, b: TileBox): number => Math.max(0, Math.min(a.c1, b.c1) - Math.max(a.c0, b.c0) + 1) * Math.max(0, Math.min(a.r1, b.r1) - Math.max(a.r0, b.r0) + 1)
+  /**
+   * The changed tiles of frame `i` in `b` that are its own: those of regions lying half or more inside
+   * it. A region mostly outside it is a neighbour's, a toast stacking next to it sliding in or out over
+   * the row of tiles they share (each toast's shadow reaches into the other's tiles).
+   */
+  const ownCount = (i: number, b: TileBox): number => {
+    let k = 0
+    for (const g of regionsAt(look, i).map(toTiles)) {
+      const o = overlapOf(g, b)
+      if (o && 2 * o >= tilesOf(g)) k += count(i, { c0: Math.max(g.c0, b.c0), r0: Math.max(g.r0, b.r0), c1: Math.min(g.c1, b.c1), r1: Math.min(g.r1, b.r1) })
+    }
+    return k
+  }
   const ring = (b: TileBox): TileBox => ({ c0: Math.max(0, b.c0 - 2), r0: Math.max(0, b.r0 - 2), c1: Math.min(cols - 1, b.c1 + 2), r1: Math.min(rows - 1, b.r1 + 2) })
   const boxOf = (b: TileBox): Box => clip([b.c0 * tile, b.r0 * tile, (b.c1 - b.c0 + 1) * tile, (b.r1 - b.r0 + 1) * tile], look.size)
   const shaped = (b: Box): boolean => {
@@ -97,12 +111,17 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
       // Sliding in: the next frames' regions that touch it, within half a second, are the same appearance.
       let box = tb
       let j = i + 1
+      // The regions of its sliding in: never an appearance of their own once it is found.
+      const slid: string[] = []
       for (; j < n && frames[j].t - frames[i].t <= SLIDE_S; j++) {
         const grow = regionsAt(look, j)
           .map(toTiles)
           .filter((g) => g.c0 <= box.c1 + 1 && box.c0 <= g.c1 + 1 && g.r0 <= box.r1 + 1 && box.r0 <= g.r1 + 1)
         if (!grow.length) break
-        for (const g of grow) box = { c0: Math.min(box.c0, g.c0), r0: Math.min(box.r0, g.r0), c1: Math.max(box.c1, g.c1), r1: Math.max(box.r1, g.r1) }
+        for (const g of grow) {
+          slid.push(`${j}:${g.c0}:${g.r0}`)
+          box = { c0: Math.min(box.c0, g.c0), r0: Math.min(box.r0, g.r0), c1: Math.max(box.c1, g.c1), r1: Math.max(box.r1, g.r1) }
+        }
       }
       const px = boxOf(box)
       if (!shaped(px)) continue
@@ -113,7 +132,7 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
       let windowStart = j < n ? frames[j].t : end
       let windowCount = 0
       for (let k = j; k < n; k++) {
-        const c = count(k, box)
+        const c = ownCount(k, box)
         if (c >= GONE * total) {
           gone = k
           break
@@ -135,12 +154,13 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
       if (!still) continue
       // Sliding out: the frames of half a second after it starts going. Its going is never an appearance.
       let last = gone
-      if (gone >= 0) for (let k = gone + 1; k < n && frames[k].t - frames[gone].t <= SLIDE_S && count(k, box) > 0; k++) last = k
+      if (gone >= 0) for (let k = gone + 1; k < n && frames[k].t - frames[gone].t <= SLIDE_S && ownCount(k, box) > 0; k++) last = k
       if (gone >= 0) for (let k = gone; k <= last; k++) for (const g of regionsAt(look, k).map(toTiles)) if (g.c0 <= box.c1 && box.c0 <= g.c1 && g.r0 <= box.r1 && box.r0 <= g.r1) used.add(`${k}:${g.c0}:${g.r0}`)
       const until = gone < 0 ? end : last + 1 < n ? frames[last + 1].t : end
       const life = (gone < 0 ? end : frames[gone].t) - frames[i].t
       if (life < LIFE[0] || life > LIFE[1]) continue
       for (let k = i; k < j; k++) used.add(`${k}:${box.c0}:${box.r0}`)
+      for (const s of slid) used.add(s)
       found.push({ start: frames[i].t, end: until, box: px, stacked: false })
     }
   }

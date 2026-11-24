@@ -78,6 +78,40 @@ describe('auto-blur P4: notices and found covers', () => {
     expect(union[0].end).toBeCloseTo(26 + 1 / 30, 4)
   })
 
+  it('Stacked toasts sliding in from the edge, the second sharing a row of tiles with the first, are found each from the frame it starts sliding in, once, and their union while both show (found end to end: the first toast took in the second sliding in beside it, took its slide for its own changes, and no toast was found)', () => {
+    // Two toasts slide in from the right edge over six analysed frames each, 0.33 s apart, rest 2.2 s and slide out; their shadows share the row of tiles at 64-96.
+    const W = 1920
+    const slide = (top: number, start: number, end: number) => (t: number): Box | null => {
+      const f = Math.round((t - start) * 30)
+      const g = Math.round((t - end) * 30)
+      if (f < 0 || g > 6) return null
+      const shown = f < 6 ? f + 1 : g < 0 ? 6 : 6 - g
+      return shown > 0 ? [W - 64 * shown, top, 64 * shown, 96] : null
+    }
+    const a = slide(0, 0.3, 2.7)
+    const b = slide(64, 0.6, 3.0)
+    const look = lookOf(HD, 30, 4, (_i, t) => {
+      const ra = Math.round((t - 0.3) * 30)
+      const rb = Math.round((t - 0.6) * 30)
+      const ga = Math.round((t - 2.7) * 30)
+      const gb = Math.round((t - 3.0) * 30)
+      const changed: Box[] = []
+      // A region changes while it slides (in or out).
+      if ((ra >= 0 && ra < 6) || (ga >= 0 && ga <= 6)) changed.push(a(t) ?? [W - 64, 0, 64, 96])
+      if ((rb >= 0 && rb < 6) || (gb >= 0 && gb <= 6)) changed.push(b(t) ?? [W - 64, 64, 64, 96])
+      return changed.length ? { changed } : {}
+    })
+    const found = findNotices(look, screen)
+    const own = found.filter((x) => !x.stacked)
+    expect(own.map((x) => x.box)).toEqual([[W - 384, 0, 384, 96], [W - 384, 64, 384, 96]])
+    expect(own[0].start).toBeCloseTo(0.3, 4)
+    expect(own[1].start).toBeCloseTo(0.6, 4)
+    expect(own[0].end).toBeGreaterThan(2.7 + 6 / 30 - 1e-6)
+    expect(own[1].end).toBeGreaterThan(3.0 + 6 / 30 - 1e-6)
+    const union = found.filter((x) => x.stacked)
+    expect(union.map((x) => x.box)).toEqual([[W - 384, 0, 384, 160]])
+  })
+
   it('150. foundCovers: groups by group key, scores to tiers, colours from rings', () => {
     const a = key(1, 0.1, 0.1, 0.2, 0.05)
     const covers = foundCovers(
