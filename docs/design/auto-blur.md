@@ -3338,7 +3338,10 @@ part's agreement, recorded here.
     generator (`eval-lib.mjs`, `eval-scenes.mjs`). It renders the cases of A16 (§17.3) as lossless
     60 fps videos (`-c:v libx264rgb -qp 0`, `-r 60`) with a truth file holding every planted item's
     box in every source frame, read back from the page as `make-eval-set.mjs` reads its truth. Test
-    196 renders one short case and checks that its truth boxes hold the drawn ink.
+    196 renders one short case and checks that its truth boxes hold the drawn ink. It plants only what
+    the default rules find: a password with its label line above it (§6.7; planted unlabelled, a
+    random-looking string that decision 2 leaves off, it was never found and A16 counted it uncovered
+    in every frame), checked from each row case's own lines by the rules.
 14. **Tests 1-40 and 186-197** (§17.1), each its own test, and test 20 green throughout. Both
     typechecks, all of vitest, `npm run i18n:check`, `npm run -s build`, and the English guard in
     compare mode after a warm-up launch (no difference at all: every mount renders nothing and every
@@ -4459,7 +4462,8 @@ pixels under the covers (two different secrets, same everything else), and the t
   over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out, a toast and a
   tooltip passing over text before its first read, an email typed into a form field and a key typed
   into a terminal (and deleted again), the evaluation frames at 150% and 200% display scale, and the
-  new-seed held-out frames, with every planted item's box known in every frame. After Find, every
+  new-seed held-out frames, with every planted item's box known in every frame. The rendered cases
+  are cached under a key of their generator, so a changed fixture is rendered afresh. After Find, every
   on-by-default item is covered (its whole ink inside a cover) in **every source frame** it shows in,
   the frames between analysed frames included, for every video; each typed character is covered from
   the frame it appears. A failure prints the item, frame and uncovered pixels. The plan's units for

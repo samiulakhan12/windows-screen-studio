@@ -662,9 +662,21 @@ async function a2Case(ctx, { name, extra = {}, routes, env = {}, lossy = [], pre
 
 const TRACK_CASES = ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag', 'toasts', 'tooltip', 'type-email', 'type-key']
 
+/**
+ * The tracking set's cache key: its generator and the evaluation set's helpers it plants with, so a
+ * changed fixture is rendered afresh (a key-less cache kept testing the unlabelled passwords after
+ * the generator labelled them).
+ */
+const TRACK_KEY = require('node:crypto')
+  .createHash('sha256')
+  .update(fs.readFileSync(path.join(af.ROOT, 'scripts', 'privacy', 'make-track-fixtures.mjs')))
+  .update(fs.readFileSync(path.join(af.ROOT, 'scripts', 'privacy', 'eval-lib.mjs')))
+  .digest('hex')
+  .slice(0, 12)
+
 /** Renders the tracking set once (scripts/privacy/make-track-fixtures.mjs, 2 s a case at 1280x720, seed 7000). */
 function trackDir() {
-  const dir = path.join(af.CACHE, 'track')
+  const dir = path.join(af.CACHE, `track-${TRACK_KEY}`)
   if (!TRACK_CASES.every((id) => fs.existsSync(path.join(dir, `${id}.truth.json`)))) execFileSync(process.execPath, [path.join(af.ROOT, 'scripts', 'privacy', 'make-track-fixtures.mjs'), dir], { stdio: 'inherit' })
   return dir
 }
@@ -681,7 +693,7 @@ function trackCase(id) {
   const dir = trackDir()
   const truth = JSON.parse(fs.readFileSync(path.join(dir, `${id}.truth.json`), 'utf8'))
   const src = path.join(dir, `${id}.mp4`)
-  const media = path.join(af.CACHE, `track-${id}.mp4`)
+  const media = path.join(af.CACHE, `track-${TRACK_KEY}-${id}.mp4`)
   if (!fs.existsSync(media)) execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:v', 'libx264', '-preset', 'ultrafast', '-qp', '0', '-pix_fmt', 'yuv444p', '-g', String(truth.fps), media])
   const frames = decodeAll(src, truth.width, truth.height)
   const items = truth.frames.map((f) => f.items.filter((it) => it.on).map((it) => ({ ...it, ink: af.inkRect(frames[f.n], it.box) })).filter((it) => it.ink))

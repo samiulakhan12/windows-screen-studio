@@ -19,6 +19,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { KINDS, THEMES, baseCss, esc, makeTokens, O, P } from './eval-lib.mjs'
 
 const require = createRequire(import.meta.url)
@@ -43,7 +44,7 @@ function ffmpeg() {
 }
 
 /** The planted values of a run: made once from the evaluation set's token generators (seeded). */
-function plantValues(tok) {
+export function plantValues(tok) {
   return {
     email: `jamie.${tok.alnum(5).toLowerCase()}@example.com`,
     key: tok.aws(),
@@ -56,7 +57,12 @@ function plantValues(tok) {
   }
 }
 
-/** A list of `n` rows, every other one a planted item alone on its line, the rest ordinary text. */
+/**
+ * A list of `n` rows, every other one a planted item alone on its line, the rest ordinary text. The
+ * row above a password is its label, "Password": a password is found by its label (§6.7, decision 2;
+ * an unlabelled one is a random-looking string, off by default), and planted alone with ordinary text
+ * above it Find never found it, so A16 counted it uncovered in every frame.
+ */
 function listRows(v, n) {
   const planted = [
     ['email', v.email],
@@ -68,7 +74,7 @@ function listRows(v, n) {
   ]
   const rows = []
   for (let i = 0; i < n; i++) {
-    if (i % 2) rows.push(`<div class="row">${O(`Ticket ${1000 + i} · updated by the support team`)}</div>`)
+    if (i % 2) rows.push(`<div class="row">${O(planted[((i + 1) / 2) % planted.length][0] === 'password' ? 'Password' : `Ticket ${1000 + i} · updated by the support team`)}</div>`)
     else {
       const [kind, text] = planted[(i / 2) % planted.length]
       rows.push(`<div class="row">${P(kind, text)}</div>`)
@@ -81,7 +87,7 @@ function listRows(v, n) {
  * The cases: each draws a page whose window.setFrame(n) puts frame n on screen. `fast`: a 1,500 px a
  * second flick; the list scroll moves 240 px a second.
  */
-const CASES = {
+export const CASES = {
   'list-scroll': (v) => ({
     css: '.list{position:absolute;inset:0;overflow:hidden}.row{height:28px;line-height:28px;padding:0 16px;white-space:nowrap}',
     html: `<div class="list" id="l">${listRows(v, 160)}</div>`,
@@ -110,7 +116,7 @@ const CASES = {
   }),
   'window-drag': (v) => ({
     css: '.win{position:absolute;width:300px;padding:12px;background:#fff;box-shadow:0 0 0 1px #888;color:#111}.row{line-height:24px;white-space:nowrap}',
-    html: `<div class="win" id="w"><div class="row">${O('Sign in')}</div><div class="row">${P('email', v.email)}</div><div class="row">${P('password', v.password)}</div></div>`,
+    html: `<div class="win" id="w"><div class="row">${O('Sign in')}</div><div class="row">${P('email', v.email)}</div><div class="row">${O('Password')}</div><div class="row">${P('password', v.password)}</div></div>`,
     script: 'window.setFrame=(n)=>{const w=document.getElementById("w");w.style.left=(20+n*1.5)+"px";w.style.top=(10+n*0.9)+"px"}'
   }),
   toasts: (v) => ({
@@ -231,7 +237,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+// Run as a script (imported, by the tests, it only exports the cases).
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
