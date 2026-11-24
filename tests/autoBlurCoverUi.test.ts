@@ -233,6 +233,28 @@ describe('auto-blur P1: adding covers', () => {
     expect(row).toMatch(/\)\)\}\s*<CoverShapeButton services=\{services\} \/>\s*<\/div>/)
   })
 
+  it('the Covers row sits between the Shapes row and the Images row (§2.3), and the Cover section below Private info (§2.2)', () => {
+    const timeline = fs.readFileSync('src/renderer/src/editor/Timeline.tsx', 'utf8')
+    // The labels' column and the tracks' column, each in the timeline's order.
+    const labels = timeline.slice(timeline.indexOf('<div className="tl-labels">'), timeline.indexOf('<div className="tl-scroller"'))
+    const order = (text: string, names: string[]): number[] => names.map((n) => text.indexOf(n))
+    const [shapeLabel, coverLabel, imageLabel] = order(labels, ['shape-label', '<CoverTrackLabel />', '<OverlayTrackLabel />'])
+    expect(shapeLabel).toBeGreaterThan(0)
+    expect(coverLabel).toBeGreaterThan(shapeLabel)
+    expect(imageLabel).toBeGreaterThan(coverLabel)
+    expect(labels.slice(shapeLabel, imageLabel).match(/<[A-Z]\w*TrackLabel \/>/g)).toEqual(['<CoverTrackLabel />'])
+    const from = timeline.indexOf('data-testid="shape-track"')
+    const tracks = timeline.slice(from, timeline.indexOf('<SnapGuide', from))
+    const [coverTrack, imageTrack] = order(tracks, ['<CoverTrack ', '<OverlayTrack '])
+    expect(coverTrack).toBeGreaterThan(0)
+    expect(imageTrack).toBeGreaterThan(coverTrack)
+    expect(tracks.slice(0, imageTrack).match(/<[A-Z]\w*Track /g)).toEqual(['<CoverTrack '])
+    // The Shapes tab: the Cover section follows Private info, with nothing between them.
+    const panel = fs.readFileSync('src/renderer/src/editor/panels/ShapesPanel.tsx', 'utf8')
+    expect(panel.match(/<CoverSection /g)).toHaveLength(1)
+    expect(panel).toMatch(/<PrivacySection [^\n]*\/>\n(\s*\{\/\*[^\n]*\*\/\}\n)?\s*<CoverSection /)
+  })
+
   it('Turn them all into covers in the Private info section turns every blur and pixelate shape into a cover in one undo step (test 206 holds the edit itself)', async () => {
     setUp(project({ shapes: [blur('b1', 1, 3), blur('b2', 2, 4)] }))
     let els = render({ type: PrivacySection, props: { services: services(), onFind: () => undefined } })
