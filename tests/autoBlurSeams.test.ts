@@ -65,7 +65,15 @@ describe('auto-blur contracts: seams', () => {
       bleeps: [said, plain]
     }
     const copy = withinRange(p, [{ start: 8, end: 12 }])
-    expect(copy.covers).toEqual(p.covers)
+    // Every cover stays over the same footage; the private rows wholly outside the clip are settled
+    // by Keep (part P5's privacyKeep): the copy's covers are the user's.
+    const asDrawn = (c: Cover): Omit<Cover, 'found'> => {
+      const { found: _f, ...rest } = c
+      void _f
+      return rest
+    }
+    expect(copy.covers!.map(asDrawn)).toEqual(p.covers!.map(asDrawn))
+    expect(copy.covers!.some((c) => c.found)).toBe(false)
     // Private bleeps are never Bleep rows.
     const rows = captionReviewItems(p).filter((i) => i.kind === 'bleep')
     expect(rows.map((i) => i.key)).toEqual(['bleep:b1'])
