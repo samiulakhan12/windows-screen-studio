@@ -36,14 +36,26 @@ function videoOf(projectId: string): { video: HTMLVideoElement; queue: Promise<u
   return v
 }
 
-/** Waits for `video` to show source time `t` (seeked), or gives up after SEEK_MS. */
+/** HTMLMediaElement.HAVE_NOTHING: no metadata yet. */
+const HAVE_NOTHING = 0
+
+/**
+ * Waits for `video` to show source time `t` (seeked), or gives up after SEEK_MS. A video without its
+ * metadata yet (a project's hidden video, just made) takes a time set then as where to start, and no
+ * seek happens, so the seek waits for the metadata: otherwise the first pick of a session (the
+ * guide's *Blur an area…*) timed out and gave Dark.
+ */
 function seekTo(video: HTMLVideoElement, t: number): Promise<boolean> {
   return new Promise((done) => {
     let timer: ReturnType<typeof setTimeout> | null = null
+    const seek = (): void => {
+      video.currentTime = Math.max(0, t)
+    }
     const finish = (ok: boolean): void => {
       if (timer !== null) clearTimeout(timer)
       video.removeEventListener('seeked', onSeeked)
       video.removeEventListener('error', onError)
+      video.removeEventListener('loadedmetadata', seek)
       done(ok)
     }
     const onSeeked = (): void => finish(true)
@@ -51,7 +63,8 @@ function seekTo(video: HTMLVideoElement, t: number): Promise<boolean> {
     video.addEventListener('seeked', onSeeked)
     video.addEventListener('error', onError)
     timer = setTimeout(() => finish(false), SEEK_MS)
-    video.currentTime = Math.max(0, t)
+    if (video.readyState === HAVE_NOTHING) video.addEventListener('loadedmetadata', seek, { once: true })
+    else seek()
   })
 }
 
