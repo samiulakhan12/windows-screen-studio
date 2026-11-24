@@ -343,4 +343,19 @@ describe('auto-blur P2: the helper in main', () => {
     expect(failedReads).toBe(1)
     expect(sent('read').slice(1).map((r) => (r as unknown as { areas: number[][] }).areas)).toEqual([[[0, 500, 960, 540]], [[960, 500, 960, 540]]])
   })
+
+  it('The helper\'s error, the pause while Flown records and the careful pass\'s lines live in one place (helperUse) that readerHelper, the scan and the rules\' worker share: the worker picks the lines carefulLines picks', async () => {
+    const shared = await import('../src/main/privacy/helperUse')
+    expect(pauseWhileRecording).toBe(shared.pauseWhileRecording)
+    expect(findFailureOf).toBe(shared.findFailureOf)
+    expect(HelperError).toBe(shared.HelperError)
+    const { answer } = await import('../src/main/privacy/rulesWorker')
+    const line = (text: string, conf: number) => ({ box: [0, 0, 400, 20] as [number, number, number, number], quad: [], variants: [{ model: 'tiny' as const, text, conf, spans: [] }], ring: '#202020', spread: 0 })
+    const lines = [line('Meeting notes', 0.99), line('ghp_FvIY73MZ2APdRLmwQe8b0Xk1pT9sNz4cU6aY', 0.95), line('Totals for the week', 0.5)]
+    const { NO_NAMES } = await import('../src/shared/privacy/detect/names')
+    const a = answer({ id: 1, lines, qr: [], options: { kinds: ['key'], regions: ['US'], names: NO_NAMES, frame: { width: 1920, height: 1080 } }, careful: true })
+    if ('failed' in a) throw new Error('rules failed')
+    expect(a.careful).toEqual(shared.carefulLines({ lines }, a.hits))
+    expect(a.careful.length).toBeGreaterThan(0)
+  })
 })

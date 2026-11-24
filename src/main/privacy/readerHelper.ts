@@ -24,10 +24,9 @@ import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { FindFailure } from '../../shared/api/privacy'
-import { needsCareful, type Hit } from '../../shared/privacy/detect/detect'
 import { WINDOWS_READER_ALLOWED } from '../../shared/privacy/readerCatalog'
 import { isToolbarVisible } from '../recording/toolbarWindow'
+import { HelperError } from './helperUse'
 import {
   commandLine,
   MAX_LINE,
@@ -54,15 +53,9 @@ export const HELPER_LIMITS = {
   stopGraceMs: 2000
 } as const
 
-/** Why a command failed: the helper's own error kinds, and what main saw happen to the helper. */
-export type HelperFailure = Extract<HelperEvent, { error: string }>['error'] | 'crashed' | 'silent' | 'protocol' | 'missing'
-
-export class HelperError extends Error {
-  constructor(readonly kind: HelperFailure) {
-    super(`ssw-ocr: ${kind}`)
-    this.name = 'HelperError'
-  }
-}
+// The helper's error, the pause while Flown records and the careful pass's lines are shared with the
+// scan, findIpc and the rules' worker (helperUse.ts); OcrHelper's commands reject with HelperError.
+export { carefulLines, findFailureOf, HelperError, pauseWhileRecording, withCareful, type HelperFailure } from './helperUse'
 
 const isPackaged = (): boolean => {
   try {
@@ -467,76 +460,7 @@ export class OcrHelper {
   }
 }
 
-/** Polls whether Flown records (every 2 s) and pauses the helper while it does (§5.11): `onWaiting` gets true and false as it turns. Returns the stop. */
-export function pauseWhileRecording(helper: Pick<OcrHelper, 'pause' | 'resume'>, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs = 2000): () => void {
-  let paused = false
-  const check = (): void => {
-    let now = false
-    try {
-      now = recording()
-    } catch {
-      now = false
-    }
-    if (now === paused) return
-    paused = now
-    if (now) helper.pause()
-    else helper.resume()
-    onWaiting(now)
-  }
-  check()
-  const timer = setInterval(check, everyMs)
-  return () => {
-    clearInterval(timer)
-    if (paused) {
-      paused = false
-      helper.resume()
-      onWaiting(false)
-    }
-  }
-}
-
 /** Whether Flown records now: its recording toolbar is up (read, as updatesIpc's busyReason reads it). */
 export function flownRecording(): boolean {
   return isToolbarVisible()
-}
-
-/**
- * What ends a Find, from what the helper did (§2.6): `tooLarge`, the files refused (`reader`, the
- * state then `damaged`), no helper that runs here (`helper`), a recording ffmpeg cannot read
- * (`video`), the helper ending or going silent (`crashed`: the scan starts it once more, and only a
- * second death ends Find), anything else `failed`.
- */
-export function findFailureOf(err: unknown): FindFailure {
-  if (!(err instanceof HelperError)) return 'failed'
-  switch (err.kind) {
-    case 'tooLarge':
-      return 'tooLarge'
-    case 'model':
-      return 'reader'
-    case 'missing':
-    case 'protocol':
-      return 'helper'
-    case 'video':
-      return 'video'
-    case 'crashed':
-    case 'silent':
-      return 'crashed'
-    default:
-      return 'failed'
-  }
-}
-
-/**
- * The lines of a read the careful pass reads again (careful-long, §5.6, question 16): those P3's
- * `needsCareful` picks with the read's hits (a rule hit, a confidence under 0.9, or a run of 16
- * or more token characters). Empty: the read is released instead.
- */
-export function carefulLines(result: ReadResult, hits: readonly Hit[]): number[] {
-  return result.lines.flatMap((line, i) => (needsCareful(line, hits, i) ? [i] : []))
-}
-
-/** `result` with the careful pass's variants added to the lines they were asked for, in order. */
-export function withCareful(result: ReadResult, lines: readonly number[], careful: readonly ReadVariant[][]): ReadResult {
-  const extra = new Map(lines.map((l, k) => [l, careful[k] ?? []] as const))
-  return { ...result, lines: result.lines.map((line, i) => (extra.get(i)?.length ? { ...line, variants: [...line.variants, ...extra.get(i)!] } : line)) }
 }

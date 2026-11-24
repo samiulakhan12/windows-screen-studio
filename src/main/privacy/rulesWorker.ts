@@ -5,8 +5,9 @@
  * hits leave; nothing is logged or kept.
  */
 import { parentPort } from 'node:worker_threads'
-import { detectFrame, needsCareful, type DetectOptions, type Hit } from '../../shared/privacy/detect/detect'
+import { detectFrame, type DetectOptions, type Hit } from '../../shared/privacy/detect/detect'
 import type { ReadLine, ReadResult } from '../../shared/privacy/protocol'
+import { carefulLines } from './helperUse'
 
 /** One read to run the rules on; with `careful`, also the lines careful-long reads again. */
 export interface RulesAsk {
@@ -23,9 +24,7 @@ export type RulesAnswer = { id: number; hits: Hit[]; careful: number[] } | { id:
 export function answer(m: RulesAsk): RulesAnswer {
   try {
     const hits = detectFrame(m.lines, m.qr, m.options)
-    const careful: number[] = []
-    if (m.careful) m.lines.forEach((line, i) => needsCareful(line, hits, i) && careful.push(i))
-    return { id: m.id, hits, careful }
+    return { id: m.id, hits, careful: m.careful ? carefulLines(m, hits) : [] }
   } catch {
     return { id: m.id, failed: true }
   }

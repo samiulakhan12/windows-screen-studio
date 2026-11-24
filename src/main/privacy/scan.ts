@@ -31,6 +31,7 @@ import { READER_ID } from '../../shared/privacy/readerCatalog'
 import type { CursorTrack, Project } from '../../shared/types'
 import { ffmpegPath } from '../ffmpeg'
 import * as projects from '../projects'
+import { pauseWhileRecording, withCareful } from './helperUse'
 import { lookKeyOf, readLookCache, writeLookCache } from './lookCache'
 import { RulesHost } from './rulesHost'
 
@@ -409,29 +410,6 @@ function matcherOpen(s: Shared, look: LookData, video: string, signal: AbortSign
   }
 }
 
-/** Pauses the helper while Flown records (§5.11), checked every 2 s; returns the stop of the check. */
-function pauseWhileRecording(s: Shared, d: Deps, onWaiting: (waiting: boolean) => void): () => void {
-  let paused = false
-  const check = (): void => {
-    const now = d.recording()
-    if (now && !paused) {
-      paused = true
-      s.helper.pause()
-      onWaiting(true)
-    } else if (!now && paused) {
-      paused = false
-      s.helper.resume()
-      onWaiting(false)
-    }
-  }
-  const timer = setInterval(check, d.recordingPollMs)
-  timer.unref?.()
-  return () => {
-    clearInterval(timer)
-    if (paused) s.helper.resume()
-  }
-}
-
 /** Waits while Flown records (Find does not start then); false when stopped meanwhile. */
 async function notRecording(d: Deps, signal: AbortSignal, onWaiting: () => void): Promise<boolean> {
   if (!d.recording()) return true
@@ -493,7 +471,8 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
   /** Set when the run lets go of the helper: its exit then is no death. */
   let finished = false
   let lookPhase = true
-  const unpause = pauseWhileRecording(s, d, (waiting) => (waiting ? progress('waiting', 0, 0, null, true) : progress(lookPhase ? 'look' : 'read', 0, 0, null, true)))
+  // The helper asked each time: a helper started again after a death is the one paused. Nothing is said once the run let go of it.
+  const unpause = pauseWhileRecording({ pause: () => s.helper.pause(), resume: () => s.helper.resume() }, d.recording, (waiting) => !finished && (waiting ? progress('waiting', 0, 0, null, true) : progress(lookPhase ? 'look' : 'read', 0, 0, null, true)), d.recordingPollMs)
   try {
     // 1. The look pass.
     progress('look', 0, 100, null, true)
@@ -575,8 +554,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
           hits = first.hits
           if (first.careful.length) {
             const variants = await helper.careful(id, first.careful)
-            read = read.map((l) => ({ ...l, variants: [...l.variants] }))
-            first.careful.forEach((i, k) => read[i] && read[i].variants.push(...(variants[k] ?? [])))
+            read = withCareful({ lines: read }, first.careful, variants).lines
             const again = await rules!.detect(read, r.result.qr, options)
             if (again === 'timeout') throw new RulesTimeout()
             hits = again

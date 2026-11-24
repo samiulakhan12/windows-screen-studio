@@ -180,6 +180,20 @@ describe('auto-blur P4: the scan', () => {
     expect(seen.lastIndexOf('waiting')).toBeGreaterThan(seen.indexOf('look'))
   })
 
+  it('Find pauses its helper at once when Flown is recording as the helper starts, not at the next poll, through the pause readerHelper shares (helperUse), and resumes it when it ends', async () => {
+    const w = scene()
+    let calls = 0
+    const seen: FindProgress['phase'][] = []
+    // Not recording when Find starts; recording from the next look at it, while the helper starts. The poll is far off.
+    const r = await runFind(request({ requestId: 'r-pause' }), (p) => seen[seen.length - 1] !== p.phase && seen.push(p.phase), never, { ...w.deps, recording: () => calls++ > 0, recordingPollMs: 600_000 })
+    expect(r.ok).toBe(true)
+    expect(w.log.indexOf('pause')).toBeGreaterThanOrEqual(0)
+    expect(w.log.indexOf('pause')).toBeLessThan(w.log.indexOf('look'))
+    expect(seen[0]).toBe('waiting')
+    // The run let go of the helper resumed, and said nothing after its result.
+    expect(w.log.lastIndexOf('resume')).toBeGreaterThan(w.log.lastIndexOf('pause'))
+  })
+
   it('154. runFind and a failed read: a lost area from that frame until the next good read; failedReads counted (finding 23)', async () => {
     const s = scene({ read: (t) => (Math.abs(t - 2.3) < 0.01 ? 'fail' : undefined) })
     const r = await runFind(request(), noProgress, never, s.deps)
