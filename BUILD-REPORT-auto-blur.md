@@ -404,9 +404,10 @@ with the same message (*Windows.Graphics.Capture is not available*); run again a
 passed (8 of 8) and the helper ended with 3. The capture helper and the recording code are not part of
 this wave and were not changed by it, and the retry passed, so it does not count as a real failure. The
 longest files were `editing-polish` 229 s, `output-formats` 199 s, `export` 193 s, `offline-captions`
-156 s and `camera-director` 153 s. `packaging.e2e.cjs` skips its `verify-dist` part, as at integration,
-because no Windows installer is built here. No real failure was found, so no fix or regression test came
-from this run.
+156 s and `camera-director` 153 s. Three parts skip for want of what they need, as at integration:
+`packaging.e2e.cjs`'s `verify-dist` part (no Windows installer is built here) and `editing-polish`'s E1
+and E13 (a build of Flown from before wave 10 in `SSW_E2E_BASELINE_APP`, the prepared download beds in
+`SSW_E2E_SOUND_RELEASE`). No real failure was found, so no fix or regression test came from this run.
 
 
 ## Sizes
