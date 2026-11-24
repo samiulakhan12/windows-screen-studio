@@ -320,7 +320,8 @@ fn axis_quad(b: [f32; 4]) -> [[f32; 2]; 4] {
 }
 
 /// Joins lines of neighbouring tiles of one area that meet at their seam (§5.5): side by side on
-/// the same baseline (within 25% of their height), or one above the other over the same columns.
+/// the same baseline (within 25% of their height) with at most half a line height between them, or
+/// one above the other over the same columns.
 /// Lines of one tile are never joined.
 fn join_seams(found: Vec<Found>, places: &[Placement]) -> Vec<Found> {
     let mut items: Vec<(Found, Vec<usize>)> = found.into_iter().map(|f| {
@@ -374,7 +375,11 @@ fn seam_union(a: &(Found, Vec<usize>), b: &(Found, Vec<usize>), places: &[Placem
             let seam = (right[0] as f32 + (left[0] + left[2]) as f32) / 2.0;
             let band = (seam - SEAM_BAND / 2.0, seam + SEAM_BAND / 2.0);
             let near = |b: &[f32; 4]| b[2] >= band.0 && b[0] <= band.1;
-            let touch = ba[0] <= bb[2] + 4.0 && bb[0] <= ba[2] + 4.0;
+            // A line cut at the seam leaves a gap there: the detector's boxes stop short of the tile's
+            // edge, and a cut between words leaves the space (up to half a line height; 5-8 px at
+            // 200% display scale).
+            let gap = (0.5 * ha.min(hb)).max(4.0);
+            let touch = ba[0] <= bb[2] + gap && bb[0] <= ba[2] + gap;
             let baseline = (ba[3] - bb[3]).abs() <= 0.25 * ha.max(hb);
             if near(&ba) && near(&bb) && touch && baseline {
                 return Some([ba[0].min(bb[0]), ba[1].min(bb[1]), ba[2].max(bb[2]), ba[3].max(bb[3])]);
@@ -744,6 +749,25 @@ mod tests {
         }
         // A 1200×500 area takes the largest bucket.
         assert_eq!(plan_runs(&[[0, 0, 1200, 500]])[0].bucket, 2);
+    }
+
+    #[test]
+    fn pieces_of_a_line_cut_at_a_seam_are_joined_across_its_gap() {
+        // The two tiles of a 3840-wide area, side by side at x = 1920.
+        let places = vec![
+            Placement { area: [0, 0, 1920, 1088], at: (0, 0), tile: Some((0, 0, 0)) },
+            Placement { area: [1920, 0, 1920, 1088], at: (0, 0), tile: Some((0, 1, 0)) },
+        ];
+        let piece = |b: [f32; 4], place: usize| -> (Found, Vec<usize>) {
+            (Found { rect: RRect { cx: (b[0] + b[2]) / 2.0, cy: (b[1] + b[3]) / 2.0, w: b[2] - b[0], h: b[3] - b[1], angle: 0.0 }, quad: axis_quad(b), place }, vec![place])
+        };
+        // An IBAN cut between its digit groups at 200% (8 px apart, 28 px high), a key cut inside it (5 px).
+        let u = seam_union(&piece([1787.0, 507.0, 1920.0, 535.0], 0), &piece([1928.0, 507.0, 2264.0, 535.0], 1), &places);
+        assert_eq!(u, Some([1787.0, 507.0, 2264.0, 535.0]));
+        assert!(seam_union(&piece([883.0, 1188.0, 1918.0, 1227.0], 0), &piece([1923.0, 1190.0, 2401.0, 1225.0], 1), &places).is_some());
+        // More than half a line height apart is two lines; so is a piece off the baseline.
+        assert!(seam_union(&piece([1787.0, 507.0, 1910.0, 535.0], 0), &piece([1926.0, 507.0, 2264.0, 535.0], 1), &places).is_none());
+        assert!(seam_union(&piece([1787.0, 507.0, 1920.0, 535.0], 0), &piece([1926.0, 520.0, 2264.0, 548.0], 1), &places).is_none());
     }
 
     #[test]

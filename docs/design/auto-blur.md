@@ -1704,9 +1704,11 @@ whole-frame reads by R17: the reader must find the same items through them (§17
 - **Detector post-processing** (PP-OCRv6's own `inference.yml`): threshold 0.2, box threshold 0.4,
   unclip ratio 1.4, at most 3,000 candidates; minimum-area rectangles; a line tilted more than 2°
   is cut with a rotated crop.
-- **Joining across tile edges**: two boxes from neighbouring tiles that overlap inside the overlap
-  band, on the same baseline within 25% of their height, are joined, and the joined line is read
-  again. Boxes inside one tile are never joined.
+- **Joining across tile edges**: two boxes from neighbouring tiles that meet inside the band around
+  their seam, overlapping or at most half a line height apart (the detector's boxes stop short of a
+  tile's edge, and a cut between words leaves the space: 5-8 px at 200% display scale, where a 4 px
+  limit left an IBAN and a key in two pieces), on the same baseline within 25% of their height, are
+  joined, and the joined line is read again. Boxes inside one tile are never joined.
 - **Recogniser**: each line is scaled to height 48 and padded to the next width bucket of 320, 448,
   640, 896 or 1280 (concrete plans; tract runs symbolic widths 3.7-7 times slower). A line wider than
   1280 at height 48 is cut into 1280-wide chunks overlapping by 64, read, and joined at the overlap.
