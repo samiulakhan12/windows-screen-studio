@@ -1907,8 +1907,12 @@ inverted (dark mode, a highlight), so one template serves both.
    parts are tried at 0.8, 0.9, 1.1 and 1.25 about the region's centre and at every scale from 0.6 to
    1.67 in steps of 1.5% (with a browser's zoom steps, 1.1, 1.136, 1.2 and their inverses) about the
    region's top left and centre and the frame's top left and centre; each walker's best place says a
-   scale and an anchor, and the scale and anchor most walkers agree on (within a step, each matching
-   at 0.6 or more; a region of one walker needs a part at 0.85) is the region's zoom. Every walker of
+   scale and an anchor, and the scale and anchor most walkers agree on (within three steps, as each
+   best place is refined within the helper's search: a browser's ×0.88 was said as 0.833-0.924; each
+   matching at 0.6 or more) is the region's zoom when half or more of the region's walkers agree on it
+   (a page that changed gives scattered places, a few agreeing by chance: on the held-out pages a zoom
+   two keys agreed on placed a third key on the new page, where its cover stayed for pages, 75% of a
+   frame covered); a region of one walker needs a part at 0.85. Every walker of
    the region is then placed by it where a part matches at 0.6 or more. A browser zooms about the
    page's top left by steps the four scales about the centre missed (1.136, 1.2, 0.833 ...), and the
    page's repeated rows tied with each walker's own: A16's browser zoom was lost over the whole page

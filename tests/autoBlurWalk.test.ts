@@ -755,6 +755,31 @@ describe('auto-blur P4: following', () => {
       expect(Math.abs(b[0] - want[0]) <= 3 && Math.abs(b[1] - want[1]) <= 3 && Math.abs(b[2] - want[2]) <= 3, `row ${k}: ${b} against ${want}`).toBe(true)
     }
   })
+
+  it('A page that changed is no zoom when only a few of its texts agree on one by chance: most of the region\'s walkers must agree (found end to end: two of a page\'s eight keys matched other text at one zoom, and the region\'s zoom placed a third key on the new page, where its cover stayed for pages)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    const rows: Box[] = Array.from({ length: 6 }, (_v, k) => [300, 100 + 120 * k, 300, 24] as Box)
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page] } : {}))
+    // After the cut at 2 s every place scores 0.62 for any text; before it each text matches only where it is.
+    const m: Matcher = {
+      track: async () => undefined,
+      match: async (t, asks) =>
+        asks.map((a) => {
+          if (t < 2 - 1e-9) return { track: a.track, parts: a.parts.map(() => 0.95), best: a.candidates[0] ?? null, second: 0.2 }
+          // Two walkers' best places agree on one zoom of the region; the others' scatter over scales and anchors.
+          const c = a.candidates.length > 20 ? a.candidates[[30, 30, 89, 64, 129, 79][a.track]] : a.candidates[0]
+          return { track: a.track, parts: a.parts.map(() => 0.62), best: c ?? null, second: 0.6 }
+        }),
+      checkRead: async () => null
+    }
+    const starts = rows.map((b, k): Placed => ({ id: `h${k}`, key: `k${k}`, own: `secret-${k}`, t: 1, box: b, parts: partsOf(b, b[3]), line: b }))
+    const tracks = await walkSpan(starts, 1, look, readIndex(), m, NO_HINTS, HD)
+    // None of them is placed at a zoom on the new page: each is lost there.
+    for (const [k, tr] of tracks.entries()) {
+      expect(tr.lost, `row ${k}`).toBe(true)
+      expect(pathBox(tr, 30)(2.5)![2], `row ${k}`).toBeGreaterThan(1000)
+    }
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

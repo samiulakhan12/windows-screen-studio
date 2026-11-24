@@ -124,8 +124,12 @@ const ZOOM_GRID: readonly number[] = Object.freeze(
     .filter((z, i, all) => all.indexOf(z) === i)
     .sort((a, b) => a - b)
 )
-/** Two scales of the grid within a step of each other are one zoom. */
-const sameZoom = (a: number, b: number): boolean => Math.abs(Math.log(a / b)) <= Math.log(ZOOM_STEP) + 1e-9
+/**
+ * Two walkers' best scales within three steps (4.5%) of each other say one zoom: each walker's best
+ * place is refined within the helper's search, so its best scale strays by a step or two (a browser's
+ * ×0.88 was voted 0.833-0.924).
+ */
+const sameZoom = (a: number, b: number): boolean => Math.abs(Math.log(a / b)) <= 3 * Math.log(ZOOM_STEP) + 1e-9
 /** A typing band still this long ends a burst of typing (§5.8). */
 const BAND_STILL_S = 1.0
 /** Changes less than this apart are one burst (the plan's settle gap, §5.4). */
@@ -883,10 +887,15 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         const agree = mine.filter((o) => o.anchor === v.anchor && sameZoom(o.zoom, v.zoom))
         const n = agree.length
         const sum = agree.reduce((s2, o) => s2 + o.score, 0)
-        if (!best || n > best.n || (n === best.n && sum > best.sum)) best = { zoom: v.zoom, anchor: v.anchor, n, sum }
+        // The zoom the agreeing walkers say: their median scale.
+        const zs = agree.map((o) => o.zoom).sort((a2, b2) => a2 - b2)
+        if (!best || n > best.n || (n === best.n && sum > best.sum)) best = { zoom: zs[Math.floor(zs.length / 2)], anchor: v.anchor, n, sum }
       }
       if (!best) continue
-      if (best.n < 2 && !(group.length === 1 && (mine[0]?.score ?? 0) >= PRESENT_SCORE)) continue
+      // Most of the region's walkers agree (a page that changed gives scattered places, a few agreeing
+      // by chance: one zoom of two of a page's eight keys placed a third on the new page); one walker
+      // alone needs a part at 0.85.
+      if (group.length === 1 ? (mine[0]?.score ?? 0) < PRESENT_SCORE : best.n < 2 || 2 * best.n < group.length) continue
       // Every walker of the region tries that zoom and the grid's scales within a step of it.
       const near = [best.zoom, ...ZOOM_GRID.filter((z) => z !== best!.zoom && sameZoom(z, best!.zoom))]
       for (const x of group) {
