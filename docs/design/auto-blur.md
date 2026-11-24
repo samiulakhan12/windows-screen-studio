@@ -1924,7 +1924,9 @@ tooltip over text before its first read, and text typed into a field or a termin
      reads of the last Find (§5.7) when there are some; otherwise it runs Find with that text as the
      only target and every other kind off, using the look cache, with Find's estimate, progress and
      *Stop*. Each place is followed and added as a cover of kind `text` in a new group, in one undo
-     step.
+     step. They are suggestions, tiered by main's score (Auto, or Check for a lost area), as every
+     group is (§4.1): one Review row, *Text you chose* (§2.7's `text` sentences), kept or uncovered
+     there. The cover the user started from stays theirs.
   3. `remember` is `'no'`, `'project'` or `'settings'`. Only when it is not `'no'` and the text is
      name-like does the result carry `addedName: string`, which the renderer adds to
      `Project.privacy.names` (in the same undo step) or to Settings' names. This is the one place the

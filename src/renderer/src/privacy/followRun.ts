@@ -12,7 +12,7 @@ import { newCoverId, withFollowedPath } from '../../../shared/editor/coverEdit'
 import { boxAt, coverSlack, parsePath } from '../../../shared/privacy/coverPath'
 import { containsOver } from '../../../shared/privacy/covers'
 import { MAX_COVERS, mergeCovers, readPrivacyPrefs } from '../../../shared/privacy/coverData'
-import { COVER_DARK } from '../../../shared/privacy/kinds'
+import { COVER_DARK, tierOf } from '../../../shared/privacy/kinds'
 import type { Cover, NormRect, Project } from '../../../shared/types'
 import type { EditorServices } from '../editor/context'
 
@@ -108,8 +108,11 @@ export function onNamesChanged(listener: (where: 'project' | 'settings') => void
 const withName = (names: readonly string[] | undefined, name: string): string[] => (names?.includes(name) ? [...names] : [...(names ?? []), name])
 
 /**
- * The places found added as covers of kind `text` in one new group (§5.9 step 2), the user's (they
- * asked for them), each a fresh id; a place the cover already holds is not added again.
+ * The places found added as covers of kind `text` in one new group (§5.9 step 2), each a fresh id; a
+ * place the cover already holds is not added again. They are suggestions, tiered by main's score
+ * (Auto, or Check for a lost area), as every group is (§4.1): one Review row, *Text you chose*, kept
+ * or uncovered there as a whole (§2.7's `text` sentences). The cover they were found from stays the
+ * user's.
  */
 export function withEverywhereCovers(project: Project, origin: Cover | undefined, found: readonly FoundCover[], random: () => number = Math.random): { project: Project; added: number } {
   const slack = coverSlack(project.capture?.fps ?? 60)
@@ -122,7 +125,7 @@ export function withEverywhereCovers(project: Project, origin: Cover | undefined
     let id = newCoverId(random)
     while (taken.has(id)) id = newCoverId(random)
     taken.add(id)
-    const c: Cover = { id, start: Math.max(0, f.start), end: Math.min(project.duration, f.end), path: f.path, color: /^#[0-9a-f]{6}$/i.test(f.color) ? f.color.toLowerCase() : COVER_DARK, kind: 'text', group }
+    const c: Cover = { id, start: Math.max(0, f.start), end: Math.min(project.duration, f.end), path: f.path, color: /^#[0-9a-f]{6}$/i.test(f.color) ? f.color.toLowerCase() : COVER_DARK, found: tierOf(f.score) ?? 'check', kind: 'text', group }
     if (f.lost) c.lost = true
     if (f.thin) c.thin = true
     made.push(c)

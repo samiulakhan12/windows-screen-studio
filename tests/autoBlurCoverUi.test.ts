@@ -648,6 +648,31 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     off()
   })
 
+  it('Cover this text everywhere adds its places as suggestions of one new group (§4.1, §5.9): one waiting Review row, Text you chose; the cover it started from stays the user\'s', async () => {
+    const { privacyReviewItems, privacyKinds } = await import('../src/shared/review/privacyReview')
+    const { privateItems } = await import('../src/shared/privacy/coverData')
+    const found = [
+      { kind: 'text', score: 0.9, group: 'x', start: 12, end: 14, path: writePath([key(12, 0.5, 0.2, 0.25, 0.04)]), color: '#203040' },
+      { kind: 'text', score: 0.6, group: 'x', start: 20, end: 30, path: writePath([key(20, 0.1, 0.5, 0.6, 0.4)]), color: '#1c1c22', lost: true }
+    ]
+    api.under = async () => ({ ok: true, nameLike: false })
+    api.everywhere = async (req) => ({ ok: true, projectId: 'p', requestId: req.requestId, found, failedReads: 0, thinSpans: '', stopped: false, readTo: null, reader: 'r' })
+    setUp(project({ covers: [email()] }))
+    await follow.readUnderCover(services(), 'c')
+    expect(await follow.runEverywhere(services(), 'c', 'no', new AbortController().signal)).toEqual({ added: 2, name: null })
+    const [mine, ...added] = store.state.covers!
+    expect(mine.found).toBeUndefined()
+    expect(added.map((c) => [c.kind, c.found, !!c.lost])).toEqual([
+      ['text', 'auto', false],
+      ['text', 'check', true]
+    ])
+    // One Review row of the kind text, waiting; one private item with the user's own cover.
+    const rows = privacyReviewItems(store.state)
+    expect(rows.map((r) => r.title)).toEqual(['Text you chose · 0:12.0–0:30.0'])
+    expect(privacyKinds(store.state)).toEqual(['text'])
+    expect(privateItems(store.state)).toMatchObject({ items: 2, waiting: 1, check: 1 })
+  })
+
   it('212. EverywhereDialog\'s states: reading, needsReader with Download, noText, the remember choice only when nameLike, progress with Stop, done and failed', async () => {
     setUp(project({ covers: [email()] }))
     const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
