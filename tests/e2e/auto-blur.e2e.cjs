@@ -577,7 +577,7 @@ async function privateRowsReadable(win) {
 }
 
 /** A single export of the open project to dir/name with `settings`; returns the file. */
-async function exportTo(app, win, dir, name, settings, { keepBundle = false } = {}) {
+async function exportTo(app, win, dir, name, settings, { keepBundle = false, before = null } = {}) {
   fs.mkdirSync(dir, { recursive: true })
   const out = path.join(dir, name)
   if (!keepBundle) await win.evaluate(() => localStorage.setItem('export-bundle', JSON.stringify({})))
@@ -589,6 +589,8 @@ async function exportTo(app, win, dir, name, settings, { keepBundle = false } = 
   await win.click('header button.primary:has-text("Export")')
   await win.waitForSelector('.modal[aria-label="Export"]')
   await h.sleep(500)
+  // Choices the dialog keeps for this project only (the subtitle languages), made in the dialog.
+  if (before) await before(win)
   await clickExport(win)
   const t0 = Date.now()
   for (;;) {
@@ -1316,7 +1318,12 @@ async function main() {
     }
     const segments = [seg('s0', 0.5, 'My card is 4111 1111 1111 1111.'), seg('s1', 3.5, 'The code is 629153.')]
     const transcript = { language: 'en', provider: 'local', model: 'test', createdAt: '2026-11-20T12:00:00.000Z', segments }
-    const src = (t) => require('node:crypto').createHash('sha256').update(t).digest('hex').slice(0, 16)
+    // A Spanish translation Flown made before Find, up to date: each caption's src is captionTracks.ts's textHash (FNV-1a) of its spoken text.
+    const src = (t) => {
+      let x = 0x811c9dc5
+      for (let i = 0; i < t.length; i++) x = Math.imul(x ^ t.charCodeAt(i), 0x01000193)
+      return (x >>> 0).toString(16).padStart(8, '0')
+    }
     const captionTracks = [{ language: 'es', by: 'anthropic', model: 'm', createdAt: '2026-11-20T12:00:00.000Z', segments: [{ id: 's0', text: 'Mi tarjeta es 4111 1111 1111 1111.', src: src(segments[0].text) }, { id: 's1', text: 'El código es 629153.', src: src(segments[1].text) }] }]
     const chapters = [{ id: 'ch1', t: 0, title: 'Intro' }, { id: 'ch2', t: 3.5, title: 'Code 629153' }]
     af.seed(home, { id: 'rec-a7', name: 'Spoken', media, seconds: rec.seconds, width: rec.width, height: rec.height, fps: A1_FPS, extra: { hasAudio: true, transcript, captionTracks, chapters } })
@@ -1338,15 +1345,14 @@ async function main() {
     const priv = (found.project.bleeps ?? []).filter((b) => b.word.startsWith(':'))
     console.log(`  ${priv.length} private bleeps: ${priv.map((b) => `${b.word.split(':')[1]} ${b.start}-${b.end}`).join(', ')}`)
     h.assert(priv.some((b) => b.word.startsWith(':card')) && priv.some((b) => b.word.startsWith(':code')), 'the card number and the code are bleeped')
-    // A new Spanish translation through the AI service, and a title asked for: both sent masked.
+    // A new Spanish translation through the AI service, sent masked: the Spanish row's Translate again,
+    // which the captions shown as •••• since Find offer (§2.13, §7.4). Add a language does not offer
+    // Spanish, which has its track.
     await win.evaluate(() => window.dispatchEvent(new Event('ssw:ai-providers-changed')))
     await win.click('.insp-tabs button:has-text("Captions")')
-    const languages = '[data-testid="caption-languages"]'
-    await win.waitForSelector(`${languages} [data-testid="track-translate"]`, { timeout: 15000 }).catch(async () => {
-      await win.click(`${languages} [data-testid="track-add"]`)
-    })
-    await win.selectOption(`${languages} select`, 'es').catch(() => undefined)
-    await win.click(`${languages} [data-testid="track-translate"]`)
+    const again = '[data-testid="caption-languages"] [data-track="es"] [data-testid="track-retranslate"]'
+    await win.waitForSelector(`${again}:not([disabled])`, { timeout: 15000 })
+    await win.click(again)
     // Flown has no price for the fake model: it asks once before the first run.
     await win.waitForSelector('[data-testid="cost-confirm-run"]', { timeout: 8000 }).then(() => win.click('[data-testid="cost-confirm-run"]')).catch(() => undefined)
     await af.until(async () => (await app.evaluate(() => (globalThis.__aiRequests || []).length)) > 0, 'the translation request sent', 20000)
@@ -1358,13 +1364,23 @@ async function main() {
     // The export: SRT in both languages, chapters, and the sound.
     const dir = path.join(home, 'out')
     fs.mkdirSync(dir, { recursive: true })
-    await win.evaluate(() => localStorage.setItem('export-bundle', JSON.stringify({ srt: true, vtt: true, chapters: true, thumbnail: false, description: false, perChapter: false, languages: ['en', 'es'] })))
-    const out = await exportTo(app, win, dir, 'Spoken.mp4', { format: 'mp4', resolution: 720, fps: 30, quality: 'high', encoder: 'auto' }, { keepBundle: true })
+    await win.evaluate(() => localStorage.setItem('export-bundle', JSON.stringify({ srt: true, vtt: true, chapters: true, thumbnail: false, description: false, perChapter: false })))
+    // The subtitle languages are the project's own, never remembered (Captions Studio §2.13): Spanish is ticked in the dialog.
+    const tickSpanish = async (w) => {
+      const box = w.locator('.modal [data-testid="export-subtitles"] input[data-language="es"]')
+      await box.waitFor({ timeout: 15000 })
+      await box.check()
+    }
+    const out = await exportTo(app, win, dir, 'Spoken.mp4', { format: 'mp4', resolution: 720, fps: 30, quality: 'high', encoder: 'auto' }, { keepBundle: true, before: tickSpanish })
     const texts = fs.readdirSync(dir).filter((f) => /\.(srt|vtt|txt)$/.test(f))
     console.log(`  sidecars: ${texts.join(', ')}`)
     h.assert(texts.some((f) => f.endsWith('.srt')), 'an SRT was written')
+    h.assert(texts.includes('Spoken.es.srt'), 'the Spanish SRT was written')
+    const spanish = fs.readFileSync(path.join(dir, 'Spoken.es.srt'), 'utf8')
+    h.assert((spanish.match(/^\[es\] /gm) ?? []).length === 2, `the Spanish SRT is the new translation (${JSON.stringify(spanish.slice(0, 300))})`)
     for (const f of texts) {
-      const lines = fs.readFileSync(path.join(dir, f), 'utf8').split(/\r?\n/).filter((l) => l && !/-->/.test(l) && !/^\d+$/.test(l) && !/^WEBVTT/.test(l) && !/^\d+:\d\d/.test(l))
+      // A subtitle file starts with a byte order mark; cue numbers and times are not the secrets' digits.
+      const lines = fs.readFileSync(path.join(dir, f), 'utf8').replace(/^\ufeff/, '').split(/\r?\n/).filter((l) => l && !/-->/.test(l) && !/^\d+$/.test(l) && !/^WEBVTT/.test(l) && !/^\d+:\d\d/.test(l))
       for (const l of lines) h.assert(!/\d/.test(l), `${f} holds no digit of the secrets ("${l}")`)
     }
     const chaptersMeta = execFileSync('ffprobe', ['-v', 'error', '-show_chapters', '-of', 'json', out]).toString()

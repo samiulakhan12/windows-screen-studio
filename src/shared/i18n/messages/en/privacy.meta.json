@@ -773,6 +773,9 @@
   "translated.masked": {
     "description": "Auto-blur private info, Captions, translations and transcription."
   },
+  "translated.again": {
+    "description": "Auto-blur private info, Captions, translations and transcription. Tooltip of a translation's Translate again button while some of its captions show as •••• over secrets said aloud."
+  },
   "transcribe.hears": {
     "description": "Auto-blur private info, Captions, translations and transcription."
   },

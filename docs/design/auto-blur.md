@@ -936,6 +936,11 @@ Covers are in source seconds of the shared `screen.mp4`, so they are copied as t
   yet translated again shows `privacy.translated.masked`: "Captions over secrets said aloud show as
   •••• in this language until you translate it again." The existing line "Bleeped words are not
   masked in translations" (`captionTracks.ts:205`) stays as it is; it is about ordinary bleeps.
+  That row's *Translate again* is how it is translated again: it is enabled while any of its captions
+  shows as ••••, though their spoken text did not change, and sends them (masked, §7.6) with any that
+  changed or are missing (`captionsToTranslate`, §7.4). Its tooltip then is
+  `privacy.translated.again`: "Translates the captions that show as •••• again, from the masked text,
+  and any that changed or are missing". *Add a language* does not offer a language that has a track.
 - **Transcribe with a service** (the transcription choices): when *Find private info* has run with
   *listen*, or the project has private bleeps, `privacy.transcribe.hears`: "The service hears
   everything said in the video, secrets too. Bleeps apply only to what Flown makes from it." The
@@ -2473,7 +2478,9 @@ project has no private bleeps it is never called.
   unless its `maskedFor` equals the sorted ids of the private bleeps over that caption, joined by
   `,`. `maskedFor` is written by the translate request's result handling when the request was masked
   (§7.6), so a caption translated again after Find shows its translation, which was made from the
-  masked text. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
+  masked text. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
+  sends it with those out of date or missing, so the track's *Translate again* (§2.13) makes the
+  translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
   the sidecars (`exportBundleRun.ts:65-73`) and every export.
 - **Tidy and Clean up** (finding 13): what they change under a private bleep is still masked by time,
   and the request they send is masked (§7.6), so the service never saw the words.

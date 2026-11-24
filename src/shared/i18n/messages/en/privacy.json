@@ -257,6 +257,7 @@
   "guide.notChecked": "Find private info has not checked this video.",
   "guide.unfinished": "Find private info did not finish on this video. Find again before you send the screenshots.",
   "translated.masked": "Captions over secrets said aloud show as •••• in this language until you translate it again.",
+  "translated.again": "Translates the captions that show as •••• again, from the masked text, and any that changed or are missing",
   "transcribe.hears": "The service hears everything said in the video, secrets too. Bleeps apply only to what Flown makes from it.",
   "publish.masked": "Secrets said aloud show as •••• when this text is copied, saved or shared."
 }

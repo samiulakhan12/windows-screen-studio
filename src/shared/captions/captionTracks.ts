@@ -9,6 +9,7 @@ import { spokenLanguage, UNKNOWN_SPOKEN, UNKNOWN_SPOKEN_NAME } from '../render/e
 import type { CaptionSegment, CaptionSettings, CaptionTrack, Project } from '../types'
 import { CAPTION_MAX_CHARS, cleanCaptionText } from './captionData'
 import { maskedSegments } from './cleanup'
+import { isPrivateBleep } from '../privacy/coverData'
 import { maskedForOf, trackText } from '../privacy/spoken'
 import { captionsOf } from './settings'
 import { applyTextResult } from './edit'
@@ -120,9 +121,26 @@ export function languagesToAdd(project: Project): { code: string; name: string }
   return TRACK_LANGUAGES.filter((l) => l.code !== spoken && !have.has(l.code))
 }
 
-/** The spoken captions a translation into `language` sends: those out of date or missing (every caption for a new track). */
+/**
+ * Ids of the captions whose translation into `language` shows as •••• until it is translated
+ * again (auto-blur §7.4, §2.13): under private bleeps, and not translated from the masked text
+ * (its maskedFor is not the bleeps over the caption now). None without private bleeps.
+ */
+export function maskedToTranslate(project: Pick<Project, 'transcript' | 'bleeps' | 'captionTracks'>, language: string): string[] {
+  if (!project.bleeps?.some(isPrivateBleep)) return []
+  const track = trackOf(project, language)
+  if (!track) return []
+  const spoken = new Set((project.transcript?.segments ?? []).filter((s) => s.text.trim()).map((s) => s.id))
+  return track.segments.filter((s) => spoken.has(s.id) && trackText(project, s) !== s.text).map((s) => s.id)
+}
+
+/**
+ * The spoken captions a translation into `language` sends: those out of date or missing (every
+ * caption for a new track), and those shown as •••• until translated again (auto-blur §7.4), so
+ * Translate again after Find makes the translation that replaces them.
+ */
 export function captionsToTranslate(project: Project, language: string): CaptionSegment[] {
-  const ids = new Set(outOfDate(project, language))
+  const ids = new Set([...outOfDate(project, language), ...maskedToTranslate(project, language)])
   return (project.transcript?.segments ?? []).filter((s) => ids.has(s.id))
 }
 
