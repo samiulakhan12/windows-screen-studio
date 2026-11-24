@@ -1973,8 +1973,12 @@ tooltip over text before its first read, and text typed into a field or a termin
     therefore never stops a different email shown later in the same area. A removed place never
     suppresses another kind. Each suppression is counted (`FindRecord.suppressed`) and reported
     (`privacy.run.suppressed`).
-- **Groups**: one Review row (§2.7). Covers of one group that overlap in time (or are within 0.5 s)
-  and whose boxes overlap are merged into one cover whose path is the union.
+- **Groups**: one Review row (§2.7). Covers of one group whose boxes overlap throughout the time they
+  share (the same place found twice), or that are within 0.5 s of each other with boxes overlapping
+  where they meet, are merged into one cover whose path is the union. Two places of one text whose
+  boxes only cross (a list showing one email on many rows, one of its walks lost over the list for a
+  moment) stay two covers: one cover is one box at a time, so their union would cover every row
+  between them for their whole time (A16's lists were covered over their whole column).
 - **Indexes** (finding 7, and the quadratic loops a 2,000-cover project would hit): containment
   against existing covers and against rejected places looks only at candidates from a time index
   (one-second buckets) and a coarse spatial grid (8 × 8 cells of the frame), built once per call.

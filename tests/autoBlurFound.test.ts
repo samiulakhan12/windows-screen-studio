@@ -226,4 +226,16 @@ describe('auto-blur P4: notices and found covers', () => {
     expect(next.covers!.map((c) => c.group).sort()).toEqual(['later', 'out', 'phone'])
     expect(next.privacy?.rejected).toEqual([removed])
   })
+
+  it('foundCovers keeps two places of one text apart when their boxes only cross: a list showing one email on two rows, one of them lost over the list for a moment, stays two covers, never one box over every row between them (found end to end: the lists of A16 were covered over their whole column)', () => {
+    const upper = [key(0, 0.01, 0.1, 0.15, 0.03)]
+    // The lower row's walk was lost over the whole list from 1 s to 1.2 s.
+    const lower = [key(0, 0.01, 0.6, 0.15, 0.03), key(1, 0, 0, 0.3, 1), key(1.2, 0.01, 0.6, 0.15, 0.03)]
+    const covers = foundCovers(ok([fc('g1', 0, 2, upper), fc('g1', 0, 2, lower)]), HD, rng(7))
+    expect(covers).toHaveLength(2)
+    expect(covers.some((c) => JSON.stringify(boxAt(c, 0.5)) === JSON.stringify({ x: 0.01, y: 0.1, w: 0.15, h: 0.03 }))).toBe(true)
+    expect(covers.some((c) => JSON.stringify(boxAt(c, 0.5)) === JSON.stringify({ x: 0.01, y: 0.6, w: 0.15, h: 0.03 }))).toBe(true)
+    // Every input box is still drawn.
+    expect(covers.some((c) => JSON.stringify(boxAt(c, 1.1)) === JSON.stringify({ x: 0, y: 0, w: 0.3, h: 1 }))).toBe(true)
+  })
 })

@@ -62,7 +62,12 @@ const GROUP_GAP_S = 0.5
 const keysOf = (c: Pick<Cover, 'path'>): readonly CoverKey[] => pathKeys(c)
 const overlapsN = (a: NormRect, b: NormRect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
-/** Whether two covers of one group touch: overlapping in time (or within 0.5 s) with boxes that overlap there. */
+/**
+ * Whether two covers of one group touch: overlapping in time with boxes that overlap throughout it (the
+ * same place found twice), or within 0.5 s with boxes that overlap where they meet. Two places of one
+ * text that only cross (a list showing it on many rows, one lost for a moment) stay apart: their union
+ * would be one box over every row between them for their whole time.
+ */
 function touching(a: Cover, b: Cover): boolean {
   const from = Math.max(a.start, b.start)
   const to = Math.min(a.end, b.end)
@@ -70,12 +75,15 @@ function touching(a: Cover, b: Cover): boolean {
     const times = new Set<number>([from])
     for (const k of keysOf(a)) if (k.t > from && k.t < to) times.add(k.t)
     for (const k of keysOf(b)) if (k.t > from && k.t < to) times.add(k.t)
+    let met = false
     for (const t of times) {
       const x = boxAt(a, t)
       const y = boxAt(b, t)
-      if (x && y && overlapsN(x, y)) return true
+      if (!x || !y) continue
+      if (!overlapsN(x, y)) return false
+      met = true
     }
-    return false
+    return met
   }
   if (from - to > GROUP_GAP_S) return false
   const [first, second] = a.end <= b.start ? [a, b] : [b, a]
