@@ -39,7 +39,8 @@
 }
 
 .privacy-kind .hint {
-  margin: 0 0 0 var(--space-5, 20px);
+  margin: 0;
+  margin-inline-start: var(--space-5);
 }
 
 .privacy-field {
