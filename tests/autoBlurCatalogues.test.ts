@@ -82,10 +82,22 @@ describe('auto-blur contracts: catalogues', () => {
     for (const kind of PRIVATE_KINDS) expect(t('privacy.review.keepKind' as never, { kind, count: 2, n: '2' } as never)).not.toContain('{')
     // English at 37f9355: each namespace's messages, without the new keys, are those of that commit.
     const old = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/autoblur-english-37f9355.json'), 'utf8')) as { digests: Record<string, { count: number; sha256: string }> }
+    // Question 17, answered (a) by the owner on 23 November 2026: these three messages, and only they,
+    // read as §0 words them; with their old texts put back, the namespace is 37f9355's.
+    const Q17: Record<string, Record<string, [now: string, then: string]>> = {
+      text: {
+        'shape.blur.title': ['Blur (always fully applied; blurred text can sometimes be read back)', 'Blur private content (always fully applied)'],
+        'shape.pixelate.title': ['Pixelate (always fully applied; pixelated text can sometimes be read back)', 'Pixelate private content (always fully applied)'],
+        'calloutSection.privacyNote': ['Blur and pixelate are fully on for their whole time. Text under them can sometimes be read back; a cover hides it completely.', 'Blur and pixelate are fully on for their whole time, so nothing they hide shows.']
+      }
+    }
     for (const [ns, d] of Object.entries(old.digests)) {
       const added = new Set(NEW_KEYS[ns] ?? [])
+      const changed = Q17[ns] ?? {}
+      for (const [k, [now]] of Object.entries(changed)) expect(catalogue(ns)[k], `${ns}.${k}`).toBe(now)
       const entries = Object.entries(catalogue(ns))
         .filter(([k]) => !added.has(k))
+        .map(([k, v]): [string, string] => [k, changed[k] ? changed[k][1] : v])
         .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
       expect(entries.length, ns).toBe(d.count)
       expect(crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex'), ns).toBe(d.sha256)

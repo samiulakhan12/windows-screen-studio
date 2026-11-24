@@ -845,7 +845,7 @@
     {
       "file": "src/shared/editor/shapes.ts",
       "kind": "table",
-      "pattern": "^(?:Point at something|A straight line, e\\.g\\. to underline|An outlined or filled box|Circle something|A translucent highlighter box|Blur private content \\(always fully applied\\)|Pixelate private content \\(always fully applied\\))$",
+      "pattern": "^(?:Point at something|A straight line, e\\.g\\. to underline|An outlined or filled box|Circle something|A translucent highlighter box|Blur \\(always fully applied; blurred text can sometimes be read back\\)|Pixelate \\(always fully applied; pixelated text can sometimes be read back\\))$",
       "reason": "SHAPE_KINDS' tooltips stay English data (main imports shapes.ts): only src/shared/editor/itemNames.ts's shapeKinds reads them, as text.shape.*.title."
     },
     {

@@ -25,8 +25,8 @@ export const SHAPE_KINDS: { kind: ShapeKind; label: string; title: string }[] = 
   { kind: 'rect', label: 'Box', title: 'An outlined or filled box' },
   { kind: 'ellipse', label: 'Ellipse', title: 'Circle something' },
   { kind: 'highlight', label: 'Marker', title: 'A translucent highlighter box' },
-  { kind: 'blur', label: 'Blur', title: 'Blur private content (always fully applied)' },
-  { kind: 'pixelate', label: 'Pixelate', title: 'Pixelate private content (always fully applied)' }
+  { kind: 'blur', label: 'Blur', title: 'Blur (always fully applied; blurred text can sometimes be read back)' },
+  { kind: 'pixelate', label: 'Pixelate', title: 'Pixelate (always fully applied; pixelated text can sometimes be read back)' }
 ]
 
 /** Blur and pixelate hide content: they never fade and are drawn under the cursor. */

@@ -538,9 +538,10 @@ describe('auto-blur P1: the Cover section', () => {
     // Not under any other shape.
     setUp(project({ shapes: [{ ...blur('r', 1, 5), kind: 'rect' }] }))
     expect(render({ type: WeakBlurNote, props: { services: services(), shapeId: 'r' } })).toEqual([])
-    // The texts that say blur hides everything are unchanged (question 17 is the owner's).
-    expect(t('text.calloutSection.privacyNote')).toBe('Blur and pixelate are fully on for their whole time, so nothing they hide shows.')
-    expect(t('text.shape.blur.title')).toBe('Blur private content (always fully applied)')
+    // The texts that said blur hides everything, as question 17's answer (a) words them (§0).
+    expect(t('text.calloutSection.privacyNote')).toBe('Blur and pixelate are fully on for their whole time. Text under them can sometimes be read back; a cover hides it completely.')
+    expect(t('text.shape.blur.title')).toBe('Blur (always fully applied; blurred text can sometimes be read back)')
+    expect(t('text.shape.pixelate.title')).toBe('Pixelate (always fully applied; pixelated text can sometimes be read back)')
   })
 })
 
