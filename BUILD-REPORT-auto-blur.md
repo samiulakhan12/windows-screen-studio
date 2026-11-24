@@ -74,6 +74,41 @@ Each fix is its own commit with a unit test that fails without it (checked by pu
    app, as the speech models' hook is (4d385a4).
 
 
+### After integration: the rounds that finished it
+
+Integration left 17 of `auto-blur.e2e.cjs`'s cases failing (What is left below). Rounds of fixes followed
+on this branch, each cause traced in the helper's protocol, the walks' logs or frame dumps, each fix with
+a unit or Rust test seen to fail without it, and each changed rule written into the design in its commit:
+
+1. **The blackout** (ae38d39 to 3a6e3e2): six causes, among them a backward follow session over one
+   instant that decoded nothing, weak look-pass moves at page cuts, no move for lists 10-11 tiles wide,
+   no real evidence of absence after a page change, and covers of one text merged across rows.
+2. **Late covers on scroll-ins, and A16's fixture** (29747f2 to 7450c6a): a text scrolling in at the
+   frame's edge followed by its own speed, the speed guide kept over still frames, the burst a recording
+   ends in read at its last frame; the tracking set's passwords planted with their label line (§6.7,
+   decision 2) and its cache keyed by its generator; the end-to-end Finds given the phone regions the
+   truth was scored with; A18's export checked pixel by pixel against the covers drawn there.
+3. **The typed key, and silent walk failures** (7ae6374 to fc7c095): an in-place read for a burst on one
+   line, the forward typing hold without a typing hint, a failed walk logged by kind and said in Find's
+   result (`privacy.run.notFollowed`), and readerHelper's and the scan's duplicated helpers in
+   `helperUse.ts`.
+4. **The UI items** (`feat/w13-fx`, merged at 53272ca): A7's translation made again after Find, A21's
+   magnified view held on the selected row, the publishing pack masking the project's name, the copies
+   offer and export note writing the project first, Everywhere's estimate and its places as
+   suggestions, the Covers row and Cover section placed as §2.2-2.3 say, Find's result line in the
+   Private info section.
+5. **Page changes, zoom, sticky headers, toasts and display scale** (ea16410 to a8dbddd): continuous
+   region moves, region edges counted as frame edges, one zoom per region over a fine grid agreed by
+   half its walkers, the first frame read, six §6.10 rules for reading at 150% and 200%, the tile-seam
+   join, page-change holding rules; the evaluation pages held 6 s, the toasts rendered as toasts and the
+   flick-scroll case's planted rows each at rest long enough to be read, every planted item kept.
+6. **Find's speed** (a5447ce to b99040c): follow sessions decode only the frames asked, once each, with
+   gradients only when asked; a careful worker beside the reads. A1's Find went from 345 s at
+   integration (50-56 s before this round) to 27-28 s, within §5.11's band (§5.11 records the profile).
+7. **The design reconciled with the build** (d2ae212 to the commit of this report): see *What is left*
+   item 8; and Find's lines in one place at a time, the copies offer with the section's result line,
+   and A2d's WebCodecs check proven by each output's fill.
+
 ## The owner's answers as applied (§0)
 
 Decisions 1-12 were accepted on 17 November 2026 and are built as decided. Questions 13-19
@@ -191,7 +226,7 @@ alone on the same build, so 35 pass and 17 fail:
 | A2: MP4, WebM, MOV CineForm, GIF, transparent background, 120 fps, batch, per-chapter parts with their thumbnails, thumbnail PNG and the export dialog's preview, the guide's shots and PDF and HTML pictures, the timeline's This export | **pass**: every output identical over the two recordings (byte-identical files where deterministic) |
 | A2 control | **passes**: without covers every one of those outputs differs, so the comparison sees what is under the covers |
 | A2a joins, A2b 9:16 follow copy, A2c title card's blurred background, A2d raw frames (MP4, WebM), A2f motion blur, magnifier and blur shape, A2g crop, crop with a grade and a LUT | **pass**, identical |
-| A2d WebCodecs | **passes** within its own repeatability: the same recording exported twice differs on up to 0.22% of a frame's pixels by more than 2 levels, so the whole frame is held to 0.5% and the secrets' places to 2% (at most 1.38% measured; the planted noise would make nearly all differ). §17.3's 0.1% cannot hold for this encoder |
+| A2d WebCodecs | **passes** within its own repeatability: the whole frame is held to 0.5% and the secrets' places to 2% (at most 1.38% measured; the planted noise would make nearly all differ). §17.3's 0.1% cannot hold for this encoder. Measured again after the rounds, one recording exported twice differs by 0.16-0.31% of a frame and up to 1.33% where the secrets are, and those pooled shares let a cover 3 px short of its secret pass; each output is now also checked to show a solid fill where each secret is (69f6d65, §17.3) |
 | A3 Peek and Listen | **passes**: exports with Peek on identical over the two recordings; the tone gone under the private bleep with Listen on |
 | A4 The original recordings | **passes**: the chip disabled with its reason; a stored choice exports with the notice and no media folder; main refuses the forged request |
 | A5 Home thumbnail | **passes**: a Dark box at the cover's place, drawn through the crop |
@@ -227,7 +262,7 @@ regression test came from this run.
 
 | What | Size | Against |
 |---|---|---|
-| `ssw-ocr.exe` (MinGW, mixed profile, `build-native --require` here) | 16,323,072 B installed, 4,084,828 B at brotli 11 | `OCR_BUDGET` 17.2e6 / 4.3e6 (P2 set it to the measured size; the design's 3.9e6/16e6 was exceeded), under decision 1's 5 MB line; its imports are exactly `OCR_IMPORTS` |
+| `ssw-ocr.exe` (MinGW, mixed profile, `build-native --require` here) | 16,323,072 B installed, 4,084,828 B at brotli 11 at integration; 16,323,584 B and 4,086,548 B after round 6 | `OCR_BUDGET` 17.2e6 / 4.3e6 (P2 set it to the measured size; §16.2 now says so), under decision 1's 5 MB line; its imports are exactly `OCR_IMPORTS` |
 | The other helpers, rebuilt | `ssw-capture.exe` 453,120 B; `ssw-speech.exe` 3,611,136 B; `ssw-speech-compat.exe` 3,478,528 B; `ssw-llm.exe` 7,320,576 B | each within its own budget (build-native checks them) |
 | Host `ssw-ocr` (Linux, the e2e runs only, not shipped) | 17,361,384 B | |
 | `out/main` | 6,494,296 B (+538,239 against the build of 37f9355) | the scan, the rules worker, the vendored libphonenumber-js and double-metaphone (432,283 B of source) |
@@ -239,52 +274,80 @@ regression test came from this run.
 
 ## What is left
 
-Found by this integration and not fixed here (each needs design or measuring work beyond integration):
+Integration's list, item by item, as it stands after the rounds above (checked against the code and
+the rounds' reports, and against the end-to-end runs listed under *End to end after the rounds*):
 
-1. **Find blacks out recordings that change page or zoom.** When a walked text is lost over a region that
-   changed as a whole (a page change, a cut, a browser zoom, a toast stack), its lost area is that whole
-   region, and it ends only with evidence of absence: a read lacking the text **and** a template search
-   that fails everywhere in the area. Over a whole page of text the template search always finds a part
-   above the absence score, so the lost area lasts to the end of the recording. Measured: the evaluation
-   frames at 150% shown 0.5 s each (a cut every 0.5 s) were 86% covered on average; A16's `toasts` 100%;
-   the list fixtures 28-30% (half their rows are secrets, so part of that is right). Scrolls are handled
-   (fixes 2 and 3 above); page changes and zooms are not. A fix belongs in §5.8's forward evidence rule
-   (for example: a read lacking the text is evidence by itself when the lost area is a changed region far
-   larger than the text, or the template search only near where the text was), with tests, before release.
-2. **Covers start a frame or two late on some scroll-ins.** A1 (60 s, eight frames with 1 s scrolls)
-   covered 20,187 of 20,495 item-frames (98.5%); the misses are all on scroll frames, mostly the first
-   frames of a scroll bringing text in from the bottom, and one frame mid-scroll where the look pass
-   seems to lose the move; A18's short recording missed 9 item-frames on one scroll frame. The exports
-   still compare identical over the two recordings only where covers exist; these frames show the text.
-3. **Find is about ten times slower than its budget.** A1's 60 s recording took 330-345 s (5.5 times
-   the recording's length; §5.11 budgets 0.45-0.55 times). Profiled through the helper's protocol: 8
-   reads and their careful passes took 69 s; 154 `track` commands of the follow sessions took 268 s (up
-   to 64 s each), 273 `match` commands 33 s. Registering a track at a frame the session has not decoded
-   near seems to decode far; P2's follow session and P4's walk order need measuring together.
-4. **A16's other cases.** `tooltip` and `type-email` pass (every planted item covered in every frame).
-   `select-text` 600 of 720 item-frames covered, `window-drag` 194 of 240, `type-key` 0 of 118 (no cover:
-   the secret typed into a terminal is never found), and the scale and held-out sets fail on item 1.
-5. **A7, A13 and A21** (see Tests). A7's new Spanish translation did not replace the one made before
-   Find (the export used the old one, masked); A13 (Polish) covered 51% of a frame on average on the short
-   recording; A21's magnified view was gone after 100 rows kept by keyboard.
-6. **The scan swallows a walk's error.** `followAll`'s failure is caught and every hit becomes a lost
-   area to the end, silently: that is how item 1 of *What integration found* hid. It should at least log
-   the error's kind (never text) and say so in Find's result.
-7. **Left from the parts' reports**: Cover this text everywhere does not show Find's estimate line;
-   copies made by Cover this text everywhere are the user's, not suggestions; the Covers row sits after
-   the Graphics row and CoverSection at the top of the Shapes tab (a contracts placement, not §2.3's);
-   readerHelper's `pauseWhileRecording`, `findFailureOf` and `carefulLines` are duplicated in the scan;
-   the publishing pack's share and description sidecar were not checked for spoken-secret masking (only
-   Copy was); CopiesOffer reads the copies' `project.json` from disk (a press before autosave reads the
-   older file); P1's section shows Find's result only in Review's header and an editor notice.
-8. **The design's text** differs from what was built in P2's tiling (ceil-count tiles, not a 64 px
-   overlap) and `OCR_BUDGET`, P3's padding at line ends, continuation gap, one-word speech secrets and
-   false-hit corpora, and the follow session's `[from, to]` order; the design was not edited here.
-9. **Not run here**: `verify-dist` (no Windows installer was built: electron-builder's Windows Electron
-   is not cached and nothing is downloaded); axe-core (not installed, and installing is not allowed here:
-   A11 audits names, references, ids, dialogs and menus itself); the Rust tests and `npm run test:native`
-   (P2 ran them; the helper's sources did not change since).
+1. **Find blacked out recordings that change page or zoom.** Done (rounds 1 and 5). Every A16 case and
+   the evaluation sets at 150%, 200% and the held-out seed cover every item-frame, with 7.5-16.1% of a
+   frame covered on average against the blackout check's 25%. Two smaller over-coverings remain, both
+   within the checks and neither showing anything: each page cut of the evaluation sets is covered whole
+   for about 0.33 s until that page's read (the lost areas at a cut, §5.8), and on the held-out set one
+   email lost at a cut keeps a whole-frame cover for one 6 s page (4.3 points of its 16.1%).
+2. **Covers started a frame or two late on some scroll-ins.** Done (round 2): A1, A18 and A20 cover
+   every planted item in every frame, and their exports compare identical over the two recordings.
+3. **Find was about ten times slower than its budget.** Done for this machine (round 6): A1's Find takes
+   27-28 s for its 60 s recording, within §5.11's band of 27-33 s converted to this machine. The
+   evaluation sets' plans (24-144 units) run over their budgets as §5.4 point 7 allows, so their Finds
+   (125-358 s for 144 s) are not bounded by the band. The reference PC's measurements are decision 8's
+   (below).
+4. **A16's other cases.** Done (rounds 2, 3 and 5): all ten tracking cases pass.
+5. **A7, A13 and A21.** Done (rounds 1 and 4).
+6. **The scan swallowed a walk's error.** Done (round 3): the log names the error's kind and Find's
+   result says how many items were not followed.
+7. **Left from the parts' reports.** Done (rounds 3 and 4, and this round): Everywhere's estimate line;
+   Everywhere's places as suggestions; the Covers row and Cover section placed as §2.2-2.3 say; the
+   duplicated helpers in `helperUse.ts`; the pack's share and description sidecar masked; the copies
+   offer writing the project first; Find's result line in the Private info section. That last change
+   put two live result lines in the page while Review covers the section (A10 met two elements, and a
+   screen reader heard each step twice): the lines now show in one place at a time (d2ae212), and the
+   copies offer goes with the section's line as §2.12 asks (e865ee5). Two points of the parts' texts
+   the build does not do, now written into the design as built: Private info at the top of the Shapes
+   tab (the English guard refuses the move; §2.1), and see item 8.
+8. **The design's text against the build.** Done in this round, each with its measurement or reason in
+   the design and in its commit: §5.5's tiles (as few as cover an area, spread evenly, not a 64 px
+   overlap) and §13.3/§16.2's size and `OCR_BUDGET` (29b580a); §5.8's follow session span `[from, to]`
+   (f19f4a1); §6.1's padding at line ends and §6.10's continuation gap (b9d04ea: the design's numbers
+   touched visible items past tests 102 and 103's limits); §7.2's one-word secrets said aloud and
+   §6.15's false-hit corpora, with tests 133 and 134 leaving this design out of the docs they read
+   (e961d1a); §2.1's placement (3bc15ac); §17.3's lossy-route threshold (69f6d65, see *Tests*). One
+   difference touches a decision of §0 and is **not** changed here (below, *For the lead*).
+9. **Not run here.** The Rust tests and `npm run test:native` have run since (round 6: R1-R32 pass but
+   R8 and R10, which need Windows; test:native 13 of 13). Still not run, and not runnable here:
+   `verify-dist` (no Windows installer is built here: electron-builder's Windows Electron is not cached
+   and nothing is downloaded) and axe-core (not installed, and installing is not allowed here; A11
+   audits names, references, ids, dialogs and menus itself).
 
+Found since, and not done here:
+
+- **Phones of an English UI.** An English UI always uses the United States' phone region, whatever
+  the PC's format locale: `uiRegion` takes the PC's region from `currentUiInfo().formatLocale`, which
+  `formatLocaleOf('en', …)` makes `en-US` always (and for another language the system's region only
+  when the system locale is in that language). §2.5 says the PC's region comes from
+  `app.getSystemLocale()`, and §0 decision 2 turns on "the PC's region", so a PC in Great Britain or
+  Bangladesh with an English UI does not find its local phone numbers unless the user adds the region.
+  It touches §0's decision 2, so it is left for the lead: the end-to-end Finds add GB and BD in the
+  dialog (e38d3df), which hides it from the tests.
+- **Test 133 is at its limit.** Flown's docs read as speech give 10 hits, the most it allows (two are
+  the sample address `anna.li@acme.de` in a doc, found by the one-word rule). A doc that adds a sample
+  email or card number said in prose will fail it; nothing is wrong with the rules.
+- **Cover this text everywhere's estimate** is Find's whole first estimate even when main still keeps
+  the last Find's reads and the run is a search of them (seconds): `underCover` does not say whether
+  it keeps them. It overstates, never understates.
+- **Output file names** made from the project's name (the default save name, batch file names, the
+  guide's file name) are not masked; the user sees and can change each in the save dialog or the batch
+  list. A name only holds a spoken secret when the user typed it there.
+- **The helper's `second`** counts a match a few pixels along the best match's own line, so on scrolls
+  at an odd speed a true match is not clear and the walk is lost every other frame, which grows lost
+  areas (round 2's finding). Leaving the best match's own line out of `second` needs a Rust test and a
+  rebuild of the Windows helper.
+- **In-place reads are never thinned** (round 3): recordings full of one-line corrections spend more
+  units. A typed key kept (not deleted) in a terminal line whose label starts more than 64 px to its left
+  is read through a settle area that cuts the label.
+- **For the lead to confirm**, as the rounds asked: the tracking set's labelled passwords (0f14105) and
+  the phone regions the end-to-end Finds add (e38d3df) follow §6.7 and §6.8 and change no check; A18's
+  export checked per pixel against the covers drawn there (7450c6a) and A16's ink measured over each of
+  an item's own rectangles (e9ff05c) change how a check measures, not its threshold.
+- `fix/bleep-speed` (the known `bleepBangla` timeout) is still to be merged.
 
 ## What needs a person
 
@@ -306,8 +369,8 @@ Found by this integration and not fixed here (each needs design or measuring wor
 2. **§0 decision 8's checks on the reference Windows PC**: R8 (killing the helper kills its ffmpeg) and
    R10 (the Windows reader, `WINDOWS_READER_ALLOWED` stays false until it passes: 95% or more pattern
    recall and 99% or more padded coverage) with `cargo test` on Windows; the helper's speed, memory and
-   size at 1080p, 4K and 7680×2160 (§5.11), including Find's wall time, which this machine measured far
-   over its budget (see What is left); the 30 real recordings (97% or more covered, nothing found ever
+   size at 1080p, 4K and 7680×2160 (§5.11), including Find's wall time, which this machine now measures
+   within its band on A1 (§5.11); the 30 real recordings (97% or more covered, nothing found ever
    shown) with their units distribution; pop-up false hits at most one per 10 minutes; and that the WER
    registry value and the run-time flags leave no crash report.
 3. **The native Bangla review** (§12.4): the spoken word lists, the Bangla label tables of
