@@ -4547,7 +4547,12 @@ pixels under the covers (two different secrets, same everything else), and the t
   everywhere* covers its other places.
 - **A16. The rendered tracking set** (`scripts/privacy/make-track-fixtures.mjs`, written in the
   contracts step, §16.0 item 13): lossless videos at 60 fps of a scrolling list, a fast flick scroll
-  of 1,500 px a second or more, browser zoom in and out, text selected and deselected, a sticky header
+  of 1,500 px a second or more (1,800 px at 1,600 px a second between a second at rest on the list's
+  top and one on rows 64-89, its planted items on the rows at rest there, each on screen 1.0-1.5 s:
+  a row the flick only carries past is on screen under half a second and never still, a page
+  scrolled past quickly that §2.9 and §5.4 point 6 say Find may miss, and is ordinary text; the
+  flick first started after 0.2 s, and its 19 planted rows in between, each on screen 0.45-0.47 s,
+  were never read), browser zoom in and out, text selected and deselected, a sticky header
   over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out (toast-shaped,
   each living 2.8 s in a 3.5 s recording, as notifications do: §6.13 finds a notice living 2-30 s,
   and the reads of §5.4 point 6 may miss text shown under about a second; they were first 652 px
