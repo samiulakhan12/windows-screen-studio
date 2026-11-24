@@ -737,7 +737,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       // taken for a page change, and the cover started after the scroll, with the text already on screen;
       // and a strip of a page scrolling in, too short for the look pass to find its move, was taken for
       // one while the text in it still matched.
-      if (changedShare(frames[cf], look) >= 0.3 && !rel.length && !w.nearFound) {
+      if (changedShare(frames[cf], look) >= 0.3 && !best && !w.nearFound) {
         startBackward(w, f, null)
         return
       }

@@ -694,6 +694,18 @@ describe('auto-blur P4: following', () => {
     // Wholly out of the list's region the frame after (its box under 32): the cover ends one analysed frame later, not where the box would leave the frame.
     expect(track.end).toBeLessThanOrEqual(under + 2 / 30 + 1e-6)
   })
+
+  it('Backward, a page change the look pass gave a weak move is a page change: the cover starts at once, with no check read (found end to end: every walk on the evaluation pages asked for a check read of the whole frame at each cut, the look pass offering a spurious move there)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    const text: Planted = { key: KEY, text: 'x', at: (t) => (t >= 1 ? T : null) }
+    const look = lookOf(HD, 30, 3, (_i, t) => (Math.abs(t - 1) < 1e-6 ? { changed: [page], moves: [move(page, 0, -420, 0.2)] } : {}))
+    const m = matcherOf([text])
+    const [track] = await walkSpan([start(2, T)], -1, look, readIndex(), m, NO_HINTS, HD)
+    expect(m.checks).toEqual([])
+    expect(track.start).toBeCloseTo(1, 3)
+    expect(uncovered({ ...track, end: 2 }, 30, text, 0, 2)).toEqual([])
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

@@ -1969,7 +1969,9 @@ makes frames with no match while the text is still there. It goes on, placed or 
   area) at the analysed frame before the earliest frame with no match, read alone (about 0.1 unit,
   §5.4). A check read that finds the text re-anchors the walk, which goes on back;
 - a **page change** (30% or more of the frame changed, `SCREEN_RULES.page`,
-  `src/shared/smart/screenChanges.ts`, with no move of the box's region) at a frame where the match
+  `src/shared/smart/screenChanges.ts`, with no real move of the box's region, step 2: the spurious
+  weak move the look pass gives a cut is none, and counted as a scroll it made every walk on the
+  evaluation pages ask for a check read of the whole frame at each cut) at a frame where the match
   where the walker's own motion puts the text finds nothing (no clear match and no part at 0.85: a
   token on a half-pixel step of a scroll matched 0.88 against its own line's 0.75, and its cover
   started early);
