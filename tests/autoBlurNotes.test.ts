@@ -322,7 +322,7 @@ describe('auto-blur P5: notes, copies and Settings', () => {
     els = render(view())
     expect(byTestId(els, 'regions-dialog')).toBeUndefined()
     expect((api.prefs.get('privacy') as { regions: string[] }).regions).toEqual(['BD'])
-    expect(text(els, 'privacy-settings-regions')).toContain('Bangladesh')
+    expect(text(els, 'privacy-settings-regions')).toBe('Phone numbers from United States and Bangladesh Change…')
     // Colour of new covers.
     const colour = byTestId(els, 'privacy-settings-colour')!
     expect(colour.props.value).toBe('ring')

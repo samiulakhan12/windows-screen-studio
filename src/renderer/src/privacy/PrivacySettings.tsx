@@ -5,11 +5,12 @@ import { kindLabel, PRIVACY_COPY } from '../../../shared/privacy/copy'
 import { readPrivacyPrefs } from '../../../shared/privacy/coverData'
 import { FIND_KINDS, MAX_ADDED_REGIONS } from '../../../shared/privacy/findState'
 import { DEFAULT_KINDS } from '../../../shared/privacy/kinds'
-import { regionName } from '../../../shared/privacy/regions'
+import { alwaysOnRegions, regionName } from '../../../shared/privacy/regions'
 import { fmt } from '../../../shared/i18n/fmt'
 import { formatLocale, t, type MessageKey } from '../../../shared/i18n/t'
 import { onNamesChanged } from './followRun'
 import { showCoverMarks } from './peek'
+import { uiRegion } from './privacyRun'
 import { setReaderState, useReaderState } from './readerState'
 import { RegionsDialog } from './RegionsDialog'
 import './privacyPanel.css'
@@ -83,6 +84,9 @@ export function PrivacySettings(props: { reveal: boolean }): JSX.Element | null 
 
   const kinds = prefs?.kinds ?? [...DEFAULT_KINDS]
   const locale = formatLocale()
+  // The PC's region and the UI language's are always on (§2.5); the ones added follow.
+  const { pc, language } = uiRegion()
+  const always = alwaysOnRegions(pc, language)
   const percent = reader?.status === 'downloading' ? Math.round((reader.done / Math.max(1, reader.total)) * 100) : null
 
   let state: JSX.Element | null = null
@@ -162,7 +166,7 @@ export function PrivacySettings(props: { reveal: boolean }): JSX.Element | null 
           </label>
           <p className="privacy-line" data-testid="privacy-settings-regions">
             <span>{t(PRIVACY_COPY.settings.regions)}</span>{' '}
-            <span>{fmt.list((prefs.regions ?? []).map((r) => regionName(r, locale)))}</span>{' '}
+            <span>{fmt.list([...always, ...(prefs.regions ?? []).filter((r) => !always.includes(r))].map((r) => regionName(r, locale)))}</span>{' '}
             <button ref={regionsButton} type="button" className="link" onClick={() => setRegionsOpen(true)} data-testid="privacy-settings-regions-change">
               {t(PRIVACY_COPY.find.regionsChange)}
             </button>
