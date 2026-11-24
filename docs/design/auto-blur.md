@@ -4581,7 +4581,11 @@ pixels under the covers (two different secrets, same everything else), and the t
   tall, the evaluation set's own toast style pinning their bottom, and lived 1.15 s, still 0.85 s),
   a toast and a tooltip passing over text before its first read, an email typed into a form field and a key typed
   into a terminal (and deleted again), the evaluation frames at 150% and 200% display scale, and the
-  new-seed held-out frames, with every planted item's box known in every frame. The rendered cases
+  new-seed held-out frames (each frame held 6 s at 30 fps, 144 s a set: they test reading at display
+  scale and on unseen frames, not flashing pages; held 0.5 s, every page was on screen under the
+  second §2.9 and §5.4 point 6 say Find may miss, and a plan over its budget, as every whole-page read
+  of these sets is, reads pages less than 5 s apart once, §5.4 point 7), with every planted item's
+  box known in every frame. The rendered cases
   are cached under a key of their generator, so a changed fixture is rendered afresh; Find runs with
   the phone regions the evaluation set's truth was scored with (the United States, which an English
   UI has, and Great Britain and Bangladesh, added in the dialog). After Find, every

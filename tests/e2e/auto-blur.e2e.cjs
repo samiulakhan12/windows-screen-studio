@@ -766,7 +766,12 @@ function trackCase(id) {
   return { media, total: truth.frames.length, fps: truth.fps, width: truth.width, height: truth.height, seconds: truth.frames.length / truth.fps, itemsAt: (n) => items[n] ?? [] }
 }
 
-/** An evaluation set rendered at a display scale or with another seed (make-eval-set.mjs), each frame held 0.5 s. */
+/**
+ * An evaluation set rendered at a display scale or with another seed (make-eval-set.mjs), each frame
+ * held 6 s: the cases test reading at display scale and on unseen frames, not flashing pages. Held
+ * 0.5 s, every page was text on screen for under a second (§2.9, §5.4 point 6), and a plan over its
+ * budget, as every whole-page read of these sets is, reads pages less than 5 s apart once (§5.4 point 7).
+ */
 async function evalSetCase(tag, args, scale) {
   const dir = path.join(af.CACHE, `eval-${tag}`)
   if (!fs.existsSync(path.join(dir, 'truth.json'))) execFileSync(process.execPath, [path.join(af.ROOT, 'scripts', 'privacy', 'make-eval-set.mjs'), dir, ...args], { stdio: 'inherit' })
@@ -776,8 +781,8 @@ async function evalSetCase(tag, args, scale) {
     return { img, items: af.plantedInk(img, f) }
   })
   const { width, height } = pages[0].img
-  const hold = A1_FPS / 2
-  const media = await af.encodeVideo(`eval-${tag}`, { width, height, fps: A1_FPS, frames: pages.length * hold, frameAt: (n) => pages[Math.floor(n / hold)].img.data })
+  const hold = A1_FPS * 6
+  const media = await af.encodeVideo(`eval-${tag}-6s`, { width, height, fps: A1_FPS, frames: pages.length * hold, frameAt: (n) => pages[Math.floor(n / hold)].img.data })
   return { media, total: pages.length * hold, fps: A1_FPS, width, height, seconds: (pages.length * hold) / A1_FPS, names: truth.listedNames, scale, itemsAt: (n) => pages[Math.floor(n / hold)].items }
 }
 
