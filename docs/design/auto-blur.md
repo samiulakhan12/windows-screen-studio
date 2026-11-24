@@ -2333,10 +2333,17 @@ section gives what each kind finds, how, and why.
   *Cover this text everywhere*, spoken forms, the masks of §7) is built from the own spans, never
   from the padded box (finding 11).
 - The **cover box** is the own spans' x-ranges (from the character spans) and the line's y-range,
-  padded by max(3 px, 0.35 × line height) vertically and max(that, one mean character width)
-  horizontally, clipped to the frame, never rounded past its edge (finding 22). The stand-in scorer
-  measured that one character width plus a quarter line height is the smallest pad that fully covers
-  a 4-character PIN; 0.6 of a character width left it 96% covered.
+  padded by max(3 px, 0.35 × line height) vertically; horizontally by max(that, one mean character
+  width) at the line's ends (where the span starts at the line's first character or ends at its last)
+  and by the vertical pad where other words of the line stand beside it; clipped to the frame, never
+  rounded past its edge (finding 22). The stand-in scorer measured that one character width plus a
+  quarter line height is the smallest pad that fully covers a 4-character PIN; 0.6 of a character
+  width left it 96% covered. A character width on both sides everywhere, as this point first said,
+  reaches into the word beside a secret: on the committed held-out reads it touched a third visible
+  item (an ordinary token beside a key on the logs page; test 103 allows two), while the careful-long
+  reads covered 233 of 233 items with either pad (the tiny reads alone 231 with the pad as built and
+  232 with the wider one; test 102 asks 227). The width that hides a text's length (below) widens
+  each found cover further.
 - **Hiding the length (D23).** A solid cover as wide as its text gives the text's rendered width,
   and in a known UI font that is enough to rank candidate names and email local parts, or to tell a
   PIN's length (the redaction-width attack, Bland et al., "Story Beyond the Eye", PoPETs 2023). So
@@ -2529,8 +2536,12 @@ the rules (the first version kept a second copy in the helper for this).
   returned no lines between BEGIN and END, the cover runs to the bottom of the text region as a lost
   area.
 - **Continuation**: a hit that runs to the end of its line continues on the next line when that line
-  starts within 2.5 line heights below at the same left edge (within one line height) with 4 or more
-  token characters that are not a plain word. The prototype required the line to reach its block's
+  starts at most 0.6 line heights under the line's bottom (the gap between wrapped lines) at the same
+  left edge (within one line height) with 4 or more token characters that are not a plain word. Within
+  2.5 line heights, as this point first said (or 1.5), a token on the dashboard pages continued onto
+  the field under it ("us-east-1"), touching a visible item on the main and the held-out reads (tests
+  102 and 103 then touched 2 and 3 against their 1 and 2), and test 119's line set a line height
+  apart was taken for the rest of the token. The prototype required the line to reach its block's
   right edge; **new**: that requirement is dropped for JWT, link and key hits whose last character is
   a token character or a dash, which closes the held-out misses of a token wrapped after `R7-` and of
   JWTs wrapped inside a box. At most 6 lines are chained. **New**: the next line is the nearest read
