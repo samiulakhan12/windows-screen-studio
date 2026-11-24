@@ -213,7 +213,7 @@ new settings-04 capture and 28 elements in each settings capture, palette-empty 
 question 17's commit: the same, and the Blur tooltip's new words. The baseline was re-recorded from two
 identical runs (1ffd5ea), and A17 runs the guard in compare mode against it: passes.
 
-### End to end: `tests/e2e/auto-blur.e2e.cjs`
+### End to end at integration: `tests/e2e/auto-blur.e2e.cjs`
 
 Run whole once on the final build with the host helper and the models in each test HOME's userData
 (`SSW_OCR_MODELS`, checked by size and SHA-256), and the pictures saved (`SSW_E2E_DOC_SHOTS=1`).
@@ -247,6 +247,29 @@ alone on the same build, so 35 pass and 17 fail:
 | A20 Copies made before Find | **fails**: Bring them over and Also cover the copy work, but the clip's export differs over the two recordings on 209 of 1,145 frames (the scroll frames of What is left 2) |
 | A21 Review at speed | **fails**: 201 rows, V turns Peek while reviewing on, 100 rows kept by keyboard, but the magnified view was gone afterwards |
 
+### End to end after the rounds
+
+Every case of `auto-blur.e2e.cjs`, each run alone without `TMPDIR` on the final build (24 November 2026,
+source of 56c71a0; A17 again at 13ee1f0, which changes only its environment), with the host helper in
+`native/ocr/target/host` (none in `native/bin`) and the pinned models; the English guard first, alone,
+in compare mode after a warm-up launch. **Every case passes**, and the guard passes:
+
+| Case | Result |
+|---|---|
+| A1 | **passes**: 20,495 of 20,495 item-frames covered, 8.6% of a frame on average; export identical over the two recordings; Find 27 s for the 60 s recording |
+| A2 (11 routes), A2 control, A2a, A2b, A2c, A2d raw frames, A2f, A2g (2) | **pass** |
+| A2d WebCodecs | **passes**, now with the fill check: no pixel of a secret's place 12 levels off its cover's fill in either output |
+| A3-A15, A17-A21 | **pass**. A10 failed after 53272ca on two result lines (fixed in d2ae212). A17 failed when the runner set `SSW_OCR_HELPER`, which its guard inherited (Settings › Private info then offered the download, not the baseline's line); the guard now runs without the file's `SSW_OCR_` variables (13ee1f0) and A17 passes with and without it |
+| A16 tracking set | **all ten pass**: list-scroll 1,564/1,564 (14.2%), flick-scroll 13,889/13,889 (12.1%), browser-zoom 1,188/1,188 (14.3%), select-text 720/720 (6.0%), sticky-header 1,588/1,588 (16.0%), window-drag 240/240 (2.1%), toasts 928/928 (6.9%), tooltip 480/480 (3.9%), type-email 117/117 (1.7%), type-key 118/118 (1.6%); plans of 1.1-4 units, Finds of 4-11 s |
+| A16 held-out seed 9000 | **passes**: 44,460/44,460, 16.1%, 24 units, Find 127 s |
+| A16 at 150% | **passes**: 44,100/44,100, 13.6%, 96 units, Find 266 s |
+| A16 at 200% | **passes**: 44,100/44,100, 7.5%, 144 units, Find 358 s |
+
+Of the other 77 end-to-end files, the six nearest what the rounds changed (Review, the export dialog,
+the publishing pack, the Inspector and the commands) were run again, each alone on the same build:
+`review-mode` (10 of 10), `export-pack` (5), `publish-pack` (4), `editor` (13), `commands` (5) and
+`versions` (3) pass. The other 71 were last run at integration (below).
+
 ### Every other end-to-end file
 
 The 77 other files in `tests/e2e/` (the English guard among them), each run alone under
@@ -278,7 +301,7 @@ Integration's list, item by item, as it stands after the rounds above (checked a
 the rounds' reports, and against the end-to-end runs listed under *End to end after the rounds*):
 
 1. **Find blacked out recordings that change page or zoom.** Done (rounds 1 and 5). Every A16 case and
-   the evaluation sets at 150%, 200% and the held-out seed cover every item-frame, with 7.5-16.1% of a
+   the evaluation sets at 150%, 200% and the held-out seed cover every item-frame, with 1.6-16.1% of a
    frame covered on average against the blackout check's 25%. Two smaller over-coverings remain, both
    within the checks and neither showing anything: each page cut of the evaluation sets is covered whole
    for about 0.33 s until that page's read (the lost areas at a cut, §5.8), and on the held-out set one
