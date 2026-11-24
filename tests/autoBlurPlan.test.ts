@@ -245,4 +245,52 @@ describe('auto-blur P4: look and plan', () => {
     expect(early).toHaveLength(1)
     expect(early[0].t).toBeLessThan(1.4)
   })
+
+  it('A burst on one line that changes in place after it grew is also read where it showed the most, over its line from the frame\'s left edge: a key typed into a terminal and deleted again is read whole with its label (found end to end: read once after it was deleted, over an area that cut the label, it was never found)', () => {
+    // A16's terminal at 1280×720 (tiles of 32 px): "$ export AWS_SECRET_ACCESS_KEY=" to x 274, then a key typed one
+    // character (8.5 px) every source frame pair from frame 2 to 80, deleted one a frame from 81 to 119.
+    const size = { width: 1280, height: 720 }
+    const cell = (c: number): Box => [274 + 8.5 * c, 16, 8.5, 14]
+    const typed = (n: number): number => Math.min(40, Math.floor(n / 2))
+    const deleted = (n: number): number => (n < 80 ? typed(n) : Math.max(0, 40 - (n - 80)))
+    // The analysed frames are every second source frame: each changes the cells between what the one before showed and what it shows.
+    const terminal = (shown: (n: number) => number) =>
+      lookOf(size, 60, 2, (i) => {
+        const [a, b] = [shown(2 * i - 2), shown(2 * i)]
+        const changed: Box[] = []
+        for (let c = Math.min(a, b); i > 0 && c < Math.max(a, b); c++) changed.push(cell(c))
+        return { changed }
+      })
+    const end = 119 / 60
+    const plan = planReads(terminal(deleted), NO_HINTS, size, 60, 1e9, end)
+    const inPlace = plan.reads.filter((r) => r.why === 'inPlace')
+    expect(inPlace).toHaveLength(1)
+    // At frame 80, the whole key: the analysed frame before the first change of a tile older than the last it grew by.
+    expect(inPlace[0].t).toBeCloseTo(80 / 60, 6)
+    // Its line band from the frame's left edge, where the label stands: the key's tiles padded by 64 px.
+    expect(inPlace[0].areas).toEqual([[0, 0, 640 + 64, 32 + 64]])
+    expect(inPlace[0].units).toBe(0.2)
+    expect(plan.units).toBeCloseTo(plan.reads.reduce((s, r) => s + r.units, 0), 6)
+    // The burst's settle read stays where it was, after the deletion, over its padded tiles.
+    const settle = plan.reads.filter((r) => r.why === 'settle')
+    expect(settle.map((r) => r.t)).toEqual([end])
+    expect(settle[0].areas).toEqual([[256 - 64, 0, 384 + 128, 32 + 64]])
+    // Over the budget the plan thins, but an in-place read is never merged into the settle read after it.
+    const thin = planReads(terminal(deleted), NO_HINTS, size, 60, 0.1, end)
+    expect(thin.reads.filter((r) => r.why === 'inPlace').map((r) => r.t)).toEqual([expect.closeTo(80 / 60, 5)])
+
+    // Typed and kept: the settle read reads it, and no read is added (typing on within the tile it last grew by is no change in place).
+    const kept = planReads(terminal(typed), NO_HINTS, size, 60, 1e9, end)
+    expect(kept.reads.filter((r) => r.why === 'inPlace')).toEqual([])
+    const slow = lookOf(size, 60, 3, (i) => ({ changed: i >= 3 && i <= 40 && i % 4 === 0 ? [[600 + (i - 4), 16, 4, 14]] : [] }))
+    expect(planReads(slow, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
+    // Changed in place for less than 0.3 s after it grew: the settle read is near enough.
+    const brief = lookOf(size, 60, 2, (i) => ({ changed: i >= 1 && i <= 20 ? [cell(i - 1)] : i >= 21 && i <= 24 ? [cell(40 - i)] : [] }))
+    expect(planReads(brief, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
+    // A region that moves (a scroll), or changes over many rows (a zoom, a page changing in place), is no line changed in place.
+    const scrolled = lookOf(size, 60, 2, (i) => (i >= 1 && i <= 20 ? { changed: [cell(i - 1)] } : i > 20 && i <= 40 ? { changed: [[274, 16, 170, 14]], moves: [move([256, 0, 192, 32], -8, 0)] } : {}))
+    expect(planReads(scrolled, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
+    const zoom = lookOf(size, 60, 2, (i) => ({ changed: i >= 1 && i % 6 === 0 ? [[0, 0, i < 24 ? 300 + 10 * i : 400, i < 24 ? 400 + 10 * i : 500]] : [] }))
+    expect(planReads(zoom, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
+  })
 })

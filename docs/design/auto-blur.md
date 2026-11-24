@@ -1606,6 +1606,15 @@ gap between them, no area cut). A unit with its lines and careful re-reads costs
    analysed frame can be one before it, and a phone number a scroll was bringing in at the bottom
    edge, cut there, was misread ("+1.415.555.4187") and never covered. The area is the union of the
    burst's changed tiles, padded by 64 × `scale` video pixels.
+   **In-place reads.** A burst on one line (its changed tiles in at most three rows of tiles: a line
+   of text lies in one, two where it straddles them) that, after its changed tiles last grew, changes
+   a tile older than those it last grew by (the text in it deleted or changed in place, not typed on)
+   and goes on changing for 0.3 s or more, with no real move of its region (§5.8 step 2), is also read
+   at the analysed frame before that change, where it showed the most of what came in. The area is
+   its line band: the settle area from the frame's left edge, where the label of a typed value stands
+   on its line, before it (§5.8). A key typed into a terminal and deleted again was one burst, read
+   once after it was deleted, over an area that cut its label ("CCESS_KEY=Q"), and never found. A zoom
+   or a page changing in place is no line: the reads of the page read it.
 3. **Scroll reveals**: during a move lasting over 1.0 s, every 0.75 s, the strip that came into the
    region since the last read of it.
 4. **Typing reads**: 0.3 s after each typing burst ends and after each paste: a (640 × 200) ×
@@ -1614,14 +1623,16 @@ gap between them, no area cut). A unit with its lines and careful re-reads costs
 5. **Periodic reads**: the whole frame every 60 s in which no read covered half of it.
 6. **Merging, always**: settle and typing areas of overlapping regions less than 1.0 s apart are read
    once, at the later one's frame, over the union of their areas. Text shown for less than about a
-   second can be missed, and §2.9 says so (`privacy.notSee.brief`).
+   second can be missed, and §2.9 says so (`privacy.notSee.brief`). In-place reads are never merged:
+   the settle read of their own burst comes after what they read was changed.
 7. **Budget**: `budget = ceil(duration / 8) × min(2, W·H / (1920·1080))` units (150 for 20 minutes at
    1080p). Over it, in this order until it fits: reveals every 1.5 s, then periodic reads every
-   120 s, then settle and typing areas less than 3 s apart merged, then less than 5 s apart. A read
-   is never dropped: the plan stops thinning at twice the budget and runs what is left. Every span
-   whose reads were thinned is recorded (`ReadPlan.thinSpans`), covers made from it are marked `thin`
-   (§2.2), Find's result reports the thinned minutes (`privacy.run.thinned`), and `FindRecord.thin`
-   keeps the spans for the Covers row and the export note.
+   120 s, then settle and typing areas less than 3 s apart merged, then less than 5 s apart. In-place
+   reads count against it and are not thinned (point 6). A read is never dropped: the plan stops
+   thinning at twice the budget and runs what is left. Every span whose reads were thinned is
+   recorded (`ReadPlan.thinSpans`), covers made from it are marked `thin` (§2.2), Find's result
+   reports the thinned minutes (`privacy.run.thinned`), and `FindRecord.thin` keeps the spans for the
+   Covers row and the export note.
 8. **Check reads and partial reads** are added while Find runs: a walk asks for a check read of one
    small area when it needs proof that text was not yet on screen (§5.8, about 0.1 unit each), and a
    read that hit a cap is completed by extra reads of its unread areas (§10.3). Both count against the
@@ -3650,7 +3661,7 @@ line only).
 | File | Exports or change |
 |---|---|
 | `src/shared/privacy/look.ts` (new) | `function lookScale(width: number, height: number): number`; `function lookStep(fps: number): number`; `interface LookData { k: number; step: number; fps: number; size: Size; frames: LookFrame[]; keys: number[] }`; `function addLookFrames(data: LookData, frames: readonly LookFrame[]): void`; `function changedTiles(frame: LookFrame, data: LookData): Uint8Array`; `function changedIn(data: LookData, box: Box, from: number, to: number): number[]` (frame indices); `function keyBefore(data: LookData, t: number): number`; `function regionsAt(data: LookData, index: number): Box[]` |
-| `src/shared/privacy/plan.ts` (new) | `interface ReadHints { typing: { t: number; end: number }[]; clicks: { t: number; x: number; y: number }[]; pastes: number[]; textCursor: { t: number; end: number }[]; valid: boolean; scale: number }`; `function hintsOf(cursor: CursorTrack \| null): ReadHints`; `const BUCKETS: readonly { w: number; h: number; units: number }[]` (640×352 0.1, 960×544 0.2, 1920×1088 1); `interface PlannedRead { t: number; areas: Box[]; packed: { bucket: number; areas: Box[] }[]; why: 'first' \| 'settle' \| 'reveal' \| 'typing' \| 'periodic' \| 'check' \| 'partial'; units: number; thin: boolean }`; `interface ReadPlan { reads: PlannedRead[]; units: number; thinned: number; thinSpans: string }`; `function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number, end?: number): ReadPlan`; `function packAreas(areas: readonly Box[]): { bucket: number; areas: Box[] }[]`; `function readBudget(duration: number, size: Size): number`; `function firstEstimate(duration: number, fps: number, size: Size, decodeMs: number \| null): number`; `function secondEstimate(plan: ReadPlan, look: LookData, measured: { readSeconds: number \| null }): number` |
+| `src/shared/privacy/plan.ts` (new) | `interface ReadHints { typing: { t: number; end: number }[]; clicks: { t: number; x: number; y: number }[]; pastes: number[]; textCursor: { t: number; end: number }[]; valid: boolean; scale: number }`; `function hintsOf(cursor: CursorTrack \| null): ReadHints`; `const BUCKETS: readonly { w: number; h: number; units: number }[]` (640×352 0.1, 960×544 0.2, 1920×1088 1); `interface PlannedRead { t: number; areas: Box[]; packed: { bucket: number; areas: Box[] }[]; why: 'first' \| 'settle' \| 'inPlace' \| 'reveal' \| 'typing' \| 'periodic' \| 'check' \| 'partial'; units: number; thin: boolean }`; `interface ReadPlan { reads: PlannedRead[]; units: number; thinned: number; thinSpans: string }`; `function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number, end?: number): ReadPlan`; `function packAreas(areas: readonly Box[]): { bucket: number; areas: Box[] }[]`; `function readBudget(duration: number, size: Size): number`; `function firstEstimate(duration: number, fps: number, size: Size, decodeMs: number \| null): number`; `function secondEstimate(plan: ReadPlan, look: LookData, measured: { readSeconds: number \| null }): number` |
 | `src/shared/privacy/paths.ts` (new) | `interface Track { placements: Placement[]; start: number; end: number; lost: boolean; thin: boolean; lostSpans: string }`; `interface Matcher { track(track: number, t: number, parts: readonly Box[]): Promise<void>; match(t: number, tracks: readonly { track: number; parts: readonly number[]; candidates: readonly Candidate[] }[]): Promise<TrackMatch[]>; checkRead(t: number, area: Box): Promise<ReadResult \| null> }` (maps one to one onto `FollowSession` and a check read); `function walkSpan(starts: readonly Placed[], dir: 1 \| -1, look: LookData, reads: ReadIndex, m: Matcher, hints: ReadHints, size: Size): Promise<Track[]>` (every hit of a span together, frame by frame; evidence of absence both ways, check reads, the typing rule, §5.8); `function lostBox(box: Box, candidates: readonly Candidate[], changed: readonly Box[]): Box` (the 2-D union of the box, every candidate's box and every changed region it overlaps); `function holdsText(own: string, line: string): boolean` (the generous rule of §5.8); `function joinTracks(back: Track, fwd: Track): Track` |
 | `src/shared/privacy/notices.ts` (new) | `function findNotices(look: LookData, project: Pick<Project, 'capture' \| 'source'>): { start: number; end: number; box: Box; stacked: boolean }[]` (nothing for an imported video) |
 | `src/shared/privacy/found.ts` (new) | `function foundCovers(result: Extract<FindResult, { ok: true }>, size: Size, random: () => number): Cover[]` (groups, tiers, colours, the width rounding of §6.1); `function withFoundCovers(project: Project, result: Extract<FindResult, { ok: true }>, said: readonly Bleep[], record: FindRecord, random: () => number): { project: Project; suppressed: number }` (§5.10: containment through the time and grid index, missed, rejected paths, groups, merging, limits); `function limitCovers(covers: readonly Cover[]): Cover[]`; `function originCoversFor(original: Project, copy: Project): OriginCovers` |

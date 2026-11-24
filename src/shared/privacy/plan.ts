@@ -154,7 +154,7 @@ export interface PlannedRead {
   t: number
   areas: Box[]
   packed: { bucket: number; areas: Box[] }[]
-  why: 'first' | 'settle' | 'reveal' | 'typing' | 'periodic' | 'check' | 'partial'
+  why: 'first' | 'settle' | 'inPlace' | 'reveal' | 'typing' | 'periodic' | 'check' | 'partial'
   units: number
   /** Made by thinning (reads further apart than usual): covers from it are marked thin. */
   thin: boolean
@@ -275,23 +275,45 @@ function markChanged(into: Uint8Array, data: LookData, index: number, box: Box |
 
 interface Burst {
   box: Box
+  /** Its changed tiles: 1, and 2 for those its latest growth added (its newest); 3 while a frame adds them. */
   tiles: Uint8Array
   first: number
   last: number
   lastIndex: number
+  /** The tiles its latest growth added. */
+  newest: number[]
+  /** The analysed frame before its first change, since it last grew, of a tile older than its newest (null: none). */
+  peak: number | null
+  /** A region of it moved (a real move, §5.8 step 2): a scroll or a drag, not a change in place. */
+  moved: boolean
 }
+
+/** A look move this strong is its region's real move (§5.8 step 2). */
+const REAL_MOVE = 0.5
+/** A line of text lies in one or two rows of look tiles (8 look pixels; a line is about 5 at any size and display scale): at most this many is a line. */
+const LINE_ROWS = 3
 
 /**
  * Settle reads (§5.4 point 2): one after each burst of changes in a region. A burst the recording ends
  * in is read at its last source frame (`end`), which shows the most of what came in: at 60 fps the last
  * analysed frame can be one before it, and a line a scroll was bringing in at the bottom edge, cut
  * there, was misread ("+1.415.555.4187") and never found.
+ *
+ * In-place reads (§5.4 point 2): a burst on one line (at most three rows of tiles) that, after it last
+ * grew, changed a tile older than the ones that growth added (the text in it deleted or changed in
+ * place, not typed on) and went on changing for 0.3 s or more, with no region of it moving, is also
+ * read at the analysed frame before that change, where it showed the most of what came in, over its
+ * line band: its padded area from the frame's left edge, where the label of a typed value stands on
+ * its line, before it. A zoom or a page changing in place is no line; the reads of its page read it.
+ * Found end to end: a key typed into a terminal and deleted again was one burst, read once after it
+ * was deleted, over an area that cut its label ("CCESS_KEY=Q"), so it was never found.
  */
-function settleReads(data: LookData, scale: number, end?: number): PlannedRead[] {
+function settleReads(data: LookData, scale: number, end?: number): { settle: PlannedRead[]; inPlace: PlannedRead[] } {
   const frames = data.frames
   const out: PlannedRead[] = []
+  const inPlace: PlannedRead[] = []
   const open: Burst[] = []
-  const { cols, rows } = tileGrid(data)
+  const { cols, rows, tile } = tileGrid(data)
   const close = (b: Burst): void => {
     // The first analysed frame at least 0.3 s after the burst, when the region is still there; the
     // frame just before the next burst when that burst comes sooner.
@@ -301,35 +323,91 @@ function settleReads(data: LookData, scale: number, end?: number): PlannedRead[]
     const at = frames[Math.max(i, b.lastIndex)].t
     const ending = b.lastIndex === frames.length - 1 && end !== undefined && end > at
     out.push(read(ending ? end : at, joinAreas(areas), 'settle'))
+    if (b.moved || b.peak === null || b.last - frames[b.peak].t < SETTLE_S - 1e-9 || rowsOf(b.tiles) > LINE_ROWS) return
+    inPlace.push(read(frames[b.peak].t, joinAreas(areas.map((a): Box => [0, a[1], right(a), a[3]])), 'inPlace'))
+  }
+  /** How many rows of tiles a burst's tiles span. */
+  const rowsOf = (tiles: Uint8Array): number => {
+    let r0 = rows
+    let r1 = -1
+    for (let j = 0; j < tiles.length; j++)
+      if (tiles[j]) {
+        const r = Math.floor(j / cols)
+        if (r < r0) r0 = r
+        if (r > r1) r1 = r
+      }
+    return r1 - r0 + 1
+  }
+  /** The changed tiles of `box` at frame `i` new to the burst (marked 3), and whether one older than its newest changed. */
+  const mark = (b: Burst, i: number, box: Box): { added: number[]; older: boolean } => {
+    const frame = frames[i]
+    const c0 = Math.max(0, Math.floor(box[0] / tile))
+    const r0 = Math.max(0, Math.floor(box[1] / tile))
+    const c1 = Math.min(cols - 1, Math.ceil(right(box) / tile) - 1)
+    const r1 = Math.min(rows - 1, Math.ceil(bottom(box) / tile) - 1)
+    const added: number[] = []
+    let older = false
+    for (let r = r0; r <= r1; r++)
+      for (let c = c0; c <= c1; c++) {
+        const j = r * cols + c
+        if (!tileChanged(frame, j)) continue
+        if (!b.tiles[j]) {
+          b.tiles[j] = 3
+          added.push(j)
+        } else if (b.tiles[j] === 1) older = true
+      }
+    return { added, older }
   }
   // The first analysed frame has every tile changed (nothing came before it): the first read reads it.
   for (let i = 1; i < frames.length; i++) {
     const t = frames[i].t
     for (let k = open.length - 1; k >= 0; k--) if (t - open[k].last >= SETTLE_S) close(open.splice(k, 1)[0])
+    const now = new Map<Burst, { added: number[]; older: boolean }>()
     for (const region of regionsAt(data, i)) {
       const grown: Box = [region[0] - 2 * 8 * data.k, region[1] - 2 * 8 * data.k, region[2] + 4 * 8 * data.k, region[3] + 4 * 8 * data.k]
       let hit = open.find((b) => overlaps(b.box, grown))
       if (!hit) {
-        hit = { box: region, tiles: new Uint8Array(cols * rows), first: t, last: t, lastIndex: i }
+        hit = { box: region, tiles: new Uint8Array(cols * rows), first: t, last: t, lastIndex: i, newest: [], peak: null, moved: false }
         open.push(hit)
       }
       hit.box = union(hit.box, region)
       hit.last = t
       hit.lastIndex = i
-      markChanged(hit.tiles, data, i, region)
-      // Bursts that now touch are one.
+      if (frames[i].moves.some((m) => (m.dx || m.dy) && m.score >= REAL_MOVE && overlaps(m.box, region))) hit.moved = true
+      const m = mark(hit, i, region)
+      const mine = now.get(hit) ?? { added: [], older: false }
+      now.set(hit, { added: [...mine.added, ...m.added], older: mine.older || m.older })
+      // Bursts that now touch are one: the tiles the other brings are new to it at this frame.
       for (let k = open.length - 1; k >= 0; k--) {
         const o = open[k]
         if (o === hit || !overlaps(o.box, hit.box)) continue
         hit.box = union(hit.box, o.box)
-        for (let j = 0; j < o.tiles.length; j++) if (o.tiles[j]) hit.tiles[j] = 1
+        const into = now.get(hit)!
+        for (let j = 0; j < o.tiles.length; j++)
+          if (o.tiles[j] && !hit.tiles[j]) {
+            hit.tiles[j] = 3
+            into.added.push(j)
+          }
+        into.older ||= now.get(o)?.older ?? false
+        now.delete(o)
+        hit.moved ||= o.moved
         hit.first = Math.min(hit.first, o.first)
         open.splice(k, 1)
       }
     }
+    // Once a frame for each burst it changed: it grew (what it added is its newest), or it changed in
+    // place, the frame before being the most it showed.
+    for (const [b, s] of now) {
+      if (s.added.length) {
+        for (const j of b.newest) if (b.tiles[j] === 2) b.tiles[j] = 1
+        for (const j of s.added) b.tiles[j] = 2
+        b.newest = s.added
+        b.peak = null
+      } else if (s.older && b.peak === null) b.peak = i - 1
+    }
   }
   for (const b of open) close(b)
-  return out
+  return { settle: out, inPlace }
 }
 
 interface Scroll {
@@ -496,11 +574,12 @@ export function spansOf(text: string): [number, number][] {
 }
 
 /** One level of the ladder: every read, merged and sorted. */
-function planAt(look: LookData, hints: ReadHints, level: Level, base: { first: PlannedRead | null; settle: PlannedRead[]; typing: PlannedRead[] }): { reads: PlannedRead[]; spans: [number, number][] } {
+function planAt(look: LookData, hints: ReadHints, level: Level, base: { first: PlannedRead | null; settle: PlannedRead[]; inPlace: PlannedRead[]; typing: PlannedRead[] }): { reads: PlannedRead[]; spans: [number, number][] } {
   const reveal = revealReads(look, level.reveal, hints.scale)
   const merged = mergeReads([...base.settle, ...base.typing], level.merge)
   const spans: [number, number][] = [...merged.spans]
-  const fixed = [...(base.first ? [base.first] : []), ...merged.reads, ...reveal]
+  // In-place reads are never merged: the settle read of their own burst comes after what they read was changed.
+  const fixed = [...(base.first ? [base.first] : []), ...merged.reads, ...base.inPlace, ...reveal]
   const periodic = periodicReads(look, fixed, level.periodic)
   if (level.reveal > 0.75) for (const r of reveal) spans.push([Math.max(0, r.t - level.reveal), r.t])
   if (level.periodic > 60) for (const r of periodic) spans.push([Math.max(0, r.t - level.periodic / 2), r.t + level.periodic / 2])
@@ -509,10 +588,11 @@ function planAt(look: LookData, hints: ReadHints, level: Level, base: { first: P
 }
 
 /**
- * The reads of a recording (§5.4): the first frame, settle reads after bursts of changes, scroll
- * reveals, typing reads, periodic reads, with settle and typing areas less than 1 s apart read once.
- * Over `budget` units it thins, in this order, until it fits: reveals every 1.5 s, periodic reads every
- * 120 s, then settle and typing areas merged when less than 3 s apart, then 5 s. A read is never
+ * The reads of a recording (§5.4): the first frame, settle reads after bursts of changes and in-place
+ * reads of bursts changed in place after they grew, scroll reveals, typing reads, periodic reads, with
+ * settle and typing areas less than 1 s apart read once. Over `budget` units it thins, in this order,
+ * until it fits: reveals every 1.5 s, periodic reads every 120 s, then settle and typing areas merged
+ * when less than 3 s apart, then 5 s; in-place reads count against it and are never merged. A read is never
  * dropped: merging keeps every area, so a plan still over the budget after the last step (even past
  * twice the budget) runs whole. The thinned spans are recorded and the reads made by thinning marked.
  * `end` is the time of the recording's last source frame, where a burst it ends in is read.
@@ -521,7 +601,8 @@ export function planReads(look: LookData, hints: ReadHints, size: Size, fps: num
   void size
   void fps
   if (!look.frames.length) return { reads: [], units: 0, thinned: 0, thinSpans: '' }
-  const base = { first: firstRead(look), settle: settleReads(look, hints.scale, end), typing: typingReads(look, hints) }
+  const bursts = settleReads(look, hints.scale, end)
+  const base = { first: firstRead(look), settle: bursts.settle, inPlace: bursts.inPlace, typing: typingReads(look, hints) }
   const usual = planAt(look, hints, LADDER[0], base)
   let chosen = usual
   let level = 0
