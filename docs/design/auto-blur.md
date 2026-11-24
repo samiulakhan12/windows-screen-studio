@@ -4463,7 +4463,9 @@ pixels under the covers (two different secrets, same everything else), and the t
   tooltip passing over text before its first read, an email typed into a form field and a key typed
   into a terminal (and deleted again), the evaluation frames at 150% and 200% display scale, and the
   new-seed held-out frames, with every planted item's box known in every frame. The rendered cases
-  are cached under a key of their generator, so a changed fixture is rendered afresh. After Find, every
+  are cached under a key of their generator, so a changed fixture is rendered afresh; Find runs with
+  the phone regions the evaluation set's truth was scored with (the United States, which an English
+  UI has, and Great Britain and Bangladesh, added in the dialog). After Find, every
   on-by-default item is covered (its whole ink inside a cover) in **every source frame** it shows in,
   the frames between analysed frames included, for every video; each typed character is covered from
   the frame it appears. A failure prints the item, frame and uncovered pixels. The plan's units for

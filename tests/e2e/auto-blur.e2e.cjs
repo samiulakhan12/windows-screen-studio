@@ -88,13 +88,36 @@ async function goHome(win) {
 }
 
 /**
- * Find private info from the Shapes tab with the defaults (plus `names`, Names you list): waits until
- * the results are applied and saved. Returns the saved project and the run's line from main's log.
+ * The phone regions the evaluation set's truth counts as found (§17.1 test 198 and the scorers: US,
+ * GB and BD): an English UI always has the United States; the others are added in the Find dialog,
+ * as a user with numbers from there would. Without Bangladesh, crm-1's 01712-345680, written as it is
+ * at home, is no phone number, and A1 counted it uncovered in every frame of its page.
  */
-async function runFind(ctx, win, home, id, { names = [], timeout = 40 * 60 * 1000 } = {}) {
+const EVAL_REGIONS = ['GB', 'BD']
+
+/** Adds `regions` to the open Find dialog's phone regions (Change…, each ticked unless it is on already, Done). */
+async function addRegions(win, regions) {
+  await win.click('[data-testid="find-regions-change"]')
+  const dialog = win.locator('[data-testid="regions-dialog"]')
+  await dialog.waitFor()
+  for (const r of regions) {
+    const box = dialog.locator(`input[data-region="${r}"]`)
+    if (!(await box.isChecked())) await box.check()
+  }
+  await win.click('[data-testid="regions-done"]')
+  await dialog.waitFor({ state: 'detached' })
+}
+
+/**
+ * Find private info from the Shapes tab with the defaults (plus `names`, Names you list, and the
+ * evaluation set's phone regions): waits until the results are applied and saved. Returns the saved
+ * project and the run's line from main's log.
+ */
+async function runFind(ctx, win, home, id, { names = [], regions = EVAL_REGIONS, timeout = 40 * 60 * 1000 } = {}) {
   await af.openShapes(win)
   await win.click('[data-testid="privacy-find"]')
   await win.waitForSelector('[data-testid="find-dialog"]')
+  if (regions.length) await addRegions(win, regions)
   if (names.length) await win.fill('[data-testid="find-names"]', names.join('\n'))
   await af.until(() => win.isEnabled('[data-testid="find-start"]'), 'Find is enabled (the reader is ready)', 60000)
   const before = h.readProject(home, id).privacy?.find?.at ?? null
