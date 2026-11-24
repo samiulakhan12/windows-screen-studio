@@ -504,7 +504,9 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     const cursor = await d.readCursor(req.projectId).catch(() => null)
     const hints = hintsOf(cursor)
     // 2. The plan.
-    const plan = planReads(look, hints, size, fps, readBudget(duration, size))
+    // The last source frame, where a burst the recording ends in is read (§5.4 point 2).
+    const lastFrame = Math.max(0, Math.ceil(duration * fps - 1e-6) - 1) / fps
+    const plan = planReads(look, hints, size, fps, readBudget(duration, size), lastFrame)
     const options: DetectOptions = { kinds: req.kinds.filter((k) => k !== 'notice' && k !== 'text'), regions: [...req.regions], names: compileNames(req.names, req.neverHide), frame: { width: size.width, height: size.height } }
     const extra = groupExtras(d.random)
     const groups = new Map<string, string>()

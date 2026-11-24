@@ -281,8 +281,13 @@ interface Burst {
   lastIndex: number
 }
 
-/** Settle reads (§5.4 point 2): one after each burst of changes in a region. */
-function settleReads(data: LookData, scale: number): PlannedRead[] {
+/**
+ * Settle reads (§5.4 point 2): one after each burst of changes in a region. A burst the recording ends
+ * in is read at its last source frame (`end`), which shows the most of what came in: at 60 fps the last
+ * analysed frame can be one before it, and a line a scroll was bringing in at the bottom edge, cut
+ * there, was misread ("+1.415.555.4187") and never found.
+ */
+function settleReads(data: LookData, scale: number, end?: number): PlannedRead[] {
   const frames = data.frames
   const out: PlannedRead[] = []
   const open: Burst[] = []
@@ -293,7 +298,9 @@ function settleReads(data: LookData, scale: number): PlannedRead[] {
     let i = Math.min(frameAtOrAfter(data, b.last + SETTLE_S), frames.length - 1)
     if (i > b.lastIndex && changedUnder(frames[i], data, b.box) > 0) i -= 1
     const areas = tileBoxes(b.tiles, data).map((a) => pad(a, SETTLE_PAD * scale, data.size))
-    out.push(read(frames[Math.max(i, b.lastIndex)].t, joinAreas(areas), 'settle'))
+    const at = frames[Math.max(i, b.lastIndex)].t
+    const ending = b.lastIndex === frames.length - 1 && end !== undefined && end > at
+    out.push(read(ending ? end : at, joinAreas(areas), 'settle'))
   }
   // The first analysed frame has every tile changed (nothing came before it): the first read reads it.
   for (let i = 1; i < frames.length; i++) {
@@ -508,12 +515,13 @@ function planAt(look: LookData, hints: ReadHints, level: Level, base: { first: P
  * 120 s, then settle and typing areas merged when less than 3 s apart, then 5 s. A read is never
  * dropped: merging keeps every area, so a plan still over the budget after the last step (even past
  * twice the budget) runs whole. The thinned spans are recorded and the reads made by thinning marked.
+ * `end` is the time of the recording's last source frame, where a burst it ends in is read.
  */
-export function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number): ReadPlan {
+export function planReads(look: LookData, hints: ReadHints, size: Size, fps: number, budget: number, end?: number): ReadPlan {
   void size
   void fps
   if (!look.frames.length) return { reads: [], units: 0, thinned: 0, thinSpans: '' }
-  const base = { first: firstRead(look), settle: settleReads(look, hints.scale), typing: typingReads(look, hints) }
+  const base = { first: firstRead(look), settle: settleReads(look, hints.scale, end), typing: typingReads(look, hints) }
   const usual = planAt(look, hints, LADDER[0], base)
   let chosen = usual
   let level = 0

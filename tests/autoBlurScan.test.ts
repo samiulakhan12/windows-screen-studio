@@ -105,6 +105,27 @@ describe('auto-blur P4: the scan', () => {
     for (const x of seen) expect(x.to).toBeGreaterThanOrEqual(x.from)
   })
 
+  it('A burst the recording ends in is read at its last source frame: at 60 fps that is one frame after the last analysed one (found end to end: a line coming in at the bottom edge was read cut at the earlier frame, misread and never covered)', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'flown-scan-'))
+    roots.push(dir)
+    writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
+    // A list scrolling for the whole of a 2 s recording at 60 fps (frames 0-119; the look analyses every second one, to 118).
+    const list: Box = [0, 0, 1920, 1080]
+    const look = lookOf(HD, 60, 2, (_i, t) => (t > 0 ? { changed: [list], moves: [{ box: list, dx: 0, dy: -8, score: 0.95, alt: [] }] } : {}))
+    const log: string[] = []
+    const deps: ScanDeps = {
+      helper: async () => new FakeHelper({ look, planted: [] }, log) as unknown as ScanHelper,
+      readProject: async () => base('rec-1', 2, { fps: 60 }),
+      projectDir: () => dir,
+      readCursor: async () => null,
+      log: () => undefined
+    }
+    const r = await runFind(request(), noProgress, never, deps)
+    expect(r.ok).toBe(true)
+    const times = log.filter((l) => l.startsWith('read ')).map((l) => Number(l.split(' ')[1]))
+    expect(Math.max(...times)).toBeCloseTo(119 / 60, 9)
+  })
+
   it('153. runFind with the fake helper: progress phases; the result holds no text (a JSON scan of it finds none of the planted strings)', async () => {
     // A secret QR code beside the text from 5 s: covered, its payload never in the result.
     const quad: [number, number][] = [

@@ -231,4 +231,18 @@ describe('auto-blur P4: look and plan', () => {
     // Each small area is its own burst, read alone in the smallest bucket; the large one is padded to 1200×500, one unit.
     expect(settle.map((r) => r.units)).toEqual([0.1, 0.1, 0.1, 1])
   })
+
+  it('A burst the recording ends in is read at the recording\'s last source frame, not the last analysed one: at 60 fps that is one frame later and shows more of what a scroll brings in (found end to end: a phone number coming in at the bottom edge was misread there, cut, and never covered)', () => {
+    // A list scrolling for the whole of a 2 s recording at 60 fps: frames 0 to 119, the look analyses every second one (to 118).
+    const list: Box = [0, 0, 1280, 720]
+    const scroll = lookOf({ width: 1280, height: 720 }, 60, 2, (_i, t) => (t > 0 ? { changed: [list], moves: [move(list, 0, -8)] } : {}))
+    expect(scroll.frames[scroll.frames.length - 1].t).toBeCloseTo(118 / 60, 6)
+    const settle = planReads(scroll, NO_HINTS, { width: 1280, height: 720 }, 60, 1e9, 119 / 60).reads.filter((r) => r.why === 'settle')
+    expect(settle.map((r) => r.t)).toEqual([119 / 60])
+    // A burst that settles before the end is read where it settles, as before.
+    const settles = lookOf({ width: 1280, height: 720 }, 60, 2, (_i, t) => (t > 0 && t < 1 ? { changed: [list], moves: [move(list, 0, -8)] } : {}))
+    const early = planReads(settles, NO_HINTS, { width: 1280, height: 720 }, 60, 1e9, 119 / 60).reads.filter((r) => r.why === 'settle')
+    expect(early).toHaveLength(1)
+    expect(early[0].t).toBeLessThan(1.4)
+  })
 })
