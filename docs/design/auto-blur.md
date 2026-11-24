@@ -2177,10 +2177,10 @@ editor keeps a core:
 |---|---|---|---|
 | Look: decode | every one of 72,000 frames decoded; 36,000 analysed frames scaled to 480×270 grey | 72,000 × 1.77-1.86 ms + 36,000 × 0.65-0.7 ms ≈ 150-160 s; ≈ 80-100 s wall on 2 threads | *measured* per frame (decode only, and decode with the look scale) |
 | Look: analysis | tiles and moves on 36,000 analysed frames | about 15 s | 0.4 ms a look frame (estimate; R11 measures it) |
-| Reads: inference | 150 units (§5.4) with careful-long, check reads and partial reads inside the budget | 150 × 2.9 s ≈ 435 s on 1 thread | *measured* tract times: detector buckets, tiny and small recognisers per line (§5.5, §5.6) |
-| Reads: decode | about 300-600 reads, each a seek to its key frame (reads less than 1 s apart share one) | 0.094-0.106 s each ≈ 30-60 s, on the second thread while the first infers | *measured* (one read with its process start) |
+| Reads: inference | 150 units (§5.4) with careful-long, check reads and partial reads inside the budget | 150 × 2.9 s ≈ 435 s of CPU; the careful re-reads (about half of it) on the second thread beside the reads (§5.5) | *measured* tract times: detector buckets, tiny and small recognisers per line (§5.5, §5.6) |
+| Reads: decode | about 300-600 reads, each a seek to its key frame (reads less than 1 s apart share one) | 0.094-0.106 s each ≈ 30-60 s, on the second thread while the first infers when the careful worker is not re-reading | *measured* (one read with its process start) |
 | Rules | about 37 lines a unit × 1.3 variants | under 3 s, in the rules worker | prototype: 40-250 µs a line |
-| Follow: decode | the frames of the follow sessions, about 15% of all, once each at 960×540 grey | 10,800 × 3.05-3.06 ms ≈ 33 s, on the second thread | *measured* per frame |
+| Follow: decode | the frames the walks ask, about 15% of all, once each at 960×540 grey; the sessions seek over the rest (§5.8) | 10,800 × 3.05-3.06 ms ≈ 33 s, on the second thread | *measured* per frame |
 | Follow: matching | parts × tracks × analysed frames in sessions | under 10 s | 0.05 ms a part a frame (estimate; R22 measures it) |
 | **Wall time** | look phase, then reads and follows | **about 9-11 minutes** (0.45-0.55 × the recording's length) | the sum of the rows' wall times; the plan's real units replace it in the second estimate |
 
@@ -2188,9 +2188,40 @@ The 150 units are the budget, not a measured distribution: how many units a real
 needs (settle bursts, typing, reveals) is measured on A16's videos at integration and on decision 8's
 30 real recordings, and every user sees the second estimate made from their own plan.
 
+**Measured here** (24 November 2026, this machine, otherwise quiet; the helper's host build, through
+its protocol with each command's time; the reference PC measures again, decision 8). The band is
+converted to a recording on this machine as the first estimate is: this PC's own decode speed `d`,
+which Find records from its look pass (look time × 1.8 × the 1080p area ratio ÷ frames), and the
+plan's units at 2.9 s. A1's recording (60 s at 1920×1080 and 30 fps, 1,800 frames, lossless H.264
+4:4:4 with a key frame a second; eight pages with 1 s scrolls between them; a plan of 8 units, its
+budget): `d` = 3.4 ms (lossless 4:4:4 frames decode more slowly than the proxy's 1.85 ms), so
+1,800 × 3.4 ms ÷ 1.8 + 8 × 2.9 s + 0.05 × 60 s = 3.4 + 23.2 + 3.0 ≈ **29.6 s**, within the band of
+0.45-0.55 × 60 s = 27-33 s.
+
+| A1's Find | Before | Now |
+|---|---|---|
+| In the app (the end-to-end A1: *Find took*, the scan's own time) | 50-56 s (48.1-53.9 s): 0.83-0.93 × | **27-28 s (25.3-26.5 s): 0.45-0.47 ×** |
+| Headless, the same scan | 48.7-50.0 s | 26.3-27.2 s |
+| Open (hash, parse, build every plan) | 1.3 s | 1.0-1.3 s |
+| Look (1,800 frames, 2 ffmpeg threads) | 3.3 s | 3.0-3.9 s |
+| Reads (8 whole frames, 293 lines, 114 read again) | 24.7-29.5 s: the reads 12.2 s and their careful passes 12.4-16.8 s, one after the other on one thread | 16.8-17.6 s (2.1-2.2 s a unit): the careful worker beside the reads (§5.5) |
+| Follow (2 sessions, about 250 frames asked in each direction) | 19.4-20.0 s: every frame from 53.7 s down to 0 in 108 half-second pieces, every frame from 0 to 60 s, each with its gradient | 4.9 s: 14 backward pieces decoding 386 frames, 281 forward frames and 7 seeks, 341 gradients (0.8 s), 378 matches (0.9 s) |
+| The helper's peak memory | | 442 MB at 1080p; 502 MB at 3840×2160 (the evaluation frames at 200%) |
+
+The same Finds made the same covers (98, every one of A1's 20,495 item-frames covered, 8.6% of a
+frame on average). A16's evaluation cases (144 s each) went from 229, 425 and 595 s to 125-130,
+252-266 and 350-358 s, every item-frame still covered: their plans (24, 96 and 144 units against
+budgets of 18, 36 and 36) run over the budget as §5.4 point 7 allows, so the band does not bound them. The follow phase is
+still about 0.08 × the recording's length on A1, more than the 0.05 the first estimate allows,
+because its frames are decoded after the reads rather than beside them. On recordings that change
+page, the follow phase is the template searches at each cut, not decoding: on the held-out set
+(headless, 129 s) it took 64 s, 52 s of it in the 62 matches over 0.2 s, each walker lost at a cut
+trying the zoom grid and the region's other places (§5.8 steps 4 and 6) at about 2 µs a placement of
+a part; the inner product itself is at its scalar speed, so only fewer placements would shorten it.
+
 | Process | Peak memory |
 |---|---|
-| `ssw-ocr.exe` | ≤ 600 MB at 1080p and 4K, ≤ 750 MB at 7680×2160: detector plans for the three buckets 259 MB (*measured*, with their input and activations), small recogniser plans 188 MB and tiny 58 MB (*measured*, each with its own process's base; all built once at open and kept, §5.5), at most 3 RGB frames in flight (6.3 MB each at 1080p, 25 MB at 4K, 50 MB at 7680×2160), line crops ≤ 20 MB, a follow session's two key-frame intervals at half size (15 MB at 1080p, 60 MB at 4K), the look worker ≤ 10 MB |
+| `ssw-ocr.exe` | ≤ 600 MB at 1080p and 4K, ≤ 750 MB at 7680×2160: detector plans for the three buckets 259 MB (*measured*, with their input and activations), small recogniser plans 188 MB and tiny 58 MB (*measured*, each with its own process's base; all built once at open and kept, §5.5), a careful re-read running beside a read (§5.5), at most 3 RGB frames in flight (6.3 MB each at 1080p, 25 MB at 4K, 50 MB at 7680×2160), line crops ≤ 20 MB, a follow session's frames at half size in grey (backward the piece it is in and the 0.1 s above the frame asked: at most about 0.85 s of frames with the proxy's key frame every 15 frames, 26 MB at 1080p60 and 105 MB at 4K; forward 8 frames) and the gradients of the last two frames asked (4 MB at 1080p, 17 MB at 4K), the look worker ≤ 10 MB; *measured* peak 442 MB at 1080p (A1) and 502 MB at 3840×2160 |
 | `ffmpeg.exe` | 76-124 MB each (*measured* peak: look 76 MB, a read's seek 93 MB, full-size RGB 124 MB); at most one at a time in each phase |
 | main (scan state) | ≤ 60 MB: look data 11 MB, the run's folded texts and boxes, the paths |
 | renderer | the covers only: under 5 MB for 2,000 covers |
