@@ -214,6 +214,19 @@ describe('auto-blur P4: following', () => {
     expect(uncovered(track, 30, text, 0.5, leaves, page)).toEqual([])
   })
 
+  it('Forward, text cut at the frame edge by a scroll is not a fading glyph: the frame it stops matching at stays covered (found end to end)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    const yAt = (t: number): number => 300 - 40 * Math.max(0, Math.round((t - 1) * 30))
+    const shown: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) + 30 > 0 ? [400, yAt(t), 200, 30] : null) }
+    // Cut at the top edge, the template no longer matches: the matcher sees the text only while it is whole.
+    const whole: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) >= 0 ? [400, yAt(t), 200, 30] : null) }
+    const look = lookOf(HD, 30, 6, (_i, t) => (Math.round((t - 1) * 30) >= 1 && t < 3 ? { changed: [page], moves: [move(page, 0, -40)] } : {}))
+    const [track] = await walkSpan([start(0.5, [400, 300, 200, 30])], 1, look, readIndex(), matcherOf([whole]), NO_HINTS, HD)
+    const leaves = sourceFrames(30, 0.5, 6).find((t) => shown.at(t) === null)!
+    expect(track.end).toBeLessThanOrEqual(leaves + 2 / 30 + 1e-9)
+    expect(uncovered(track, 30, shown, 0.5, leaves, page)).toEqual([])
+  })
+
   it('Backward, a fast scroll that brought the text in is no page change: the cover starts where the text came into the frame, even with no match while it moved (found end to end)', async () => {
     const page: Box = [0, 0, 1920, 1080]
     // From 1 s to 2 s the page scrolls up into view, 36 px an analysed frame (30 fps), the text with it, to rest at 300.

@@ -561,10 +561,14 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (w.holdEnd > end) end = w.holdEnd
     w.result = { start: w.start.t, end }
     w.placements = tidy(w.placements).filter((p) => p.t < end - 1e-9)
-    // At e the text is gone from every candidate: a fading glyph stays where it was, in the box held before e (never the whole lost area).
+    // At e the text is gone from every candidate: a fading glyph stays where it was, in the box held
+    // before e (never the whole lost area). Not when its region moved since it was last placed (a
+    // scroll carrying it out of view): there it is cut at the frame's edge, not fading, and only the
+    // lost area holds it (found end to end, a scrolled email showed for one frame).
     const te = frames[e].t
     const at = w.placements.findIndex((p) => Math.abs(p.t - te) < 1e-9)
-    if (at > 0 && w.holdEnd <= te) w.placements[at] = { t: te, box: w.placements[at - 1].box }
+    const movedSince = w.drift.dx !== 0 || w.drift.dy !== 0
+    if (at > 0 && w.holdEnd <= te && !movedSince) w.placements[at] = { t: te, box: w.placements[at - 1].box }
     w.done = true
   }
 
