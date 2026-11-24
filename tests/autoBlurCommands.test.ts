@@ -28,10 +28,11 @@ describe('auto-blur contracts: commands', () => {
   it('30. Commands: the five are in COMMAND_LIST, left out of the palette and the shortcuts editor by WAITING_COMMANDS (WAITING_P1 and WAITING_P5 on lines of their own), have no default key, and each has its runner case in Editor.tsx', async () => {
     const ids = COMMANDS.map((c) => c.id)
     for (const id of FIVE) expect(ids as string[], id).toContain(id)
-    // Part P1 emptied its line: its four commands work and are listed (test 74); findPrivate waits for P5.
+    // Parts P1 and P5 emptied their lines: P1's four commands work and are listed (test 74), and P5's findPrivate (test 180).
     const P1 = ['addCover', 'coverEndHere', 'coverStartHere', 'peekCovers']
     expect([...WAITING_P1]).toEqual([])
-    expect(WAITING_P5).toEqual(['findPrivate'])
+    expect([...WAITING_P5]).toEqual([])
+    expect(PALETTE_COMMANDS.map((c) => c.id as string)).toContain('findPrivate')
     expect([...WAITING_COMMANDS].sort()).toEqual([...WAITING_P1, ...WAITING_P5].sort())
     for (const id of FIVE) {
       const waits = (WAITING_COMMANDS as readonly string[]).includes(id)

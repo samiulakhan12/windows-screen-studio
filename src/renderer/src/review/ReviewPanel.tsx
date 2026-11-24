@@ -53,19 +53,33 @@ import {
 } from '../../../shared/review/review'
 import { heldInSlices, type Work } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
-import type { Project } from '../../../shared/types'
+import { doneCounts, doneReviewing, privacyKinds, privacyOrder, privateRowKind, privateRowView, type PrivateRowView } from '../../../shared/review/privacyReview'
+import { itemKey } from '../../../shared/editor/multiSelect'
+import { kindTitle, PRIVACY_COPY } from '../../../shared/privacy/copy'
+import { PRIVATE_KINDS } from '../../../shared/privacy/kinds'
+import { readToTime, unfinished } from '../../../shared/privacy/findState'
+import type { PrivateKind, Project } from '../../../shared/types'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import { useEditor } from '../editor/context'
+import { useGroup } from '../editor/groupContext'
 import { keepVersionBefore } from '../versions/autoVersion'
 import { useKeymap } from '../editor/keymapContext'
 import { playStretch } from './playStretch'
 import { pageTasks } from './tasks'
 import './review.css'
 import { FindProgressLine } from '../privacy/readerState'
+import { FindResultLine } from '../privacy/FindLine'
+import { runFor, subscribeRuns } from '../privacy/findRuns'
+import { CopiesOffer } from '../privacy/CopiesOffer'
+import { clearPeek, listenBleep, peekCovers, peekWhileReviewing, usePeek } from '../privacy/peek'
+import { onPrivateReview, takePrivateReview } from '../privacy/reviewRequest'
+import '../privacy/privacyPanel.css'
 
 export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Shows a notice in the editor (said once the panel is gone). */ onNotice?: (text: string) => void }): JSX.Element {
-  const { store, player } = useEditor()
+  const services = useEditor()
+  const { store, player } = services
+  const group = useGroup()
   const keymap = useKeymap()
   const shortcuts = useMemo(() => shortcutIndex(keymap), [keymap])
   const project = useSyncExternalStore(store.subscribe, store.getSnapshot)
@@ -82,7 +96,30 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     follow()
     return store.subscribe(follow)
   }, [store])
-  const list = useMemo(() => (shown.at === project ? shown.list : mergeSnapshot(shown.list, project)), [shown, project])
+  const full = useMemo(() => (shown.at === project ? shown.list : mergeSnapshot(shown.list, project)), [shown, project])
+  // Auto-blur's private items (docs/design/auto-blur.md §2.7): Review opened on them (the Private info
+  // section's, Find's and the export note's *Review*) lists them alone, Check rows first, each by
+  // start, in the order they were first listed (kept there as they are reviewed); the kind filter
+  // narrows them to one kind. *Show all changes* lists every change again.
+  const [privateOnly, setPrivateOnly] = useState(() => takePrivateReview())
+  const [kindFilter, setKindFilter] = useState<PrivateKind | 'all'>('all')
+  const rank = useRef(new Map<string, number>())
+  useEffect(
+    () =>
+      onPrivateReview(() => {
+        takePrivateReview()
+        rank.current = new Map()
+        setPrivateOnly(true)
+      }),
+    []
+  )
+  const list = useMemo(() => {
+    if (!privateOnly) return full
+    const shownRows = full.filter((i) => i.kind === 'private' && (kindFilter === 'all' || privateRowKind(i) === kindFilter))
+    const fresh = shownRows.filter((i) => !rank.current.has(i.key))
+    for (const i of privacyOrder(fresh, project)) rank.current.set(i.key, rank.current.size)
+    return shownRows.sort((a, b) => (rank.current.get(a.key) ?? 0) - (rank.current.get(b.key) ?? 0))
+  }, [full, privateOnly, kindFilter, project])
   const statuses = useMemo(() => list.map((i) => reviewStatus(project, i)), [list, project])
   const { reviewed, total } = useMemo(() => reviewProgress(statuses), [statuses])
   /** Where each row is in the list, by key. */
@@ -98,7 +135,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       const at = rowTimes(i.parts, project.clips, plan)
       out.set(
         i.key,
-        i.parts.map((p, k) => ({ key: p.key, title: p.title, time: at[k], status: reviewStatus(project, p) }))
+        i.parts.map((p, k) => ({ key: p.key, title: p.title, time: at[k], status: reviewStatus(project, p), ...(p.kind === 'private' ? { badges: (privateRowView(project, p)?.badges ?? []).map((b) => t(b)) } : {}) }))
       )
     }
     return out
@@ -287,10 +324,22 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     store.update((p) => (action === 'keep' ? keepItems(p, [item]) : removeItems(p, [item])))
     const after = list.map((i) => reviewStatus(store.state, i))
     const done = reviewProgress(after)
-    say(actedMessage(action, done.reviewed, done.total))
+    say(item.kind === 'private' && action === 'remove' ? t(PRIVACY_COPY.review.uncovered) : actedMessage(action, done.reviewed, done.total))
     if (waited) return
+    if (kindEmptied(after)) return
     const next = nextPending(list, after, index)
     if (next) focusKey(next)
+  }
+
+  /**
+   * With one kind of private item shown and none of it left to review, the list says so and the focus
+   * goes to the kind filter (finding 34); true when it went there.
+   */
+  const filterRef = useRef<HTMLSelectElement>(null)
+  const kindEmptied = (after: readonly ReviewStatus[]): boolean => {
+    if (!privateOnly || kindFilter === 'all' || after.includes('pending')) return false
+    filterRef.current?.focus()
+    return true
   }
 
   /**
@@ -344,7 +393,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     if (!waited) pick(groupKey)
     store.update((p) => (action === 'keep' ? keepItems(p, [part]) : removeItems(p, [part])))
     const done = reviewProgress(list.map((i) => reviewStatus(store.state, i)))
-    say(actedMessage(action, done.reviewed, done.total))
+    say(part.kind === 'private' && action === 'remove' ? t(PRIVACY_COPY.review.uncovered) : actedMessage(action, done.reviewed, done.total))
     if (waited) return
     const parts = list[k!].parts ?? []
     const from = parts.findIndex((p) => p.key === partKey)
@@ -390,7 +439,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
    * Keep or Remove `count` rows of `list` (of `kind` for Remove all) still to review, then `after`
    * (where the focus goes, from where it is: focusAfterWork); the live region says what was done.
    */
-  const bulk = (action: 'keep' | 'remove', kind: ReviewKind | undefined, count: number, after: (at: { moves: boolean; row?: string }) => void): void => {
+  const bulk = (action: 'keep' | 'remove', kind: ReviewKind | undefined, count: number, after: (at: { moves: boolean; row?: string }) => void, sliced = false): void => {
     stopStretch()
     const targets = (p: Project): ReviewItem[] => latest.current.list.filter((i) => (!kind || i.kind === kind) && reviewStatus(p, i) === 'pending')
     const apply = (p: Project, items: readonly ReviewItem[]): Project => (action === 'keep' ? keepItems(p, items) : removeItems(p, items))
@@ -409,7 +458,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     // What is said counts a group row as its items still to review ("Removed 38 emphasis."); `count`
     // (rows) only decides whether the work runs in slices.
     const units = (p: Project, items: readonly ReviewItem[]): number => items.reduce((n, i) => n + (i.parts ? i.parts.filter((x) => reviewStatus(p, x) === 'pending').length : 1), 0)
-    if (count <= BUSY_FROM) {
+    // Auto-blur's Keep all … covered and Uncover all … always go through heldInSlices (§14.1).
+    if (count <= BUSY_FROM && !sliced) {
       let done = 0
       commit((p) => {
         const items = targets(p)
@@ -479,6 +529,12 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   const kindPending = useMemo(() => (kind ? list.filter((i, k) => i.kind === kind && statuses[k] === 'pending') : []), [list, statuses, kind])
   const removeKind = (): void => {
     if (stillBusy() || !current || kindPending.length === 0) return
+    // Uncover all private items asks first, its focus on Cancel (auto-blur §2.7).
+    if (current.kind === 'private') return askUncover(kindPending.length, () => removeKindNow())
+    removeKindNow()
+  }
+  const removeKindNow = (): void => {
+    if (stillBusy() || !current || kindPending.length === 0) return
     bulk('remove', current.kind, kindPending.length, (at) => {
       // A control in a row still to review, chosen meanwhile, keeps the focus, its row the focused
       // one. Else on to the next row to review after the focused one, which is the one pressed from
@@ -486,16 +542,155 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       if (at.row !== undefined) return pick(at.row)
       const { list, active } = latest.current
       const after = list.map((i) => reviewStatus(store.state, i))
+      if (at.moves && latest.current.kindEmptied(after)) return
       const next = after[active] === 'pending' ? list[active].key : nextPending(list, after, active)
       if (next && at.moves) focusKey(next)
       else if (next) pick(next)
     })
   }
 
+  /* ---------- auto-blur's private items (docs/design/auto-blur.md §2.7, §2.8, §11) ---------- */
+
+  const peek = usePeek()
+  const runningNow = (): boolean => !!runFor(project.id)
+  const running = useSyncExternalStore(subscribeRuns, runningNow, runningNow)
+  const record = project.privacy?.find
+  const hasPrivate = full.some((i) => i.kind === 'private')
+  // What each private row and place shows besides its title: badges, places, the lost area, what Peek and Listen act on.
+  const views = useMemo(() => {
+    const out = new Map<string, PrivateRowView>()
+    for (const i of list) {
+      if (i.kind !== 'private') continue
+      const v = privateRowView(project, i)
+      if (v) out.set(i.key, v)
+    }
+    return out
+  }, [list, project])
+  // The kinds the filter offers: those waiting now and those of the rows listed.
+  const kinds = useMemo(() => {
+    const have = new Set<PrivateKind>(privacyKinds(project))
+    for (const i of full) {
+      const k = i.kind === 'private' ? privateRowKind(i) : null
+      if (k) have.add(k)
+    }
+    return PRIVATE_KINDS.filter((k) => have.has(k))
+  }, [full, project])
+  const privatePending = list.filter((i, k) => i.kind === 'private' && statuses[k] === 'pending').length
+  const toKeep = useMemo(() => doneCounts(project), [project])
+
+  // Review closing stops Peek and Listen (§2.8).
+  useEffect(() => () => clearPeek(), [])
+  // *Peek while reviewing*: the selected private row is peeked, the next one as the focus moves on.
+  const activeCovers = current?.kind === 'private' ? (views.get(current.key)?.coverIds ?? []) : []
+  const activeCoversKey = activeCovers.join(',')
+  useEffect(() => {
+    if (!peek.review) return
+    peekCovers(activeCovers.length ? activeCovers : null)
+    // The covers' ids, not the array: a new array of the same ids peeks nothing new.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peek.review, activeCoversKey])
+  /** Whether Peek shows exactly these covers now. */
+  const peekedAt = (ids: readonly string[]): boolean => Array.isArray(peek.ids) && ids.length > 0 && peek.ids.length === ids.length && ids.every((id) => (peek.ids as readonly string[]).includes(id))
+
+  // The confirms of Uncover all and Done reviewing (§2.7): inline in the panel, their focus on Cancel.
+  const [confirm, setConfirm] = useState<{ text: string; detail?: string; action: string; run: () => void; back: HTMLElement | null } | null>(null)
+  const activeEl = (): HTMLElement | null => {
+    const el = typeof document !== 'undefined' ? document.activeElement : null
+    return el instanceof HTMLElement ? el : null
+  }
+  const askUncover = (count: number, run: () => void): void =>
+    setConfirm({ text: t(PRIVACY_COPY.review.uncoverConfirm, { count, n: fmt.count(count) }), action: t(PRIVACY_COPY.review.uncoverConfirmAction), run, back: activeEl() })
+  const closeConfirm = (go: boolean): void => {
+    const c = confirm
+    setConfirm(null)
+    if (!c) return
+    if (go) c.run()
+    else c.back?.focus()
+  }
+
+  /** After a private bulk action: the filter when the kind shown has nothing left, else on to the focused row. */
+  const afterPrivate = (at: { moves: boolean }): void => {
+    const { list, active } = latest.current
+    const after = list.map((i) => reviewStatus(store.state, i))
+    if (at.moves && latest.current.kindEmptied(after)) return
+    if (at.moves && list[active]) focusKey(list[active].key)
+  }
+  /** *Keep all … covered* of the kind shown (one undo step, through heldInSlices). */
+  const keepKind = (): void => {
+    if (stillBusy() || privatePending === 0) return
+    bulk('keep', 'private', privatePending, afterPrivate, true)
+  }
+  /** *Uncover all …* of the kind shown, asked first; it keeps a version first, as Remove all does. */
+  const uncoverKind = (): void => {
+    if (stillBusy() || privatePending === 0) return
+    askUncover(privatePending, () => latest.current.bulk('remove', 'private', privatePending, afterPrivate, true))
+  }
+  /** *Done reviewing*: every waiting private suggestion kept, in one undo step through heldInSlices, after its confirm. */
+  const done = (): void => {
+    if (stillBusy() || toKeep.waiting === 0) return
+    const n = toKeep.waiting
+    const detail = toKeep.check > 0 ? t(PRIVACY_COPY.review.doneCheck, { count: toKeep.check, n: fmt.count(toKeep.check) }) : undefined
+    setConfirm({
+      text: t(PRIVACY_COPY.review.doneConfirm, { count: n, n: fmt.count(n) }),
+      ...(detail ? { detail } : {}),
+      action: t(PRIVACY_COPY.review.doneKeep),
+      back: activeEl(),
+      run: () => {
+        stopStretch()
+        setBusy({ action: 'keep', count: n })
+        const work = heldInSlices(
+          store,
+          (p) =>
+            (function* (): Generator<never, Project, undefined> {
+              return doneReviewing(p)
+            })(),
+          (base, next) => {
+            working.current = null
+            store.update((p) => (p === base ? next : doneReviewing(p)))
+            setBusy(null)
+            say(bulkMessage('keep', n))
+            afterPrivate(focusAfterWork())
+          },
+          pageTasks()
+        )
+        working.current = { work, action: 'keep' }
+      }
+    })
+  }
+  const findAgain = (): void => group.command('findPrivate')
+  const togglePrivate = (only: boolean): void => {
+    rank.current = new Map()
+    setPrivateOnly(only)
+    if (!only) setKindFilter('all')
+  }
+  const onPeekRow = useCallback((key: string) => {
+    const v = latest.current.views.get(key)
+    if (!v || !v.coverIds.length) return
+    peekCovers(latest.current.peekedAt(v.coverIds) ? null : v.coverIds)
+  }, [])
+  const onListenRow = useCallback((key: string) => {
+    const v = latest.current.views.get(key)
+    if (!v?.bleepId) return
+    listenBleep(latest.current.listen === v.bleepId ? null : v.bleepId)
+  }, [])
+  const onSelectRow = useCallback((key: string) => {
+    const v = latest.current.views.get(key)
+    if (!v || !v.coverIds.length) return
+    const keys = v.coverIds.map((id) => itemKey('cover', id))
+    latest.current.group.select(keys, keys[0])
+  }, [])
+  /** A place's own stretch (§2.7). */
+  const onPlayPart = useCallback((groupKey: string, partKey: string) => {
+    const { list, indexOf } = latest.current
+    const k = indexOf.get(groupKey)
+    const part = k !== undefined ? list[k].parts?.find((p) => p.key === partKey) : undefined
+    if (part) latest.current.play(part)
+  }, [])
+
   // The rows' handlers stay the same function from render to render, so a row draws again only
   // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
-  const latest = useRef({ choose, act, ask, actPart, askPart, list, indexOf, active })
-  latest.current = { choose, act, ask, actPart, askPart, list, indexOf, active }
+  const latest = useRef({ choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play })
+  latest.current = { choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play }
   const onRowChoose = useCallback((key: string) => {
     const { list, indexOf, choose } = latest.current
     const k = indexOf.get(key)
@@ -513,7 +708,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   }, [])
 
   const onListKey = (e: React.KeyboardEvent): void => {
-    const key = listKey(e, shortcuts)
+    const key = listKey(e, shortcuts, current)
     if (!key) return
     e.preventDefault()
     e.stopPropagation()
@@ -526,8 +721,9 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     else if (key.action === 'previous') move(active - 1)
     else if (key.action === 'first') move(0)
     else if (key.action === 'last') move(list.length - 1)
-    // V's Peek while reviewing (auto-blur §2.8) is part P5's; the list gives it only on a private row.
-    else if (current && key.action !== 'peek') ask(current, key.action)
+    // V turns Peek while reviewing on and off (auto-blur §2.8); the list gives it only on a private row.
+    else if (key.action === 'peek') peekWhileReviewing(!peek.review)
+    else if (current) ask(current, key.action)
   }
 
   const onPanelKey = (e: React.KeyboardEvent): void => {
@@ -575,6 +771,84 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       </div>
       {/* Find private info's progress line (docs/design/auto-blur.md §2.6). */}
       <FindProgressLine projectId={project.id} />
+      {(hasPrivate || privateOnly || !!record || running) && (
+        <div className="review-private" data-testid="review-private">
+          {confirm && <ReviewConfirm text={confirm.text} detail={confirm.detail} action={confirm.action} onAnswer={closeConfirm} />}
+          <FindResultLine projectId={project.id} />
+          {record && !running && unfinished(record) && (
+            <p className="review-private-line" data-testid="review-unfinished">
+              <span>{t(PRIVACY_COPY.review.unfinished, { time: readToTime(project) })}</span>{' '}
+              <button type="button" className="link" onClick={findAgain} data-testid="review-find-again">
+                {t(PRIVACY_COPY.review.findAgain)}
+              </button>
+            </p>
+          )}
+          {record && !running && !unfinished(record) && (
+            <button type="button" className="link" onClick={findAgain} data-testid="review-find-again">
+              {t(PRIVACY_COPY.review.findAgain)}
+            </button>
+          )}
+          {hasPrivate && (
+            <div className="review-private-tools">
+              <label className="check">
+                <input type="checkbox" checked={!privateOnly} onChange={(e) => togglePrivate(!e.target.checked)} data-testid="review-show-all" />
+                <span>{t('privacy.review.showAll')}</span>
+              </label>
+              {privateOnly && kinds.length > 0 && (
+                <label className="review-kind-filter">
+                  <span>{t(PRIVACY_COPY.review.filter)}</span>
+                  <select ref={filterRef} value={kindFilter} onChange={(e) => setKindFilter(e.target.value as PrivateKind | 'all')} data-testid="review-kind-filter">
+                    <option value="all">{t(PRIVACY_COPY.review.filterAll)}</option>
+                    {kinds.map((k) => (
+                      <option key={k} value={k}>
+                        {t(kindTitle(k))}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button
+                type="button"
+                className="btn small"
+                aria-pressed={peek.review}
+                title={t(PRIVACY_COPY.review.peekAllHint)}
+                aria-describedby="review-peek-all-hint"
+                onClick={() => peekWhileReviewing(!peek.review)}
+                data-testid="review-peek-all"
+              >
+                {t(PRIVACY_COPY.review.peekAll)}
+              </button>
+              <span id="review-peek-all-hint" className="sr-only">
+                {t(PRIVACY_COPY.review.peekAllHint)}
+              </span>
+            </div>
+          )}
+          {privateOnly && kindFilter !== 'all' && (
+            <div className="review-private-tools">
+              {privatePending === 0 ? (
+                <p className="review-private-line" role="status" data-testid="review-empty-kind">
+                  {t(PRIVACY_COPY.review.emptyKind)}
+                </p>
+              ) : (
+                <>
+                  <button type="button" className="btn small" aria-disabled={busy ? 'true' : undefined} onClick={keepKind} data-testid="review-keep-kind">
+                    {t(PRIVACY_COPY.review.keepKind, { kind: kindFilter })}
+                  </button>
+                  <button type="button" className="btn small" aria-disabled={busy ? 'true' : undefined} onClick={uncoverKind} data-testid="review-uncover-kind">
+                    {t(PRIVACY_COPY.review.uncoverKind, { kind: kindFilter })}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {toKeep.waiting > 0 && (
+            <button type="button" className="btn small" aria-disabled={busy ? 'true' : undefined} onClick={done} data-testid="review-done">
+              {t(PRIVACY_COPY.review.done)}
+            </button>
+          )}
+          <CopiesOffer services={services} />
+        </div>
+      )}
       {total > 0 && (
         <div className="review-progress">
           <span data-testid="review-progress">{progressText(reviewed, total)}</span>
@@ -604,6 +878,13 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
             open={open}
             onToggle={onToggle}
             onPartAct={onPartAct}
+            views={views}
+            peeked={peek.ids}
+            listened={peek.listen}
+            onPeek={onPeekRow}
+            onListen={onListenRow}
+            onSelectCovers={onSelectRow}
+            onPlayPart={onPlayPart}
           />
           <div className="review-foot">
             <button
@@ -699,6 +980,8 @@ interface PartView {
   title: string
   time: string
   status: ReviewStatus
+  /** A private place's badges (auto-blur §2.7), as shown. */
+  badges?: string[]
 }
 
 interface ListProps {
@@ -719,7 +1002,18 @@ interface ListProps {
   open: ReadonlySet<string>
   onToggle: (key: string, toggle: HTMLButtonElement | null) => void
   onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
+  /** Auto-blur's private rows (§2.7): what each shows besides its title, what Peek and Listen show now, and their buttons. */
+  views: ReadonlyMap<string, PrivateRowView>
+  peeked: readonly string[] | 'all' | null
+  listened: string | null
+  onPeek: (key: string) => void
+  onListen: (key: string) => void
+  onSelectCovers: (key: string) => void
+  onPlayPart: (groupKey: string, partKey: string) => void
 }
+
+/** Whether Peek shows exactly `ids` now. */
+const peekedNow = (peeked: readonly string[] | 'all' | null, ids: readonly string[]): boolean => Array.isArray(peeked) && ids.length > 0 && peeked.length === ids.length && ids.every((id) => peeked.includes(id))
 
 /**
  * The rows. Up to WINDOW_FROM, all of them, as a list in the page's flow. A longer list draws the
@@ -731,7 +1025,7 @@ interface ListProps {
  * after that is read, so a shorter list has not pulled the scroll position back yet. A row moved to
  * (`reveal`) is then brought fully into view once the rows drawn are all measured.
  */
-function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef, groups, open, onToggle, onPartAct }: ListProps): JSX.Element {
+function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown, onChoose, onAct, onFocusRow, setRef, groups, open, onToggle, onPartAct, views, peeked, listened, onPeek, onListen, onSelectCovers, onPlayPart }: ListProps): JSX.Element {
   const n = list.length
   const windowed = n > WINDOW_FROM
   const ul = useRef<HTMLUListElement>(null)
@@ -842,6 +1136,13 @@ function ReviewList({ list, indexOf, statuses, times, active, reveal, onKeyDown,
       expanded={open.has(list[k].key)}
       onToggle={onToggle}
       onPartAct={onPartAct}
+      view={views.get(list[k].key)}
+      isPeeked={peekedNow(peeked, views.get(list[k].key)?.coverIds ?? [])}
+      isListened={!!listened && views.get(list[k].key)?.bleepId === listened}
+      onPeek={onPeek}
+      onListen={onListen}
+      onSelectCovers={onSelectCovers}
+      onPlayPart={onPlayPart}
     />
   )
 
@@ -897,6 +1198,14 @@ interface RowProps {
   expanded: boolean
   onToggle: (key: string, toggle: HTMLButtonElement | null) => void
   onPartAct: (groupKey: string, partKey: string, action: 'keep' | 'remove') => void
+  /** A private row's view (auto-blur §2.7), whether Peek and Listen show it now, and their buttons. */
+  view?: PrivateRowView
+  isPeeked: boolean
+  isListened: boolean
+  onPeek: (key: string) => void
+  onListen: (key: string) => void
+  onSelectCovers: (key: string) => void
+  onPlayPart: (groupKey: string, partKey: string) => void
 }
 
 /** One row: drawn again only when what it shows changes (its props are values and stable handlers). */
@@ -918,11 +1227,26 @@ const ReviewRow = memo(function ReviewRow({
   parts,
   expanded,
   onToggle,
-  onPartAct
+  onPartAct,
+  view,
+  isPeeked,
+  isListened,
+  onPeek,
+  onListen,
+  onSelectCovers,
+  onPlayPart
 }: RowProps): JSX.Element {
   const ref = useCallback((el: HTMLButtonElement | null) => setRef(itemKey, el), [setRef, itemKey])
   const toggleRef = useRef<HTMLButtonElement>(null)
   const partsId = `review-parts-${itemKey.replace(/[^A-Za-z0-9_-]/g, '-')}`
+  // Auto-blur's private rows read *Keep covered* and *Uncover* (§2.7); every other kind as before.
+  const isPrivate = kind === 'private'
+  const keepLabel = (forTitle: string): string => (isPrivate ? t(PRIVACY_COPY.review.keepRow, { title: forTitle }) : t('review.row.keep', { title: forTitle }))
+  const removeLabel = (forTitle: string): string => (isPrivate ? t(PRIVACY_COPY.review.uncoverRow, { title: forTitle }) : t('review.row.remove', { title: forTitle }))
+  const keepText = isPrivate ? t(PRIVACY_COPY.review.keep) : t('common.action.keep')
+  const removeText = isPrivate ? t(PRIVACY_COPY.review.uncover) : t('common.action.remove')
+  const infoId = `review-info-${itemKey.replace(/[^A-Za-z0-9_-]/g, '-')}`
+  const info = view && (view.places > 1 || view.area || view.badges.length > 0)
   return (
     <li
       className={`review-row ${status}${isActive ? ' active' : ''}${parts ? ' group' : ''}`}
@@ -939,6 +1263,7 @@ const ReviewRow = memo(function ReviewRow({
         tabIndex={isActive ? 0 : -1}
         aria-current={isActive ? 'true' : undefined}
         aria-label={itemAccessibleName({ title, kind, detail }, time, status)}
+        aria-describedby={info ? infoId : undefined}
         onClick={() => onChoose(itemKey)}
         onFocus={() => onFocusRow(itemKey)}
       >
@@ -954,15 +1279,45 @@ const ReviewRow = memo(function ReviewRow({
       </button>
       {status === 'pending' ? (
         <span className="review-actions">
-          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.keep', { title })} data-testid="review-keep" onClick={() => onAct(itemKey, 'keep')}>
-            {t('common.action.keep')}
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={keepLabel(title)} data-testid="review-keep" onClick={() => onAct(itemKey, 'keep')}>
+            {keepText}
           </button>
-          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.remove', { title })} data-testid="review-remove" onClick={() => onAct(itemKey, 'remove')}>
-            {t('common.action.remove')}
+          <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={removeLabel(title)} data-testid="review-remove" onClick={() => onAct(itemKey, 'remove')}>
+            {removeText}
           </button>
         </span>
       ) : (
         <ReviewMark status={status} />
+      )}
+      {view && info && (
+        <span className="review-private-info" id={infoId} data-testid="review-private-info">
+          {view.places > 1 && <span>{t(PRIVACY_COPY.review.places, { count: view.places, n: fmt.count(view.places) })}</span>}
+          {view.area && <span>{t(PRIVACY_COPY.review.area, view.area)}</span>}
+          {view.badges.map((b) => (
+            <span key={b} className="review-badge" data-testid="review-badge">
+              {t(b)}
+            </span>
+          ))}
+        </span>
+      )}
+      {view && (view.coverIds.length > 0 || view.bleepId) && (
+        <span className="review-private-actions">
+          {view.coverIds.length > 0 && (
+            <button className="btn small" tabIndex={isActive ? 0 : -1} data-testid="review-select" onClick={() => onSelectCovers(itemKey)}>
+              {t(PRIVACY_COPY.review.select)}
+            </button>
+          )}
+          {view.coverIds.length > 0 && (
+            <button className="btn small" tabIndex={isActive ? 0 : -1} aria-pressed={isPeeked} aria-label={t(PRIVACY_COPY.review.peekRow, { title })} data-testid="review-peek" onClick={() => onPeek(itemKey)}>
+              {t(PRIVACY_COPY.review.peek)}
+            </button>
+          )}
+          {view.bleepId && (
+            <button className="btn small" tabIndex={isActive ? 0 : -1} aria-pressed={isListened} aria-label={t(PRIVACY_COPY.review.listenRow, { title })} data-testid="review-listen" onClick={() => onListen(itemKey)}>
+              {t(PRIVACY_COPY.review.listen)}
+            </button>
+          )}
+        </span>
       )}
       {parts && (
         <button
@@ -984,19 +1339,34 @@ const ReviewRow = memo(function ReviewRow({
         <ul id={partsId} className="review-parts" aria-label={title}>
           {parts.map((p) => (
             <li key={p.key} className={`review-part ${p.status}`} data-member-key={p.key} data-testid="review-part" data-status={p.status}>
-              <span className="review-text">
-                <span className="review-title">{p.title}</span>
-                <span className="review-meta">
-                  {p.time} · {statusWord(p.status)}
+              {isPrivate ? (
+                // A place plays its own stretch (auto-blur §2.7).
+                <button type="button" className="review-text review-part-play" tabIndex={isActive ? 0 : -1} onClick={() => onPlayPart(itemKey, p.key)} data-testid="review-part-play">
+                  <span className="review-title">{p.title}</span>
+                  <span className="review-meta">
+                    {p.time} · {statusWord(p.status)}
+                  </span>
+                  {p.badges?.map((b) => (
+                    <span key={b} className="review-badge">
+                      {b}
+                    </span>
+                  ))}
+                </button>
+              ) : (
+                <span className="review-text">
+                  <span className="review-title">{p.title}</span>
+                  <span className="review-meta">
+                    {p.time} · {statusWord(p.status)}
+                  </span>
                 </span>
-              </span>
+              )}
               {p.status === 'pending' ? (
                 <span className="review-actions">
-                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.keep', { title: p.title })} data-testid="review-part-keep" onClick={() => onPartAct(itemKey, p.key, 'keep')}>
-                    {t('common.action.keep')}
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={keepLabel(p.title)} data-testid="review-part-keep" onClick={() => onPartAct(itemKey, p.key, 'keep')}>
+                    {keepText}
                   </button>
-                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={t('review.row.remove', { title: p.title })} data-testid="review-part-remove" onClick={() => onPartAct(itemKey, p.key, 'remove')}>
-                    {t('common.action.remove')}
+                  <button className="btn" tabIndex={isActive ? 0 : -1} aria-label={removeLabel(p.title)} data-testid="review-part-remove" onClick={() => onPartAct(itemKey, p.key, 'remove')}>
+                    {removeText}
                   </button>
                 </span>
               ) : (
@@ -1021,5 +1391,43 @@ function ReviewMark({ status }: { status: ReviewStatus }): JSX.Element {
       )}
       {status === 'kept' ? t('review.mark.kept') : t('review.mark.removed')}
     </span>
+  )
+}
+
+/**
+ * The confirms of auto-blur's Uncover all and Done reviewing (docs/design/auto-blur.md §2.7, §11): a
+ * small alert dialog in the panel, its focus first on Cancel (the button that changes nothing); Esc
+ * is Cancel and stays in the panel.
+ */
+function ReviewConfirm({ text, detail, action, onAnswer }: { text: string; detail?: string; action: string; onAnswer: (go: boolean) => void }): JSX.Element {
+  const cancel = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    cancel.current?.focus()
+  }, [])
+  return (
+    <div
+      className="review-confirm"
+      role="alertdialog"
+      aria-labelledby="review-confirm-text"
+      aria-describedby={detail ? 'review-confirm-detail' : undefined}
+      data-testid="review-confirm"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        e.stopPropagation()
+        onAnswer(false)
+      }}
+    >
+      <p id="review-confirm-text">{text}</p>
+      {detail && <p id="review-confirm-detail">{detail}</p>}
+      <div className="review-confirm-actions">
+        <button ref={cancel} type="button" className="btn" onClick={() => onAnswer(false)} data-testid="review-confirm-cancel">
+          {t('common.action.cancel')}
+        </button>
+        <button type="button" className="btn primary" onClick={() => onAnswer(true)} data-testid="review-confirm-go">
+          {action}
+        </button>
+      </div>
+    </div>
   )
 }

@@ -32,6 +32,7 @@ import { t } from '../../../shared/i18n/t'
 import { Rich } from '../editor/panels/Rich'
 import { blockerText, lengthOptions, publishLabel, toneOptions } from './publishWords'
 import { PublishMaskedNote } from '../privacy/PublishMaskedNote'
+import { maskPrivate, spokenForms } from '../../../shared/privacy/spoken'
 
 /** A choice in the provider list: its name and model ("OpenAI · gpt-…"), or On this PC alone (smart-tools.md §20.0). */
 const providerLabel = (c: TextChoice): string => (c.kind === 'local' ? c.label : `${c.label} · ${c.model || c.place}`)
@@ -195,9 +196,10 @@ export function PublishDialog({ project, request, onClose, onGenerateCaptions, o
   }
   useEffect(() => () => window.clearTimeout(saidTimer.current), [])
 
+  // What is copied leaves Flown: secrets said aloud show as •••• (auto-blur §2.13, §7.5); the text the user edits stays as written.
   const copy = (kind: PublishKind, text: string, what: string): void =>
     confirmed(what, 'Copy anyway', text, () => {
-      void navigator.clipboard.writeText(text).then(
+      void navigator.clipboard.writeText(maskPrivate(text, spokenForms(project))).then(
         () => say(kind, t('review.publish.copied', { what })),
         () => say(kind, t('review.publish.notCopied', { what }), true)
       )

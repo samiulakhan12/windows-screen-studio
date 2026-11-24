@@ -252,7 +252,7 @@ export const LANGUAGE_COMMANDS: readonly CommandId[] = ['language']
  */
 export const WAITING_P1: readonly CommandId[] = []
 
-export const WAITING_P5: readonly CommandId[] = ['findPrivate']
+export const WAITING_P5: readonly CommandId[] = []
 export const WAITING_COMMANDS: readonly CommandId[] = [...WAITING_P1, ...WAITING_P5]
 
 /** Commands the palette offers. */

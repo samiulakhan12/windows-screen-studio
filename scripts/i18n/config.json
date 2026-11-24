@@ -120,6 +120,13 @@
     "src/main/privacy/rulesWorker.ts",
     "src/main/privacy/rulesHost.ts",
     "src/main/privacy/copies.ts",
-    "src/main/privacy/lookCache.ts"
+    "src/main/privacy/lookCache.ts",
+    "src/renderer/src/privacy/FindLine.tsx",
+    "src/renderer/src/privacy/findRuns.ts",
+    "src/renderer/src/privacy/RegionsDialog.tsx",
+    "src/renderer/src/privacy/reviewRequest.ts",
+    "src/shared/privacy/findState.ts",
+    "src/shared/privacy/regions.ts",
+    "src/shared/privacy/sha256.ts"
   ]
 }

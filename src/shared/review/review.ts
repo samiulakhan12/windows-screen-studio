@@ -22,7 +22,7 @@ import { changeGone, finish, liveAutoCuts, staleAmong, takeBackSteps, withAutoCu
 import { captionItemStatus, captionPendingCount, captionReviewItems, expandGroups, isCaptionKind, keepCaptionItems, mergeGroup, removeCaptionItems } from './captionReview'
 import { editingItemStatus, editingPendingCount, editingReviewItems, isEditingKind, keepEditingItems, removeEditingItems } from './editingReview'
 import { isSmartKind, keepSmartItems, removeSmartItems, smartItemStatus, smartPendingCount, smartReviewItems } from './smartReview'
-import { privacyKeep, privacyPendingCount, privacyRemove, privacyReviewItems, privacyStatus } from './privacyReview'
+import { mergePrivateRow, privacyKeep, privacyPendingCount, privacyRemove, privacyReviewItems, privacyStatus } from './privacyReview'
 import {
   cutDetail,
   cutKind,
@@ -219,8 +219,9 @@ export function mergeSnapshot(shown: readonly ReviewItem[], project: Project): R
     records ??= new Set((project.autoCuts ?? []).map((c) => c.id))
     return records.has(i.cut.id) ? i : { ...i, went: changeGone(i.cut, project.clips) ? 'removed' : 'kept' }
   }
-  // A group row keeps the items it listed (reviewed ones marked) and takes those pending now.
-  const out = shown.map((i) => (i.parts ? mergeGroup(i, now.get(i.key)) : (now.get(i.key) ?? went(i))))
+  // A group row keeps the items it listed (reviewed ones marked) and takes those pending now; a
+  // private row (auto-blur §2.7) its places so, with its own title.
+  const out = shown.map((i) => (i.parts ? (i.kind === 'private' ? mergePrivateRow(i, now.get(i.key)) : mergeGroup(i, now.get(i.key))) : (now.get(i.key) ?? went(i))))
   for (const i of current) if (!keys.has(i.key)) out.push(i)
   return out.sort(byTime)
 }

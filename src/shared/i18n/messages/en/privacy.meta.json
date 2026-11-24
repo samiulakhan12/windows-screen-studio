@@ -476,6 +476,9 @@
   "review.filterAll": {
     "description": "Auto-blur private info, Review: private items."
   },
+  "review.showAll": {
+    "description": "Auto-blur private info, Review: private items. A checkbox: on, Review lists every change; off, only the private items (Review opened from the Private info section, Find's result or the export note)."
+  },
   "review.keepKind": {
     "description": "Auto-blur private info, Review: private items. {kind} is the kind's title (privacy.kind.<kind>.title) in a list of fields, or selects on the kind's id."
   },
