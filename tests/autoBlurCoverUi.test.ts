@@ -737,6 +737,32 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     expect(textOf(byTestId(els, 'everywhere-unavailable'))).toBe("The text reader cannot run on this PC's processor.")
     expect(byTestId(els, 'everywhere-download')).toBeUndefined()
   })
+
+  it('EverywhereDialog shows Find\'s estimate with its body before Cover everywhere (§2.2), as the Find dialog works it out', async () => {
+    const { firstEstimate } = await import('../src/shared/privacy/plan')
+    const { minutesOf } = await import('../src/shared/privacy/findState')
+    // A 30-minute 4K recording at 60 fps: several minutes on this PC.
+    setUp(project({ duration: 1800, width: 3840, height: 2160, covers: [email()] }))
+    const p = store.state
+    reader.state = { status: 'ready', bytes: 1, decodeMs: 4 }
+    const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, 4))
+    expect(minutes).toBeGreaterThan(1)
+    api.under = async () => ({ ok: true, nameLike: false })
+    const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
+    let els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(`About ${minutes} minutes on this PC. You can keep editing; keep this video open until Find ends.`)
+    // Before the reader's speed is known, the estimate for an unknown decode speed, as the Find dialog shows it.
+    unmountAll()
+    reader.state = null
+    const unknown = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, null))
+    els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(t('privacy.find.estimate' as never, { count: unknown, n: String(unknown) } as never))
+    // Reading, or nothing to cover: no estimate.
+    unmountAll()
+    api.under = async () => ({ ok: false, reason: 'noText' })
+    els = await settle(root)
+    expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
+  })
 })
 
 describe('auto-blur P1: the Covers row', () => {
