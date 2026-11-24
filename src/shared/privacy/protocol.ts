@@ -79,6 +79,7 @@ export type HelperCommand =
   | { op: 'read'; id: number; video: string; key: number; t: number; areas: Box[] }
   | { op: 'careful'; id: number; read: number; lines: number[] }
   | { op: 'release'; id: number; read: number }
+  /** A follow session over [from, to] (to ≥ from), walked forward (dir 1) or backward from `to` (dir -1). */
   | { op: 'followOpen'; id: number; video: string; key: number; from: number; to: number; dir: 1 | -1 }
   | { op: 'track'; id: number; session: number; track: number; t: number; parts: Box[] }
   | { op: 'match'; id: number; session: number; t: number; tracks: { track: number; parts: number[]; candidates: Candidate[] }[] }

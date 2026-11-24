@@ -89,6 +89,22 @@ const boxOf = (f: Pick<FoundCover, 'path'>, t: number): Box => {
 }
 
 describe('auto-blur P4: the scan', () => {
+  it('asks for each follow session as the helper takes it, [from, to] with to at least from, a backward walk included (found end to end: the helper refused a backward session, and every walk became a lost area to the end)', async () => {
+    const seen: { from: number; to: number; dir: number }[] = []
+    const s = scene({}, 20, (h) => {
+      const open = h.followOpen.bind(h)
+      h.followOpen = async (req) => {
+        // The fake's own type names only what it reads; the scan sends the helper's whole command.
+        seen.push({ from: req.from, to: (req as unknown as { to: number }).to, dir: req.dir })
+        return open(req)
+      }
+    })
+    const r = await runFind(request(), noProgress, never, s.deps)
+    expect(r.ok).toBe(true)
+    expect(seen.some((x) => x.dir === -1)).toBe(true)
+    for (const x of seen) expect(x.to).toBeGreaterThanOrEqual(x.from)
+  })
+
   it('153. runFind with the fake helper: progress phases; the result holds no text (a JSON scan of it finds none of the planted strings)', async () => {
     // A secret QR code beside the text from 5 s: covered, its payload never in the result.
     const quad: [number, number][] = [

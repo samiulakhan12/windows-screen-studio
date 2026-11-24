@@ -386,7 +386,11 @@ async function lookFor(s: Shared, project: Project, dir: string, signal: AbortSi
 /** A follow session's matcher, its check reads added to the plan (§5.4 point 8). */
 function matcherOpen(s: Shared, look: LookData, video: string, signal: AbortSignal, plan: ReadPlan | null) {
   return async (dir: 1 | -1, from: number, to: number): Promise<Matcher & { close(): Promise<void> }> => {
-    const session = await s.helper.followOpen({ video, key: keyBefore(look, from), from, to, dir }, signal)
+    // The helper's session is the span [from, to] with to ≥ from in either direction (native/ocr's
+    // follow.rs refuses any other as bad-command); a backward walk starts at its span's end.
+    const lo = Math.min(from, to)
+    const hi = Math.max(from, to)
+    const session = await s.helper.followOpen({ video, key: keyBefore(look, lo), from: lo, to: hi, dir }, signal)
     return {
       track: (track, t, parts) => session.track(track, t, parts),
       match: (t, tracks) => session.match(t, tracks),
