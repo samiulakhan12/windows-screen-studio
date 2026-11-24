@@ -706,6 +706,19 @@ describe('auto-blur P4: following', () => {
     expect(track.start).toBeCloseTo(1, 3)
     expect(uncovered({ ...track, end: 2 }, 30, text, 0, 2)).toEqual([])
   })
+
+  it('Forward, a text lost at a page change is shown gone by the next read even where other text at its place scores 0.5: a place on a line the read read holds other text (found end to end: on the evaluation pages a key\'s own place showed other text scoring 0.53-0.61, and its lost area, the whole page, lasted until the next page)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    // A cut to another page at 2 s; the read at 2.3 s reads a line of other text where the text was, and the template scores 0.55 there, 0.3 elsewhere.
+    const look = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page], moves: [move(page, 0, 300, 0.15)] } : {}))
+    const other: Box = [380, 296, 320, 34]
+    const read = readOf(2.3, [page], [{ box: other, text: 'Deploy finished in 4 minutes' }])
+    const score = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : intersect(b, other) ? 0.55 : 0.3)
+    const [gone] = await walkSpan([start(1, T)], 1, look, readIndex([read]), placeMatcher(T, score), NO_HINTS, HD)
+    expect(gone.end).toBeLessThan(2.4)
+    expect(uncovered(gone, 30, { key: KEY, text: 'x', at: (t) => (t < 2 ? T : null) }, 1, 2)).toEqual([])
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

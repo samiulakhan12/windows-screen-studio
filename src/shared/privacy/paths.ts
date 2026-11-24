@@ -324,6 +324,8 @@ interface Walker {
   reanchors: Placed[]
   consumed: string[]
   checks: number
+  /** Lost at a page change (30% or more of the frame changed with no real move) since it was last placed: other text is where its own motion puts it. */
+  paged: boolean
 }
 
 const ident: Xf = { dx: 0, dy: 0, scale: 1 }
@@ -417,7 +419,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       bare: false,
       reanchors: [],
       consumed: [],
-      checks: 0
+      checks: 0,
+      paged: false
     }
   })
   if (!n || !walkers.length) return walkers.map((w) => finish(w))
@@ -469,6 +472,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     w.justFailed = false
     w.hold = null
     w.drift = { dx: 0, dy: 0 }
+    w.paged = false
     w.lastPlaced = f
   }
 
@@ -559,11 +563,18 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const zx = area[0] + area[2] / 2
     const zy = area[1] + area[3] / 2
     for (const z of ZOOMS) out.push(zoomed(w, pred, z, zx, zy))
-    if (!explained.length) return out
-    // A place whose window (the helper searches ±4 template pixels, 8 video pixels, around each
-    // candidate) reaches half onto a line the read read is explained: other text is there.
+    return unexplained(w, out, explained)
+  }
+
+  /**
+   * The places not explained by a read: a place whose window (the helper searches ±4 template pixels, 8
+   * video pixels, around each candidate) reaches half onto a line the read read is explained, since
+   * none of those lines holds the text: other text is there.
+   */
+  const unexplained = (w: Walker, xfs: Xf[], explained: readonly Box[]): Xf[] => {
+    if (!explained.length) return xfs
     const own = ownBox(w)
-    return out.filter((xf) => {
+    return xfs.filter((xf) => {
       const b = xfBox(w, own, xf)
       const reach: Box = [b[0] - WINDOW, b[1] - WINDOW, b[2] + 2 * WINDOW, b[3] + 2 * WINDOW]
       let on = 0
@@ -782,6 +793,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       return
     }
     becomeLost(w, f)
+    if (!best && changedShare(frames[cf], look) >= 0.3) w.paged = true
     const pred = predicted(w)
     const rels = [...rel, { dx: pred.dx - w.off.dx, dy: pred.dy - w.off.dy, scale: 1 }]
     const regions = regionsAt(look, cf)
@@ -983,7 +995,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (searches.length) {
       const own = await m.match(
         t,
-        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: ownPlaces(w, f) }))
+        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: w.paged ? unexplained(w, ownPlaces(w, f), explainedBy.get(w) ?? []) : ownPlaces(w, f) }))
       )
       const res = await m.match(
         t,

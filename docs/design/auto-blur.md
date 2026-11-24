@@ -1920,7 +1920,11 @@ inverted (dark mode, a highlight), so one template serves both.
 - the next read covering its box or lost area, at frame S, finds no line holding the text, and
 - no part scores 0.5 or more where the walker's own motion puts the text at S (the predicted place,
   no move and the speed guide: a text partly under a tooltip or a toast still matches there, and at
-  the first frame of a recording one under a tooltip was taken for gone and showed for a frame), and
+  the first frame of a recording one under a tooltip was taken for gone and showed for a frame);
+  for a text lost at a page change (30% or more of the frame changed with no real move) since it was
+  last placed, those places too are left out where they reach half onto a line the read at S read,
+  as below: other text is there (on the evaluation pages a key's own place showed other text scoring
+  0.53-0.61, and its lost area, the whole page, lasted until the next page), and
 - the template search at S, anywhere in the region at scale 1 and at the zoom scales of step 6, finds
   no place where the walk would place the text (no part at 0.6 or more beating every other place by
   0.15, step 4) and no part at 0.85 or more, leaving out the places whose search window (±8 video
