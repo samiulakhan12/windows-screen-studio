@@ -746,11 +746,14 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       asks.push({ w, rel, best, region, xfs: candidatesFor(w, f, rel) })
     }
     if (asks.length) {
-      // Near first: the candidates landing where the walker's own predictions put the text. A copy of
-      // the same text further away (a list showing one email on many rows) never outbids them.
+      // Near first: the candidates landing where the walker's own predictions and its region's real move
+      // put the text. A copy of the same text further away (a list showing one email on many rows, its
+      // aliases among the look pass's other candidates) never outbids them.
       const nearOf = (a: (typeof asks)[number]): Xf[] => {
         const own = ownBox(a.w)
-        const anchors = [predicted(a.w), a.w.off, guide(a.w, f)].map((x) => xfBox(a.w, own, x))
+        const pred = predicted(a.w)
+        const ways = [pred, a.w.off, guide(a.w, f), ...(a.best ? [{ dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }] : [])]
+        const anchors = ways.map((x) => xfBox(a.w, own, x))
         return a.xfs.filter((x) => anchors.some((b) => overlaps(xfBox(a.w, own, x), b)))
       }
       const first = await m.match(

@@ -1832,7 +1832,9 @@ inverted (dark mode, a highlight), so one template serves both.
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
    more (one clear best match), and the placed parts agree within 2 px. **Near first**: each frame's
    match is asked first with only the candidates landing where the walker's own predictions put the
-   text (the predicted place, no move and the speed guide), so a copy of the same text further away
+   text (the predicted place, no move, the speed guide and its region's real move from the predicted
+   place: without the move, a scroll of more than a line a frame was placed on a similar line where
+   the text had been), so a copy of the same text further away
    (a list showing one email on every twelfth row, its look moves offering the scroll and its
    aliases) never makes the match ambiguous; only when no clear match is there are all candidates
    asked, and not when the walker's own motion takes the text partly out of the frame, where a match

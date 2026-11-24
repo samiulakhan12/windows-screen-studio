@@ -509,6 +509,18 @@ describe('auto-blur P4: following', () => {
     expect(track.start).toBe(0)
     expect(uncovered({ ...track, end: 2 }, 60, { key: KEY, text: 'x', at: () => T }, 0, 2)).toEqual([])
   })
+
+  it('Near first counts the region\'s real move as the walker\'s own: a scroll of more than a line a frame is followed, never a similar line where the text was (found end to end: a grid of recovery codes scrolled 35 px a frame and the cover stayed on the row above for five frames)', async () => {
+    const T: Box = [400, 600, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    // From 1 s the page scrolls up 40 px an analysed frame for ten frames; a similar line sits 8 px above where the text was.
+    const k = (t: number): number => Math.max(0, Math.min(10, Math.round((t - 1) * 30)))
+    const mine: Planted = { key: KEY, text: 'x', at: (t) => [400, 600 - 40 * k(t), 200, 30] }
+    const look = lookOf(HD, 30, 3, (_i, t) => (k(t) >= 1 && Math.round((t - 1) * 30) <= 10 ? { changed: [page], moves: [move(page, 0, -40)] } : {}))
+    const score = (t: number, b: Box): number => (at(b, mine.at(t)!) ? 0.95 : t >= 1 && k(t) === 1 && at(b, [400, 592, 200, 30]) ? 0.71 : 0.5)
+    const [track] = await walkSpan([start(0.5, T)], 1, look, readIndex(), placeMatcher(T, score), NO_HINTS, HD)
+    expect(uncovered(track, 30, mine, 0.5, 3)).toEqual([])
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */
