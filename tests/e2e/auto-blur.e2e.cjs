@@ -258,6 +258,47 @@ function solidIn(file, { width, height, fps }, rectsAt, every = 15, levels = 24)
 }
 
 /**
+ * Whether an export (1:1 with the recording, no padding, no grade) shows every cover `coversAt(n)`
+ * gives on the sampled frames ({ rect, color }): each pixel of a cover's rectangle, 3 px in from its
+ * edges, within `levels` of the colour of a cover drawn over that pixel. Covers overlap (a lost area
+ * under others) and each keeps its own colour, so a rectangle can rightly show two covers' colours,
+ * which a check that the rectangle is of one colour took for a leak (A18: a white lost area under a
+ * dark one); pixels within 3 px of another cover's edge, where the encoder blurs the step between two
+ * colours, are not judged, as a rectangle's own edges are not. Returns the failures.
+ */
+function coversShownIn(file, { width, height, fps }, coversAt, every = 15, levels = 24) {
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `select=not(mod(n\\,${every}))`, '-vsync', '0', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 2 ** 31 })
+  const size = width * height * 3
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const failures = []
+  for (let k = 0; k * size < raw.length; k++) {
+    const n = k * every
+    const img = raw.subarray(k * size, (k + 1) * size)
+    const drawn = coversAt(n).map((d) => ({ rect: d.rect.map((v, j) => Math.max(0, Math.min(j % 2 ? height : width, v))), rgb: rgb(d.color) }))
+    for (const d of drawn) {
+      const [x0, y0, x1, y1] = d.rect
+      if (x1 - x0 <= 8 || y1 - y0 <= 8) continue
+      const others = drawn.filter((o) => o !== d && o.rect[0] < x1 && x0 < o.rect[2] && o.rect[1] < y1 && y0 < o.rect[3])
+      let bad = 0
+      let example = ''
+      for (let y = y0 + 3; y < y1 - 3; y++) {
+        for (let x = x0 + 3; x < x1 - 3; x++) {
+          const nearEdge = others.some(({ rect: [a0, b0, a1, b1] }) => x >= a0 - 3 && x < a1 + 3 && y >= b0 - 3 && y < b1 + 3 && !(x >= a0 + 3 && x < a1 - 3 && y >= b0 + 3 && y < b1 - 3))
+          if (nearEdge) continue
+          const i = (y * width + x) * 3
+          const shows = (o) => Math.abs(img[i] - o.rgb[0]) <= levels && Math.abs(img[i + 1] - o.rgb[1]) <= levels && Math.abs(img[i + 2] - o.rgb[2]) <= levels
+          if (shows(d) || others.some((o) => x >= o.rect[0] && x < o.rect[2] && y >= o.rect[1] && y < o.rect[3] && shows(o))) continue
+          if (!bad) example = ` (${x}, ${y}) is ${img[i]},${img[i + 1]},${img[i + 2]}`
+          bad++
+        }
+      }
+      if (bad) failures.push(`a cover at frame ${n} (${(n / fps).toFixed(2)} s) [${d.rect.join(', ')}]: ${bad} px show no cover's colour${example}`)
+    }
+  }
+  return failures
+}
+
+/**
  * Every planted item's ink inside a cover in every source frame (§17.3): the failures, at most `max`
  * listed, with the item, the frame and the uncovered pixels.
  */
@@ -1220,7 +1261,7 @@ async function main() {
       await af.until(async () => /Export finished/.test((await win.textContent('.modal')) || ''), 'the export finished', 20 * 60 * 1000, 500)
       await closeModal(win)
     }
-    const coveredBy = (covers, out) => solidIn(out, rec, (n) => af.drawnRects(covers, n / A1_FPS, A1_FPS, rec.width, rec.height).filter((r) => r[2] - r[0] > 8 && r[3] - r[1] > 8).map((r) => [r[0] + 3, r[1] + 3, r[2] - 3, r[3] - 3, 'a cover']), 30)
+    const coveredBy = (covers, out) => coversShownIn(out, rec, (n) => covers.flatMap((c) => af.drawnRects([c], n / A1_FPS, A1_FPS, rec.width, rec.height).map((rect) => ({ rect, color: c.color }))), 30)
 
     // Wait for Find: Export stays disabled until the results are in, then the export covers them.
     await openProject(win, 'During wait')

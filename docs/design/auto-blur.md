@@ -4480,7 +4480,9 @@ pixels under the covers (two different secrets, same everything else), and the t
   only then (§12.2).
 - **A18. Export during Find.** With Find running, the export note shows `running`; *Wait for Find*
   keeps *Export* disabled until the results are applied and the export then covers them; *Stop Find
-  and export* applies what was found and the export covers it.
+  and export* applies what was found and the export covers it. "Covers" is checked on every 30th
+  frame: each pixel of each cover's box (3 px in from its edges, and from another cover's) shows the
+  colour of a cover drawn over it; covers overlap and keep their own colours.
 - **A19. Leaving during Find.** Going Home while Find runs asks first; confirming applies what was found
   before the project is saved, and reopening the project shows those covers.
 - **A20. Copies made before Find.** Make a short clip, run Find on the original, choose *Also cover the
