@@ -110,6 +110,22 @@ const PRESENT_SCORE = 0.85
 const END_FRAMES = 16
 /** Zoom inside the recorded app: the scales tried about the region's centre (§5.8 step 6). */
 const ZOOMS = [0.8, 0.9, 1.1, 1.25]
+/** One step of the zoom grid: 1.5%. */
+const ZOOM_STEP = 1.015
+/**
+ * The scales one zoom of a region is estimated over (§5.8 step 6): from 0.6 to 1.67 in steps of 1.5%,
+ * so that a text 500 px from the zoom's anchor lands within the helper's search (±8 px) of where some
+ * step puts it, with the scales of ZOOMS and of a browser's zoom steps themselves (1.1, 1.136, 1.2,
+ * 0.833, 0.88 ... about the page's top left).
+ */
+const ZOOM_GRID: readonly number[] = Object.freeze(
+  [...Array.from({ length: 69 }, (_v, i) => Math.round(0.6 * ZOOM_STEP ** i * 10000) / 10000), ...ZOOMS, 1 / 1.1, 1.25 / 1.1, 1.2, 1 / 1.2, 1.1 / 1.25, 1.125, 1 / 1.125]
+    .map((z) => Math.round(z * 10000) / 10000)
+    .filter((z, i, all) => all.indexOf(z) === i)
+    .sort((a, b) => a - b)
+)
+/** Two scales of the grid within a step of each other are one zoom. */
+const sameZoom = (a: number, b: number): boolean => Math.abs(Math.log(a / b)) <= Math.log(ZOOM_STEP) + 1e-9
 /** A typing band still this long ends a burst of typing (§5.8). */
 const BAND_STILL_S = 1.0
 /** Changes less than this apart are one burst (the plan's settle gap, §5.4). */
@@ -807,6 +823,90 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (reads.templateOnly) w.bare = true
   }
 
+  /**
+   * Zoom inside the recorded app (§5.8 step 6): one zoom estimated for each changed region from all
+   * the walkers in it together. Each walker's parts are tried at every scale of ZOOM_GRID about the
+   * region's top left and centre and the frame's top left and centre; each walker's best place says a
+   * scale and an anchor, and the scale and anchor most walkers agree on (within a step of the grid,
+   * each matching at 0.6 or more) is the region's zoom; a region of one walker needs a part at 0.85.
+   * Every walker of the region is then placed by that zoom where a part matches it at 0.6 or more.
+   * A zoom about the region's centre at four scales missed a browser's zoom about the page's top left
+   * (A16's browser zoom, 1.136, 1.2, 0.833 ...), and its rows' copies tied with each walker's own.
+   */
+  const zoomOf = async (asks: readonly { w: Walker; region: Box | null }[], t: number): Promise<Map<Walker, { xf: Xf | null; r: TrackMatch | undefined }>> => {
+    const out = new Map<Walker, { xf: Xf | null; r: TrackMatch | undefined }>()
+    const anchorsOf = (g: Box): [number, number][] => {
+      const list: [number, number][] = [[g[0], g[1]], [g[0] + g[2] / 2, g[1] + g[3] / 2], [0, 0], [size.width / 2, size.height / 2]]
+      return list.filter((p, i) => list.findIndex((q) => Math.abs(q[0] - p[0]) < 1 && Math.abs(q[1] - p[1]) < 1) === i)
+    }
+    const tries = asks.map((a) => {
+      const pred = predicted(a.w)
+      const anchors = anchorsOf(a.region!)
+      // The scales of ZOOMS about the region's centre first (the zoom most apps make), then the grid.
+      const g = a.region!
+      const candidates: Xf[] = ZOOMS.map((z) => zoomed(a.w, pred, z, g[0] + g[2] / 2, g[1] + g[3] / 2))
+      for (const [ax, ay] of anchors) for (const z of ZOOM_GRID) candidates.push(zoomed(a.w, pred, z, ax, ay))
+      return { a, pred, anchors, candidates }
+    })
+    const first = await m.match(
+      t,
+      tries.map((x) => ({ track: x.a.w.index, parts: x.a.w.tpl.parts.map((_p, i) => i), candidates: x.candidates }))
+    )
+    // Each walker's vote: the step of the grid and the anchor its best place says.
+    const votes = tries.map((x) => {
+      const r = first.find((y) => y.track === x.a.w.index)
+      out.set(x.a.w, { xf: null, r })
+      if (!r?.best || maxPart(r) < PLACE_SCORE) return null
+      const zoom = r.best.scale / (x.pred.scale || 1)
+      let anchor = -1
+      let near = Infinity
+      x.anchors.forEach(([ax, ay], k) => {
+        const c = zoomed(x.a.w, x.pred, zoom, ax, ay)
+        const d = Math.hypot(c.dx - r.best!.dx, c.dy - r.best!.dy)
+        if (d < near) {
+          near = d
+          anchor = k
+        }
+      })
+      return { x, zoom, anchor, score: maxPart(r) }
+    })
+    const groups = new Map<string, typeof tries>()
+    for (const x of tries) {
+      const key = x.a.region!.join(',')
+      groups.set(key, [...(groups.get(key) ?? []), x])
+    }
+    const second: { x: (typeof tries)[number]; xf: Xf }[] = []
+    for (const group of groups.values()) {
+      const mine = votes.filter((v) => v && group.includes(v.x)) as { x: (typeof tries)[number]; zoom: number; anchor: number; score: number }[]
+      let best: { zoom: number; anchor: number; n: number; sum: number } | null = null
+      for (const v of mine) {
+        const agree = mine.filter((o) => o.anchor === v.anchor && sameZoom(o.zoom, v.zoom))
+        const n = agree.length
+        const sum = agree.reduce((s2, o) => s2 + o.score, 0)
+        if (!best || n > best.n || (n === best.n && sum > best.sum)) best = { zoom: v.zoom, anchor: v.anchor, n, sum }
+      }
+      if (!best) continue
+      if (best.n < 2 && !(group.length === 1 && (mine[0]?.score ?? 0) >= PRESENT_SCORE)) continue
+      // Every walker of the region tries that zoom and the grid's scales within a step of it.
+      const near = [best.zoom, ...ZOOM_GRID.filter((z) => z !== best!.zoom && sameZoom(z, best!.zoom))]
+      for (const x of group) {
+        const [ax, ay] = x.anchors[best.anchor] ?? x.anchors[0]
+        for (const z of near) second.push({ x, xf: zoomed(x.a.w, x.pred, z, ax, ay) })
+      }
+    }
+    if (!second.length) return out
+    const placedBy = await m.match(
+      t,
+      [...new Set(second.map((s2) => s2.x))].map((x) => ({ track: x.a.w.index, parts: x.a.w.tpl.parts.map((_p, i) => i), candidates: second.filter((s2) => s2.x === x).map((s2) => s2.xf) }))
+    )
+    for (const r of placedBy) {
+      const x = tries.find((y) => y.a.w.index === r.track)
+      if (!x || !r.best || maxPart(r) < PLACE_SCORE) continue
+      out.set(x.a.w, { xf: r.best, r })
+    }
+    return out
+  }
+
   const order: number[] = []
   if (dir === 1) {
     const from = Math.min(...walkers.map((w) => w.at))
@@ -916,18 +1016,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         else fail(a.w, f, r, a.rel, a.best, a.region)
       }
       if (zoom.length) {
-        const zr = await m.match(
-          t,
-          zoom.map((a) => {
-            const pred = predicted(a.w)
-            const g = a.region!
-            return { track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: ZOOMS.map((s) => zoomed(a.w, pred, s, g[0] + g[2] / 2, g[1] + g[3] / 2)) }
-          })
-        )
+        const zoomedTo = await zoomOf(zoom, t)
         for (const a of zoom) {
-          const r = zr.find((x) => x.track === a.w.index)
-          if (clear(r)) place(a.w, f, r!.best!)
-          else fail(a.w, f, r, a.rel, a.best, null)
+          const z = zoomedTo.get(a.w)
+          if (z?.xf) place(a.w, f, z.xf)
+          else fail(a.w, f, z?.r, a.rel, a.best, null)
         }
       }
     }

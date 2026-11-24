@@ -1898,10 +1898,18 @@ inverted (dark mode, a highlight), so one template serves both.
    in dense text) therefore still lands inside the lost area, because the text stays inside the
    region that changed. The last placed templates are tried at every later changed frame; one clear
    match places the cover again.
-6. **Zoom inside the recorded app** (the whole region changed with no real move): the parts are
-   also tried at scales 0.8, 0.9, 1.1 and 1.25 about the region's centre before the cover is lost;
-   not when the walker's own motion takes its cover box partly out of the frame (a code at the
-   bottom edge, cut there, was placed by a zoom 140 px away).
+6. **Zoom inside the recorded app** (the whole region changed with no real move): before the cover
+   is lost, one zoom is estimated for the region from all the walkers in it together. Each walker's
+   parts are tried at 0.8, 0.9, 1.1 and 1.25 about the region's centre and at every scale from 0.6 to
+   1.67 in steps of 1.5% (with a browser's zoom steps, 1.1, 1.136, 1.2 and their inverses) about the
+   region's top left and centre and the frame's top left and centre; each walker's best place says a
+   scale and an anchor, and the scale and anchor most walkers agree on (within a step, each matching
+   at 0.6 or more; a region of one walker needs a part at 0.85) is the region's zoom. Every walker of
+   the region is then placed by it where a part matches at 0.6 or more. A browser zooms about the
+   page's top left by steps the four scales about the centre missed (1.136, 1.2, 0.833 ...), and the
+   page's repeated rows tied with each walker's own: A16's browser zoom was lost over the whole page
+   on every step. Not when the walker's own motion takes its cover box partly out of the frame (a
+   code at the bottom edge, cut there, was placed by a zoom 140 px away).
 7. **Cut at the frame's edge.** The walker's **own motion** is its region's real move, or, when its
    region has none, the speed guide while it was placed at the step before: a strip of a page
    scrolling in or out at the frame's edge is too short for the look pass to find its move (under 6

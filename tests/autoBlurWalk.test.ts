@@ -736,6 +736,25 @@ describe('auto-blur P4: following', () => {
     const [kept] = await walkSpan([start(1, T)], 1, tipLook, readIndex([under]), placeMatcher(T, score), NO_HINTS, HD)
     expect(kept.end).toBeCloseTo(6, 4)
   })
+
+  it('A browser zoom about the page\'s top left is followed: one zoom estimated from every text of the region together places each of them (found end to end: tried at four scales about the region\'s centre, a zoom from 1.1 to 1.25 placed nothing, and every walk on the page was lost)', async () => {
+    // A page from (0, 0) zooms from 1.1 to 1.25 (×1.136) about its top left at 2 s, three rows of text on it.
+    const region: Box = [0, 0, 640, 720]
+    const rows: Box[] = [[18, 100, 220, 18], [18, 400, 220, 18], [18, 250, 180, 18]]
+    const z = 1.25 / 1.1
+    const at2 = (b: Box): Box => [b[0] * z, b[1] * z, b[2] * z, b[3] * z]
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [region], moves: [move(region, 0, 120, 0.3)] } : {}))
+    const planted = (k: number): Planted => ({ key: `row${k}`, text: 'x', at: (t) => (t < 2 ? rows[k] : at2(rows[k])) })
+    const m = new ScriptedMatcher([planted(0), planted(1), planted(2)], (track) => `row${track}`, {})
+    const starts = rows.map((b, k): Placed => ({ id: `h${k}`, key: `row${k}`, own: 'priya.raman@example.com', t: 1, box: b, parts: partsOf(b, b[3]), line: b }))
+    const tracks = await walkSpan(starts, 1, look, readIndex(), m, NO_HINTS, HD)
+    for (const [k, tr] of tracks.entries()) {
+      expect(tr.lost, `row ${k}`).toBe(false)
+      const b = pathBox(tr, 30)(2.5)!
+      const want = at2(rows[k])
+      expect(Math.abs(b[0] - want[0]) <= 3 && Math.abs(b[1] - want[1]) <= 3 && Math.abs(b[2] - want[2]) <= 3, `row ${k}: ${b} against ${want}`).toBe(true)
+    }
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */
