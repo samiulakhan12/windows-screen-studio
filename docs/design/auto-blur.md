@@ -1708,8 +1708,14 @@ whole-frame reads by R17: the reader must find the same items through them (§17
 - **Too large**: a recording over 7680×4320 or 40 megapixels is refused before decoding (`tooLarge`,
   §10.3).
 - **Buckets and tiles**: each area is padded (with zeros) up to the smallest of the three detector
-  buckets that holds it, 640×352, 960×544 or 1920×1088; larger areas are cut into 1920×1088 tiles that
-  overlap by 64 px; small areas of one read are packed into one bucket (§5.4). The helper builds the
+  buckets that holds it, 640×352, 960×544 or 1920×1088; larger areas are cut into as few 1920×1088
+  tiles as cover them, spread evenly, so neighbouring tiles overlap only by what is left over (a
+  3840×2160 frame is two columns meeting at x 1920 and two rows overlapping by 16 px, four tiles;
+  7680×2160 eight); small areas of one read are packed into one bucket (§5.4). A 64 px overlap, which
+  this section first gave, does not spare the join below (a line longer than the overlap is cut in
+  both tiles all the same) and would take 9 detector runs for a 4K frame instead of 4, and 15 for
+  7680×2160 instead of the 8 that §5.11 counts; read through these tiles with the seam join, A16's
+  evaluation frames at 200% (3840×2160) cover every one of their 44,100 item-frames. The helper builds the
   three detector plans once when it opens and keeps them for the whole Find: 0.37 s to build, 259 MB
   peak with all three (`results/tract-buckets.txt`). No read ever builds a plan.
 - **Detector post-processing** (PP-OCRv6's own `inference.yml`): threshold 0.2, box threshold 0.4,
@@ -3306,8 +3312,10 @@ core to the editor; the preview keeps playing at full rate on the reference PC (
 
 ### 13.3 Size
 
-- Installer: `ssw-ocr.exe`, about 3.5 MB compressed and 14-15 MB installed (the mixed profile with
-  rqrr and the Windows reader's bindings, §16.2; the first build measured 3,497,668 bytes), plus the
+- Installer: `ssw-ocr.exe`, 4,086,548 bytes at brotli 11 and 16,323,584 bytes installed (measured on
+  24 November 2026 by `build-native --require`: the mixed profile with tract, rqrr, sha2 and the
+  Windows reader's WinRT bindings, §16.2, where `opt-level = "z"` made it larger; the first build
+  measured 3,497,668 bytes at brotli 11), under decision 1's 5 MB line, plus the
   vendored libphonenumber-js and double-metaphone in `app.asar` (403 KB, about 60 KB brotli).
 - Downloaded on request: 27,608,757 bytes of models.
 
@@ -3805,7 +3813,7 @@ line only).
 | `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs`, `winocr.rs` (new) | the commands and events of `protocol.ts`; the three threads of §5.5 with `careful`, `release` and `cancel` handled between commands; heartbeat every 2 s from start (also during `open`); exit on stdin end and on a failed heartbeat write; `open` reads each model once, hashes the buffer and parses that buffer, every pin before any parse; the three detector buckets and both recognisers' five plans built at open and kept; `tooLarge`; look (§5.2); read with buckets, packing, tiles, joins, chunks, spans, rings and QR, `partial` at a cap (§5.5); `careful` as its own event (§5.6); the follow session (§5.8); the Windows reader behind `reader: 'windows'` (§5.13); ffmpeg with `-threads 1` (2 for look) in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `pause` and `resume` (§5.11); `catch_unwind` around each read with plans rebuilt after a panic; the panic hook, `SetErrorMode`, `WerSetFlags` and the unhandled-exception filter at start (§10.4, §10.5). The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
 | `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R32 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
 | `scripts/build-native.mjs` | `--ocr` and `--ocr-host` flags; `cargoOcr`, `buildOcrWindows` (MinGW POSIX, the import allow-list, the budget, copied to `native/bin/ssw-ocr.exe`), `buildOcrHost` |
-| `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
+| `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 4.3e6, installed: 17.2e6 }` (about 5% over the measured 4.09 MB and 16.3 MB of §13.3, and under decision 1's 5 MB line; the 3.9e6 and 16e6 first written here were below what the helper measures with the Windows reader in it); `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
 | `scripts/verify-dist.mjs` | §4d: the helper's imports, budget and no `readImage` string; for a release build (`FLOWN_RELEASE=1`), `READER_MIRROR` must not be null |
 | `scripts/notices.mjs` | `CRATES` gains `native/ocr/Cargo.toml`; `RUST_TITLE` names `ssw-ocr.exe`; `resources/notices/41-paddleocr-models.txt` (Apache-2.0 text, NOTICE, "downloaded when you ask for it") |
 | `build/installer.nsh` | the WER value in `customInstall` under HKLM or HKCU by install mode, and a new `customUnInstall` removing it from the same place (§10.5) |
