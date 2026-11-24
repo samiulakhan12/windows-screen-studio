@@ -302,6 +302,8 @@ interface Walker {
   history: [number, boolean][]
   /** The best part score where the walker's own motion put the text at this frame's match (near). */
   near: number
+  /** Whether that match found the text there (one clear match, or a part at 0.85). */
+  nearFound: boolean
   /** A read lacked the text there and the template search failed: proven once the next change fails too. */
   pending: number | null
   /** Backward: the step before this one failed to place (a still frame next asks for a check read). */
@@ -354,13 +356,17 @@ const floorMs = (t: number): number => Math.floor(t * 1000 + 1e-6) / 1000
  * again by one clear match; it ends only with evidence of absence (its region changed, the next read
  * covering it lacks the text, the template search finds it nowhere at any scale outside the lines that
  * read read, and the next change does not bring it back), one analysed frame after the first changed
- * frame where the match did not find it, or one after the frame its region carried it out of the
- * frame. A move the look pass scored weakly is a candidate only. Each frame asks first where the
- * walker's own motion puts the text; a copy of it elsewhere is asked only when that finds nothing.
+ * frame where the match did not find it, or one after the frame its own motion (its region's real
+ * move, else the speed guide) carried it out of the frame; cut at the edge on the way, the box holds
+ * the union of its last box and the moved one. A move the look pass scored weakly is a candidate
+ * only. Each frame asks first where the walker's own motion puts the text; a copy of it elsewhere is
+ * asked only when that finds nothing, and neither a copy nor a zoom while its motion takes it out of
+ * the frame. A box that holds still is placed there, so the speed guide is from its last frame.
  * Backward: the box at f is the box at the next analysed frame moved back by the move between them
  * (finding 3); it goes on, placed or lost, through tooltips and toasts, until evidence of absence
- * going back (a read or a check read lacking the text), a page change with no match, the text leaving
- * its region or the frame, or the first frame; the cover then starts one source frame after the frame
+ * going back (a read or a check read lacking the text), a page change with nothing found where its
+ * own motion puts the text, the text leaving its region or the frame, or the first frame; the cover
+ * then starts one source frame after the frame
  * proven absent, with the union of the boxes on both sides (§4.2). Text typed or deleted in place
  * follows the typing rule. A read finding the same text again re-anchors a walk; a start it finds is
  * taken in (`joined`). Returns one Track per start.
@@ -397,6 +403,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       C: null,
       history: [],
       near: 0,
+      nearFound: false,
       pending: null,
       justFailed: false,
       hold: null,
@@ -440,14 +447,15 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     w.box = box
   }
 
-  const place = (w: Walker, f: number, xf: Xf): void => {
+  /** Places the template at f by `xf`; `box` replaces its moved box (a text cut at the frame's edge holds a union). */
+  const place = (w: Walker, f: number, xf: Xf, box?: Box): void => {
     if (w.lastPlaced >= 0 && f !== w.lastPlaced) {
       const k = f - w.lastPlaced
       w.v = { dx: (xf.dx - w.lastOff.dx) / k, dy: (xf.dy - w.lastOff.dy) / k }
     }
     w.off = xf
     w.lastOff = xf
-    setBox(w, f, xfBox(w, w.tpl.box, xf))
+    setBox(w, f, box ?? xfBox(w, w.tpl.box, xf))
     if (w.lost) {
       const t = frames[f].t
       w.lostSpans.push(dir === 1 ? [w.lostFrom, t] : [t, w.lostFrom])
@@ -637,27 +645,60 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     w.done = true
   }
 
+  /**
+   * Where the walker's own motion takes the text at f: its region's real move (from where it was last
+   * placed, with the moves since when lost); with no real move, the speed guide while it was placed at
+   * the step before. A strip of a page scrolling in or out at the frame's edge is too short for the look
+   * pass to find its move (under 6 tiles), and the text there is cut, so no template matches it: the
+   * speed guide is all that says where it is.
+   */
+  const motionOf = (w: Walker, f: number, best: Candidate | null): { box: Box; xf: Xf } | null => {
+    if (best) {
+      const xf = { dx: w.off.dx + w.drift.dx + best.dx, dy: w.off.dy + w.drift.dy + best.dy, scale: w.off.scale }
+      return { box: xfBox(w, w.tpl.box, xf), xf }
+    }
+    if (w.lost || w.lastPlaced < 0 || Math.abs(f - w.lastPlaced) !== 1) return null
+    const xf = guide(w, f)
+    return { box: xfBox(w, w.tpl.box, xf), xf }
+  }
+  const outOfFrame = (b: Box): boolean => right(b) <= 0 || bottom(b) <= 0 || b[0] >= size.width || b[1] >= size.height
+  /**
+   * A text its own motion moves partly out of the frame is cut at the edge, not gone and not fading: it
+   * is placed where that motion puts it, and the box holds the union of its last box and the moved one
+   * (clipped), so every frame up to the one it is wholly out stays covered (§5.8). False when the motion
+   * leaves it wholly inside the frame, or does not move it.
+   */
+  const atEdge = (w: Walker, f: number, m: { box: Box; xf: Xf }): boolean => {
+    const cut = m.box[0] < 0 || m.box[1] < 0 || right(m.box) > size.width || bottom(m.box) > size.height
+    if (!cut || sameXf(m.xf, w.off)) return false
+    place(w, f, m.xf, clip(union(w.box, m.box), size))
+    return true
+  }
+
   const fail = (w: Walker, f: number, r: TrackMatch | undefined, rel: readonly Candidate[], best: Candidate | null, region: Box | null): void => {
     const cf = stepFrame(f)
     const t = frames[f].t
     if (dir === -1) {
-      // A page change with no match: the text came with the page. A change the look pass saw as a move
-      // of the text's region (a scroll, a drag) is no page change: the text moved with it. Found end to
-      // end: a fast scroll that brought the text in was taken for a page change, and the cover started
-      // after the scroll, with the text already on screen.
-      if (changedShare(frames[cf], look) >= 0.3 && !rel.length) {
-        startBackward(w, f, null)
-        return
-      }
       // The text moved out of the region it moved with, or out of the frame: it scrolled or was dragged
-      // into view. Lost, it is where its last placed box moved with the region's moves since.
-      if (best) {
-        const back = w.lost ? moved(xfBox(w, w.tpl.box, w.off), { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy, scale: best.scale }) : moved(w.box, best)
-        const outside = right(back) <= 0 || bottom(back) <= 0 || back[0] >= size.width || back[1] >= size.height || (region !== null && !overlaps(back, region))
-        if (outside) {
-          startBackward(w, f, clip(back, size))
+      // into view. Lost, it is where its last placed box moved with the region's moves since. Cut at the
+      // frame's edge, it is there still: the cover holds and the walk goes on to where it is wholly out.
+      const back = motionOf(w, f, best)
+      if (back) {
+        if (outOfFrame(back.box) || (best !== null && region !== null && !overlaps(back.box, region))) {
+          startBackward(w, f, clip(back.box, size))
           return
         }
+        if (w.pending === null && atEdge(w, f, back)) return
+      }
+      // A page change with no match where the walker's own motion puts the text: the text came with the
+      // page. A change the look pass saw as a move of the text's region (a scroll, a drag) is no page
+      // change: the text moved with it. Found end to end: a fast scroll that brought the text in was
+      // taken for a page change, and the cover started after the scroll, with the text already on screen;
+      // and a strip of a page scrolling in, too short for the look pass to find its move, was taken for
+      // one while the text in it still matched.
+      if (changedShare(frames[cf], look) >= 0.3 && !rel.length && !w.nearFound) {
+        startBackward(w, f, null)
+        return
       }
     }
     // Text typed or deleted in place, inside a burst of typing: the band's union holds until the band is still for 1 s.
@@ -675,13 +716,15 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     // (scrolled or dragged out of view), from where it was last placed: it is gone from here on. Found
     // end to end: without it, text scrolled off the screen was lost, its lost area the whole scrolled
     // region, to the end of the recording (a template search over a whole page always finds a part).
-    if (dir === 1 && best && !w.hold && w.pending === null) {
-      const gone = moved(xfBox(w, w.tpl.box, w.off), { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy, scale: best.scale })
-      if (right(gone) <= 0 || bottom(gone) <= 0 || gone[0] >= size.width || gone[1] >= size.height) {
-        setBox(w, f, clip(union(w.box, gone), size))
+    // Cut at the edge on the way out, it is there still: the cover holds the union.
+    if (dir === 1 && !w.hold && w.pending === null) {
+      const gone = motionOf(w, f, best)
+      if (gone && outOfFrame(gone.box)) {
+        setBox(w, f, clip(union(w.box, gone.box), size))
         endForward(w, f, true)
         return
       }
+      if (gone && atEdge(w, f, gone)) return
     }
     if (w.pending !== null && dir === 1) {
       endForward(w, w.pending)
@@ -734,6 +777,14 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       if (changedUnder(frames[cf], look, w.box) === 0) {
         if ((dir === -1 || reads.checkForward) && w.lost && !w.hold && w.justFailed && w.pending === null && !reads.templateOnly && w.checks < MAX_CHECKS) checks.push(w)
         w.justFailed = false
+        // A placed box that holds is placed here too, still: the speed guide's next step is from this
+        // frame and this speed. Found end to end: counted from before the still frames, the first move
+        // after them was spread over them, and the guide put a text scrolling in at the frame's edge
+        // a tenth of the way.
+        if (!w.lost) {
+          w.lastPlaced = f
+          w.v = { dx: 0, dy: 0 }
+        }
         // The typing hold ends once the burst is over and the band has been still for 1 s.
         if (dir === 1 && w.hold && t >= w.hold.until && t - w.hold.lastChange >= BAND_STILL_S) {
           w.holdEnd = t
@@ -771,14 +822,17 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         }
         nearRes.set(a.w, r)
         a.w.near = maxPart(r)
+        a.w.nearFound = found(r)
         rest.push(a)
       }
       // Leaving the frame where the walker's own motion takes it: a match far away is a copy, not where it went.
+      // Judged on the cover box, not the text's own: the template is cut padded, so a text whose ink is
+      // inside the frame but whose padding is not matches nowhere either (found end to end: a code at the
+      // frame's bottom edge was placed by a zoom 140 px away).
       const leaving = (a: (typeof asks)[number]): boolean => {
-        const own = ownBox(a.w)
         const pred = predicted(a.w)
         const ways = [guide(a.w, f), ...(a.best ? [{ dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }] : [])]
-        return ways.some((x) => { const b = xfBox(a.w, own, x); return b[0] < 0 || b[1] < 0 || right(b) > size.width || bottom(b) > size.height })
+        return ways.some((x) => { const b = xfBox(a.w, a.w.tpl.box, x); return b[0] < 0 || b[1] < 0 || right(b) > size.width || bottom(b) > size.height })
       }
       const far = rest.filter((a) => !leaving(a))
       const res = far.length ? await m.match(
@@ -796,7 +850,9 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         // Zoom inside the recorded app: the whole region changed with no real move.
         const cf = stepFrame(f)
         const whole = regionsAt(look, cf).find((g) => overlaps(g, a.w.box) && areaOf(intersect(g, a.w.box) ?? [0, 0, 0, 0]) >= 0.5 * areaOf(a.w.box))
-        if (whole && !a.best) zoom.push({ ...a, region: whole })
+        // Not when the walker's own motion takes the text out of the frame: cut at the edge, it matches
+        // nowhere, and a zoom about the region's centre found a false place for it (found end to end).
+        if (whole && !a.best && far.includes(a)) zoom.push({ ...a, region: whole })
         else fail(a.w, f, r, a.rel, a.best, a.region)
       }
       if (zoom.length) {

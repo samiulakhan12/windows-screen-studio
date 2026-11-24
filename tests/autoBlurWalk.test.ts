@@ -521,6 +521,101 @@ describe('auto-blur P4: following', () => {
     const [track] = await walkSpan([start(0.5, T)], 1, look, readIndex(), placeMatcher(T, score), NO_HINTS, HD)
     expect(uncovered(track, 30, mine, 0.5, 3)).toEqual([])
   })
+
+  /*
+   * A1's scroll-ins, as the helper and the look pass see them. A page scrolls up into view from below,
+   * 36 px an analysed frame (30 fps) for 30 frames from 1 s, until its top rests at the frame's top. The
+   * look pass finds the move of the page's strip at the bottom only once it is 6 tiles (192 px) tall,
+   * and the old page above it has its own region, separated by rows that did not change. The template
+   * is cut padded (5 px here), so the text matches only while that padding is inside the frame; the
+   * cover box is padded 6 px.
+   */
+  const SCROLL_FPS = 30
+  const scrollStep = (t: number): number => Math.max(0, Math.min(30, Math.round((t - 1) * SCROLL_FPS)))
+  const scrollInLook = (opts: { missing?: number[] } = {}): ReturnType<typeof lookOf> =>
+    lookOf(HD, SCROLL_FPS, 4, (_i, t) => {
+      const k = Math.round((t - 1) * SCROLL_FPS)
+      if (k < 1 || k > 30) return {}
+      const h = 36 * k
+      const old: Box = [0, 0, 1920, Math.max(0, 1080 - h - 64)]
+      const strip: Box = [0, 1080 - h, 1920, h]
+      const moves: LookMove[] = []
+      if (old[3] > 0) moves.push(move(old, 0, -36))
+      if (h >= 192 && !opts.missing?.includes(k)) moves.push(move(strip, 0, -36))
+      return { changed: old[3] > 0 ? [old, strip] : [strip], moves }
+    })
+  /** A text at `y` on the page that scrolls in: its own box at time t. */
+  const onIncoming = (y: number) => (t: number): Box => [400, 1080 - 36 * scrollStep(t) + y, 200, 30]
+  /** A start whose cover box is its own box padded 6 px. */
+  const padded = (t: number, own: Box): Placed => ({ id: 'h0', key: KEY, own: 'priya.raman@example.com', t, box: [own[0] - 6, own[1] - 6, own[2] + 12, own[3] + 12], parts: partsOf(own, own[3]), line: own })
+  /** Scores where the text is, while its template (its own box padded 5 px) is inside the frame; `ridge` frames match 0.9 there and 0.8 along its own line. */
+  const whereMatchable = (where: (t: number) => Box | null, ridge?: (t: number) => boolean) => (t: number, b: Box): number => {
+    const w = where(t)
+    if (!w || w[1] - 5 < 0 || w[1] + w[3] + 5 > 1080 || w[0] - 5 < 0) return 0.3
+    if (at(b, w)) return ridge?.(t) ? 0.9 : 0.95
+    // The text's own line beside it (8 px along): its ridge, as gradient NCC gives one for a line of text.
+    return ridge?.(t) && Math.abs(b[1] - w[1]) <= 2 && Math.abs(b[0] - w[0]) <= 8 ? 0.8 : 0.3
+  }
+  const FRAME: Box = [0, 0, 1920, 1080]
+
+  it('Backward, a text scrolling in at the frame\'s bottom edge is followed by its own speed while the look pass has no move for its strip, held while it is cut at the edge, and the cover starts where it is wholly out (found end to end: A1\'s covers started one or two frames late on the first frames of each scroll)', async () => {
+    const own = onIncoming(40)
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    const [track] = await walkSpan([padded(3, own(3))], -1, scrollInLook(), readIndex(), placeMatcher(own(3), whereMatchable(own)), NO_HINTS, HD)
+    // At 1 + 2/30 s the text shows whole (1048-1078) but its template is cut: the cover holds it there.
+    const appeared = sourceFrames(SCROLL_FPS, 0, 3).find((t) => own(t)[1] < 1080)!
+    expect(track.start).toBeLessThanOrEqual(appeared + 1e-9)
+    expect(uncovered({ ...track, end: 3 }, SCROLL_FPS, text, 0, 3, FRAME)).toEqual([])
+  })
+
+  it('A box that holds still keeps the speed guide current: the first move after still frames is the speed of one frame, not spread over them (found end to end: after a pause the guide put a text scrolling in a tenth of the way, and its cover started frames late)', async () => {
+    // A text at 300 on the incoming page; the look pass misses the strip's move at step 29 (the second step back from the rest).
+    const own = onIncoming(300)
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    const [track] = await walkSpan([padded(3, own(3))], -1, scrollInLook({ missing: [29] }), readIndex(), placeMatcher(own(3), whereMatchable(own)), NO_HINTS, HD)
+    expect(uncovered({ ...track, end: 3 }, SCROLL_FPS, text, 0, 3, FRAME)).toEqual([])
+  })
+
+  it('Backward, a page change starts the cover only where no part matches where the walker\'s own motion puts the text: a match there that is not clear of its own line is no page change (found end to end: a token on a half-pixel step matched 0.88 against its line\'s 0.75 and the cover started early)', async () => {
+    const own = onIncoming(300)
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    // At step 19 the look pass misses the strip's move and the match there is 0.9 against its own line's 0.8.
+    const [track] = await walkSpan([padded(3, own(3))], -1, scrollInLook({ missing: [20] }), readIndex(), placeMatcher(own(3), whereMatchable(own, (t) => Math.abs(t - (1 + 19 / 30)) < 1e-6)), NO_HINTS, HD)
+    expect(uncovered({ ...track, end: 3 }, SCROLL_FPS, text, 0, 3, FRAME)).toEqual([])
+  })
+
+  it('A text whose padded template its own motion takes out of the frame is never placed by a zoom or a copy elsewhere, even with its ink still inside (found end to end: a code at the bottom edge was placed by a zoom 140 px away and its cover started late)', async () => {
+    const own = onIncoming(40)
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    const plain = placeMatcher(own(3), whereMatchable(own))
+    // The zoom candidates find a clear place elsewhere, as the helper did on a page of text.
+    const zoomy: Matcher = {
+      ...plain,
+      match: async (t, asks) => {
+        const base = await plain.match(t, asks)
+        return base.map((r, i) => (asks[i].candidates.length && asks[i].candidates.every((c) => c.scale !== 1) ? { ...r, parts: r.parts.map(() => 0.8), best: { dx: -150, dy: 0, scale: 0.8 }, second: 0.3 } : r))
+      }
+    }
+    const [track] = await walkSpan([padded(3, own(3))], -1, scrollInLook(), readIndex(), zoomy, NO_HINTS, HD)
+    expect(uncovered({ ...track, end: 3 }, SCROLL_FPS, text, 0, 3, FRAME)).toEqual([])
+  })
+
+  it('Forward, a text the old page carries out at the top after its region is too short for a move is followed by its own speed, held while cut, and its cover ends one frame after it is wholly out (found end to end: lost there, its cover lasted to the end)', async () => {
+    // The old page scrolls up 36 px a frame from 1 s; its region (above rows that do not change) has a move only while 192 px or taller (to step 22).
+    const own = (t: number): Box => [400, 950 - 36 * scrollStep(t), 200, 30]
+    const text: Planted = { key: KEY, text: 'x', at: own }
+    const look = lookOf(HD, SCROLL_FPS, 4, (_i, t) => {
+      const k = Math.round((t - 1) * SCROLL_FPS)
+      if (k < 1 || k > 30) return {}
+      const old: Box = [0, 0, 1920, Math.max(0, 1080 - 36 * k - 64)]
+      const strip: Box = [0, 1080 - 36 * k, 1920, 36 * k]
+      return { changed: old[3] > 0 ? [old, strip] : [strip], moves: [...(old[3] >= 192 ? [move(old, 0, -36)] : []), move(strip, 0, -36)] }
+    })
+    const [track] = await walkSpan([padded(0.5, own(0.5))], 1, look, readIndex(), placeMatcher(own(0.5), whereMatchable(own)), NO_HINTS, HD)
+    const leaves = sourceFrames(SCROLL_FPS, 0.5, 4).find((t) => own(t)[1] + 30 <= 0)!
+    expect(track.end).toBeLessThanOrEqual(leaves + 2 / SCROLL_FPS + 1e-9)
+    expect(uncovered(track, SCROLL_FPS, text, 0.5, leaves, FRAME)).toEqual([])
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */

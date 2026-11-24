@@ -1819,7 +1819,10 @@ inverted (dark mode, a highlight), so one template serves both.
 
 1. If no tile under the cover's box changed, the box holds (no key).
 2. **Candidates**: the moves of the regions overlapping the box at f (best and alternatives), no
-   move, and the **speed guide**: the last placed move per frame times the frames since. A move is
+   move, and the **speed guide**: the last placed move per frame times the frames since. A box that
+   holds at step 1 is placed there, standing still, so the first move after still frames is the
+   speed of one frame (counted from before them, it was spread over them, and the guide put a text
+   scrolling in at the frame's edge a tenth of the way). A move is
    its region's **real move** (the one that carries a lost box, ends or starts a walk by carrying the
    text out of its region or the frame, and rules out a zoom) when the look pass scored it 0.5 or
    more, or when a move scored so in the same frame agrees with it within a look pixel (a scroll's
@@ -1837,7 +1840,9 @@ inverted (dark mode, a highlight), so one template serves both.
    the text had been), so a copy of the same text further away
    (a list showing one email on every twelfth row, its look moves offering the scroll and its
    aliases) never makes the match ambiguous; only when no clear match is there are all candidates
-   asked, and not when the walker's own motion takes the text partly out of the frame, where a match
+   asked, and not when the walker's own motion takes its cover box partly out of the frame (the
+   template is cut padded, so a text whose ink is inside but whose padding is not matches nowhere
+   either), where a match
    elsewhere is a copy, not where it went. The box moves by that
    candidate; `stepKeys` writes the key at f and, when the box moved, the union key before it (§4.2).
 5. **Not placed** while the region changed: the cover becomes a **lost area**. Its box at f is the 2-D
@@ -1848,7 +1853,16 @@ inverted (dark mode, a highlight), so one template serves both.
    region that changed. The last placed templates are tried at every later changed frame; one clear
    match places the cover again.
 6. **Zoom inside the recorded app** (the whole region changed with no real move): the parts are
-   also tried at scales 0.8, 0.9, 1.1 and 1.25 about the region's centre before the cover is lost.
+   also tried at scales 0.8, 0.9, 1.1 and 1.25 about the region's centre before the cover is lost;
+   not when the walker's own motion takes its cover box partly out of the frame (a code at the
+   bottom edge, cut there, was placed by a zoom 140 px away).
+7. **Cut at the frame's edge.** The walker's **own motion** is its region's real move, or, when its
+   region has none, the speed guide while it was placed at the step before: a strip of a page
+   scrolling in or out at the frame's edge is too short for the look pass to find its move (under 6
+   tiles), and the text in it is cut, so no template matches it. When that motion moves the cover box
+   partly out of the frame, the text is placed where it puts it, and the box holds the union of its
+   last box and the moved one, clipped to the frame, until the motion takes it wholly out (below and
+   in the backward walk). A1's scroll-ins started their covers one or two frames late without it.
 
 **Evidence of absence.** A cover ends only when the text is shown to be gone:
 
@@ -1881,8 +1895,9 @@ placed or lost, with no time limit. A read that finds the same group key again r
 there, and the walk backward from that read corrects the path to the last placed frame (the lost
 area between them stays).
 
-**Carried out of the frame.** Going forward, a cover also ends where the real move of the region the
-text moved with carries its box wholly out of the frame (scrolled or dragged out of view), with no
+**Carried out of the frame.** Going forward, a cover also ends where the walker's own motion (step
+7: the real move of the region the text moved with, or the speed guide) carries its box wholly out
+of the frame (scrolled or dragged out of view), with no
 read needed: the mirror of the backward walk's rule. That frame's box is the union of the last box
 and the moved one, clipped to the frame, so the source frames before it, which show the text cut at
 the edge, stay covered, and the cover ends one analysed frame after it: a text cut at the edge is
@@ -1902,9 +1917,13 @@ makes frames with no match while the text is still there. It goes on, placed or 
   area) at the analysed frame before the earliest frame with no match, read alone (about 0.1 unit,
   §5.4). A check read that finds the text re-anchors the walk, which goes on back;
 - a **page change** (30% or more of the frame changed, `SCREEN_RULES.page`,
-  `src/shared/smart/screenChanges.ts`) at a frame where no part matches;
+  `src/shared/smart/screenChanges.ts`, with no move of the box's region) at a frame where the match
+  where the walker's own motion puts the text finds nothing (no clear match and no part at 0.85: a
+  token on a half-pixel step of a scroll matched 0.88 against its own line's 0.75, and its cover
+  started early);
 - the box has moved **wholly outside the region it moved with, or outside the frame**: the text
-  scrolled or was dragged into view there;
+  scrolled or was dragged into view there. Its own motion (step 7) carries it: cut at the edge on
+  the way, the box holds the union of its box and the moved one;
 - the first frame of the recording.
 
 The cover then starts at the first source frame after the frame proven absent, with the union key of
