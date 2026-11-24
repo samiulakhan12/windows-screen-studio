@@ -13,6 +13,9 @@ use std::time::Duration;
 
 /// Half a millisecond: a frame time from `showinfo` (six decimals) is within this of the frame.
 pub const EPS: f64 = 0.0005;
+/// How far a selection meant to end at a time reaches past it (`Stream::until`): a frame or more at
+/// 10 frames a second and up.
+pub const PAST: f64 = 0.1;
 const INFO_WAIT: Duration = Duration::from_secs(60);
 
 /// Refuses a recording that is too large, from its header when it is an MP4 (before ffmpeg starts).
@@ -30,8 +33,7 @@ pub struct Stream {
     pub size: Option<(usize, usize)>,
     pub decoded: u64,
     ended: bool,
-    /// Ends the stream at the first decoded frame at or after this time: the selection keeps nothing
-    /// later, and ffmpeg would otherwise decode the rest of the recording for nothing.
+    /// Ends the stream at the first frame at or after this time (see `until`).
     until: Option<f64>,
 }
 
@@ -45,7 +47,11 @@ impl Stream {
         Ok(Stream { run, bytes_per, size: None, decoded: 0, ended: false, until: None })
     }
 
-    /// Ends the stream at the first decoded frame at or after `t` (see `until`).
+    /// Ends the stream at the first selected frame at or after `t`, before its pixels are read, or at
+    /// the first decoded frame `PAST` after `t`. ffmpeg holds a selected frame's pixels until the next
+    /// selected frame or the end of the recording, so a selection meant to end at `t` must reach past
+    /// it (by `PAST`): without the frame after, the last frame wanted came only once ffmpeg had decoded
+    /// the rest of the recording for nothing.
     pub fn until(mut self, t: f64) -> Stream {
         self.until = Some(t);
         self
@@ -62,7 +68,7 @@ impl Stream {
                 return Ok(None);
             };
             if info.filter == 0 {
-                if self.until.is_some_and(|u| info.t >= u) {
+                if self.until.is_some_and(|u| info.t >= u + PAST) {
                     self.ended = true;
                     return Ok(None);
                 }
@@ -74,6 +80,10 @@ impl Stream {
                     self.size = Some((info.w, info.h));
                 }
                 continue;
+            }
+            if self.until.is_some_and(|u| info.t >= u) {
+                self.ended = true;
+                return Ok(None);
             }
             let mut buf = vec![0u8; (self.bytes_per)(info.w, info.h)];
             self.run.read_frame(&mut buf)?;

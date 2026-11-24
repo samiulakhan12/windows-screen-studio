@@ -1843,8 +1843,11 @@ interval (GOP) at a time, newest first, keeping at most two intervals in memory.
 at t is always that frame itself: the older piece holding it is decoded before a frame of a newer
 piece could stand in for it (R24; one did for up to 0.1 s at each piece's edge, and a backward walk
 held its box still there while the text scrolled on). Each piece's decoding stops at the piece's end
-(R26): its frame selection keeps nothing later, and without the stop each piece decoded the rest of
-the recording, 10.8 s a piece of a 144 s recording against 0.13 s. Main registers each
+(R26): its frame selection reaches a tenth of a second past the piece and the run ends at the first
+frame selected there, before its pixels are read. ffmpeg holds a selected frame's pixels until the
+next selected frame or the end of the recording, so a selection ending at the piece's end gave the
+piece's last frame only once the rest of the recording was decoded: 11.5 s a piece of a 144 s
+recording against 0.06 s, and a backward session over it did not finish in 20 minutes. Main registers each
 hit as a **track** with `track { session, track, t, parts }` (templates cut at frame `t`), then walks
 every track of the span together, one analysed frame at a time: `match { session, t, tracks: [{
 track, parts, candidates }] }` answers `{ id, matched: [{ track, parts: (number | null)[], best: {
@@ -4212,8 +4215,8 @@ number of this list exists exactly once.
   scroll, across a piece's edge, matches at every frame where the scroll put it, never at a later
   frame's place.
 - R26. **A backward piece decodes only up to its own end**: a backward session over 0.4 s at 10 s of
-  a two-minute recording decodes at most its frames and a key-frame interval before them (a decode
-  counter), not the 100 s after it.
+  a four-minute 1280×720 recording decodes at most its frames and a key-frame interval before them (a
+  decode counter) and answers within 3 s, neither decoding nor waiting for the 230 s after it.
 
 **P3 · The text rules**
 

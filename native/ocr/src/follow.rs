@@ -198,10 +198,12 @@ impl Session {
         }
         let hi = self.low;
         let lo = (hi - PIECE_S).max(self.from - EPS);
-        let select = format!("gte(t\\,{})*lt(t\\,{})", crate::ffmpeg::secs(lo), crate::ffmpeg::secs(hi));
-        // The piece's run ends at its window's end: past it the selection keeps nothing, and each piece
-        // decoded the rest of the recording (a backward session over a 144 s recording took over 20
-        // minutes, 10.8 s a piece against 0.13 s).
+        // The selection reaches past the piece (`PAST`) and the run ends at the first frame of it after
+        // the piece: ffmpeg holds a frame's pixels until the next selected one, and with the selection
+        // ending at the piece's end, the piece's last frame came only once the rest of the recording was
+        // decoded (10.8 s a piece of a 144 s recording against 0.13 s; a backward session over it did not
+        // finish in 20 minutes).
+        let select = format!("gte(t\\,{})*lt(t\\,{})", crate::ffmpeg::secs(lo), crate::ffmpeg::secs(hi + crate::decode::PAST));
         let mut stream = Stream::open(&self.ffmpeg, &self.video, lo.max(0.0), &half_vf(&select), 1, Duration::from_secs(60), gray_bytes)?.until(hi);
         let mut got = vec![];
         while let Some((info, img)) = stream.next()? {
