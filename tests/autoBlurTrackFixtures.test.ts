@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
 import ffmpegStatic from 'ffmpeg-static'
 import { detectFrame } from '../src/shared/privacy/detect/detect'
@@ -78,8 +79,9 @@ describe('auto-blur contracts: tracking fixtures', () => {
 
   it('The tracking set plants what Find finds: in every case drawn as rows of text, each on-by-default planted item is found by the default rules from the page\'s own lines (a password by its label, §6.7 and decision 2; planted unlabelled, A16 counted it uncovered in every frame)', async () => {
     type Case = (v: unknown) => { html: string }
-    const { CASES, plantValues } = (await import('../scripts/privacy/make-track-fixtures.mjs')) as unknown as { CASES: Record<string, Case>; plantValues: (tok: unknown) => unknown }
-    const { KINDS, makeTokens } = (await import('../scripts/privacy/eval-lib.mjs')) as unknown as { KINDS: Record<string, { on: boolean }>; makeTokens: (seed: number) => unknown }
+    const script = (name: string): string => pathToFileURL(path.join(ROOT, 'scripts', 'privacy', name)).href
+    const { CASES, plantValues } = (await import(script('make-track-fixtures.mjs'))) as { CASES: Record<string, Case>; plantValues: (tok: unknown) => unknown }
+    const { KINDS, makeTokens } = (await import(script('eval-lib.mjs'))) as { KINDS: Record<string, { on: boolean }>; makeTokens: (seed: number) => unknown }
     const values = plantValues(makeTokens(7000))
     const unescape = (t: string): string => t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
     for (const id of ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag']) {
