@@ -1003,7 +1003,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       )
       for (const w of searches) {
         const r = res.find((x) => x.track === w.index)
-        if (found(r) || maxPart(own.find((x) => x.track === w.index)) >= ABSENT_SCORE) continue
+        // Lost at a page change, its own places hold the new page: they are judged as the region's
+        // other places are (one clear match, or a part at 0.85), never by the 0.5 of a text partly under
+        // a tooltip, which the new page's content there reaches unread (0.53 on the held-out pages).
+        const at = own.find((x) => x.track === w.index)
+        if (found(r) || (w.paged ? found(at) : maxPart(at) >= ABSENT_SCORE)) continue
         // The first evidence holds (the frame nearest the text); later evidence only waits behind it.
         if (!reads.templateOnly) w.pending ??= f
         else if (dir === 1) endForward(w, f)

@@ -1927,9 +1927,11 @@ inverted (dark mode, a highlight), so one template serves both.
   no move and the speed guide: a text partly under a tooltip or a toast still matches there, and at
   the first frame of a recording one under a tooltip was taken for gone and showed for a frame);
   for a text lost at a page change (30% or more of the frame changed with no real move) since it was
-  last placed, those places too are left out where they reach half onto a line the read at S read,
-  as below: other text is there (on the evaluation pages a key's own place showed other text scoring
-  0.53-0.61, and its lost area, the whole page, lasted until the next page), and
+  last placed, those places hold the new page and are judged as the region's other places are,
+  below: left out where they reach half onto a line the read at S read, and otherwise the text only
+  where the walk would place it or a part scores 0.85 (on the evaluation pages a key's own place
+  showed other text scoring 0.53-0.61, read or not, and its lost area, the whole page, lasted for
+  pages), and
 - the template search at S, anywhere in the region at scale 1 and at the zoom scales of step 6, finds
   no place where the walk would place the text (no part at 0.6 or more beating every other place by
   0.15, step 4) and no part at 0.85 or more, leaving out the places whose search window (±8 video

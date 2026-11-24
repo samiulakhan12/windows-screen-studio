@@ -719,6 +719,23 @@ describe('auto-blur P4: following', () => {
     expect(gone.end).toBeLessThan(2.4)
     expect(uncovered(gone, 30, { key: KEY, text: 'x', at: (t) => (t < 2 ? T : null) }, 1, 2)).toEqual([])
   })
+
+  it('Forward, a text lost at a page change is shown gone by the next read even where the new page, unread there, scores 0.55 at its own place: the 0.5 of a text partly under a tooltip is no evidence after a page change (found end to end: a key on the held-out pages kept its lost area, the whole frame, for two more pages, its own place scoring 0.53 on a page whose lines there were not read)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    // A cut at 2 s; the read at 2.3 s reads one line far from where the text was; the template scores 0.55 at its own place, 0.3 elsewhere.
+    const look = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page] } : {}))
+    const read = readOf(2.3, [page], [{ box: [1200, 800, 300, 30], text: 'Quarterly report' }])
+    const score = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : at(b, T) ? 0.55 : 0.3)
+    const [gone] = await walkSpan([start(1, T)], 1, look, readIndex([read]), placeMatcher(T, score), NO_HINTS, HD)
+    expect(gone.end).toBeLessThan(2.4)
+    // A text partly under a tooltip (no page change) still keeps its cover by the 0.5 there.
+    const tip: Box = [352, 256, 320, 128]
+    const tipLook = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [tip] } : {}))
+    const under = readOf(2.3, [page], [{ box: [360, 270, 300, 24], text: 'Copied to the clipboard' }])
+    const [kept] = await walkSpan([start(1, T)], 1, tipLook, readIndex([under]), placeMatcher(T, score), NO_HINTS, HD)
+    expect(kept.end).toBeCloseTo(6, 4)
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */
