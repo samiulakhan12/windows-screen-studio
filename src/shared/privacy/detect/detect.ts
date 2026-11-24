@@ -75,9 +75,22 @@ export function frameContext(lines: readonly ReadLine[], texts: readonly (string
     }
     above[i] = best
     const cy = L[1] + L[3] / 2
+    const leftOf = (o: readonly number[], j: number): boolean => j !== i && o[0] < L[0] && right(o) <= L[0] + 0.6 * h
+    // A label with a line under it (a hint), the box centred on the pair: the pair is on its row (§6.10,
+    // new; "Router admin PIN" over "From the sticker" at 150% display scale, 0.64 line heights above).
+    const inPair = (o: readonly number[], j: number): boolean => {
+      const d = o[1] + o[3] / 2 - cy
+      if (Math.abs(d) >= 1.2 * h) return false
+      return lines.some(({ box: p }, k) => {
+        if (k === j || !leftOf(p, k) || Math.abs(p[0] - o[0]) > h) return false
+        // Stacked tight, the box's centre within a quarter of their pitch of their middle.
+        const e = p[1] + p[3] / 2 - cy
+        return Math.abs(d + e) / 2 <= 0.25 * Math.abs(e - d) && p[1] - bottomOf(o) <= 0.6 * h && o[1] - bottomOf(p) <= 0.6 * h
+      })
+    }
     left[i] = lines
       .map((o, j) => ({ o: o.box, j }))
-      .filter(({ o, j }) => j !== i && o[0] < L[0] && right(o) <= L[0] + 0.6 * h && Math.abs(o[1] + o[3] / 2 - cy) < 0.6 * h)
+      .filter(({ o, j }) => leftOf(o, j) && (Math.abs(o[1] + o[3] / 2 - cy) < 0.6 * h || inPair(o, j)))
       .sort((a, b) => a.o[0] - b.o[0])
       .map(({ j }) => j)
   }

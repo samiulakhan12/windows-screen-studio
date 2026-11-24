@@ -224,6 +224,14 @@ describe('auto-blur P3: the screen rules', () => {
     // BEGIN and END with nothing read between them: a lost area too.
     const empty = [line('-----BEGIN PRIVATE KEY-----', 100, 200), line('-----END PRIVATE KEY-----', 100, 224)]
     expect(detectFrame(empty, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })[0]).toMatchObject({ rule: 'private-key-lost', lost: true })
+    // A BEGIN marker read apart from the JSON key before it, the body at the row's left: the block runs
+    // on under the row, across the body's width, to its END line (the small editor at 200%).
+    const json = [line('"PrivateKey": "', 100, 200), line('-----BEGIN PRIVATE KEY-----\\n', 300, 200), ...body.slice(0, 3).map((b, i) => line(b + '\\n', 60, 224 + 24 * i)), line('-----END PRIVATE KEY-----', 60, 296)]
+    const [j] = detectFrame(json, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME }).filter((x) => x.kind === 'key')
+    expect(j).toMatchObject({ rule: 'private-key-block' })
+    expect(j.lost).toBeUndefined()
+    expect(j.box[0]).toBeLessThanOrEqual(60)
+    expect(j.box[0] + j.box[2]).toBeGreaterThanOrEqual(60 + 66 * 10)
   })
 
   it('114. links: each webhook, userinfo, DSN, query parameter and path token; tsc -p and docker -p are not secrets', () => {
@@ -302,6 +310,13 @@ describe('auto-blur P3: the screen rules', () => {
     expect(texts('G-482913 is your Google verification code.')).toEqual(['code:auto:G-482913'])
     expect(texts('739204', { above: 'Use this code to finish signing in.' })).toEqual(['code:auto:739204'])
     expect(texts('739204', { above: 'Signed in as Jordan', above2: 'Enter the code we sent you' })).toEqual(['code:auto:739204'])
+    // A code's two digit groups read as boxes of their own, under a sentence naming a code (the two-factor page at 150%): one code over both.
+    const fields = [line('3. Enter the 6-digit code', 100, 160), line('204', 120, 200, { h: 27 }), line('617', 165, 199, { h: 30 })]
+    const both = detectFrame(fields, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })
+    expect(both.map((h) => `${h.kind}:${h.rule}:${h.spans.map((sp) => sp.line).join(',')}`)).toEqual(['code:code-labelled-groups:1,2'])
+    // Not without a line naming a code, nor groups set a field apart.
+    expect(detectFrame([line('Order total', 100, 160), ...fields.slice(1)], [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })).toEqual([])
+    expect(detectFrame([fields[0], fields[1], line('617', 300, 199, { h: 30 })], [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })).toEqual([])
     // Recovery blocks: a line of codes under the heading; a sentence there is not codes; a numbered line's number is not a code.
     expect(texts('8f3k-2m9q 7p4x-c1zt h9w2-r6bd', { recovery: true })).toEqual(['code:auto:8f3k-2m9q', 'code:auto:7p4x-c1zt', 'code:auto:h9w2-r6bd'])
     expect(texts('Each code works once. Generated 23 Nov 2026.', { recovery: true })).toEqual([])
@@ -324,6 +339,13 @@ describe('auto-blur P3: the screen rules', () => {
     expect(texts('hunter2!x', { above: 'Choose a strong password for the new team account' })).toEqual([])
     // Too far to the left on the row (more than three boxes between) is not beside.
     expect(texts('58204716', { left: ['Router admin PIN', 'a', 'b', 'c'] })).toEqual([])
+    // A label with a hint line under it, the value centred on the pair 0.65 line heights from each (a
+    // settings row at 150% display scale) is beside; a time on a sender's row, a subject naming a
+    // password under the sender, is not: it is not centred on the pair.
+    const run = (lines: ReturnType<typeof line>[]) => detectFrame(lines, [], { kinds: DEFAULT_KINDS, regions: ['US'], names: NO_NAMES, frame: FRAME }).map((h) => `${h.kind}:${h.rule}`)
+    expect(run([line('Router admin PIN', 100, 387), line('From the sticker', 100, 413), line('58204716', 900, 400)])).toEqual(['code:pin-labelled'])
+    expect(run([line('National Insurance number', 100, 387), line('For payroll', 100, 413), line('QQ 12 34 56 C', 900, 400)])).toEqual(['id:id-labelled'])
+    expect(run([line('IT Service Desk', 100, 400), line('Your temporary password', 100, 423), line('11:02', 900, 401)])).toEqual([])
   })
 
   it('119. continuation: a JWT head at a line end continues onto the next lines; a webhook token wrapped after - continues; at most 6 lines', () => {
@@ -347,6 +369,30 @@ describe('auto-blur P3: the screen rules', () => {
     expect(hitsOn(head, { below: ['STRIPE_KEY=abc123def'] })[0].hit.spans).toHaveLength(1)
     const apart = [line(head, 100, 200), line(token('«B40»', 40), 100, 240)]
     expect(detectFrame(apart, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })[0].spans).toHaveLength(1)
+    const frameHits = (lines: ReturnType<typeof line>[]) => detectFrame(lines, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })
+    const own = (lines: ReturnType<typeof line>[], h: { spans: { line: number; variant: number; start: number; end: number }[] }): string[] => h.spans.map((sp) => lines[sp.line].variants[sp.variant].text.slice(sp.start, sp.end))
+    // The next line is found under the row even when the reader also returned a piece of the row cut at
+    // a tile's edge, reaching lower than the row's own box (the 150% dashboard's webhook).
+    const cut = [line(`https://discord.com/api/webhooks/${id}/R7-`, 100, 400), line('https://di', 100, 401, { h: 21 }), line(token('«B40»', 27), 100, 424)]
+    const past = frameHits(cut).filter((h) => h.kind === 'link')
+    expect(past).toHaveLength(1)
+    expect(past[0].spans.map((s) => s.line)).toEqual([0, 2])
+    // The last one to three characters of a token wrapped at its block's right edge, alone on the next
+    // row but for a closing quote: a cover of their own, under the line (the editor at 150%) ...
+    const whole = token('«=eyJ|B30».«=eyJ|B40».«B43»', 28)
+    const under = [line(`SERVICE_JWT = "${whole.slice(0, -1)}`, 100, 200), line(`${whole.slice(-1)}"`, 100, 224)]
+    const tail = frameHits(under).filter((h) => h.kind === 'key')
+    expect(tail.map((h) => h.rule)).toEqual(['jwt', 'jwt+tail'])
+    expect(own(under, tail[1])).toEqual([whole.slice(-1)])
+    expect(tail[1].box[1]).toBeGreaterThan(214)
+    // ... or at the start of its row, where the reader read a log line's time apart from its message (the held-out logs page).
+    const log = [line('12:03:44 INFO', 100, 200), line(`auth ok token ${whole.slice(0, -1)}`, 300, 200), line(`${whole.slice(-1)}"`, 100, 224)]
+    const logged = frameHits(log).filter((h) => h.kind === 'key')
+    expect(logged.map((h) => h.rule)).toEqual(['jwt', 'jwt+tail'])
+    expect(own(log, logged[1])).toEqual([whole.slice(-1)])
+    // An editor's next line number at the row's start is not a tail: it is not alone on its row.
+    const numbered = [line('25', 40, 200), line(`JWT = "${whole}"`, 100, 200), line('26', 40, 224), line('const x = 1', 100, 224)]
+    expect(frameHits(numbered).map((h) => h.rule)).toEqual(['jwt'])
   })
 
   it('120. one space in a key: sk-proj- with one inner space is one token; two spaces are not', () => {
@@ -358,6 +404,12 @@ describe('auto-blur P3: the screen rules', () => {
     // Parts that match alone are not joined.
     const whole = token('«=ghp_|A36»', 43)
     expect(texts(`${whole} ${b}`)).toEqual([`key:auto:${whole}`])
+    // In a quoted value, a key that stops one space before the value's last characters and its closing
+    // quote runs to the quote (an underscore read as a space at 200%); not past a different quote or a
+    // second word.
+    expect(texts(`"UploadToken": "${whole} 6i0c"},`)).toEqual([`key:auto:${whole} 6i0c`])
+    expect(texts(`"UploadToken": "${whole} 6i0c'`)).toEqual([`key:auto:${whole}`])
+    expect(texts(`"UploadToken": "${whole} is ok"`)).toEqual([`key:auto:${whole}`])
   })
 
   it('121. wrap join: a joined token matching a strong rule covers both parts', () => {

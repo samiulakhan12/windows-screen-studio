@@ -9,7 +9,8 @@
 import { strongHits } from './keys'
 import { findRecoveryCodes } from './labels'
 import { coverBox, heightOf, lineHit, type DetectLine, type FrameContext, type Hit, type HitSpan, type LineContext } from './score'
-import { JWT_HEAD, LINK_HEADS, PEM_END, PLAIN_WORD, SPACED_KEY, TOKEN_AT_END, TOKEN_AT_START } from './tables'
+import { asciiDigits } from '../../captions/numbers'
+import { CODE_NOT, CODE_VALUE, JWT_HEAD, LABELS, LINK_HEADS, PEM_END, PLAIN_WORD, SHORT_TAIL, SPACED_KEY, TOKEN_AT_END, TOKEN_AT_START, YEAR } from './tables'
 
 /** Lines a PEM block holds at most, and lines a token is chained over at most. */
 const PEM_LINES = 60
@@ -35,6 +36,20 @@ function blockRight(l: DetectLine, all: readonly DetectLine[]): number {
 /** The text a hit's span ends at on its line, without trailing punctuation: whether the hit runs to the line's end. */
 function runsToEnd(span: HitSpan, line: DetectLine): boolean {
   return span.end >= line.raw.replace(/[\s.,;"'`]+$/, '').length
+}
+
+/**
+ * The line a wrapped line goes on in: the nearest line below whose left edge is within one line height
+ * of `x` and whose top is at most WRAP_GAP line heights under the line's bottom; of the reads at that
+ * height, the widest (the reader also returns a line's piece cut at a tile's edge, and a row read twice).
+ */
+function lineUnder(line: DetectLine, x: number, all: readonly DetectLine[], hh: number): DetectLine | undefined {
+  let best: DetectLine | undefined
+  for (const o of all) {
+    if (o.index === line.index || o.box[1] + 2 < bottom(line) || o.box[1] - bottom(line) > WRAP_GAP * hh || Math.abs(o.box[0] - x) > hh) continue
+    if (!best || o.box[1] < best.box[1] - 0.3 * hh || (Math.abs(o.box[1] - best.box[1]) <= 0.3 * hh && o.box[2] > best.box[2])) best = o
+  }
+  return best
 }
 
 /** The last characters of a text, where a pattern anchored at its end can match (it never looks further back), and where they start. */
@@ -84,6 +99,20 @@ export function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameCo
     }
   }
 
+  // One space read inside a quoted key (§6.10, new): a key hit that opens a quoted value and stops one
+  // space before the value's last one to eight token characters and its closing quote runs to the
+  // quote (an underscore read as a space, `"pypi-…QL1 6i0c"` at 200%).
+  for (const h of hits) {
+    if (h.kind !== 'key' || h.spans.length !== 1) continue
+    const sp = h.spans[0]
+    const l = read(sp.line, sp.variant)
+    const q = l?.raw[sp.start - 1]
+    if (!l || !q || !'"\'`'.includes(q)) continue
+    const m = /^ ([A-Za-z0-9_+/=-]{1,8})(["'`])/.exec(l.raw.slice(sp.end))
+    if (!m || m[2] !== q) continue
+    out.push({ ...h, rule: h.rule + '+space', spans: [{ ...sp, end: sp.end + 1 + m[1].length }] })
+  }
+
   // A JWT whose third part is on later lines (§6.10, new): its head at the end of a line starts a continuation.
   for (const l of lines) {
     const tail = tailOf(l.clean.prefix)
@@ -119,7 +148,21 @@ export function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameCo
     let x1 = right(begin) + w
     let end = false
     let body = 0
-    let at = ctx.below[sp.line]
+    // The line under the block so far: the frameContext's line below, or, when that went to another box
+    // of the row (a BEGIN marker read apart from the JSON key before it), the nearest line under the row
+    // overlapping the block (the 200% small editor).
+    const under = (l: DetectLine): number | null => {
+      if (ctx.below[l.index] !== null) return ctx.below[l.index]
+      const hh = heightOf(l.box)
+      let best: DetectLine | undefined
+      for (const o of all) {
+        if (o.box[1] + 2 < bottom(l) || o.box[1] - bottom(l) > 2.2 * hh) continue
+        if (Math.max(0, Math.min(right(o), x1) - Math.max(o.box[0], x0)) < 0.3 * Math.min(o.box[2], x1 - x0)) continue
+        if (!best || o.box[1] < best.box[1] - 0.3 * hh || (Math.abs(o.box[1] - best.box[1]) <= 0.3 * hh && o.box[2] > best.box[2])) best = o
+      }
+      return best ? best.index : null
+    }
+    let at = under(begin)
     for (let k = 0; at !== null && k < PEM_LINES; k++) {
       const l = read(at)
       if (!l) break
@@ -133,7 +176,7 @@ export function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameCo
       body++
       x0 = Math.min(x0, l.box[0])
       x1 = Math.max(x1, right(l))
-      at = ctx.below[at]
+      at = under(l)
     }
     if (end && body > 0) {
       out.push({ kind: 'key', rule: 'private-key-block', score: 0.99, spans, box: [0, 0, 0, 0], block: [x0, x1] })
@@ -153,40 +196,83 @@ export function rowRules(lines: readonly DetectLine[], hits: Hit[], ctx: FrameCo
     for (const x of findRecoveryCodes(l.clean, lineCtx(l))) out.push({ ...x, rule: 'recovery-code-grid' })
   }
 
+  // A one-time code's two digit groups read as boxes of their own (a code's fields at 150%), under a
+  // line naming a code: joined, a code (§6.10, new).
+  for (const l of all) {
+    const a = asciiDigits(l.clean.text.trim())
+    if (!/^\d{3,4}$/.test(a)) continue
+    const hh = heightOf(l.box)
+    const cy = l.box[1] + l.box[3] / 2
+    let next: DetectLine | undefined
+    for (const o of all) {
+      if (o === l || o.box[0] < right(l) - 2 || o.box[0] - right(l) > hh || Math.abs(o.box[1] + o.box[3] / 2 - cy) >= 0.6 * hh) continue
+      if (!next || o.box[0] < next.box[0]) next = o
+    }
+    const b = next ? asciiDigits(next.clean.text.trim()) : ''
+    if (!next || !/^\d{3,4}$/.test(b)) continue
+    const joined = `${a} ${b}`
+    const v = CODE_VALUE.exec(joined)
+    if (!v || v[0].length !== joined.length || YEAR.test(a) || YEAR.test(b)) continue
+    const up = ctx.above[l.index]
+    const near = [up, up === null ? null : ctx.above[up]].map((j) => (j === null ? undefined : read(j)))
+    if (!near.some((n) => n && LABELS.code.test(n.clean.label) && !CODE_NOT.test(n.clean.text))) continue
+    const own = (d: DetectLine): HitSpan => ({ line: d.index, variant: d.variant, start: d.raw.length - d.raw.trimStart().length, end: d.raw.trimEnd().length })
+    out.push({ kind: 'code', rule: 'code-labelled-groups', score: 0.9, spans: [own(l), own(next)], box: [0, 0, 0, 0] })
+  }
+
   // A token that runs to the end of its line continues at the left of the lines below (§6.10).
-  const continued = [...hits, ...out].map((h) => {
-    if (h.kind !== 'key' && h.kind !== 'link') return h
-    if (h.rule.startsWith('private-key')) return h
+  const continued = [...hits, ...out].flatMap((h) => {
+    if (h.kind !== 'key' && h.kind !== 'link') return [h]
+    if (h.rule.startsWith('private-key')) return [h]
     let last = h.spans[h.spans.length - 1]
     let line = read(last.line, last.variant)
-    if (!line || !runsToEnd(last, line)) return h
+    if (!line || !runsToEnd(last, line)) return [h]
     const tail = line.raw.slice(0, last.end).replace(/[\s.,;"'`]+$/, '')
     const lastChar = tail[tail.length - 1] ?? ''
     const relaxed = /[A-Za-z0-9_+/=.~-]/.test(lastChar)
     const spans = [...h.spans]
+    let short: HitSpan | null = null
     for (let k = 0; k < CHAIN; k++) {
-      const belowIndex = ctx.below[line.index]
-      if (belowIndex === null) break
-      const b = read(belowIndex)
-      if (!b) break
       const hh = heightOf(line.box)
-      const gap = b.box[1] - bottom(line)
-      // Wrapped text is set tight: a value in the next field of a form is not the rest of this one.
-      if (gap > WRAP_GAP * hh || Math.abs(b.box[0] - line.box[0]) > hh) break
       // A line short of its block's right edge continues only for a token (§6.10, new).
-      if (!relaxed && right(line) < blockRight(line, all) - 1.2 * hh) break
-      const cont = TOKEN_AT_START.exec(b.clean.text)
-      if (!cont || PLAIN_WORD.test(cont[0])) break
+      const atEdge = right(line) >= blockRight(line, all) - 1.2 * hh
+      if (!relaxed && !atEdge) break
+      const b = lineUnder(line, line.box[0], all, hh)
+      let cont = b ? TOKEN_AT_START.exec(b.clean.text) : null
+      if (cont && PLAIN_WORD.test(cont[0])) cont = null
       // The rest of a token, not a line of its own: no '=' inside it (padding at its end only), no ':' or '=' after it.
-      if (/=[^=]/.test(cont[1]) || /^\s{0,2}[:=]/.test(b.clean.text.slice(cont.index + cont[0].length))) break
-      const s = cont.index + cont[0].indexOf(cont[1])
-      const piece = lineHit(lineCtx(b), h.kind, h.rule, s, s + cont[1].length, h.score).spans[0]
-      spans.push(piece)
-      if (!runsToEnd(piece, b)) break
-      last = piece
-      line = b
+      if (b && cont && !/=[^=]/.test(cont[1]) && !/^\s{0,2}[:=]/.test(b.clean.text.slice(cont.index + cont[0].length))) {
+        const s = cont.index + cont[0].indexOf(cont[1])
+        const piece = lineHit(lineCtx(b), h.kind, h.rule, s, s + cont[1].length, h.score).spans[0]
+        spans.push(piece)
+        if (!runsToEnd(piece, b)) break
+        last = piece
+        line = b
+        continue
+      }
+      // The last one to three characters of a token wrapped at its block's right edge, alone on the next
+      // row but for a closing quote or bracket: under the line, or at the start of its row (the reader
+      // reads a log line's time apart from its message). They are a cover of their own: the hit's one box
+      // would take in the row above from the row's start (a label, the log line's time).
+      if (!relaxed || !atEdge) break
+      const leftmost = ctx.left[line.index]?.[0]
+      const rowStart = leftmost === undefined ? undefined : read(leftmost)
+      const under = rowStart ? lineUnder(line, rowStart.box[0], all, hh) : undefined
+      // At the row's start the tail is alone on its row (not an editor's next line number).
+      const alone = (t: DetectLine): boolean => !all.some((o) => o.box[0] >= right(t) && Math.abs(o.box[1] + o.box[3] / 2 - (t.box[1] + t.box[3] / 2)) < 0.6 * heightOf(t.box))
+      for (const t of [b, under && alone(under) ? under : undefined]) {
+        const m = t ? SHORT_TAIL.exec(t.clean.text) : null
+        if (!t || !m) continue
+        const s = m.index + m[0].indexOf(m[1])
+        short = lineHit(lineCtx(t), h.kind, h.rule, s, s + m[1].length, h.score).spans[0]
+        break
+      }
+      break
     }
-    return spans.length === h.spans.length ? h : { ...h, spans, rule: h.rule.endsWith('+continued') ? h.rule : h.rule + '+continued' }
+    const whole = spans.length === h.spans.length ? h : { ...h, spans, rule: h.rule.endsWith('+continued') ? h.rule : h.rule + '+continued' }
+    if (!short) return [whole]
+    const ofTail = read(short.line, short.variant)!
+    return [whole, { kind: h.kind, rule: h.rule.replace(/\+continued$/, '') + '+tail', score: h.score, spans: [short], box: coverBox([short], () => ofTail, ctx.frame) }]
   })
 
   // A token wrapped onto the next line: the line's last token and the next line's first, joined, match a strong rule neither matches alone.

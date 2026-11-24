@@ -2434,11 +2434,19 @@ the rules (the first version kept a second copy in the helper for this).
 
 - **Beside**: for each box, the three nearest boxes to its left whose centres are within 0.6 line
   heights vertically; the nearest that is a label box makes this box its value (other boxes between
-  allowed: "Router admin PIN · From the sticker · 58204716").
+  allowed: "Router admin PIN · From the sticker · 58204716"). **New**: a label with a line under it
+  (a hint, the two stacked within 0.6 line heights), the box centred on the pair (its centre within
+  a quarter of their pitch of their middle, each up to 1.2 line heights away), is on the box's row
+  too: at 150% and 200% display scale "Router admin PIN" over "From the sticker" sat 0.64 line
+  heights above its PIN. A time on a sender's row with a subject naming a password under the sender
+  is not centred on the pair.
 - **Under**: the line above is a short label line (40 characters or fewer, 4 words or fewer, the label
   taking all but 10 characters); the whole line is the value.
 - **PEM block**: from a BEGIN line, every line below in the same column to the END line (dashes
-  optional), at most 60 lines, across the block's full width. Without an END line, or when the reader
+  optional), at most 60 lines, across the block's full width. **New**: where the line below went to
+  another box of the row (a BEGIN marker read apart from the JSON key before it, the body at the
+  row's left), the next line is the nearest under the row within 2.2 line heights that overlaps the
+  block so far by 30% of the narrower, the widest of the reads at that height. Without an END line, or when the reader
   returned no lines between BEGIN and END, the cover runs to the bottom of the text region as a lost
   area.
 - **Continuation**: a hit that runs to the end of its line continues on the next line when that line
@@ -2446,12 +2454,25 @@ the rules (the first version kept a second copy in the helper for this).
   token characters that are not a plain word. The prototype required the line to reach its block's
   right edge; **new**: that requirement is dropped for JWT, link and key hits whose last character is
   a token character or a dash, which closes the held-out misses of a token wrapped after `R7-` and of
-  JWTs wrapped inside a box. At most 6 lines are chained.
+  JWTs wrapped inside a box. At most 6 lines are chained. **New**: the next line is the nearest read
+  there, of the reads at that height the widest, not only the one line the frame's columns put below
+  (a piece of the row cut at a tile's edge, or a second read of the row, took that place on the
+  150% dashboard). **New**: the last one to three token characters of a JWT, link or key hit whose
+  line reaches its block's right edge, alone on the next row but for a closing quote or bracket,
+  under the line or at the start of its row (a log line's time read apart from its message) and
+  then alone on that row (not an editor's next line number), are covered too, as a cover of their
+  own: the hit's one box would take in the row above from the row's start.
 - **JWT head** (**new**, 0.90): `e[yv][JIl1][A-Za-z0-9_-]{10,}\.e[yv][JIl1][A-Za-z0-9_-]{4,}` at the
   end of a line, a JWT whose third part is on later lines; it starts a continuation.
 - **One space in a key** (**new**): on the prefix view, a strong-prefix token followed by a single
   space and 6 or more token characters with no space is read as one token when the joined token
-  matches the rule and the parts alone do not (`sk-proj-6Pwp… S9f1s…` on the held-out set).
+  matches the rule and the parts alone do not (`sk-proj-6Pwp… S9f1s…` on the held-out set). In a
+  quoted value, a key hit that opens the value and stops one space before its last one to eight
+  token characters and its closing quote runs to the quote (an underscore read as a space:
+  `"pypi-…QL1 6i0c"` at 200%).
+- **A code's digit groups apart** (**new**): two boxes of one row, 3-4 digits each, the second within
+  one line height of the first, under a line (or two) naming a code, joined are a code
+  (`code-labelled-groups`, 0.90; a code's fields read as two boxes at 150%).
 - **Wrap join**: a line ending in a full-width token and the next line's first token are joined with
   no space; when the joined text matches a strong rule that neither part matches, both parts are
   covered.
