@@ -780,7 +780,13 @@ Selecting a place plays that place's stretch. *Peek* and *Listen* are toggle but
   peeked, then the next one when N or ↓ moves on. V in the list turns it on and off (`keys.ts`
   gains the action `peek` for V, given only when the selected row is of kind `private`, so V goes on
   to the editor everywhere else as today; V has no editor shortcut). A keyboard pass over 200 rows
-  is N, look, K or Delete, with no mouse and no pressing of Peek again.
+  is N, look, K or Delete, with no mouse and no pressing of Peek again. While it is on, moving to a
+  private row (N, P, ↑, ↓, K and Delete moving on, a click, V turning it on) holds the playhead still
+  inside the row's earliest cover that the edit shows, half a frame after its start (`peekStill`),
+  instead of playing the row's stretch: the magnified view is drawn from the frame at the playhead,
+  so it shows the row only there (K moves on without seeking, and a stretch ends 1.5 s after the
+  row). Space on the row plays its stretch. *Peek* on a row holds the playhead inside that row the
+  same way.
 - **The magnified view.** While a row is peeked, a panel under the banner shows the selected
   cover's area at the playhead from the raw frame, cut with a margin of half its height and drawn at
   twice the preview's scale (at least 2×, at most 8×, and never past the recording's own pixels), so
@@ -944,6 +950,11 @@ Covers are in source seconds of the shared `screen.mp4`, so they are copied as t
   yet translated again shows `privacy.translated.masked`: "Captions over secrets said aloud show as
   •••• in this language until you translate it again." The existing line "Bleeped words are not
   masked in translations" (`captionTracks.ts:205`) stays as it is; it is about ordinary bleeps.
+  That row's *Translate again* is how it is translated again: it is enabled while any of its captions
+  shows as ••••, though their spoken text did not change, and sends them (masked, §7.6) with any that
+  changed or are missing (`captionsToTranslate`, §7.4). Its tooltip then is
+  `privacy.translated.again`: "Translates the captions that show as •••• again, from the masked text,
+  and any that changed or are missing". *Add a language* does not offer a language that has a track.
 - **Transcribe with a service** (the transcription choices): when *Find private info* has run with
   *listen*, or the project has private bleeps, `privacy.transcribe.hears`: "The service hears
   everything said in the video, secrets too. Bleeps apply only to what Flown makes from it." The
@@ -2006,7 +2017,9 @@ tooltip over text before its first read, and text typed into a field or a termin
      reads of the last Find (§5.7) when there are some; otherwise it runs Find with that text as the
      only target and every other kind off, using the look cache, with Find's estimate, progress and
      *Stop*. Each place is followed and added as a cover of kind `text` in a new group, in one undo
-     step.
+     step. They are suggestions, tiered by main's score (Auto, or Check for a lost area), as every
+     group is (§4.1): one Review row, *Text you chose* (§2.7's `text` sentences), kept or uncovered
+     there. The cover the user started from stays theirs.
   3. `remember` is `'no'`, `'project'` or `'settings'`. Only when it is not `'no'` and the text is
      name-like does the result carry `addedName: string`, which the renderer adds to
      `Project.privacy.names` (in the same undo step) or to Settings' names. This is the one place the
@@ -2059,7 +2072,11 @@ tooltip over text before its first read, and text typed into a field or a termin
   rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor
   is skipped and says so; it can use *Bring them over* (§2.12). `privacy:originCovers { projectId }`
   answers how many of the original's covers and private bleeps a copy lacks, and returns them for
-  *Bring them over*.
+  *Bring them over*. Main reads the project open in the editor from its `project.json` for both, so
+  the renderer first writes it as the user sees it, as the export's timeline does (§9 row 10): the
+  offer awaits the editor saver's `flush` before `privacy:coverCopies` (a press before the autosave
+  would give the copies the covers of the last save), and the export note calls the dialog's `flush`
+  before `privacy:originCovers`.
 
 ### 5.11 CPU and memory budgets
 
@@ -2570,7 +2587,9 @@ project has no private bleeps it is never called.
   unless its `maskedFor` equals the sorted ids of the private bleeps over that caption, joined by
   `,`. `maskedFor` is written by the translate request's result handling when the request was masked
   (§7.6), so a caption translated again after Find shows its translation, which was made from the
-  masked text. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
+  masked text. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
+  sends it with those out of date or missing, so the track's *Translate again* (§2.13) makes the
+  translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
   the sidecars (`exportBundleRun.ts:65-73`) and every export.
 - **Tidy and Clean up** (finding 13): what they change under a private bleep is still masked by time,
   and the request they send is masked (§7.6), so the service never saw the words.
@@ -2585,16 +2604,19 @@ no field holds a form, and never changes the stored project. The user still sees
 own text in the panels that edit it (the chapter list, the title card fields, the pack's text
 boxes, the guide's step fields); the preview, every export and every other output use the view.
 
-Its fields (`PRIVATE_TEXT_FIELDS`): `chapters[].title`; `titles[].title` and `.subtitle`;
-`publish.description`; `guide.title`, `.intro`, `.expected`, `.actual`, `.details[].text`, and every
-string of `.steps[]` and `.added[]`.
+Its fields (`PRIVATE_TEXT_FIELDS`): `name` (the pack's title becomes it through *Use as the
+recording's name*; the description sidecar, the share post and a browser frame's title bar carry it);
+`chapters[].title`; `titles[].title` and `.subtitle`; `publish.description`; `guide.title`, `.intro`,
+`.expected`, `.actual`, `.details[].text`, and every string of `.steps[]` and `.added[]`. A text made
+from them outside the view (the description sidecar's title, a part's "Part 1 of …") is masked the
+same way with `privateText(project, text)`.
 
 | Text | Where it is made | How the private forms are masked |
 |---|---|---|
 | Chapter names, found or made by AI | `src/shared/chapters/names.ts`, `chaptersRun.ts` | drawn and written from `privateView`: the chapter bar (`chapterBarLayer.ts`), the file's chapter metadata (`chaptersOf`, `exporter.ts:273-276`), the chapters sidecar, the pack's chapters, timeline markers |
 | Chapter title cards (finding 12) | `titles[]` made from chapters | drawn from `privateView` (`titleCardLayer.ts`), so the preview, every export, thumbnails and guide shots show the masked card |
 | Graphics made from captions (pop-ups, counters, list cards, quote cards) | drawn from caption words with `maskBleeped` | drawn: `maskBleeped` also applies `maskPrivate` when the project has private bleeps |
-| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the dialog says so (§2.13) |
+| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the title, once *Use as the recording's name* made it the name, goes out from `privateView` in the description sidecar (its title line, and a part's) and the share post; the dialog says so (§2.13) |
 | Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | made from masked segments; written from `privateView` (`guideRun.ts`, PDF, HTML, Markdown, clipboard) |
 | Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments |
 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` |
@@ -2798,8 +2820,8 @@ applies with no change of its own. Line numbers are at `37f9355`.
 | 17 | Home thumbnails | `Home.tsx:201-238` `captureThumbnail` (drawImage `:231`, `toDataURL` `:232`), cache `:195-199` | `ProjectSummary` gains `thumbCovers?: NormRect[]`, computed in main by `listProjects` (`src/main/projects.ts:147-159`) with `thumbCovers(project, from, to)`: the boxes of the covers and of the blur and pixelate shapes active **anywhere** in `[t − 0.1 s, t + 0.1 s]`. The thumbnail's time `t` is worked out in one place, `thumbTime(duration)` = min(1, duration × 0.15) (contracts), which `captureThumbnail` (`Home.tsx:221`, today from the element's `video.duration`) and main both call with `project.duration`, so the two cannot drift apart by more than the window. `captureThumbnail` fills the boxes in Dark after drawing the frame and before `toDataURL`; the cache key adds a hash of the boxes. Absent when there are none, so other projects' summaries and thumbnails are unchanged. Question 13: the crop |
 | 18 | Filmstrip on the timeline | `src/main/filmstrip.ts:35-50`, `:161`, cache written `:208`; drawn by `src/renderer/src/editor/Filmstrip.tsx` | each tile shows the last key frame at or before its time `t` (`-skip_frame nokey`, `round=up`, `filmstrip.ts:30-46`), which can be up to one key-frame interval earlier (15 frames). So each tile is drawn with the boxes of every cover active anywhere in `[t − 15 / fps − 0.02 s, t]` filled in Dark (`fillCoverTiles`, P1); the cache file stays raw on this PC, beside `screen.mp4` itself |
 | 19 | Project copies: Duplicate, Make vertical or square, Short clips, Shorter version | `projectCopy.ts:154-235` (write `:229`); `duplicate.ts:75-90`, `clipCopy.ts:141-153`, `short60.ts:269` | covers ride `...project`; every copy, clip copies included, keeps every cover and private bleep (§4.7); written with the legacy shapes (§4.6). Copies made before Find get its covers through *Also cover the copies* and *Bring them over* (§2.12, §5.10) |
-| 20 | Share after export | `src/main/share/shareService.ts` (`isExported` gate `:20`), `copyToFolder.ts:152`, `webhookPost.ts:37` | exported files only; posted text is the pack's (row 21) |
-| 21 | Publishing copy pack: copy, sidecar description, share post | `pack.ts:88-91`, `publishRun.ts:158`, `PublishDialog.tsx` | text only: masked segments, `privateView` for the saved description (§7.5), `aiTextFor`; the dialog's note (§2.13) |
+| 20 | Share after export | `src/main/share/shareService.ts` (`isExported` gate `:20`), `copyToFolder.ts:152`, `webhookPost.ts:37` | exported files only; the post names the video by `privateView(project).name`, which the export dialog passes as the share's title after the export and from its done view (row 21) |
+| 21 | Publishing copy pack: copy, sidecar description, share post | `pack.ts:88-91`, `publishRun.ts:158`, `PublishDialog.tsx`; `exportBundleRun.ts` `sidecarText` | text only: masked segments, `aiTextFor`; Copy and Copy tags through `maskPrivate`; the saved description from `privateView`; without one (and for each part) the description file's title line and a part's "of" through `privateText`; the share post's name from `privateView` (§7.5); the dialog's note (§2.13) |
 | 22 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` (§7.5) |
 | 23 | Caption contrast probe | `contrastProbe.ts:55-79` (drawFrame `:67`) | reads the covered frame; emits nothing |
 | 24 | Internal readers that output numbers only: scene scan, still detection, the look pass | `sceneScan.ts:289`, `analysisIpc.ts:168`, §5.2 | no pixels leave |

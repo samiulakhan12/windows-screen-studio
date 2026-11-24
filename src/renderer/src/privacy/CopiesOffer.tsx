@@ -13,9 +13,12 @@ import './privacyPanel.css'
  * a project with copies (short clips, vertical and square versions, duplicates, shorter versions),
  * one button adds this video's found covers and private bleeps to each closed copy as suggestions,
  * through main; a copy open in Flown is skipped. No undo step in this project: each copy's file
- * changes once. Then the line says how many copies were covered.
+ * changes once. Then the line says how many copies were covered. Main reads this project from its
+ * project.json, so the press first writes it as the user sees it (`flush`, the editor's saver, as
+ * the export's timeline does, §9 row 10): a press before the autosave would give the copies the
+ * covers as they were at the last save.
  */
-export function CopiesOffer(props: { services: EditorServices }): JSX.Element | null {
+export function CopiesOffer(props: { services: EditorServices; flush?: () => unknown }): JSX.Element | null {
   const { store } = props.services
   const now = (): Project => store.state
   const project = useSyncExternalStore(store.subscribe, now, now)
@@ -46,6 +49,7 @@ export function CopiesOffer(props: { services: EditorServices }): JSX.Element | 
   const cover = async (): Promise<void> => {
     setBusy(true)
     try {
+      await props.flush?.()
       const r = await window.api.coverCopies(project.id, copies.map((c) => c.id))
       setCovered(r.covered)
     } catch {

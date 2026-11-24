@@ -53,7 +53,7 @@ import {
 } from '../../../shared/review/review'
 import { heldInSlices, type Work } from '../../../shared/review/slices'
 import { rowTimes } from '../../../shared/review/times'
-import { doneCounts, doneReviewing, privacyKinds, privacyOrder, privateRowKind, privateRowView, type PrivateRowView } from '../../../shared/review/privacyReview'
+import { doneCounts, doneReviewing, privacyKinds, privacyOrder, privateRowKind, peekStill, privateRowView, type PrivateRowView } from '../../../shared/review/privacyReview'
 import { itemKey } from '../../../shared/editor/multiSelect'
 import { kindTitle, PRIVACY_COPY } from '../../../shared/privacy/copy'
 import { PRIVATE_KINDS } from '../../../shared/privacy/kinds'
@@ -72,11 +72,21 @@ import { FindProgressLine } from '../privacy/readerState'
 import { FindResultLine } from '../privacy/FindLine'
 import { runFor, subscribeRuns } from '../privacy/findRuns'
 import { CopiesOffer } from '../privacy/CopiesOffer'
-import { clearPeek, listenBleep, peekCovers, peekWhileReviewing, usePeek } from '../privacy/peek'
+import { clearPeek, listenBleep, peekCovers, peekNow, peekWhileReviewing, usePeek } from '../privacy/peek'
 import { onPrivateReview, takePrivateReview } from '../privacy/reviewRequest'
 import '../privacy/privacyPanel.css'
 
-export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Shows a notice in the editor (said once the panel is gone). */ onNotice?: (text: string) => void }): JSX.Element {
+export function ReviewPanel({
+  onClose,
+  onNotice,
+  flush
+}: {
+  onClose: () => void
+  /** Shows a notice in the editor (said once the panel is gone). */
+  onNotice?: (text: string) => void
+  /** Writes the editor's project to project.json now (the copies offer: main reads this project's file, auto-blur §5.10). */
+  flush?: () => unknown
+}): JSX.Element {
   const services = useEditor()
   const { store, player } = services
   const group = useGroup()
@@ -281,9 +291,25 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
     stopRef.current = playStretch(player, () => store.state.clips, previewStretch(p.clips, item.start, item.end))
   }
 
+  /**
+   * Holds the playhead still inside a peeked private row's first cover (auto-blur §2.8): the
+   * magnified view is drawn from the frame at the playhead, so it shows what is under the row only
+   * there. Nothing when no cover of the row is inside the edit.
+   */
+  const park = (coverIds: readonly string[]): void => {
+    const t = peekStill(store.state, coverIds)
+    if (t === null) return
+    stopStretch()
+    if (player.moving) player.pause()
+    player.seek(t)
+  }
+
   const choose = (item: ReviewItem): void => {
     focusKey(item.key)
-    play(item)
+    // With Peek while reviewing on, a private row is held still inside its first cover instead of played (§2.8).
+    const still = peekNow().review && item.kind === 'private' ? privateRowView(store.state, item)?.coverIds : undefined
+    if (still?.length) park(still)
+    else play(item)
     // A click hands the focus back to the editor once released (focus.ts installFocusRelease); the
     // list's keys need it on the row, so it comes back after that.
     window.setTimeout(() => {
@@ -586,6 +612,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   useEffect(() => {
     if (!peek.review) return
     peekCovers(activeCovers.length ? activeCovers : null)
+    // And holds the playhead still inside it, as K, Delete and V move on without playing (§2.8).
+    if (activeCovers.length) park(activeCovers)
     // The covers' ids, not the array: a new array of the same ids peeks nothing new.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peek.review, activeCoversKey])
@@ -666,7 +694,10 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
   const onPeekRow = useCallback((key: string) => {
     const v = latest.current.views.get(key)
     if (!v || !v.coverIds.length) return
-    peekCovers(latest.current.peekedAt(v.coverIds) ? null : v.coverIds)
+    const on = !latest.current.peekedAt(v.coverIds)
+    peekCovers(on ? v.coverIds : null)
+    // Peek's magnified view shows the frame at the playhead: it is held inside the row's first cover (§2.8).
+    if (on) latest.current.park(v.coverIds)
   }, [])
   const onListenRow = useCallback((key: string) => {
     const v = latest.current.views.get(key)
@@ -689,8 +720,8 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
 
   // The rows' handlers stay the same function from render to render, so a row draws again only
   // when what it shows changes (N redraws the two rows whose focus moved, not the whole list).
-  const latest = useRef({ choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play })
-  latest.current = { choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play }
+  const latest = useRef({ choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play, park })
+  latest.current = { choose, act, ask, actPart, askPart, list, indexOf, active, kindEmptied, bulk, views, peekedAt, listen: peek.listen, group, play, park }
   const onRowChoose = useCallback((key: string) => {
     const { list, indexOf, choose } = latest.current
     const k = indexOf.get(key)
@@ -743,6 +774,9 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
       if (player.moving) {
         stopStretch()
         player.pause()
+      } else if (current && peek.review && current.kind === 'private') {
+        // Moving to a row held it still while Peek while reviewing is on (§2.8): Space plays its stretch.
+        play(current)
       } else if (current) choose(current)
       return
     }
@@ -846,7 +880,7 @@ export function ReviewPanel({ onClose, onNotice }: { onClose: () => void; /** Sh
               {t(PRIVACY_COPY.review.done)}
             </button>
           )}
-          <CopiesOffer services={services} />
+          <CopiesOffer services={services} {...(flush ? { flush } : {})} />
         </div>
       )}
       {total > 0 && (

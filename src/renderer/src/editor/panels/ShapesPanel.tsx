@@ -89,8 +89,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
 
   return (
     <>
-      {/* Auto-blur (docs/design/auto-blur.md §2.1-§2.3): the selected covers, and a blur or pixelate shape's note. */}
-      <CoverSection services={services} coverIds={selection?.kind === 'cover' ? [selection.id] : []} shapeIds={shape ? [shape.id] : []} />
+      {/* Auto-blur (docs/design/auto-blur.md §2.4): a blur or pixelate shape's note. */}
       {shape && <SelectedShape project={project} shape={shape} onSelect={props.onSelect} />}
       {shape && isPrivacyKind(shape.kind) && <WeakBlurNote services={services} shapeId={shape.id} />}
       {spot && !isMagnifier(spot) && <SelectedSpotlight project={project} spot={spot} cursorValid={cursor.valid} cursorPos={cursorPos} onSelect={props.onSelect} />}
@@ -118,6 +117,8 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
         <p className="hint">{t('text.shapesPanel.shapesStayOnThe')}</p>
       </Section>
       <PrivacySection services={services} onFind={() => props.onCommand?.('findPrivate')} />
+      {/* The selected covers (auto-blur §2.2): below Private info. */}
+      <CoverSection services={services} coverIds={selection?.kind === 'cover' ? [selection.id] : []} shapeIds={shape ? [shape.id] : []} />
 
       <Section title={t('text.shapesPanel.spotlight')}>
         <div className="shape-tools two" role="group" aria-label={t('text.shapesPanel.addASpotlight')}>

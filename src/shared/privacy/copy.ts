@@ -273,7 +273,8 @@ export const PRIVACY_COPY = {
     unfinished: 'privacy.guide.unfinished'
   },
   translated: {
-    masked: 'privacy.translated.masked'
+    masked: 'privacy.translated.masked',
+    again: 'privacy.translated.again'
   },
   transcribe: {
     hears: 'privacy.transcribe.hears'

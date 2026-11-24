@@ -2012,6 +2012,7 @@ function EditorSession({
                 reviewButton.current?.focus()
               }}
               onNotice={showNotice}
+              flush={() => saver.flush()}
             />
           )}
           {smartPanel?.kind === 'guide' && (

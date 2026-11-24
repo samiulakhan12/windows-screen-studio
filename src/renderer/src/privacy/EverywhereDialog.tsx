@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { EverywhereRequest, UnderCoverResult } from '../../../shared/api/privacy'
 import { PRIVACY_COPY } from '../../../shared/privacy/copy'
+import { minutesOf } from '../../../shared/privacy/findState'
+import { firstEstimate } from '../../../shared/privacy/plan'
 import { fmt } from '../../../shared/i18n/fmt'
 import { t } from '../../../shared/i18n/t'
 import type { EditorServices } from '../editor/context'
@@ -147,10 +149,16 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
       )
       foot = closeButton(true)
       break
-    case 'ready':
+    case 'ready': {
+      // Find's first estimate (§2.2, §5.11): it runs Find for this text when the last Find's reads are gone.
+      const p = props.services.store.state
+      const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, reader?.status === 'ready' ? reader.decodeMs : null))
       body = (
         <>
           <p>{t(PRIVACY_COPY.everywhere.body)}</p>
+          <p className="privacy-line" data-testid="everywhere-estimate">
+            {t(PRIVACY_COPY.find.estimate, { count: minutes, n: fmt.count(minutes) })}
+          </p>
           {state.nameLike && (
             <fieldset className="cover-remember" data-testid="everywhere-remember">
               <legend>{t(PRIVACY_COPY.everywhere.remember)}</legend>
@@ -173,6 +181,7 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
         </>
       )
       break
+    }
     case 'running':
       body = (
         <div data-testid="everywhere-running">

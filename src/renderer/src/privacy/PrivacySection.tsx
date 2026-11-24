@@ -14,6 +14,7 @@ import { useKeymap } from '../editor/keymapContext'
 import { coverLength, setCoverLength } from './coverCommands'
 import { ringColourAt } from './coverPick'
 import { showCoverMarks, usePeek } from './peek'
+import { FindResultLine } from './FindLine'
 import { FindProgressLine, useFindProgress, useReaderState } from './readerState'
 import { openPrivateReview } from './reviewRequest'
 import './covers.css'
@@ -56,7 +57,8 @@ async function writeShowCovers(on: boolean): Promise<void> {
 
 /**
  * The Shapes tab's *Private info* section (docs/design/auto-blur.md §2.1): *Add cover* with its
- * length menu, *Find private info…* (or Find's progress line while it runs), the count of private
+ * length menu, *Find private info…* (or Find's progress line while it runs, and once it ended its
+ * result line, §2.6), the count of private
  * items and of those to check with *Review*, the reader line, *Show where covers are*, the blur and
  * pixelate line with *Turn them all into covers*, and the *What Find does not see* disclosure.
  */
@@ -186,9 +188,13 @@ export function PrivacySection(props: { services: EditorServices; onFind: () => 
         {progress ? (
           <FindProgressLine projectId={project.id} onReview={() => openPrivateReview(group.command)} />
         ) : (
-          <button type="button" className="btn ghost" onClick={props.onFind} data-testid="privacy-find">
-            {t(PRIVACY_COPY.section.find)}
-          </button>
+          <>
+            <button type="button" className="btn ghost" onClick={props.onFind} data-testid="privacy-find">
+              {t(PRIVACY_COPY.section.find)}
+            </button>
+            {/* Once Find ended, its result line (§2.6), here as in Review's header, with Review. */}
+            <FindResultLine projectId={project.id} onReview={() => openPrivateReview(group.command)} />
+          </>
         )}
         {reader?.status === 'none' && (
           <p className="hint" data-testid="privacy-reader-missing">

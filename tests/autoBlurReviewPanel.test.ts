@@ -424,3 +424,88 @@ describe('auto-blur P5: Review panel', () => {
     expect(byTestId(done, 'review-unfinished')).toBeUndefined()
   })
 })
+
+const { insetCover } = await load<{ insetCover(p: Pick<Project, 'covers'>, peek: { ids: readonly string[] | 'all' | null }, selected: string | null, t: number): Cover | null }>('privacy/PeekInset')
+const { displayTime } = await import('../src/shared/editor/clips')
+const { peekStill } = await import('../src/shared/review/privacyReview')
+
+describe('auto-blur: the magnified view while reviewing (§2.8)', () => {
+
+  /** The panel with a player that keeps its time and says what was asked of it. */
+  function openWith(p: Project): { els: El[]; player: { time: number; moving: boolean; seeks: number[] } } {
+    unmountAll()
+    store = new EditStore(p)
+    const player = {
+      time: 0,
+      moving: false,
+      seeks: [] as number[],
+      subscribe: () => () => undefined,
+      play(): void {
+        player.moving = true
+      },
+      pause(): void {
+        player.moving = false
+      },
+      seek(t: number): void {
+        player.seeks.push(t)
+        player.time = t
+      }
+    }
+    contexts.editor = { store, player }
+    request.requestPrivateReview()
+    return { els: render(panel()), player }
+  }
+  /** The cover the magnified view shows now: one of the peeked covers active at the playhead, while it stands still. */
+  const shown = (player: { time: number; moving: boolean }): string | null => (player.moving ? null : (insetCover(store.state, peek.peekNow(), null, displayTime(store.state.clips, player.time))?.id ?? null))
+
+  it('K, Delete, N and V move on with the playhead held inside the selected row, so its magnified view shows; Space plays the row', () => {
+    const covers = [found('a', 10, 10.4, 'email', 'ga'), found('b', 20, 20.4, 'email', 'gb'), found('c', 30, 30.4, 'email', 'gc'), found('d', 40, 40.4, 'email', 'gd')]
+    const { player } = openWith({ ...base('rv', 300), covers })
+    let els = render(panel())
+    // V: the first row is peeked and held at its cover.
+    keyDown(els, 'v')
+    els = render(panel())
+    expect(peek.peekNow().ids).toEqual(['a'])
+    expect(shown(player)).toBe('a')
+    // K keeps it and moves on without playing: the next row is shown.
+    keyDown(els, 'k')
+    els = render(panel())
+    expect(peek.peekNow().ids).toEqual(['b'])
+    expect(shown(player)).toBe('b')
+    // Delete uncovers it and moves on.
+    keyDown(els, 'Delete')
+    els = render(panel())
+    expect(shown(player)).toBe('c')
+    // N moves on: held still too, no stretch played over the cover.
+    keyDown(els, 'n')
+    els = render(panel())
+    expect(shown(player)).toBe('d')
+    expect(stretches).toEqual([])
+    // Space on the row plays its stretch.
+    const e = Object.assign(key(' '), { target: Object.assign(new (globalThis as unknown as { HTMLElement: new () => object }).HTMLElement(), { classList: { contains: (c: string) => c === 'review-item' } }) })
+    ;(els.find((x) => x.type === 'aside')!.props.onKeyDown as (e: unknown) => void)(e)
+    expect(stretches).toHaveLength(1)
+    // Without Peek while reviewing, N plays the stretch as Review does.
+    keyDown(els, 'v')
+    els = render(panel())
+    keyDown(els, 'p')
+    expect(stretches).toHaveLength(2)
+  })
+
+  it('a row Peek pressed holds the playhead inside that row', () => {
+    const { els, player } = openWith({ ...base('rv', 300), covers: [found('a', 10, 10.4, 'email', 'ga'), found('b', 60, 60.4, 'key', 'gb')] })
+    press(inRow(els, 'private:key:gb', 'review-peek'))
+    expect(peek.peekNow().ids).toEqual(['b'])
+    expect(shown(player)).toBe('b')
+  })
+
+  it('peekStill: inside the earliest cover of the row the edit shows, half a frame in; null when every cover is cut away', () => {
+    const p: Project = { ...base('rv', 300, { fps: 60 }), clips: [{ id: 'k1', start: 0, end: 50, speed: 1 }, { id: 'k2', start: 100, end: 300, speed: 1 }], covers: [found('a', 60, 70, 'email', 'ga'), found('b', 45, 120, 'email', 'ga'), found('c', 20, 21, 'email', 'gc')] }
+    // 'a' is cut away; 'b' starts at 45, inside the first clip.
+    expect(peekStill(p, ['a', 'b'])).toBeCloseTo(45 + 0.5 / 60, 6)
+    expect(peekStill(p, ['a'])).toBeNull()
+    expect(peekStill(p, ['c', 'b'])).toBeCloseTo(20 + 0.5 / 60, 6)
+    expect(peekStill({ ...p, capture: { ...p.capture, fps: 30 } }, ['c'])).toBeCloseTo(20 + 0.5 / 30, 6)
+    expect(peekStill(p, [])).toBeNull()
+  })
+})

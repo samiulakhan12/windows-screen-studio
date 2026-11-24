@@ -61,6 +61,7 @@ import { progressShare, useLongJob, type ExportJobLink } from './exportJobs'
 import { ExportBundleOptions } from './ExportBundleOptions'
 import { STREAM_FORMATS, SubtitlesField } from './panels/SubtitlesField'
 import { tickedExportLanguages } from '../../../shared/captions/captionTracks'
+import { privateView } from '../../../shared/privacy/spoken'
 import { partSource, partThumbnailFrame, writeBundle, type BundleRequest } from './exportBundleRun'
 import { bundleKinds, chapterParts, normalizeBundle, partFileNames, perChapterBlocked, stillAcrossChapters, type BundleOptions } from '../../../shared/render/exportBundle'
 import { FORMAT_EXTENSIONS } from '../../../shared/render/exportPresets'
@@ -683,6 +684,8 @@ export function ExportDialog(props: Props): JSX.Element {
   }
 
   const baseName = safeFileName(exportBaseName(project))
+  // The name a share posts (auto-blur §9 rows 20 and 21): from the private view, secrets said aloud masked.
+  const shownName = privateView(project).name
   // The subtitle languages ticked (Captions Studio §2.13, §11.10): one SRT or VTT file each, and
   // with Also inside the video one stream each (read by the exporter as subtitleLanguages and by
   // the bundle as languages, part P2's plumbing).
@@ -765,7 +768,7 @@ export function ExportDialog(props: Props): JSX.Element {
       }
       const extras = await writeBundle(outputPath, { project, kinds, title: project.name, thumbnail: thumbnailOf(settings), ...bundleLanguages, ...(timeline ? { timeline, signal: controller.signal, ...(props.flush ? { flush: props.flush } : {}) } : {}) })
       // Cancel export after the video (the timeline's step) keeps the video and starts no share.
-      if (!controller.signal.aborted) await share.begin(outputPath, { title: project.name, seconds: length })
+      if (!controller.signal.aborted) await share.begin(outputPath, { title: shownName, seconds: length })
       void link?.end({ kind: 'done', files: [outputPath] })
       const also: AlsoDone | undefined = wantStems || editors.length ? { stems, stemsProblem: finished.stemsProblem, editors, media } : undefined
       setPhase({ kind: 'done', path: outputPath, targetMB: settings.targetSizeMB, limit, extras, also, ...result })
@@ -1065,6 +1068,7 @@ export function ExportDialog(props: Props): JSX.Element {
             {/* What Find private info has not checked or is still checking (docs/design/auto-blur.md §2.8); part P5 wires its actions. */}
             <PrivacyExportNote
               project={props.project}
+              {...(props.flush ? { flush: props.flush } : {})}
               onReview={() => {
                 props.onClose()
                 openPrivateReview(group.command)
@@ -1557,7 +1561,7 @@ export function ExportDialog(props: Props): JSX.Element {
             </p>
             <SizeReport result={phase} />
             {phase.also ? <AlsoReport extras={phase.extras} also={phase.also} video={phase.path} /> : <ExtrasReport extras={phase.extras} />}
-            <ShareDone file={phase.path} meta={{ title: project.name, seconds: length }} targets={share.targets} startError={share.error} />
+            <ShareDone file={phase.path} meta={{ title: shownName, seconds: length }} targets={share.targets} startError={share.error} />
             {!gif && <ChapterCopy chapters={chapters} length={length} gif={false} />}
             {props.onShortClips && (
               <p className="hint">

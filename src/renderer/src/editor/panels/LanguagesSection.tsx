@@ -13,7 +13,7 @@ import { costSentence } from '../../../../shared/ai/cost'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { t } from '../../../../shared/i18n/t'
 import { captionLanguageName, inSentence, trackRowWords } from '../captionWords'
-import { captionsToTranslate, languageName, languagesToAdd, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
+import { captionsToTranslate, languageName, languagesToAdd, maskedToTranslate, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
 import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../../settings/SettingsButton'
@@ -29,6 +29,7 @@ import { estimateFor, runCostText, useCostData } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 import { aiTextFor } from '../../ai/aiTextFor'
 import { TranslatedNote } from '../../privacy/TranslatedNote'
+import { PRIVACY_COPY } from '../../../../shared/privacy/copy'
 
 /**
  * Whether On this PC is offered. TODO(phase B): Mozilla's translation models and runtime
@@ -322,7 +323,9 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
           {rows.map((row, i) => {
             const code = row.language
             const provider = code ? againWith(code) : null
-            const stale = row.changed + row.missing > 0
+            // Captions shown as •••• until translated again after Find are Translate again's too (auto-blur §7.4, §2.13).
+            const masked = code ? maskedToTranslate(project, code).length : 0
+            const stale = row.changed + row.missing + masked > 0
             // Each radio is named by its words and its row's language: "Show on the video, Bengali · translated with Gemini".
             const name = `${group}-track-${i}`
             // Translate again's own sentence: what it costs and where the captions go (§11.5).
@@ -373,7 +376,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
                         aria-label={t('captions.languages.againLabel', { language: shownName(code) })}
                         aria-describedby={againSays ? `${name}-again-cost` : undefined}
                         disabled={!stale || !provider || !!job}
-                        title={!provider ? t('captions.languages.againNoProvider') : stale ? t('captions.languages.againStale') : t('captions.languages.againCurrent')}
+                        title={!provider ? t('captions.languages.againNoProvider') : masked ? t(PRIVACY_COPY.translated.again) : stale ? t('captions.languages.againStale') : t('captions.languages.againCurrent')}
                         onClick={() => provider && void translate(code, provider, true)}
                       >
                         {t('captions.languages.again')}

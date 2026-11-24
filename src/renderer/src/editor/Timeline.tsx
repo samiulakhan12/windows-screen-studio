@@ -642,11 +642,12 @@ export const Timeline = memo(
             <div className="tl-label shape-label" title={t('timeline.track.shapes')}>
               <EditorIcon name="shapes" size={16} />
             </div>
+            {/* Covers between Shapes and Images (auto-blur §2.3); only with a cover. */}
+            <CoverTrackLabel />
             <OverlayTrackLabel />
             <TitleTrackLabel />
             <CaptionTrackLabel />
             <GraphicsTrackLabel />
-            <CoverTrackLabel />
             <LayoutTrackLabel />
           </div>
           <div className="tl-scroller" ref={scrollerRef} data-testid="timeline-scroller">
@@ -854,11 +855,11 @@ export const Timeline = memo(
                 {items.length === 0 && <span className="tl-empty">{t('timeline.shapeTrack.empty')}</span>}
               </div>
 
+              <CoverTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <OverlayTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <TitleTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <CaptionTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <GraphicsTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
-              <CoverTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
               <LayoutTrack px={px} win={win} duration={duration} selection={selection} onSelect={onSelect} scrub={scrub} snap={snap} multi={multi} />
 
               <SnapGuide ref={guideRef} />

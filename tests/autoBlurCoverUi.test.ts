@@ -233,6 +233,55 @@ describe('auto-blur P1: adding covers', () => {
     expect(row).toMatch(/\)\)\}\s*<CoverShapeButton services=\{services\} \/>\s*<\/div>/)
   })
 
+  it('PrivacySection shows Find\'s result line once Find ended (§2.6), as Review\'s header does, with Review; none while Find runs', async () => {
+    const runs = await load<{ beginRun(r: unknown): boolean; endRun(id: string, o: unknown): void; resetRuns(): void }>('privacy/findRuns')
+    runs.resetRuns()
+    setUp(project({ covers: [cover('a', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)], { found: 'check', kind: 'email', group: 'g1' })] }))
+    const root = { type: PrivacySection, props: { services: services(), onFind: () => undefined } }
+    // Before any Find: no result line.
+    let els = render(root)
+    expect(byTestId(els, 'find-result')).toBeUndefined()
+    // A run of this project ends with what it found.
+    runs.beginRun({ projectId: 'p', requestId: 'r1', by: 'find', stop: async () => undefined })
+    expect(byTestId(render(root), 'find-result')).toBeUndefined()
+    runs.endRun('r1', { ok: true, found: 3, check: 1, said: 1, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    els = render(root)
+    const line = byTestId(els, 'find-result')!
+    expect(line.props.role).toBe('status')
+    expect(allByTestId(els, 'find-sentence').map((x) => textOf(x).trim())).toEqual(['Found 3 private items.', '1 of them is to check.', '1 was said aloud and is bleeped.'])
+    expect(byTestId(els, 'privacy-find')).toBeDefined()
+    click(byTestId(els, 'find-review'))
+    expect(events.commands.at(-1)).toBe('review')
+    // A run of another project shows nothing here.
+    runs.resetRuns()
+    runs.beginRun({ projectId: 'other', requestId: 'r2', by: 'find', stop: async () => undefined })
+    runs.endRun('r2', { ok: true, found: 1, check: 0, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    expect(byTestId(render(root), 'find-result')).toBeUndefined()
+    runs.resetRuns()
+  })
+
+  it('the Covers row sits between the Shapes row and the Images row (§2.3), and the Cover section below Private info (§2.2)', () => {
+    const timeline = fs.readFileSync('src/renderer/src/editor/Timeline.tsx', 'utf8')
+    // The labels' column and the tracks' column, each in the timeline's order.
+    const labels = timeline.slice(timeline.indexOf('<div className="tl-labels">'), timeline.indexOf('<div className="tl-scroller"'))
+    const order = (text: string, names: string[]): number[] => names.map((n) => text.indexOf(n))
+    const [shapeLabel, coverLabel, imageLabel] = order(labels, ['shape-label', '<CoverTrackLabel />', '<OverlayTrackLabel />'])
+    expect(shapeLabel).toBeGreaterThan(0)
+    expect(coverLabel).toBeGreaterThan(shapeLabel)
+    expect(imageLabel).toBeGreaterThan(coverLabel)
+    expect(labels.slice(shapeLabel, imageLabel).match(/<[A-Z]\w*TrackLabel \/>/g)).toEqual(['<CoverTrackLabel />'])
+    const from = timeline.indexOf('data-testid="shape-track"')
+    const tracks = timeline.slice(from, timeline.indexOf('<SnapGuide', from))
+    const [coverTrack, imageTrack] = order(tracks, ['<CoverTrack ', '<OverlayTrack '])
+    expect(coverTrack).toBeGreaterThan(0)
+    expect(imageTrack).toBeGreaterThan(coverTrack)
+    expect(tracks.slice(0, imageTrack).match(/<[A-Z]\w*Track /g)).toEqual(['<CoverTrack '])
+    // The Shapes tab: the Cover section follows Private info, with nothing between them.
+    const panel = fs.readFileSync('src/renderer/src/editor/panels/ShapesPanel.tsx', 'utf8')
+    expect(panel.match(/<CoverSection /g)).toHaveLength(1)
+    expect(panel).toMatch(/<PrivacySection [^\n]*\/>\n(\s*\{\/\*[^\n]*\*\/\}\n)?\s*<CoverSection /)
+  })
+
   it('Turn them all into covers in the Private info section turns every blur and pixelate shape into a cover in one undo step (test 206 holds the edit itself)', async () => {
     setUp(project({ shapes: [blur('b1', 1, 3), blur('b2', 2, 4)] }))
     let els = render({ type: PrivacySection, props: { services: services(), onFind: () => undefined } })
@@ -648,6 +697,31 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     off()
   })
 
+  it('Cover this text everywhere adds its places as suggestions of one new group (§4.1, §5.9): one waiting Review row, Text you chose; the cover it started from stays the user\'s', async () => {
+    const { privacyReviewItems, privacyKinds } = await import('../src/shared/review/privacyReview')
+    const { privateItems } = await import('../src/shared/privacy/coverData')
+    const found = [
+      { kind: 'text', score: 0.9, group: 'x', start: 12, end: 14, path: writePath([key(12, 0.5, 0.2, 0.25, 0.04)]), color: '#203040' },
+      { kind: 'text', score: 0.6, group: 'x', start: 20, end: 30, path: writePath([key(20, 0.1, 0.5, 0.6, 0.4)]), color: '#1c1c22', lost: true }
+    ]
+    api.under = async () => ({ ok: true, nameLike: false })
+    api.everywhere = async (req) => ({ ok: true, projectId: 'p', requestId: req.requestId, found, failedReads: 0, thinSpans: '', stopped: false, readTo: null, reader: 'r' })
+    setUp(project({ covers: [email()] }))
+    await follow.readUnderCover(services(), 'c')
+    expect(await follow.runEverywhere(services(), 'c', 'no', new AbortController().signal)).toEqual({ added: 2, name: null })
+    const [mine, ...added] = store.state.covers!
+    expect(mine.found).toBeUndefined()
+    expect(added.map((c) => [c.kind, c.found, !!c.lost])).toEqual([
+      ['text', 'auto', false],
+      ['text', 'check', true]
+    ])
+    // One Review row of the kind text, waiting; one private item with the user's own cover.
+    const rows = privacyReviewItems(store.state)
+    expect(rows.map((r) => r.title)).toEqual(['Text you chose · 0:12.0–0:30.0'])
+    expect(privacyKinds(store.state)).toEqual(['text'])
+    expect(privateItems(store.state)).toMatchObject({ items: 2, waiting: 1, check: 1 })
+  })
+
   it('212. EverywhereDialog\'s states: reading, needsReader with Download, noText, the remember choice only when nameLike, progress with Stop, done and failed', async () => {
     setUp(project({ covers: [email()] }))
     const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
@@ -736,6 +810,32 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-unavailable'))).toBe("The text reader cannot run on this PC's processor.")
     expect(byTestId(els, 'everywhere-download')).toBeUndefined()
+  })
+
+  it('EverywhereDialog shows Find\'s estimate with its body before Cover everywhere (§2.2), as the Find dialog works it out', async () => {
+    const { firstEstimate } = await import('../src/shared/privacy/plan')
+    const { minutesOf } = await import('../src/shared/privacy/findState')
+    // A 30-minute 4K recording at 60 fps: several minutes on this PC.
+    setUp(project({ duration: 1800, width: 3840, height: 2160, covers: [email()] }))
+    const p = store.state
+    reader.state = { status: 'ready', bytes: 1, decodeMs: 4 }
+    const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, 4))
+    expect(minutes).toBeGreaterThan(1)
+    api.under = async () => ({ ok: true, nameLike: false })
+    const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
+    let els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(`About ${minutes} minutes on this PC. You can keep editing; keep this video open until Find ends.`)
+    // Before the reader's speed is known, the estimate for an unknown decode speed, as the Find dialog shows it.
+    unmountAll()
+    reader.state = null
+    const unknown = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, null))
+    els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(t('privacy.find.estimate' as never, { count: unknown, n: String(unknown) } as never))
+    // Reading, or nothing to cover: no estimate.
+    unmountAll()
+    api.under = async () => ({ ok: false, reason: 'noText' })
+    els = await settle(root)
+    expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
   })
 })
 

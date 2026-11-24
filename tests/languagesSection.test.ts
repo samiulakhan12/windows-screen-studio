@@ -545,6 +545,31 @@ describe('Translate again from the keyboard (§2.15)', () => {
     expect(store.state.captionTracks?.[0].segments).toHaveLength(1)
   })
 
+  it('after Find, a translation made before it is offered again for its captions shown as •••• (auto-blur §7.4), and the new one replaces them', async () => {
+    const { textHash } = await import('../src/shared/captions/captionTracks')
+    const { privateBleepWord } = await import('../src/shared/privacy/coverData')
+    const spoken = { id: 'c1', start: 0, end: 2, text: 'My card is 4111 1111 1111 1111', words: [{ text: 'My', start: 0, end: 0.2 }, { text: 'card', start: 0.25, end: 0.45 }, { text: 'is', start: 0.5, end: 0.6 }, { text: '4111', start: 0.65, end: 0.95 }, { text: '1111', start: 1, end: 1.3 }, { text: '1111', start: 1.35, end: 1.6 }, { text: '1111', start: 1.65, end: 1.95 }] }
+    const before: Project = { ...base(), transcript: { language: 'en', segments: [spoken] } as Project['transcript'], captionTracks: [{ ...track('bn'), segments: [{ id: 'c1', text: 'bn My card is 4111 1111 1111 1111', src: textHash(spoken.text) }] }] }
+    // Up to date before Find: nothing to translate again.
+    store.state = before
+    let els = await settle(languages())
+    expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(true)
+    // Find bleeps the card number said aloud: the translation shows it as •••• until translated again.
+    store.state = { ...before, bleeps: [{ id: 'p1', start: 0.6, end: 2, word: privateBleepWord('card', 'g1'), sound: 'tone', auto: true }] }
+    els = await settle(languages())
+    const again = byTestId(els, 'track-retranslate')!
+    expect(again.props.disabled).toBe(false)
+    expect(again.props.title).toBe('Translates the captions that show as •••• again, from the masked text, and any that changed or are missing')
+    ;(again.props.onClick as () => void)()
+    els = await settle(languages())
+    // Sent masked (aiTextFor), and the answer replaces the old translation, which now shows.
+    expect(JSON.stringify(sent)).not.toMatch(/4111|1111/)
+    const seg = store.state.captionTracks![0].segments[0]
+    expect(seg.text).toMatch(/^bn My card is •/)
+    expect(seg.maskedFor).toBe('p1')
+    expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(true)
+  })
+
   it('stays on the page when a shortcut was pressed there while it ran (Right steps frames, it does not switch the captions)', async () => {
     store.state = { ...base(), captionTracks: [track('bn'), track('hi')] }
     keys.last = true

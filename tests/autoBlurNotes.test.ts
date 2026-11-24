@@ -485,6 +485,52 @@ describe('auto-blur P5: notes, copies and Settings', () => {
     expect(byTestId(els, 'export-note-from-original')).toBeUndefined()
   })
 
+  it('the copies offer and a copy’s export note read the project as the user sees it: the editor writes it before main reads its file (§5.10, §9 row 10)', async () => {
+    const order: string[] = []
+    const w = (globalThis as unknown as { window: { api: Record<string, (...a: unknown[]) => Promise<unknown>> } }).window.api
+    const cover = w.coverCopies
+    const origin = w.originCovers
+    w.coverCopies = async (...a: unknown[]) => {
+      order.push('coverCopies')
+      return cover(...a)
+    }
+    w.originCovers = async (...a: unknown[]) => {
+      order.push('originCovers')
+      return origin(...a)
+    }
+    try {
+      const p: Project = { ...base('orig', 60), covers: [found('a', 1)], privacy: { find: { at: 'x', kinds: ['email'], listened: false, reader: READER } } }
+      editor(p)
+      api.copies = [{ id: 'copy1', name: 'Short', open: false }]
+      // The save takes a moment: main is asked only once it is done.
+      const flushOffer = async (): Promise<void> => {
+        await new Promise((r) => setTimeout(r, 0))
+        order.push('flush')
+      }
+      const els = await settle({ type: CopiesOffer, props: { services: contexts.editor, flush: flushOffer } })
+      press(byTestId(els, 'copies-offer'))
+      await flush()
+      expect(order).toEqual(['flush', 'coverCopies'])
+      order.length = 0
+      const copy: Project = { ...base('copy1', 60), copyOf: { id: 'orig', name: 'orig', kind: 'clip' } as Project['copyOf'] }
+      unmountAll()
+      editor(copy)
+      const note = exportNote(copy) as { props: Record<string, unknown> }
+      await settle({ ...note, props: { ...note.props, flush: () => void order.push('flush') } })
+      expect(order).toEqual(['flush', 'originCovers'])
+      // The editor gives Review its saver's flush, and the export dialog its own to the note.
+      const editorView = fs.readFileSync(path.join(__dirname, '../src/renderer/src/views/Editor.tsx'), 'utf8')
+      expect(editorView.slice(editorView.indexOf('<ReviewPanel'), editorView.indexOf('/>', editorView.indexOf('<ReviewPanel')))).toContain('flush={() => saver.flush()}')
+      const dialog = fs.readFileSync(path.join(__dirname, '../src/renderer/src/editor/ExportDialog.tsx'), 'utf8')
+      expect(dialog.slice(dialog.indexOf('<PrivacyExportNote'), dialog.indexOf('/>', dialog.indexOf('<PrivacyExportNote')))).toContain('flush: props.flush')
+      const reviewPanel = fs.readFileSync(path.join(__dirname, '../src/renderer/src/review/ReviewPanel.tsx'), 'utf8')
+      expect(reviewPanel).toMatch(/<CopiesOffer services=\{services\} \{\.\.\.\(flush \? \{ flush \} : \{\}\)\} \/>/)
+    } finally {
+      w.coverCopies = cover
+      w.originCovers = origin
+    }
+  })
+
   it('253. Settings states: the reader’s unavailable reasons show their messages; the colour of new covers and Show where covers are are remembered', async () => {
     editor(base('us', 30))
     const view = (): unknown => ({ type: PrivacySettings, props: { reveal: false } })

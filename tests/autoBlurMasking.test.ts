@@ -190,7 +190,7 @@ describe('auto-blur contracts: captions and texts made from captions', () => {
   })
 
   it('191. privateView masks every field of PRIVATE_TEXT_FIELDS; returns the project itself without private bleeps or without a form; the same object for the same project; removing the private bleep gives the stored texts back', () => {
-    expect(PRIVATE_TEXT_FIELDS).toEqual(['chapters[].title', 'titles[].title', 'titles[].subtitle', 'publish.description', 'guide.title', 'guide.intro', 'guide.expected', 'guide.actual', 'guide.details[].text', 'guide.steps[]', 'guide.added[]'])
+    expect(PRIVATE_TEXT_FIELDS).toEqual(['name', 'chapters[].title', 'titles[].title', 'titles[].subtitle', 'publish.description', 'guide.title', 'guide.intro', 'guide.expected', 'guide.actual', 'guide.details[].text', 'guide.steps[]', 'guide.added[]'])
     const p = cardProject()
     const v = privateView(p)
     expect(privateView(p)).toBe(v)
