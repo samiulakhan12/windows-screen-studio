@@ -585,14 +585,18 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const cf = stepFrame(f)
     const t = frames[f].t
     if (dir === -1) {
-      // A page change with no match: the text came with the page.
-      if (changedShare(frames[cf], look) >= 0.3) {
+      // A page change with no match: the text came with the page. A change the look pass saw as a move
+      // of the text's region (a scroll, a drag) is no page change: the text moved with it. Found end to
+      // end: a fast scroll that brought the text in was taken for a page change, and the cover started
+      // after the scroll, with the text already on screen.
+      if (changedShare(frames[cf], look) >= 0.3 && !best) {
         startBackward(w, f, null)
         return
       }
-      // The text moved out of the region it moved with, or out of the frame: it scrolled or was dragged into view.
-      if (best && !w.lost) {
-        const back = moved(w.box, best)
+      // The text moved out of the region it moved with, or out of the frame: it scrolled or was dragged
+      // into view. Lost, it is where its last placed box moved with the region's moves since.
+      if (best) {
+        const back = w.lost ? moved(xfBox(w, w.tpl.box, w.off), { dx: w.drift.dx + best.dx, dy: w.drift.dy + best.dy, scale: best.scale }) : moved(w.box, best)
         const outside = right(back) <= 0 || bottom(back) <= 0 || back[0] >= size.width || back[1] >= size.height || (region !== null && !overlaps(back, region))
         if (outside) {
           startBackward(w, f, clip(back, size))

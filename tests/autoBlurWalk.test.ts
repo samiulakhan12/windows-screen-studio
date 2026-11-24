@@ -214,6 +214,25 @@ describe('auto-blur P4: following', () => {
     expect(uncovered(track, 30, text, 0.5, leaves, page)).toEqual([])
   })
 
+  it('Backward, a fast scroll that brought the text in is no page change: the cover starts where the text came into the frame, even with no match while it moved (found end to end)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    // From 1 s to 2 s the page scrolls up into view, 36 px an analysed frame (30 fps), the text with it, to rest at 300.
+    const yAt = (t: number): number => 300 + 36 * Math.max(0, 30 - Math.round((t - 1) * 30))
+    const shown = (t: number): Box | null => (yAt(t) < 1080 ? [400, yAt(t), 200, 30] : null)
+    const seen: Planted = { key: KEY, text: 'x', at: shown }
+    // Moving that fast, the template finds nothing: the matcher sees the text only once it rests.
+    const resting: Planted = { key: KEY, text: 'x', at: (t) => (t >= 2 - 1e-9 ? shown(t) : null) }
+    const look = lookOf(HD, 30, 4, (_i, t) => {
+      const k = Math.round((t - 1) * 30)
+      return k >= 1 && k <= 30 ? { changed: [page], moves: [move(page, 0, -36)] } : {}
+    })
+    const R = 3
+    const [track] = await walkSpan([start(R, [400, 300, 200, 30])], -1, look, readIndex(), matcherOf([resting]), NO_HINTS, HD)
+    const appeared = sourceFrames(30, 0, R).find((t) => seen.at(t) !== null)!
+    expect(track.start).toBeLessThanOrEqual(appeared + 1e-9)
+    expect(uncovered({ ...track, end: R }, 30, seen, track.start, R, page)).toEqual([])
+  })
+
   it('146. The backward walk (finding 3): a scroll before the first read is followed back with the move between f and the next analysed frame; the cover covers the text in every source frame from its appearance, which is where the box left its region', async () => {
     const list: Box = [192, 192, 832, 576]
     // A jerky scroll from 1 s: the content moves up 10 px, then 40 px, then 10 px… an analysed frame (60 fps).
