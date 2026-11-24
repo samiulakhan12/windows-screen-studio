@@ -1842,25 +1842,40 @@ Every hit starts at its read frame R with its cover box and its **parts**: its o
 parts no wider than 6 line heights each, at most 3.
 
 **The follow session (D26).** Main opens one session per span of time it walks, in one direction:
-`followOpen { id, video, key, from, to, dir }`. The helper decodes the span's frames once, at
-half size in grey (the template scale), with `-threads 1`: forward in order; backward one key-frame
-interval (GOP) at a time, newest first, keeping at most two intervals in memory. A span of one instant
-([t, t], every hit of a span read at one frame) holds that frame (R23), and going backward the frame
-at t is always that frame itself: the older piece holding it is decoded before a frame of a newer
-piece could stand in for it (R24; one did for up to 0.1 s at each piece's edge, and a backward walk
-held its box still there while the text scrolled on). Each piece's decoding stops at the piece's end
-(R26): its frame selection reaches a tenth of a second past the piece and the run ends at the first
-frame selected there, before its pixels are read. ffmpeg holds a selected frame's pixels until the
-next selected frame or the end of the recording, so a selection ending at the piece's end gave the
-piece's last frame only once the rest of the recording was decoded: 11.5 s a piece of a 144 s
-recording against 0.06 s, and a backward session over it did not finish in 20 minutes. Main registers each
+`followOpen { id, video, key, from, to, dir }`. The helper decodes the frames the walk asks of the
+span once each, at half size in grey (the template scale), with `-threads 1`: forward in order;
+backward one piece at a time, newest first, keeping at most two pieces in memory. A walk asks only
+the frames where its text could have moved (a still frame holds the box without a match), so the
+session seeks over a stretch it is not asked instead of decoding it: forward, to a frame asked more
+than a second after the newest it decoded (seeking costs a process and at most one key-frame
+interval, as reads less than a second apart share one run, §5.5); backward, to a frame below the
+next piece (R27, R28). A backward piece is every frame from the key frame at or before half a second
+below its end (at most a second and a half of them) up to its end, decoded with `-noaccurate_seek`
+so the key-frame interval it decodes is the one it keeps, and the piece below starts where it did
+(R30); a piece reaching the span's start seeks to the start itself. A frame's gradient is worked out
+only when a track or a match asks it, and the last two are kept (R29); a kept frame is its grey
+image. Measured on A1's recording (60 s, 1080p30, a key frame a second, eight pages with 1 s scrolls):
+the walks ask about 250 frames in each direction, and the backward session had decoded every frame
+from 53.7 s down to 0 in 108 half-second pieces, each a process seeking to the key frame up to a
+second before it (13.5 s), the forward session every frame from 0 to 60 s with its gradient
+(4.4 s): 19.4 s of a 49 s Find; seeking and asked gradients make it 4.7 s with the same covers. A
+span of one instant ([t, t], every hit of a span read at one frame) holds that frame (R23), and going
+backward the frame at t is always that frame itself: the older piece holding it is decoded before a
+frame of a newer piece could stand in for it (R24; one did for up to 0.1 s at each piece's edge, and a
+backward walk held its box still there while the text scrolled on). Each piece's decoding stops at
+the piece's end (R26): its frame selection reaches a tenth of a second past the piece and the run ends
+at the first frame selected there, before its pixels are read. ffmpeg holds a selected frame's pixels
+until the next selected frame or the end of the recording, so a selection ending at the piece's end
+gave the piece's last frame only once the rest of the recording was decoded: 11.5 s a piece of a
+144 s recording against 0.06 s, and a backward session over it did not finish in 20 minutes. Main registers each
 hit as a **track** with `track { session, track, t, parts }` (templates cut at frame `t`), then walks
 every track of the span together, one analysed frame at a time: `match { session, t, tracks: [{
 track, parts, candidates }] }` answers `{ id, matched: [{ track, parts: (number | null)[], best: {
 dx, dy, scale } | null, second: number }] }` for every track at once. So 20 hits on one page cost one
 decode of each frame, and main can feed each frame's candidates from the result of the frame before
 (the speed guide, re-anchoring). `closeSession` frees it. A frame costs about 3.1 ms to decode at
-half size (`results/decode-speed.txt`) and a few hundredths of a millisecond a part to match.
+half size (`results/decode-speed.txt`), its gradient about 2.5 ms, and a few hundredths of a
+millisecond a part to match.
 
 **Templates.** At `t`, each part's box padded by 25% of the line height, cut from the half-size grey
 frame, as Sobel gradient magnitude. Gradient magnitude does not change when text is selected or
@@ -3741,7 +3756,7 @@ line only).
 |---|---|
 | `native/ocr/Cargo.toml`, `Cargo.lock` (new) | its own `[workspace]`, `license = "MIT"`, `publish = false`, `rust-version = "1.91"`; `tract-onnx = { version = "=0.23.10", default-features = false }`, `rqrr = "=0.11.0"`, `sha2`, `serde_json`, `windows-sys` (job objects, `SetErrorMode`, `WerSetFlags`, `SetUnhandledExceptionFilter`, `TerminateProcess`), `windows` (`Media_Ocr`, `Graphics_Imaging`, `Storage_Streams`, `Foundation` for §5.13); profile `release` with `opt-level = "s"`, `lto = true`, `codegen-units = 1`, `strip = true`, `panic = "unwind"` (needed for `catch_unwind`), and `opt-level = 3` for `tract-linalg` and `tract-core` (the mixed profile); feature `fixture` (test builds only) |
 | `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs`, `winocr.rs` (new) | the commands and events of `protocol.ts`; the three threads of §5.5 with `careful`, `release` and `cancel` handled between commands; heartbeat every 2 s from start (also during `open`); exit on stdin end and on a failed heartbeat write; `open` reads each model once, hashes the buffer and parses that buffer, every pin before any parse; the three detector buckets and both recognisers' five plans built at open and kept; `tooLarge`; look (§5.2); read with buckets, packing, tiles, joins, chunks, spans, rings and QR, `partial` at a cap (§5.5); `careful` as its own event (§5.6); the follow session (§5.8); the Windows reader behind `reader: 'windows'` (§5.13); ffmpeg with `-threads 1` (2 for look) in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `pause` and `resume` (§5.11); `catch_unwind` around each read with plans rebuilt after a panic; the panic hook, `SetErrorMode`, `WerSetFlags` and the unhandled-exception filter at start (§10.4, §10.5). The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
-| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R26 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
+| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R30 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
 | `scripts/build-native.mjs` | `--ocr` and `--ocr-host` flags; `cargoOcr`, `buildOcrWindows` (MinGW POSIX, the import allow-list, the budget, copied to `native/bin/ssw-ocr.exe`), `buildOcrHost` |
 | `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
 | `scripts/verify-dist.mjs` | §4d: the helper's imports, budget and no `readImage` string; for a release build (`FLOWN_RELEASE=1`), `READER_MIRROR` must not be null |
@@ -3753,7 +3768,7 @@ line only).
 | `src/main/privacy/helperUse.ts` (new) | What the helper's users share, in one place with no Electron (readerHelper re-exports it; the scan, findIpc and the rules' worker take it from here): `type HelperFailure`; `class HelperError extends Error { readonly kind: HelperFailure }`; `function findFailureOf(err: unknown): FindFailure`; `function failureKind(err: unknown): string` (a failure's kind for a log line: the helper's error kind or the error's name, never its message); `function pauseWhileRecording(helper: { pause(): void; resume(): void }, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs?: number): () => void` (checked at once, then every 2 s; the scan passes the helper it has now, which a restart replaces); `function carefulLines(result: Pick<ReadResult, 'lines'>, hits: readonly Hit[]): number[]`; `function withCareful(result, lines, careful)` |
 | `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` (sender check first) |
 | `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, answer a bad hash, answer `partial`, or write a marker string to stderr |
-| Tests | 76-100 and 216-222; Rust R1-R26 |
+| Tests | 76-100 and 216-222; Rust R1-R30 |
 
 ### 16.3 Part P3 · The text rules
 
@@ -3868,7 +3883,7 @@ hits); the native Bangla review (§12.4); the other account's optional `private.
 ### 17.1 Unit tests (vitest). Each is its own test and fails without the code of its rule.
 
 By owner: contracts 1-40 and 186-197 (test 20 is the guard, §17.2), P1 41-75 and 201-215, P2
-76-100, 216-222 and Rust R1-R26, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
+76-100, 216-222 and Rust R1-R30, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
 241-258. The numbers added by this revision follow each part's first block, so every earlier number
 keeps its meaning. Test files are named `tests/autoBlur<Area>.test.ts`; each numbered test
 is one `it` whose title starts with its number, and `tests/autoBlurNumbers.test.ts` checks that every
@@ -4264,6 +4279,18 @@ number of this list exists exactly once.
 - R26. **A backward piece decodes only up to its own end**: a backward session over 0.4 s at 10 s of
   a four-minute 1280×720 recording decodes at most its frames and a key-frame interval before them (a
   decode counter) and answers within 3 s, neither decoding nor waiting for the 230 s after it.
+- R27. **A backward session decodes only the pieces holding the frames it is asked**: a track at 50 s
+  of a minute-long 1280×720 recording and matches at 20 s keep and decode at most two pieces' frames
+  (counters), not the 900 frames between (the walk asks nothing there).
+- R28. **A forward session seeks past frames it is not asked**: a track at 0 s and matches at 30 s keep
+  at most 10 frames and decode at most 40, not the 900 between.
+- R29. **A frame's gradient only when it is asked**: over 2 s of a scroll, matches at every sixth frame
+  (each twice) keep every frame between (0.1 s apart, decoded on) and work out one gradient for each
+  frame asked and the track's (a counter), never one for every frame kept.
+- R30. **Backward pieces are whole key-frame intervals, decoded once each**: a walk back over every
+  frame of 6 s of a recording with a key frame every second takes at most 7 ffmpeg runs (half-second
+  pieces each sought from the key frame took 13) and decodes each frame once but for the frame that
+  ends each run.
 
 **P3 · The text rules**
 

@@ -1,10 +1,12 @@
-//! Follow sessions (docs/design/auto-blur.md §5.8): one session decodes a span of the recording
-//! once, at half size in grey (the template scale), forward in order or backward one piece at a
-//! time, newest first, keeping at most two pieces. Main registers each hit as a track (its parts'
-//! templates cut at one frame), then asks for every track of a frame at once: each part is
-//! matched by normalised cross-correlation of Sobel gradient magnitude (which a selection, a
-//! highlight or dark mode does not change) within ±4 template pixels of where each candidate move
-//! puts it.
+//! Follow sessions (docs/design/auto-blur.md §5.8): one session decodes what it is asked of a span
+//! of the recording once, at half size in grey (the template scale), forward in order or backward
+//! one piece at a time, newest first, keeping at most two pieces. A walk asks only the frames where
+//! its text could have moved, so the session seeks over a stretch it is not asked (more than a
+//! second forward, more than a piece backward) instead of decoding it, and works out a frame's
+//! gradient only when it is asked. Main registers each hit as a track (its parts' templates cut at
+//! one frame), then asks for every track of a frame at once: each part is matched by normalised
+//! cross-correlation of Sobel gradient magnitude (which a selection, a highlight or dark mode does
+//! not change) within ±4 template pixels of where each candidate move puts it.
 //!
 //! A candidate (dx, dy, scale) moves a track as a whole: a point p of the track at its template
 //! frame goes to C + scale·(p − C) + (dx, dy), C being the centre of the track's parts then; dx and
@@ -23,13 +25,29 @@ use std::time::{Duration, Instant};
 
 /// Search radius around each candidate's place, in template (half-size) pixels.
 pub const RADIUS: i64 = 4;
-/// A backward session decodes this much at a time, newest first.
+/// A backward piece reaches at least this far below its end: from the key frame at or before it.
 const PIECE_S: f64 = 0.5;
+/// A backward piece keeps at most this much (a key-frame interval of up to a second, and PIECE_S).
+const PIECE_MAX_S: f64 = 1.5;
+/// A forward session seeks to a frame asked more than this after the newest it decoded, as reads
+/// less than a second apart share one ffmpeg run (§5.5): seeking costs a process and at most one
+/// key-frame interval, decoding on costs every frame between.
+const SEEK_AHEAD_S: f64 = 1.0;
 /// Frames a forward session keeps behind the newest one asked for.
 const KEEP_FORWARD: usize = 8;
+/// Gradients kept: a walk asks one frame several times in a row (near places, the rest, searches).
+const KEEP_GRADIENTS: usize = 2;
 
+/// A decoded frame: half size, grey.
 pub struct Gray {
     pub t: f64,
+    pub w: usize,
+    pub h: usize,
+    pub img: Vec<u8>,
+}
+
+/// A frame's Sobel gradient magnitude, what parts are cut from and matched against.
+pub struct Grad {
     pub w: usize,
     pub h: usize,
     pub grad: Vec<f32>,
@@ -90,7 +108,7 @@ impl Template {
     }
 
     /// NCC at top-left (x, y) of `g`; None outside the frame.
-    fn score(&self, g: &Gray, x: i64, y: i64) -> Option<f32> {
+    fn score(&self, g: &Grad, x: i64, y: i64) -> Option<f32> {
         if x < 0 || y < 0 || x as usize + self.w > g.w || y as usize + self.h > g.h {
             return None;
         }
@@ -129,12 +147,19 @@ pub struct Session {
     dir: i32,
     from: f64,
     to: f64,
+    /// Kept frames, oldest first.
     frames: VecDeque<Arc<Gray>>,
     forward: Option<Stream>,
-    /// Backward: the start of the oldest piece decoded so far.
+    /// Frames the forward stream had decoded when last counted.
+    forward_counted: u64,
+    /// Backward: the kept frames are every frame of [low, high) (contiguous pieces).
     low: f64,
-    /// Backward: where each kept piece starts (newest first), at most two.
-    pieces: VecDeque<f64>,
+    high: f64,
+    /// Backward: the kept pieces as [start, end), newest first, at most two.
+    pieces: VecDeque<(f64, f64)>,
+    /// Backward: the kept span reaches the span's start (nothing below it is decoded).
+    reached: bool,
+    grads: VecDeque<(f64, Arc<Grad>)>,
     tracks: HashMap<u64, Track>,
     pub decoded: u64,
 }
@@ -148,11 +173,9 @@ impl Session {
         if !(to >= from) {
             return Err(Failure::BadCommand);
         }
-        let mut s = Session { ffmpeg: ffmpeg.into(), video: video.into(), dir, from, to, frames: VecDeque::new(), forward: None, low: to + EPS, pieces: VecDeque::new(), tracks: HashMap::new(), decoded: 0 };
+        let mut s = Session { ffmpeg: ffmpeg.into(), video: video.into(), dir, from, to, frames: VecDeque::new(), forward: None, forward_counted: 0, low: to + EPS, high: to + EPS, pieces: VecDeque::new(), reached: false, grads: VecDeque::new(), tracks: HashMap::new(), decoded: 0 };
         if dir > 0 {
-            let select = format!("gte(t\\,{})*lte(t\\,{})", crate::ffmpeg::secs(from - EPS), crate::ffmpeg::secs(to + EPS));
-            let limit = Duration::from_secs_f64(60.0 + (to - key).max(0.0));
-            s.forward = Some(Stream::open(ffmpeg, video, key.min(from), &half_vf(&select), 1, limit, gray_bytes)?);
+            s.start_forward(key.min(from), from)?;
             // The first frame now, so a broken video fails the open.
             s.pull_forward()?.ok_or(Failure::Video)?;
         } else {
@@ -169,12 +192,45 @@ impl Session {
     fn keep(&mut self, img: Vec<u8>, t: f64, w: usize, h: usize) -> Arc<Gray> {
         self.decoded += 1;
         stats::add(&stats::FOLLOW_FRAMES, 1);
-        Arc::new(Gray { t, w, h, grad: sobel(&img, w, h) })
+        Arc::new(Gray { t, w, h, img })
+    }
+
+    /// The gradient of a frame asked, worked out once (the last few are kept).
+    fn grad(&mut self, g: &Gray) -> Arc<Grad> {
+        if let Some((_, d)) = self.grads.iter().find(|(t, _)| (t - g.t).abs() < EPS) {
+            return d.clone();
+        }
+        stats::add(&stats::FOLLOW_GRADIENTS, 1);
+        let d = Arc::new(Grad { w: g.w, h: g.h, grad: sobel(&g.img, g.w, g.h) });
+        self.grads.push_front((g.t, d.clone()));
+        self.grads.truncate(KEEP_GRADIENTS);
+        d
+    }
+
+    /// Forward: a stream of the span's frames from `from` on, decoded from the key frame at or before `seek`.
+    fn start_forward(&mut self, seek: f64, from: f64) -> Result<(), Failure> {
+        self.count_forward();
+        self.forward = None;
+        let select = format!("gte(t\\,{})*lte(t\\,{})", crate::ffmpeg::secs(from - EPS), crate::ffmpeg::secs(self.to + EPS));
+        let limit = Duration::from_secs_f64(60.0 + (self.to - seek).max(0.0));
+        self.forward = Some(Stream::open(&self.ffmpeg, &self.video, seek, &half_vf(&select), 1, limit, gray_bytes)?);
+        self.forward_counted = 0;
+        stats::add(&stats::FOLLOW_RUNS, 1);
+        Ok(())
+    }
+
+    fn count_forward(&mut self) {
+        if let Some(stream) = self.forward.as_ref() {
+            stats::add(&stats::FOLLOW_DECODED, stream.decoded - self.forward_counted);
+            self.forward_counted = stream.decoded;
+        }
     }
 
     fn pull_forward(&mut self) -> Result<Option<Arc<Gray>>, Failure> {
         let Some(stream) = self.forward.as_mut() else { return Ok(None) };
-        match stream.next()? {
+        let next = stream.next();
+        self.count_forward();
+        match next? {
             Some((info, img)) => {
                 let g = self.keep(img, info.t, info.w, info.h);
                 self.frames.push_back(g.clone());
@@ -190,80 +246,139 @@ impl Session {
         }
     }
 
-    /// Backward: decodes the piece just before the oldest one, dropping all but the newest two.
+    /// Backward: the piece just below the kept span: every frame from the key frame at or before
+    /// PIECE_S below it (at most PIECE_MAX_S of them) up to it, so the piece below this one starts
+    /// where this one did and no frame is decoded twice. A piece reaching the span's start seeks to
+    /// the start itself: nothing before it is wanted. False once the span's start is reached.
     fn decode_piece(&mut self) -> Result<bool, Failure> {
-        // Done once a piece reached `from` (low is then from - EPS); a span of one instant still decodes its frame.
-        if self.low <= self.from - EPS {
+        if self.reached {
             return Ok(false);
         }
         let hi = self.low;
-        let lo = (hi - PIECE_S).max(self.from - EPS);
+        let want = hi - PIECE_S;
+        let reaches_from = want <= self.from;
+        let keep_from = if reaches_from { self.from - EPS } else { (hi - PIECE_MAX_S).max(self.from - EPS) };
         // The selection reaches past the piece (`PAST`) and the run ends at the first frame of it after
         // the piece: ffmpeg holds a frame's pixels until the next selected one, and with the selection
         // ending at the piece's end, the piece's last frame came only once the rest of the recording was
         // decoded (10.8 s a piece of a 144 s recording against 0.13 s; a backward session over it did not
         // finish in 20 minutes).
-        let select = format!("gte(t\\,{})*lt(t\\,{})", crate::ffmpeg::secs(lo), crate::ffmpeg::secs(hi + crate::decode::PAST));
-        let mut stream = Stream::open(&self.ffmpeg, &self.video, lo.max(0.0), &half_vf(&select), 1, Duration::from_secs(60), gray_bytes)?.until(hi);
+        let select = format!("gte(t\\,{})*lt(t\\,{})", crate::ffmpeg::secs(keep_from), crate::ffmpeg::secs(hi + crate::decode::PAST));
+        let vf = half_vf(&select);
+        let limit = Duration::from_secs(60);
+        let stream = if reaches_from { Stream::open(&self.ffmpeg, &self.video, keep_from.max(0.0), &vf, 1, limit, gray_bytes) } else { Stream::open_from_key(&self.ffmpeg, &self.video, want.max(0.0), &vf, 1, limit, gray_bytes) };
+        let mut stream = stream?.until(hi);
+        stats::add(&stats::FOLLOW_RUNS, 1);
         let mut got = vec![];
-        while let Some((info, img)) = stream.next()? {
-            if info.t >= hi {
-                break;
+        let ended = loop {
+            match stream.next() {
+                Ok(Some((info, img))) => {
+                    if info.t >= hi {
+                        break Ok(());
+                    }
+                    got.push(self.keep(img, info.t, info.w, info.h));
+                }
+                Ok(None) => break Ok(()),
+                Err(f) => break Err(f),
             }
-            got.push(self.keep(img, info.t, info.w, info.h));
-        }
+        };
         stats::add(&stats::FOLLOW_DECODED, stream.decoded);
         drop(stream);
+        ended?;
+        // The piece starts at its first frame (the key frame it was decoded from), or where it was asked
+        // to when it holds none; a piece reaching the span's start ends the session's pieces.
+        let lo = if reaches_from { self.from - EPS } else { got.first().map_or(want, |g| g.t) };
         self.low = lo;
-        self.pieces.push_back(lo);
-        // Keep the newest two pieces: drop frames of anything newer than the second-newest.
+        self.reached = reaches_from;
+        if self.pieces.is_empty() {
+            self.high = hi;
+        }
+        self.pieces.push_back((lo, hi));
+        // Keep the newest two pieces: drop the frames of anything newer.
         while self.pieces.len() > 2 {
             self.pieces.pop_front();
+            self.high = self.pieces[0].1;
         }
-        let newest_kept_end = if self.pieces.len() == 2 { self.pieces[0] + PIECE_S + EPS } else { f64::MAX };
-        self.frames.retain(|f| f.t < newest_kept_end);
+        let high = self.high;
+        self.frames.retain(|f| f.t < high);
         for g in got.into_iter().rev() {
             self.frames.push_front(g);
         }
-        let mut v: Vec<_> = self.frames.drain(..).collect();
-        v.sort_by(|a, b| a.t.total_cmp(&b.t));
-        self.frames = v.into();
         Ok(true)
+    }
+
+    /// Backward: drops what is kept and starts again with the piece holding `t` (the walk asks
+    /// nothing between, §5.8): its frames from the key frame at or before it to just past it.
+    fn jump_back(&mut self, t: f64) -> Result<(), Failure> {
+        self.frames.clear();
+        self.pieces.clear();
+        self.reached = false;
+        self.high = (t + crate::decode::PAST).min(self.to + EPS);
+        self.low = self.high;
+        if !self.decode_piece()? {
+            return Err(Failure::Video);
+        }
+        Ok(())
     }
 
     /// The frame at `t` (the first at or after it within the span).
     fn frame_at(&mut self, t: f64) -> Result<Arc<Gray>, Failure> {
+        if self.dir > 0 {
+            return self.frame_forward(t);
+        }
+        let mut jumped = false;
         loop {
-            // Backward: the piece holding t first, so a frame of a newer piece never stands in for it.
-            if self.dir < 0 && t < self.low && self.low > self.from - EPS {
+            if t >= self.low - EPS && t < self.high {
+                // Pieces are contiguous: the first kept frame at or after t is the one at t, never a
+                // frame of a newer piece standing in for it.
+                if let Some(f) = self.frames.iter().find(|f| f.t >= t - EPS && f.t < t + 0.1) {
+                    return Ok(f.clone());
+                }
+                if self.high >= self.to + EPS {
+                    return Err(Failure::Video);
+                }
+            } else if t < self.low - EPS && t >= self.low - PIECE_S - EPS {
+                // The next piece down holds it.
                 if !self.decode_piece()? {
                     return Err(Failure::Video);
                 }
                 continue;
             }
+            if jumped || t < self.from - EPS || t > self.to + EPS {
+                return Err(Failure::Video);
+            }
+            self.jump_back(t)?;
+            jumped = true;
+        }
+    }
+
+    /// Forward: decodes on to `t`, or seeks to it when it is more than SEEK_AHEAD_S after the newest
+    /// frame decoded.
+    fn frame_forward(&mut self, t: f64) -> Result<Arc<Gray>, Failure> {
+        let mut sought = false;
+        loop {
             if let Some(f) = self.frames.iter().find(|f| f.t >= t - EPS && f.t < t + 0.1) {
                 return Ok(f.clone());
             }
-            if self.dir > 0 {
-                let newest = self.frames.back().map_or(f64::MIN, |f| f.t);
-                if newest > t + 0.1 || self.pull_forward()?.is_none() {
-                    return Err(Failure::Video);
-                }
-            } else {
-                let oldest = self.frames.front().map_or(f64::MAX, |f| f.t);
-                if t > oldest + PIECE_S * 2.0 + EPS && !self.frames.iter().any(|f| f.t >= t - EPS) {
-                    return Err(Failure::Video);
-                }
-                if !self.decode_piece()? {
-                    return Err(Failure::Video);
-                }
+            let newest = self.frames.back().map_or(f64::MIN, |f| f.t);
+            if newest > t + 0.1 {
+                return Err(Failure::Video);
+            }
+            if !sought && t - newest > SEEK_AHEAD_S && t <= self.to + EPS {
+                self.start_forward((t - EPS).max(0.0), t)?;
+                self.frames.clear();
+                sought = true;
+            }
+            if self.pull_forward()?.is_none() {
+                return Err(Failure::Video);
             }
         }
     }
 
     /// Registers `track` with its parts (video pixels) cut at the frame at `t`.
     pub fn track(&mut self, track: u64, t: f64, parts: &[BoxF]) -> Result<(), Failure> {
-        let g = self.frame_at(t)?;
+        let frame = self.frame_at(t)?;
+        let g = self.grad(&frame);
         let mut union = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
         let mut temps = vec![];
         for p in parts {
@@ -294,7 +409,8 @@ impl Session {
 
     /// Every asked track at the frame at `t` (one `matched` answer).
     pub fn match_all(&mut self, t: f64, asks: &[TrackAsk]) -> Result<Value, Failure> {
-        let g = self.frame_at(t)?;
+        let frame = self.frame_at(t)?;
+        let g = self.grad(&frame);
         let started = Instant::now();
         let mut out = vec![];
         for ask in asks {
@@ -312,7 +428,7 @@ fn place(track: &Track, tp: &Template, c: &Candidate) -> (f32, f32) {
     (track.cx + s * (tp.x - track.cx) + c.dx as f32 / 2.0, track.cy + s * (tp.y - track.cy) + c.dy as f32 / 2.0)
 }
 
-fn match_track(track: &Track, g: &Gray, ask: &TrackAsk) -> Value {
+fn match_track(track: &Track, g: &Grad, ask: &TrackAsk) -> Value {
     let parts: Vec<usize> = ask.parts.iter().copied().filter(|&i| track.parts.get(i).is_some_and(Option::is_some)).collect();
     // Per candidate: the best part score, its refined move, and the other peaks of its windows.
     struct Best {
@@ -428,8 +544,8 @@ mod tests {
         v
     }
 
-    fn gray(img: Vec<u8>, w: usize, h: usize) -> Gray {
-        Gray { t: 0.0, w, h, grad: sobel(&img, w, h) }
+    fn gray(img: Vec<u8>, w: usize, h: usize) -> Grad {
+        Grad { w, h, grad: sobel(&img, w, h) }
     }
 
     #[test]

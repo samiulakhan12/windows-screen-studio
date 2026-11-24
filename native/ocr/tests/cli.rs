@@ -1,4 +1,4 @@
-//! The helper's tests R1-R26 (docs/design/auto-blur.md §17.1), against the fixture build:
+//! The helper's tests R1-R30 (docs/design/auto-blur.md §17.1), against the fixture build:
 //!
 //!   SSW_OCR_MODELS=<folder with the five pinned files> SSW_OCR_PYTHON=<python with numpy,
 //!   opencv-python-headless, pyyaml> cargo test --profile test-fast --features fixture
@@ -962,5 +962,122 @@ fn r26_a_backward_piece_decodes_from_its_key_frame_to_its_own_end_only() {
     // neither decoded nor waited for (ffmpeg holds a frame's pixels until the next one is selected).
     assert!(decoded <= 15 + 13, "decoded {decoded} frames for one piece");
     assert!(took < Duration::from_secs(3), "one piece took {took:?}");
+    let _ = std::fs::remove_dir_all(w);
+}
+
+/// A 1280x720 test pattern at `fps` with a key frame every `gop` frames, `secs` long.
+fn pattern_video(dir: &Path, name: &str, fps: u32, gop: u32, secs: u32) -> PathBuf {
+    let video = dir.join(name);
+    let src = format!("testsrc2=s=1280x720:r={fps}:d={secs}");
+    run_ffmpeg(&["-f", "lavfi", "-i", &src, "-c:v", "libx264", "-preset", "ultrafast", "-g", &gop.to_string(), "-pix_fmt", "yuv420p", video.to_str().unwrap()]);
+    video
+}
+
+/// Asks `match` for one track with no move at `t`: the session answers it (any score).
+fn match_at(h: &mut Helper, s: u64, t: f64) {
+    let m = h.send(json!({ "op": "match", "session": s, "t": t, "tracks": [{ "track": 1, "parts": [0], "candidates": [{ "dx": 0, "dy": 0, "scale": 1 }] }] }));
+    let e = h.wait(m, Duration::from_secs(120));
+    assert_eq!(e["matched"].as_array().map(Vec::len), Some(1), "t {t}: {e}");
+}
+
+fn delta(before: &Value, after: &Value, key: &str) -> u64 {
+    after[key].as_u64().unwrap_or_else(|| panic!("stats hold {key}: {after}")) - before[key].as_u64().unwrap()
+}
+
+#[test]
+fn r27_a_backward_session_decodes_only_the_pieces_holding_the_frames_it_is_asked() {
+    let w = work("r27");
+    let video = pattern_video(&w, "minute.mp4", 30, 15, 60);
+    let mut h = opened();
+    let before = h.stats();
+    let started = Instant::now();
+    // A walk back from a read at 50 s whose text next changes at 20 s: nothing between is asked.
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 0, "to": 50.0, "dir": -1 }));
+    assert!(h.wait(s, Duration::from_secs(120)).get("session").is_some());
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": 50.0, "parts": [[200, 200, 240, 60]] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(120))["done"], true);
+    for n in [600, 599, 598, 597] {
+        match_at(&mut h, s, n as f64 / 30.0);
+    }
+    let took = started.elapsed();
+    let after = h.stats();
+    let (frames, decoded) = (delta(&before, &after, "followFrames"), delta(&before, &after, "followDecoded"));
+    println!("R27: {frames} frames kept, {decoded} decoded, {took:?}");
+    // The piece holding 50 s and the one holding 20 s, each at most a key-frame interval and a
+    // second and a half: not the 30 s between them (900 frames).
+    assert!(frames <= 2 * 50, "{frames} frames kept");
+    assert!(decoded <= 2 * 65, "{decoded} frames decoded");
+    let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r28_a_forward_session_seeks_past_frames_it_is_not_asked() {
+    let w = work("r28");
+    let video = pattern_video(&w, "minute.mp4", 30, 15, 60);
+    let mut h = opened();
+    let before = h.stats();
+    // A walk forward from a read at 0 s whose text next changes at 30 s.
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 0, "to": 50.0, "dir": 1 }));
+    assert!(h.wait(s, Duration::from_secs(120)).get("session").is_some());
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": 0, "parts": [[200, 200, 240, 60]] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(120))["done"], true);
+    for n in [900, 901, 902, 903] {
+        match_at(&mut h, s, n as f64 / 30.0);
+    }
+    let after = h.stats();
+    let (frames, decoded) = (delta(&before, &after, "followFrames"), delta(&before, &after, "followDecoded"));
+    println!("R28: {frames} frames kept, {decoded} decoded");
+    // The first frame, then from the key frame at or before 30 s: not the 30 s before it.
+    assert!(frames <= 10, "{frames} frames kept");
+    assert!(decoded <= 40, "{decoded} frames decoded");
+    let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r29_a_follow_session_works_out_the_gradient_of_a_frame_only_when_it_is_asked() {
+    let w = work("r29");
+    let video = scroll_video(&w, 3, 120);
+    let mut h = opened();
+    let before = h.stats();
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 0, "to": 119.0 / 60.0 + 0.001, "dir": 1 }));
+    h.wait(s, Duration::from_secs(60));
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": 0, "parts": [[300, 400, 400, 40]] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(60))["done"], true);
+    // Every sixth frame asked, twice each (a walk asks its near places, then the rest): 0.1 s apart,
+    // so every frame between is decoded and kept, but none of them is matched.
+    let asked: Vec<usize> = (1..20).map(|i| i * 6).collect();
+    for &n in &asked {
+        match_at(&mut h, s, n as f64 / 60.0);
+        match_at(&mut h, s, n as f64 / 60.0);
+    }
+    let after = h.stats();
+    let (frames, grads) = (delta(&before, &after, "followFrames"), delta(&before, &after, "followGradients"));
+    println!("R29: {frames} frames kept, {grads} gradients");
+    assert!(frames >= 110, "{frames} frames kept");
+    assert_eq!(grads, asked.len() as u64 + 1, "one gradient for each frame asked (and the track's)");
+    let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r30_a_backward_session_decodes_whole_key_frame_intervals_once_each() {
+    let w = work("r30");
+    // A key frame every second: pieces of half a second each decoded the second before them.
+    let video = pattern_video(&w, "ten.mp4", 30, 30, 10);
+    let mut h = opened();
+    let before = h.stats();
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 0, "from": 2.0, "to": 8.0, "dir": -1 }));
+    h.wait(s, Duration::from_secs(60));
+    let tr = h.send(json!({ "op": "track", "session": s, "track": 1, "t": 8.0, "parts": [[200, 200, 240, 60]] }));
+    assert_eq!(h.wait(tr, Duration::from_secs(60))["done"], true);
+    for n in (60..240).rev() {
+        match_at(&mut h, s, n as f64 / 30.0);
+    }
+    let after = h.stats();
+    let (runs, decoded) = (delta(&before, &after, "followRuns"), delta(&before, &after, "followDecoded"));
+    println!("R30: {runs} runs, {decoded} decoded");
+    // Six seconds walked back: one run a key-frame interval (and the one the walk starts in), each
+    // frame decoded once but for the frame that ends each run.
+    assert!(runs <= 7, "{runs} ffmpeg runs");
+    assert!(decoded <= 181 + 2 * runs + 1, "{decoded} frames decoded");
     let _ = std::fs::remove_dir_all(w);
 }

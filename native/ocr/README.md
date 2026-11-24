@@ -80,9 +80,12 @@ caught panic the plans are built again from the parsed models (R9).
   i / 8 (lowest bit first); the first frame has every tile changed. A move's `dx`, `dy` are how far
   the region's content moved since the last analysed frame, in video pixels, positive right and
   down; its `box` is the region at this frame.
-- **Follow sessions** (§5.8): a session decodes its span once at half size in grey, forward as asked,
-  backward half a second at a time newest first with two pieces kept (R22); a span of one instant
-  holds its frame (R23), and a backward frame is always the frame itself, never a newer one (R24). A track's parts are
+- **Follow sessions** (§5.8): a session decodes the frames asked of its span once each at half size
+  in grey (R22), forward as asked, backward a piece at a time newest first with two pieces kept, each
+  piece every frame from a key frame to its end (`-noaccurate_seek`, R30); it seeks over a stretch it
+  is not asked (forward more than a second, backward more than a piece; R27, R28) and works out a
+  frame's gradient only when a track or match asks it (R29); a span of one instant holds its frame
+  (R23), and a backward frame is always the frame itself, never a newer one (R24). A track's parts are
   templates of Sobel gradient magnitude (selection and dark mode do not change it, R13). A
   candidate `{ dx, dy, scale }` moves the whole track: a point p of the track at its template frame
   goes to C + scale·(p − C) + (dx, dy), C the centre of its parts then. A match searches ±4 template

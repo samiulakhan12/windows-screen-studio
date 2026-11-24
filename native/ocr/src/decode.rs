@@ -41,8 +41,24 @@ impl Stream {
     /// `vf`: the filters after the first showinfo: the selection, a second showinfo, then the
     /// scale and format. The first frame's size is checked (`tooLarge`) before its pixels are read.
     pub fn open(ffmpeg: &str, video: &str, seek: f64, vf: &str, threads: u32, limit: Duration, bytes_per: fn(usize, usize) -> usize) -> Result<Stream, Failure> {
+        Stream::spawn(ffmpeg, video, seek, true, vf, threads, limit, bytes_per)
+    }
+
+    /// As `open`, but every frame from the key frame at or before `seek` goes through the filters
+    /// (`-noaccurate_seek`): ffmpeg decodes those frames either way, and a backward follow piece
+    /// keeps them, so the piece before it never decodes them again (§5.8).
+    pub fn open_from_key(ffmpeg: &str, video: &str, seek: f64, vf: &str, threads: u32, limit: Duration, bytes_per: fn(usize, usize) -> usize) -> Result<Stream, Failure> {
+        Stream::spawn(ffmpeg, video, seek, false, vf, threads, limit, bytes_per)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn spawn(ffmpeg: &str, video: &str, seek: f64, accurate: bool, vf: &str, threads: u32, limit: Duration, bytes_per: fn(usize, usize) -> usize) -> Result<Stream, Failure> {
         check_size(video)?;
-        let args: Vec<String> = ["-ss", &secs(seek), "-copyts", "-i", video, "-map", "0:v:0", "-vf", &format!("showinfo=checksum=0,{vf}"), "-fps_mode", "passthrough", "-f", "rawvideo", "-"].iter().map(|s| s.to_string()).collect();
+        let mut args: Vec<String> = vec![];
+        if !accurate {
+            args.push("-noaccurate_seek".into());
+        }
+        args.extend(["-ss", &secs(seek), "-copyts", "-i", video, "-map", "0:v:0", "-vf", &format!("showinfo=checksum=0,{vf}"), "-fps_mode", "passthrough", "-f", "rawvideo", "-"].iter().map(|s| s.to_string()));
         let run = Run::spawn(ffmpeg, &args, threads, limit)?;
         Ok(Stream { run, bytes_per, size: None, decoded: 0, ended: false, until: None })
     }
