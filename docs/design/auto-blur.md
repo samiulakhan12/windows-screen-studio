@@ -4548,8 +4548,11 @@ pixels under the covers (two different secrets, same everything else), and the t
 - **A16. The rendered tracking set** (`scripts/privacy/make-track-fixtures.mjs`, written in the
   contracts step, §16.0 item 13): lossless videos at 60 fps of a scrolling list, a fast flick scroll
   of 1,500 px a second or more, browser zoom in and out, text selected and deselected, a sticky header
-  over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out, a toast and a
-  tooltip passing over text before its first read, an email typed into a form field and a key typed
+  over a scrolling page, a window dragged diagonally, stacked toasts sliding in and out (toast-shaped,
+  each living 2.8 s in a 3.5 s recording, as notifications do: §6.13 finds a notice living 2-30 s,
+  and the reads of §5.4 point 6 may miss text shown under about a second; they were first 652 px
+  tall, the evaluation set's own toast style pinning their bottom, and lived 1.15 s, still 0.85 s),
+  a toast and a tooltip passing over text before its first read, an email typed into a form field and a key typed
   into a terminal (and deleted again), the evaluation frames at 150% and 200% display scale, and the
   new-seed held-out frames, with every planted item's box known in every frame. The rendered cases
   are cached under a key of their generator, so a changed fixture is rendered afresh; Find runs with

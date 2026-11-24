@@ -740,7 +740,7 @@ const TRACK_KEY = require('node:crypto')
   .digest('hex')
   .slice(0, 12)
 
-/** Renders the tracking set once (scripts/privacy/make-track-fixtures.mjs, 2 s a case at 1280x720, seed 7000). */
+/** Renders the tracking set once (scripts/privacy/make-track-fixtures.mjs, 2 s a case, the toasts 3.5 s, at 1280x720, seed 7000). */
 function trackDir() {
   const dir = path.join(af.CACHE, `track-${TRACK_KEY}`)
   if (!TRACK_CASES.every((id) => fs.existsSync(path.join(dir, `${id}.truth.json`)))) execFileSync(process.execPath, [path.join(af.ROOT, 'scripts', 'privacy', 'make-track-fixtures.mjs'), dir], { stdio: 'inherit' })

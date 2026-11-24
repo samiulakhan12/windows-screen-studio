@@ -9,7 +9,8 @@
 //
 //   node scripts/privacy/make-track-fixtures.mjs <out_dir> [--case <id>] [--seconds <s>] [--size <w>x<h>] [--seed <n>]
 //
-// Writes <id>.mp4 (-c:v libx264rgb -qp 0 -r 60) and <id>.truth.json per case: { fps, width, height,
+// A case may hold its own length (the toasts, whose notifications live 2.8 s). Writes <id>.mp4
+// (-c:v libx264rgb -qp 0 -r 60) and <id>.truth.json per case: { fps, width, height,
 // frames: [{ n, items: [{ id, kind, on, text, box: [x, y, w, h] }] }] }, an item listed in the frames
 // it shows in. The evaluation frames at 150% and 200% display scale and the held-out frames come from
 // make-eval-set.mjs (--scale, --seed). Needs Chromium through `playwright` or `playwright-core`
@@ -120,10 +121,15 @@ export const CASES = {
     script: 'window.setFrame=(n)=>{const w=document.getElementById("w");w.style.left=(20+n*1.5)+"px";w.style.top=(10+n*0.9)+"px"}'
   }),
   toasts: (v) => ({
-    css: '.toast{position:absolute;right:12px;width:260px;padding:10px;background:#2b2f36;color:#fff;border-radius:6px;white-space:nowrap}.page{padding:16px}.row{line-height:28px}',
+    // Notifications live 2 s or more (§6.13): each slides in over 20 frames, rests 130 (2.17 s) and
+    // slides out over 20, the second stacked under the first from frame 30; the recording runs on
+    // 10 frames after the second is gone. `bottom:auto`: the evaluation set's own .toast (baseCss)
+    // pins its bottom, which stretched these to 90% of the frame's height.
+    seconds: 3.5,
+    css: '.toast{position:absolute;right:12px;bottom:auto;width:260px;padding:10px;background:#2b2f36;color:#fff;border-radius:6px;white-space:nowrap}.page{padding:16px}.row{line-height:28px}',
     html: `<div class="page">${listRows(v, 6)}</div><div class="toast" id="t1">${O('Your code')} ${P('code', v.code)}</div><div class="toast" id="t2">${O('New login')} ${P('email', v.email)}</div>`,
     script:
-      'window.setFrame=(n)=>{const x=(k,start)=>{const f=n-start;return f<0?-400:f<20?-400+f*20:f<70?0:f<90?-(f-70)*20:-400};const a=document.getElementById("t1"),b=document.getElementById("t2");a.style.top="12px";a.style.right=(12+Math.min(0,x(0,10)))+"px";b.style.top="70px";b.style.right=(12+Math.min(0,x(0,30)))+"px"}'
+      'window.setFrame=(n)=>{const x=(k,start)=>{const f=n-start;return f<0?-400:f<20?-400+f*20:f<150?0:f<170?-(f-150)*20:-400};const a=document.getElementById("t1"),b=document.getElementById("t2");a.style.top="12px";a.style.right=(12+Math.min(0,x(0,10)))+"px";b.style.top="70px";b.style.right=(12+Math.min(0,x(0,30)))+"px"}'
   }),
   tooltip: (v) => ({
     css: '.page{padding:16px}.row{line-height:28px;white-space:nowrap}.tip{position:absolute;padding:6px 10px;background:#111;color:#fff;border-radius:4px;white-space:nowrap}',
@@ -188,14 +194,14 @@ async function renderCase(browser, id, out, { seconds, width, height, seed }) {
   const make = CASES[id]
   if (!make) throw new Error(`make-track-fixtures: no case ${id} (${Object.keys(CASES).join(', ')})`)
   const t = THEMES.light
-  const { css, html, script } = make(plantValues(makeTokens(seed)))
+  const { css, html, script, seconds: own } = make(plantValues(makeTokens(seed)))
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${baseCss(t)}html,body{margin:0;overflow:hidden}${css}</style></head><body>${html}<script>${script}</script></body></html>`)
   await page.evaluate(() => document.fonts.ready)
   const tmp = mkdtempSync(path.join(os.tmpdir(), `flown-track-${id}-`))
   const frames = []
   try {
-    const count = Math.round(seconds * FPS)
+    const count = Math.round((own ?? seconds) * FPS)
     for (let n = 0; n < count; n++) {
       await page.evaluate((k) => window.setFrame(k), n)
       const items = await readItems(page, 1)
