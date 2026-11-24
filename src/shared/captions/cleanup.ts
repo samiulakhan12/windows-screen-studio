@@ -356,13 +356,64 @@ const KEEP_TWO = new Set(['b', 'e', 'o', 'l', 's', 'g'])
 const BENGALI = /\p{Script=Bengali}/u
 
 /**
+ * The classes of each UTF-16 code unit but the surrogates, as these Unicode property regexes give
+ * them, found the first time a word holds it (0: not yet): a letter, digit or mark; a format
+ * character (ZWJ, ZWNJ); Latin. Every word is bleep-checked, so its letters are classed by reading
+ * this table, not by a regex that looks each letter up in Unicode's ranges; a surrogate, half of a
+ * code point outside the Basic Multilingual Plane, sends the word to the regex.
+ */
+const UNIT_SEEN = 1
+const UNIT_WORD = 2
+const UNIT_FORMAT = 4
+const UNIT_LATIN = 8
+const WORD_CHAR = /[\p{L}\p{N}\p{M}]/u
+const FORMAT_CHAR = /\p{Cf}/u
+const LATIN_CHAR = /\p{Script=Latin}/u
+const unitClasses = new Uint8Array(0x10000)
+function unitClass(unit: number): number {
+  let c = unitClasses[unit]
+  if (!c) {
+    const ch = String.fromCharCode(unit)
+    c = UNIT_SEEN | (WORD_CHAR.test(ch) ? UNIT_WORD : 0) | (FORMAT_CHAR.test(ch) ? UNIT_FORMAT : 0) | (LATIN_CHAR.test(ch) ? UNIT_LATIN : 0)
+    unitClasses[unit] = c
+  }
+  return c
+}
+const isSurrogate = (unit: number): boolean => unit >= 0xd800 && unit <= 0xdfff
+
+/**
+ * The key of `text` (in NFC and lower case) when it is of the Basic Multilingual Plane and, once
+ * what is not a letter, digit or mark is removed, has no letter twice in a row (most words): the
+ * text without those; else undefined, and bleepKey takes its steps.
+ */
+function plainKey(text: string): string | undefined {
+  let out = ''
+  let from = 0
+  let last = -1
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i)
+    if (isSurrogate(unit)) return undefined
+    if (!(unitClass(unit) & UNIT_WORD)) {
+      out += text.slice(from, i)
+      from = i + 1
+    } else if (unit === last) return undefined
+    else last = unit
+  }
+  return from ? out + text.slice(from) : text
+}
+
+/**
  * A word as the bleep lists match it: in NFC (a cloud transcript or typed text may write য় as one
  * code point or ো in two parts), lower case, punctuation removed, repeated letters collapsed but
  * Bengali ones: a Bangla word writes a letter twice as its spelling (বালককে, "to the boy", is no
  * বালকে), not to draw it out.
  */
 export function bleepKey(word: string): string {
-  const bare = word.normalize('NFC').toLowerCase().replace(/[^\p{L}\p{N}\p{M}]/gu, '')
+  const text = word.normalize('NFC').toLowerCase()
+  // No letter twice in a row once the rest is removed: nothing to collapse, the key the steps below give.
+  const plain = plainKey(text)
+  if (plain !== undefined) return plain
+  const bare = text.replace(/[^\p{L}\p{N}\p{M}]/gu, '')
   let out = ''
   let run = 0
   for (const ch of bare) {
@@ -553,6 +604,12 @@ interface TeamRules {
   fold: (key: string) => string
   stems: readonly Stem[]
   compounds: readonly Stem[]
+  /**
+   * The compounds as one RegExp of code units, as indexOf reads them, and each by its key: its match
+   * is the leftmost, the longest of those there (বানচোত্, not বানচোত, which a virama there rules out).
+   */
+  compoundFirst: RegExp
+  compoundOf: ReadonlyMap<string, Stem>
   holders: readonly string[]
   everyday: ReadonlySet<string>
   whole: ReadonlySet<string>
@@ -586,10 +643,13 @@ function teamRulesOf(lang: string): TeamRules | null {
       }
       return m
     }
+    const compounds = list.compounds.map(stem)
     r = {
       fold,
       stems: list.stems.map(stem),
-      compounds: list.compounds.map(stem),
+      compounds,
+      compoundFirst: new RegExp([...compounds].sort((a, b) => b.key.length - a.key.length).map((c) => c.key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')),
+      compoundOf: new Map(compounds.map((c) => [c.key, c])),
       holders: list.holders.map(keyOf),
       everyday,
       whole: new Set(list.nouns.flatMap(nounForms).map(keyOf).filter((k) => k && !everyday.has(k))),
@@ -639,6 +699,13 @@ function teamMatch(r: TeamRules, key: string, next: string | undefined, pause: P
   if (n !== undefined && r.notBefore.get(k)?.has(n) && (pause === NO_PAUSE || (pause === COMMA_PAUSE && r.listed.get(k)?.has(n)))) return false
   if (r.whole.has(k)) return true
   for (const stem of r.stems) if (stemAt(k, stem, 0)) return true
+  // The leftmost compound, found by one RegExp in place of an indexOf for each: none anywhere is no
+  // match, and one there that takes no virama and is not held is a match; else every compound is
+  // tried wherever it is, as before.
+  const first = r.compoundFirst.exec(k)
+  if (!first) return false
+  const leftmost = r.compoundOf.get(first[0])
+  if (leftmost && stemAt(k, leftmost, first.index) && !heldAt(r.holders, k, leftmost, first.index)) return true
   for (const c of r.compounds) {
     for (let at = k.indexOf(c.key); at >= 0; at = k.indexOf(c.key, at + 1)) if (stemAt(k, c, at) && !heldAt(r.holders, k, c, at)) return true
   }
@@ -660,6 +727,17 @@ const pauseOf = (between: string): Pause => (!PAUSE.test(between) ? NO_PAUSE : P
 /** A word's text after its last letter, digit, mark or joiner, and the next word's before its first. */
 const AFTER_WORD = /[^\p{L}\p{N}\p{M}\p{Cf}]*$/u
 const BEFORE_WORD = /^[^\p{L}\p{N}\p{M}\p{Cf}]*/u
+/** A word of letters, digits, marks and joiners only, as most are: nothing joins it to another word and nothing follows its last letter. */
+const WORD_ONLY = /^[\p{L}\p{N}\p{M}\p{Cf}]*$/u
+/** Whether WORD_ONLY matches `word`, read from the unit classes (by the regex when the word holds a surrogate). */
+function wordOnly(word: string): boolean {
+  for (let i = 0; i < word.length; i++) {
+    const unit = word.charCodeAt(i)
+    if (isSurrogate(unit)) return WORD_ONLY.test(word)
+    if (!(unitClass(unit) & (UNIT_WORD | UNIT_FORMAT))) return false
+  }
+  return true
+}
 
 /** The key of the word `text` begins with: its first part when words are written together (বাচ্চা-টা); '' for none. */
 const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKey).find(Boolean) ?? ''
@@ -676,6 +754,8 @@ const firstKey = (text: string): string => text.split(BETWEEN_WORDS).map(bleepKe
 function teamWordMatch(word: string, key: string, lang: string, next: string | undefined, pause: Pause): boolean {
   const r = teamRulesOf(lang)
   if (!r) return false
+  // One scan of the word in place of JOINED's and AFTER_WORD's, which try it from every letter.
+  if (wordOnly(word)) return teamMatch(r, key, next, pause)
   if (!JOINED.test(word)) return teamMatch(r, key, next, stronger(pause, pauseOf(AFTER_WORD.exec(word)?.[0] ?? '')))
   // Each part's key and the pause after it, the text between parts kept by the split.
   const parts: { key: string; pause: Pause }[] = []
@@ -692,6 +772,11 @@ function teamWordMatch(word: string, key: string, lang: string, next: string | u
 }
 
 const standardRes = STANDARD_WORDS.map((w) => ({ word: w.word, res: w.patterns.map((p) => new RegExp(p, 'u')), safe: w.safe.map((s) => bleepKey(s)) }))
+/**
+ * The Standard patterns as one RegExp, an alternation of them all: a key it does not match (every
+ * Bangla word, most English ones) matches none of them, and skips testing them one by one.
+ */
+const standardAny = new RegExp(STANDARD_WORDS.flatMap((w) => w.patterns.map((p) => `(?:${p})`)).join('|'), 'u')
 const strictSets = new Map<string, ReadonlySet<string>>()
 function strictSet(lang: string): ReadonlySet<string> {
   let s = strictSets.get(lang)
@@ -703,6 +788,14 @@ function strictSet(lang: string): ReadonlySet<string> {
 }
 
 const LATIN_RUN = /\p{Script=Latin}+/gu
+/** Whether `text` may hold a run LATIN_RUN finds: a unit the unit classes call Latin, or a surrogate (LATIN_RUN then decides). */
+function mayHoldLatin(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i)
+    if (isSurrogate(unit) || unitClass(unit) & UNIT_LATIN) return true
+  }
+  return false
+}
 
 /**
  * Whether a word is bleeped by `mode` in `language`. `next` is the word after it ('' for none): in
@@ -715,14 +808,14 @@ const LATIN_RUN = /\p{Script=Latin}+/gu
 export function isSwearWord(word: string, mode: 'standard' | 'strict', language?: string, next?: string, apart = false): boolean {
   const key = bleepKey(word)
   if (!key) return false
-  for (const w of standardRes) {
+  if (standardAny.test(key)) for (const w of standardRes) {
     if (!w.res.some((re) => re.test(key))) continue
     if (w.safe.some((s) => s && key.includes(s))) continue
     return true
   }
   // An English word written together with a Bangla ending, as Banglish writes videoটা and file-টা:
   // its Latin letters are checked by the English rules, as the bare word is.
-  if (BENGALI.test(key)) for (const run of key.match(LATIN_RUN) ?? []) if (isSwearWord(run, mode, 'en')) return true
+  if (BENGALI.test(key) && mayHoldLatin(key)) for (const run of key.match(LATIN_RUN) ?? []) if (isSwearWord(run, mode, 'en')) return true
   // A word written in Bengali script is Bangla whatever the transcript's language (an English
   // transcript quoting a Bangla word, a mixed one that names no language), but in Assamese, which
   // is written in the same script.
