@@ -146,7 +146,8 @@ export async function runEverywhere(services: EditorServices, coverId: string, r
   const off = stopWith(signal, projectId)
   try {
     const r = await window.api.coverEverywhere({ projectId, requestId, remember })
-    if (!r.ok || r.projectId !== projectId) return null
+    // An answer for another project or request changes nothing (§5.1, test 247).
+    if (!r.ok || r.projectId !== projectId || r.requestId !== requestId) return null
     const name = remember !== 'no' && typeof r.addedName === 'string' && r.addedName ? r.addedName : null
     const { store } = services
     let added = 0

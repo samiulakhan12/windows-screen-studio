@@ -168,16 +168,15 @@ describe('auto-blur contracts: seams', () => {
       ['privacy/NotCheckedNote', 'NotCheckedNote', { project: p, place: 'save' }],
       ['privacy/PublishMaskedNote', 'PublishMaskedNote', { project: p, text: 'x' }],
       ['privacy/CopiesOffer', 'CopiesOffer', { services: quiet }],
-      ['privacy/PrivacySettings', 'PrivacySettings', { reveal: true }],
       ['privacy/readerState', 'FindProgressLine', { projectId: 's' }]
     ]
     for (const [file, name, props] of stubs) {
       const C = (await load<Record<string, Comp>>(file))[name]
       expect(renderToStaticMarkup(React.createElement(C as never, props)), name).toBe('')
     }
-    // The dialogs that are always mounted when asked for draw nothing yet.
-    const { FindDialog } = await load<{ FindDialog: Comp }>('privacy/FindDialog')
-    expect(renderToStaticMarkup(React.createElement(FindDialog as never, { services, onClose: () => undefined, mode: 'find' }))).toBe('')
+    // Settings › Private info draws itself now (tests 179, 185, 253), and so does the Find dialog (test 168).
+    const { PrivacySettings } = await load<{ PrivacySettings: Comp }>('privacy/PrivacySettings')
+    expect(renderToStaticMarkup(React.createElement(PrivacySettings as never, { reveal: false }))).toContain('id="settings-privacy-title"')
     // Until main has said, the reader's state is unknown; with no Find running there is no progress and leaving is not asked.
     const reader = await load<{ useReaderState(): unknown; useFindProgress(id: string): unknown; confirmLeaveFind(s: unknown): Promise<boolean> }>('privacy/readerState')
     const Probe = (): string => JSON.stringify([reader.useReaderState(), reader.useFindProgress('s')])
