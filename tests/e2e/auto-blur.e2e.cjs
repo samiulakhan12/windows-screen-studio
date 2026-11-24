@@ -817,7 +817,7 @@ async function trackFind(ctx, name, c) {
   const { app, win } = await start(ctx, home)
   await openProject(win, `Track ${name}`)
   const found = await runFind(ctx, win, home, id, { names: c.names ?? [] })
-  const units = /\((\d+) units/.exec(found.line)?.[1] ?? '?'
+  const units = /\((\d+(?:\.\d+)?) units/.exec(found.line)?.[1] ?? '?'
   notBlackedOut(found.project.covers ?? [], c, name)
   const cov = coverageFailures(found.project.covers ?? [], c, 40)
   console.log(`  ${name}: ${c.total} frames, plan ${units} units, ${(found.project.covers ?? []).length} covers, Find ${found.seconds.toFixed(0)} s; ${cov.checked - cov.count} of ${cov.checked} item-frames covered`)
