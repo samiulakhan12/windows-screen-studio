@@ -158,6 +158,7 @@
   "review.listenRow": "Listen: {title}",
   "review.filter": "Show",
   "review.filterAll": "All kinds",
+  "review.showAll": "Show all changes",
   "review.keepKind": "{kind, select, password {Keep all passwords and PINs covered} code {Keep all codes covered} qr {Keep all QR codes covered} key {Keep all keys and tokens covered} link {Keep all tokens in links covered} email {Keep all email addresses covered} card {Keep all card and bank numbers covered} phone {Keep all phone numbers covered} id {Keep all ID numbers covered} name {Keep all names covered} notice {Keep all notifications covered} address {Keep all street addresses covered} dots {Keep all password dots covered} random {Keep all random-looking text covered} text {Keep all text you chose covered} other {Keep all of this kind covered}}",
   "review.uncoverKind": "{kind, select, password {Uncover all passwords and PINs} code {Uncover all codes} qr {Uncover all QR codes} key {Uncover all keys and tokens} link {Uncover all tokens in links} email {Uncover all email addresses} card {Uncover all card and bank numbers} phone {Uncover all phone numbers} id {Uncover all ID numbers} name {Uncover all names} notice {Uncover all notifications} address {Uncover all street addresses} dots {Uncover all password dots} random {Uncover all random-looking text} text {Uncover all text you chose} other {Uncover all of this kind}}",
   "review.uncoverConfirm": "{count, plural, one {Uncover {n} private item? It will show in every export.} other {Uncover {n} private items? They will show in every export.}}",

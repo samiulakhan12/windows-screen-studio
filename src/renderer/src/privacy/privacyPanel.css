@@ -1,0 +1,268 @@
+/* Find private info's dialog, progress and result lines, the notes, Settings › Private info and Review's
+   private rows (docs/design/auto-blur.md §2.5-2.14, §11): part P5's styles, with the tokens of styles.css only.
+   Text uses --text-1/2/3 on the surfaces (WCAG AA); the Check badge is text beside the warning colour. */
+
+/* ---------- the Find dialog and the regions dialog ---------- */
+
+.privacy-dialog {
+  width: min(560px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-4);
+  color: var(--text-1);
+}
+
+.privacy-dialog .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: auto;
+}
+
+.privacy-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.privacy-kinds legend {
+  padding-inline: var(--space-1);
+  color: var(--text-2);
+}
+
+.privacy-kind .hint {
+  margin: 0 0 0 var(--space-5, 20px);
+}
+
+.privacy-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.privacy-field textarea,
+.privacy-field select {
+  font: inherit;
+  color: var(--text-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px var(--space-2);
+}
+
+.privacy-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  color: var(--text-2);
+}
+
+.privacy-line p {
+  margin: 0;
+}
+
+.privacy-region-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---------- Find's progress and result lines ---------- */
+
+.find-line,
+.find-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  color: var(--text-2);
+}
+
+.find-line:focus-visible,
+.find-result:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.find-line-text {
+  color: var(--text-1);
+}
+
+.find-line-bar {
+  flex: 1 0 100%;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-4);
+  overflow: hidden;
+}
+
+.find-line-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent-400);
+  transition: width 0.3s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .find-line-bar > span {
+    transition: none;
+  }
+}
+
+.find-result-text {
+  margin: 0;
+  color: var(--text-1);
+}
+
+.find-result-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.find-not-see {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  color: var(--text-2);
+}
+
+/* ---------- the export note, the guide's lines ---------- */
+
+.privacy-export-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 var(--space-4) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.privacy-running {
+  color: var(--text-1);
+}
+
+.privacy-guide-note {
+  margin: var(--space-1) 0;
+}
+
+/* ---------- Settings › Private info ---------- */
+
+.privacy-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.privacy-settings h4 {
+  margin: var(--space-2) 0 0;
+  color: var(--text-1);
+}
+
+/* ---------- Review's private items ---------- */
+
+.review-private {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.review-private-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.review-kind-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-2);
+}
+
+.review-kind-filter select {
+  font: inherit;
+  color: var(--text-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.review-private-line {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.review-private-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  flex-basis: 100%;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.review-badge {
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-1);
+}
+
+.review-private-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  flex-basis: 100%;
+}
+
+.review-private-actions [aria-pressed='true'] {
+  border-color: var(--accent-400);
+  background: var(--accent-soft);
+}
+
+.review-part-play {
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.review-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.review-confirm p {
+  margin: 0;
+}
+
+.review-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

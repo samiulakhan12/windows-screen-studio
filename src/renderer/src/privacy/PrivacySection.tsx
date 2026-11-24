@@ -15,6 +15,7 @@ import { coverLength, setCoverLength } from './coverCommands'
 import { ringColourAt } from './coverPick'
 import { showCoverMarks, usePeek } from './peek'
 import { FindProgressLine, useFindProgress, useReaderState } from './readerState'
+import { openPrivateReview } from './reviewRequest'
 import './covers.css'
 
 /** The lengths *Add cover*'s menu offers (§2.1). */
@@ -183,7 +184,7 @@ export function PrivacySection(props: { services: EditorServices; onFind: () => 
         </div>
 
         {progress ? (
-          <FindProgressLine projectId={project.id} onReview={() => group.command('review')} />
+          <FindProgressLine projectId={project.id} onReview={() => openPrivateReview(group.command)} />
         ) : (
           <button type="button" className="btn ghost" onClick={props.onFind} data-testid="privacy-find">
             {t(PRIVACY_COPY.section.find)}
@@ -199,7 +200,7 @@ export function PrivacySection(props: { services: EditorServices; onFind: () => 
           <p className="cover-count" data-testid="privacy-count">
             <span>{t(PRIVACY_COPY.section.count, { count: items.items, n: fmt.count(items.items) })}</span>
             {items.check > 0 && <span> {t(PRIVACY_COPY.section.toCheck, { count: items.check, n: fmt.count(items.check) })}</span>}{' '}
-            <button type="button" className="link" onClick={() => group.command('review')} data-testid="privacy-review">
+            <button type="button" className="link" onClick={() => openPrivateReview(group.command)} data-testid="privacy-review">
               {t(PRIVACY_COPY.section.review)}
             </button>
           </p>

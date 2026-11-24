@@ -150,33 +150,38 @@ describe('auto-blur contracts: seams', () => {
     expect(coverGroup.validCoverSelection(p, 'gone')).toBe(false)
   })
 
-  it('37. Stubs render nothing: every mounted stub returns null, every seam stub returns its input, useReaderState and useFindProgress return null, and confirmLeaveFind resolves true (part P1 filled its own: they now do their work, tests 41-75 and 201-215)', async () => {
+  it('37. Stubs render nothing: every mounted stub returns null, every seam stub returns its input, useReaderState and useFindProgress return null, and confirmLeaveFind resolves true (parts P1 and P5 filled theirs: they now do their work where it applies, tests 41-75, 161-185, 201-215 and 241-258; with nothing to say they still render nothing)', async () => {
     const p = covered('s', [coverOf('c1', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)])])
-    const services = { store: { state: p }, player: {} }
+    const services = { store: { state: p, subscribe: () => () => undefined }, player: {} }
     const view = { screen: { x: 0, y: 0, w: 100, h: 100 } }
     // Part P1's components (PrivacySection, CoverSection, WeakBlurNote, CoverShapeButton, CoverTrack,
     // CoverHandles, PeekBanner, PeekInset) render their UI now: tests 63-69 and 205-214 hold them.
     void view
+    // Part P5's: with nothing to say for a project that hides nothing, never went through Find and has
+    // no copies, and no reader known, each renders nothing (tests 161-185 and 241-258 hold what they say).
+    const plain = base('s', 20)
+    const quiet = { store: { state: plain, subscribe: () => () => undefined }, player: {} }
     const stubs: [string, string, Record<string, unknown>][] = [
-      ['privacy/PrivacyExportNote', 'PrivacyExportNote', { project: p, onReview: () => undefined, onFind: () => undefined, onWait: () => undefined, onStopAndExport: () => undefined }],
+      ['privacy/PrivacyExportNote', 'PrivacyExportNote', { project: plain, onReview: () => undefined, onFind: () => undefined, onWait: () => undefined, onStopAndExport: () => undefined }],
       ['privacy/TranscribeNote', 'TranscribeNote', { project: p, place: 'service' }],
       ['privacy/TranslatedNote', 'TranslatedNote', { project: p, language: 'es' }],
-      ['privacy/NotCheckedNote', 'NotCheckedNote', { project: p, place: 'send' }],
+      ['privacy/NotCheckedNote', 'NotCheckedNote', { project: p, place: 'save' }],
       ['privacy/PublishMaskedNote', 'PublishMaskedNote', { project: p, text: 'x' }],
-      ['privacy/CopiesOffer', 'CopiesOffer', { services }],
+      ['privacy/CopiesOffer', 'CopiesOffer', { services: quiet }],
       ['privacy/PrivacySettings', 'PrivacySettings', { reveal: true }],
       ['privacy/readerState', 'FindProgressLine', { projectId: 's' }]
     ]
     for (const [file, name, props] of stubs) {
       const C = (await load<Record<string, Comp>>(file))[name]
-      expect(C(props), name).toBeNull()
+      expect(renderToStaticMarkup(React.createElement(C as never, props)), name).toBe('')
     }
     // The dialogs that are always mounted when asked for draw nothing yet.
     const { FindDialog } = await load<{ FindDialog: Comp }>('privacy/FindDialog')
     expect(renderToStaticMarkup(React.createElement(FindDialog as never, { services, onClose: () => undefined, mode: 'find' }))).toBe('')
+    // Until main has said, the reader's state is unknown; with no Find running there is no progress and leaving is not asked.
     const reader = await load<{ useReaderState(): unknown; useFindProgress(id: string): unknown; confirmLeaveFind(s: unknown): Promise<boolean> }>('privacy/readerState')
-    expect(reader.useReaderState()).toBeNull()
-    expect(reader.useFindProgress('s')).toBeNull()
+    const Probe = (): string => JSON.stringify([reader.useReaderState(), reader.useFindProgress('s')])
+    expect(renderToStaticMarkup(React.createElement(Probe))).toBe('[null,null]')
     await expect(reader.confirmLeaveFind(services)).resolves.toBe(true)
     const run = await load<{ gatherPrivacy(p: Project, c: unknown, s: AbortSignal): Promise<unknown> }>('privacy/privacyRun')
     await expect(run.gatherPrivacy(p, null, new AbortController().signal)).resolves.toBeNull()

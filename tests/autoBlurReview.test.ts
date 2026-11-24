@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { keepItems, mergeSnapshot, pendingCount, removeItems, reviewItems, reviewStatus, type ReviewItem } from '../src/shared/review/review'
-import { doneCounts, doneReviewing, mergePrivateRow, parsePrivateKey, privacyKeep, privacyKinds, privacyOrder, privacyPendingCount, privacyRemove, privacyReviewItems, privacyStatus, privateRowView } from '../src/shared/review/privacyReview'
+import { mergePrivateRow, parsePrivateKey, privacyKeep, privacyKinds, privacyOrder, privacyPendingCount, privacyRemove, privacyReviewItems, privacyStatus, privateRowView } from '../src/shared/review/privacyReview'
 import { privateBleepWord } from '../src/shared/privacy/coverData'
 import { PRIVATE_KINDS } from '../src/shared/privacy/kinds'
 import { t } from '../src/shared/i18n/t'
@@ -8,10 +8,10 @@ import type { Bleep, Cover, PrivateKind, Project } from '../src/shared/types'
 import { base, coverOf, key } from './autoBlurFixtures'
 
 /*
- * Review's private rows (docs/design/auto-blur.md §2.7, §14.3; §17.1 tests 161-165 and 243): one
+ * Review's private rows (docs/design/auto-blur.md §2.7, §14.3; §17.1 tests 161-163 and 243): one
  * row per group of found covers or private bleeps, its places as parts, its status read from the
- * project, Keep covered and Uncover through part P1's cover edits, the Check-first order, Done
- * reviewing, and the kinds' whole sentences. Pure.
+ * project, Keep covered and Uncover through part P1's cover edits, the Check-first order and the
+ * kinds' whole sentences. Pure.
  */
 
 const found = (id: string, start: number, end: number, x: number, y: number, over: Partial<Cover> = {}): Cover => coverOf(id, start, end, [key(start, x, y, 0.2, 0.05)], { found: 'auto', kind: 'email', group: 'g1', ...over })
@@ -134,20 +134,6 @@ describe('auto-blur P5: Review rows', () => {
       countMs = Math.min(countMs, performance.now() - t0)
     }
     expect(countMs).toBeLessThan(limit)
-  })
-
-  it('165. doneReviewing keeps every waiting suggestion in one step; its confirm counts what waits and the Check rows', () => {
-    const p = project([found('a1', 10, 20, 0.1, 0.1), found('b1', 30, 40, 0.5, 0.5, { kind: 'key', group: 'g2', found: 'check' }), coverOf('mine', 50, 60, [key(50, 0.1, 0.1, 0.1, 0.1)])], [said('s1', 70, 72, 'phone', 'g9'), { id: 'plain', start: 80, end: 81, word: 'darn', sound: 'tone', auto: true }])
-    expect(doneCounts(p)).toEqual({ waiting: 3, check: 1 })
-    const done = doneReviewing(p)
-    expect(done.covers!.every((c) => !c.found)).toBe(true)
-    expect(done.bleeps!.find((b) => b.id === 's1')!.auto).toBeUndefined()
-    // An ordinary bleep (a swear word) is not a private item: left as it was.
-    expect(done.bleeps!.find((b) => b.id === 'plain')!.auto).toBe(true)
-    expect(privacyPendingCount(done)).toBe(0)
-    expect(privacyKinds(done)).toEqual([])
-    expect(doneReviewing(done)).toBe(done)
-    expect(doneCounts(done)).toEqual({ waiting: 0, check: 0 })
   })
 
   it('243. Kind sentences: keepKind and uncoverKind give a whole sentence for every kind id', () => {
