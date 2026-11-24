@@ -30,6 +30,9 @@ pub struct Stream {
     pub size: Option<(usize, usize)>,
     pub decoded: u64,
     ended: bool,
+    /// Ends the stream at the first decoded frame at or after this time: the selection keeps nothing
+    /// later, and ffmpeg would otherwise decode the rest of the recording for nothing.
+    until: Option<f64>,
 }
 
 impl Stream {
@@ -39,7 +42,13 @@ impl Stream {
         check_size(video)?;
         let args: Vec<String> = ["-ss", &secs(seek), "-copyts", "-i", video, "-map", "0:v:0", "-vf", &format!("showinfo=checksum=0,{vf}"), "-fps_mode", "passthrough", "-f", "rawvideo", "-"].iter().map(|s| s.to_string()).collect();
         let run = Run::spawn(ffmpeg, &args, threads, limit)?;
-        Ok(Stream { run, bytes_per, size: None, decoded: 0, ended: false })
+        Ok(Stream { run, bytes_per, size: None, decoded: 0, ended: false, until: None })
+    }
+
+    /// Ends the stream at the first decoded frame at or after `t` (see `until`).
+    pub fn until(mut self, t: f64) -> Stream {
+        self.until = Some(t);
+        self
     }
 
     /// The next selected frame: its showinfo (time, key flag, output size) and its pixels.
@@ -53,6 +62,10 @@ impl Stream {
                 return Ok(None);
             };
             if info.filter == 0 {
+                if self.until.is_some_and(|u| info.t >= u) {
+                    self.ended = true;
+                    return Ok(None);
+                }
                 self.decoded += 1;
                 if self.size.is_none() {
                     if too_large(info.w, info.h) {

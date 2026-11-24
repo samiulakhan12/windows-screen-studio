@@ -1,5 +1,5 @@
 //! Counters the tests read through the `stats` command of the fixture build (R1, R2, R9, R16,
-//! R22): how many model files were read and parsed, how many plans were built, how many frames
+//! R22, R26): how many model files were read and parsed, how many plans were built, how many frames
 //! each decode produced. They hold numbers only.
 
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,6 +13,8 @@ pub static READ_DECODED: AtomicU64 = AtomicU64::new(0);
 pub static LAST_READ_DECODED: AtomicU64 = AtomicU64::new(0);
 /// Frames the follow sessions received.
 pub static FOLLOW_FRAMES: AtomicU64 = AtomicU64::new(0);
+/// Frames ffmpeg decoded for the pieces of backward follow sessions (counted before the selection).
+pub static FOLLOW_DECODED: AtomicU64 = AtomicU64::new(0);
 /// Template matches made (one part at one candidate in one frame).
 pub static MATCHES: AtomicU64 = AtomicU64::new(0);
 /// Nanoseconds spent matching.
@@ -50,6 +52,7 @@ pub fn json() -> serde_json::Value {
         "readDecoded": get(&READ_DECODED),
         "lastReadDecoded": get(&LAST_READ_DECODED),
         "followFrames": get(&FOLLOW_FRAMES),
+        "followDecoded": get(&FOLLOW_DECODED),
         "matches": get(&MATCHES),
         "matchNs": get(&MATCH_NS),
         "lookNs": get(&LOOK_NS),

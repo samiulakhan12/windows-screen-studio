@@ -199,7 +199,10 @@ impl Session {
         let hi = self.low;
         let lo = (hi - PIECE_S).max(self.from - EPS);
         let select = format!("gte(t\\,{})*lt(t\\,{})", crate::ffmpeg::secs(lo), crate::ffmpeg::secs(hi));
-        let mut stream = Stream::open(&self.ffmpeg, &self.video, lo.max(0.0), &half_vf(&select), 1, Duration::from_secs(60), gray_bytes)?;
+        // The piece's run ends at its window's end: past it the selection keeps nothing, and each piece
+        // decoded the rest of the recording (a backward session over a 144 s recording took over 20
+        // minutes, 10.8 s a piece against 0.13 s).
+        let mut stream = Stream::open(&self.ffmpeg, &self.video, lo.max(0.0), &half_vf(&select), 1, Duration::from_secs(60), gray_bytes)?.until(hi);
         let mut got = vec![];
         while let Some((info, img)) = stream.next()? {
             if info.t >= hi {
@@ -207,6 +210,7 @@ impl Session {
             }
             got.push(self.keep(img, info.t, info.w, info.h));
         }
+        stats::add(&stats::FOLLOW_DECODED, stream.decoded);
         drop(stream);
         self.low = lo;
         self.pieces.push_back(lo);

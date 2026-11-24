@@ -1,4 +1,4 @@
-//! The helper's tests R1-R22 (docs/design/auto-blur.md §17.1), against the fixture build:
+//! The helper's tests R1-R26 (docs/design/auto-blur.md §17.1), against the fixture build:
 //!
 //!   SSW_OCR_MODELS=<folder with the five pinned files> SSW_OCR_PYTHON=<python with numpy,
 //!   opencv-python-headless, pyyaml> cargo test --profile test-fast --features fixture
@@ -940,5 +940,23 @@ fn r25_look_reports_the_scroll_of_a_column_four_tiles_wide() {
         good += usize::from(hit);
     }
     assert!(good + 2 >= frames.len() - 1, "{good} of {} frames report the column's move (0, -6)", frames.len() - 1);
+    let _ = std::fs::remove_dir_all(w);
+}
+
+#[test]
+fn r26_a_backward_piece_decodes_from_its_key_frame_to_its_own_end_only() {
+    let w = work("r26");
+    // Two minutes at 30 fps, a key frame every 15 frames.
+    let video = w.join("long.mp4");
+    run_ffmpeg(&["-f", "lavfi", "-i", "testsrc2=s=320x180:r=30:d=120", "-c:v", "libx264", "-preset", "ultrafast", "-g", "15", "-pix_fmt", "yuv420p", video.to_str().unwrap()]);
+    let mut h = opened();
+    let before = h.stats()["followDecoded"].as_u64().unwrap();
+    // A backward session over [10, 10.4]: one piece, from the key frame at 9.5 s up to its end.
+    let s = h.send(json!({ "op": "followOpen", "video": video.to_string_lossy(), "key": 9.5, "from": 10.0, "to": 10.4, "dir": -1 }));
+    let opened = h.wait(s, Duration::from_secs(120));
+    assert!(opened["session"]["frames"].as_u64().unwrap() >= 12, "{opened}");
+    let decoded = h.stats()["followDecoded"].as_u64().unwrap() - before;
+    // The piece's 13 frames and at most a key-frame interval before them; not the 100 s after it.
+    assert!(decoded <= 15 + 13, "decoded {decoded} frames for one piece");
     let _ = std::fs::remove_dir_all(w);
 }

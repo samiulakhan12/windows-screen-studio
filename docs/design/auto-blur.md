@@ -1842,7 +1842,9 @@ interval (GOP) at a time, newest first, keeping at most two intervals in memory.
 ([t, t], every hit of a span read at one frame) holds that frame (R23), and going backward the frame
 at t is always that frame itself: the older piece holding it is decoded before a frame of a newer
 piece could stand in for it (R24; one did for up to 0.1 s at each piece's edge, and a backward walk
-held its box still there while the text scrolled on). Main registers each
+held its box still there while the text scrolled on). Each piece's decoding stops at the piece's end
+(R26): its frame selection keeps nothing later, and without the stop each piece decoded the rest of
+the recording, 10.8 s a piece of a 144 s recording against 0.13 s. Main registers each
 hit as a **track** with `track { session, track, t, parts }` (templates cut at frame `t`), then walks
 every track of the span together, one analysed frame at a time: `match { session, t, tracks: [{
 track, parts, candidates }] }` answers `{ id, matched: [{ track, parts: (number | null)[], best: {
@@ -3683,7 +3685,7 @@ line only).
 |---|---|
 | `native/ocr/Cargo.toml`, `Cargo.lock` (new) | its own `[workspace]`, `license = "MIT"`, `publish = false`, `rust-version = "1.91"`; `tract-onnx = { version = "=0.23.10", default-features = false }`, `rqrr = "=0.11.0"`, `sha2`, `serde_json`, `windows-sys` (job objects, `SetErrorMode`, `WerSetFlags`, `SetUnhandledExceptionFilter`, `TerminateProcess`), `windows` (`Media_Ocr`, `Graphics_Imaging`, `Storage_Streams`, `Foundation` for §5.13); profile `release` with `opt-level = "s"`, `lto = true`, `codegen-units = 1`, `strip = true`, `panic = "unwind"` (needed for `catch_unwind`), and `opt-level = 3` for `tract-linalg` and `tract-core` (the mixed profile); feature `fixture` (test builds only) |
 | `native/ocr/src/main.rs`, `protocol.rs`, `models.rs`, `look.rs`, `read.rs`, `ctc.rs`, `follow.rs`, `qr.rs`, `ffmpeg.rs`, `guard.rs`, `winocr.rs` (new) | the commands and events of `protocol.ts`; the three threads of §5.5 with `careful`, `release` and `cancel` handled between commands; heartbeat every 2 s from start (also during `open`); exit on stdin end and on a failed heartbeat write; `open` reads each model once, hashes the buffer and parses that buffer, every pin before any parse; the three detector buckets and both recognisers' five plans built at open and kept; `tooLarge`; look (§5.2); read with buckets, packing, tiles, joins, chunks, spans, rings and QR, `partial` at a cap (§5.5); `careful` as its own event (§5.6); the follow session (§5.8); the Windows reader behind `reader: 'windows'` (§5.13); ffmpeg with `-threads 1` (2 for look) in a job object with `KILL_ON_JOB_CLOSE`, seeking to key frames; `pause` and `resume` (§5.11); `catch_unwind` around each read with plans rebuilt after a panic; the panic hook, `SetErrorMode`, `WerSetFlags` and the unhandled-exception filter at start (§10.4, §10.5). The `fixture` feature adds `{ op: 'readImage', png }` for the evaluation PNGs; release builds do not contain it |
-| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R25 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
+| `native/ocr/tests/cli.rs`, `native/ocr/README.md` (new) | R1-R26 (§17.1); the README records the pins, the tract parity method and the measurements of §5.5, §5.6 and §5.11 |
 | `scripts/build-native.mjs` | `--ocr` and `--ocr-host` flags; `cargoOcr`, `buildOcrWindows` (MinGW POSIX, the import allow-list, the budget, copied to `native/bin/ssw-ocr.exe`), `buildOcrHost` |
 | `scripts/lib/packaging.cjs` | `function ocrHelper(): string`; `const OCR_IMPORTS = ['KERNEL32.dll', 'ntdll.dll', 'msvcrt.dll', 'api-ms-win-core-synch-l1-2-0.dll', 'bcryptprimitives.dll', 'combase.dll', 'oleaut32.dll', 'api-ms-win-core-winrt-l1-1-0.dll']` (the WinRT three for §5.13; measured by the first build); `const OCR_BUDGET = { compressed: 3.9e6, installed: 16e6 }`; `function ocrHelperStatus(): …`; `function ocrHelperProblems(file: string): string[]` (brotli 11 with a 2^24 window, as `llmHelperProblems`, `:214-237`); `speechResources` carries it to `resources/native` so it is signed |
 | `scripts/verify-dist.mjs` | §4d: the helper's imports, budget and no `readImage` string; for a release build (`FLOWN_RELEASE=1`), `READER_MIRROR` must not be null |
@@ -3695,7 +3697,7 @@ line only).
 | `src/main/privacy/helperUse.ts` (new) | What the helper's users share, in one place with no Electron (readerHelper re-exports it; the scan, findIpc and the rules' worker take it from here): `type HelperFailure`; `class HelperError extends Error { readonly kind: HelperFailure }`; `function findFailureOf(err: unknown): FindFailure`; `function failureKind(err: unknown): string` (a failure's kind for a log line: the helper's error kind or the error's name, never its message); `function pauseWhileRecording(helper: { pause(): void; resume(): void }, recording: () => boolean, onWaiting: (waiting: boolean) => void, everyMs?: number): () => void` (checked at once, then every 2 s; the scan passes the helper it has now, which a restart replaces); `function carefulLines(result: Pick<ReadResult, 'lines'>, hits: readonly Hit[]): number[]`; `function withCareful(result, lines, careful)` |
 | `src/main/privacy/readerIpc.ts` (stub from the contracts) | `function registerReaderIpc(): void` (sender check first) |
 | `tests/fixtures/fake-ocr-helper.cjs` (new) | a scripted helper for main's tests and the e2e runs: answers from a JSON script (`SSW_OCR_SCRIPT`), can crash on a chosen read, stall, answer a bad hash, answer `partial`, or write a marker string to stderr |
-| Tests | 76-100 and 216-222; Rust R1-R25 |
+| Tests | 76-100 and 216-222; Rust R1-R26 |
 
 ### 16.3 Part P3 · The text rules
 
@@ -3810,7 +3812,7 @@ hits); the native Bangla review (§12.4); the other account's optional `private.
 ### 17.1 Unit tests (vitest). Each is its own test and fails without the code of its rule.
 
 By owner: contracts 1-40 and 186-197 (test 20 is the guard, §17.2), P1 41-75 and 201-215, P2
-76-100, 216-222 and Rust R1-R25, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
+76-100, 216-222 and Rust R1-R26, P3 101-135 and 223-228, P4 136-160 and 229-240, P5 161-185 and
 241-258. The numbers added by this revision follow each part's first block, so every earlier number
 keeps its meaning. Test files are named `tests/autoBlur<Area>.test.ts`; each numbered test
 is one `it` whose title starts with its number, and `tests/autoBlurNumbers.test.ts` checks that every
@@ -4203,6 +4205,9 @@ number of this list exists exactly once.
 - R24. **A backward session answers each frame itself**: a track walked back over 60 frames of a
   scroll, across a piece's edge, matches at every frame where the scroll put it, never at a later
   frame's place.
+- R26. **A backward piece decodes only up to its own end**: a backward session over 0.4 s at 10 s of
+  a two-minute recording decodes at most its frames and a key-frame interval before them (a decode
+  counter), not the 100 s after it.
 
 **P3 · The text rules**
 
