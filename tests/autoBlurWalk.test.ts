@@ -737,6 +737,20 @@ describe('auto-blur P4: following', () => {
     expect(kept.end).toBeCloseTo(6, 4)
   })
 
+  it('Forward, a text lost at a page change is shown gone by the next read even where a line on the new page holds a third of its text: only a line holding all of it keeps a whole-page lost area (found end to end: an email lost at a cut kept the whole frame covered for the next page, another email there sharing its domain)', async () => {
+    const T: Box = [400, 300, 200, 30]
+    const page: Box = [0, 0, 1920, 1080]
+    const look = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 2) < 1e-6 ? { changed: [page] } : {}))
+    const score = (t: number, b: Box): number => (t < 2 ? (at(b, T) ? 0.95 : 0.3) : 0.3)
+    const other = readOf(2.3, [page], [{ box: [1200, 800, 300, 30], text: 'lucas.silva@example.com.br' }])
+    const [gone] = await walkSpan([start(1, T)], 1, look, readIndex([other]), placeMatcher(T, score), NO_HINTS, HD)
+    expect(gone.end).toBeLessThan(2.4)
+    // The whole text read elsewhere on the new page keeps it.
+    const same = readOf(2.3, [page], [{ box: [1200, 800, 300, 30], text: 'priya.raman@example.com' }])
+    const [kept] = await walkSpan([start(1, T)], 1, look, readIndex([same]), placeMatcher(T, score), NO_HINTS, HD)
+    expect(kept.end).toBeGreaterThan(2.4)
+  })
+
   it('A browser zoom about the page\'s top left is followed: one zoom estimated from every text of the region together places each of them (found end to end: tried at four scales about the region\'s centre, a zoom from 1.1 to 1.25 placed nothing, and every walk on the page was lost)', async () => {
     // A page from (0, 0) zooms from 1.1 to 1.25 (×1.136) about its top left at 2 s, three rows of text on it.
     const region: Box = [0, 0, 640, 720]

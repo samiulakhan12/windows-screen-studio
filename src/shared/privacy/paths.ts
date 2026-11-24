@@ -197,6 +197,14 @@ export function holdsText(own: string, line: string): boolean {
   return false
 }
 
+/** A read line holds all of a text: folded, inside it, or within one edit of a part of it. */
+export function holdsAll(own: string, line: string): boolean {
+  const o = foldText(own)
+  const l = foldText(line)
+  if (!o || !l) return false
+  return l.includes(o) || (o.length >= 5 && substringDistance(o, l, 1) <= 1)
+}
+
 /** `box` moved by a candidate: scaled about its centre, then shifted. */
 function moved(box: Box, c: Candidate): Box {
   const s = c.scale > 0 ? c.scale : 1
@@ -1061,7 +1069,9 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           continue
         }
         if (!w.lost || w.hold || w.pending !== null || reads.templateOnly || coverage(r.areas, w.box) < COVERED) continue
-        const holds = r.lines.some((l) => overlaps(l.box, w.box) && l.texts.some((x) => holdsText(w.start.own, x)))
+        // After a page change the lost area is the page: a line there holding a third of the text (an
+        // email's domain in another email) is not the text; only a line holding all of it is.
+        const holds = r.lines.some((l) => overlaps(l.box, w.box) && l.texts.some((x) => (w.paged ? holdsAll(w.start.own, x) : holdsText(w.start.own, x))))
         if (!holds && !searches.includes(w)) {
           searches.push(w)
           explainedBy.set(w, r.lines.filter((l) => overlaps(l.box, w.box)).map((l) => l.box))
