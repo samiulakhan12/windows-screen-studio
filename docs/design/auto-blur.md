@@ -1906,6 +1906,13 @@ inverted (dark mode, a highlight), so one template serves both.
    placed where it puts it, and the box holds the union of its
    last box and the moved one, clipped to the frame, until the motion takes it wholly out (below and
    in the backward walk). A1's scroll-ins started their covers one or two frames late without it.
+   For a walker placed at the step before whose motion is its region's real move, the region's edges
+   count as the frame's: a page scrolling under what does not scroll (a sticky header, a toolbar) goes
+   out of view at the region's edge, whose tiles do not change. An edge of the region inside the frame
+   is taken one tile in (the region is known to a tile, and a sticky header covers the top of its first
+   row of tiles): a row reaching it is cut already, its padded template taking in the header's edge
+   (it matched 0.51 where it was going, and a copy of it a period down matched clearly and took the
+   cover). A lost walker's motion is a guess, and only the frame's edges count for it.
 
 **Evidence of absence.** A cover ends only when the text is shown to be gone:
 
@@ -1940,7 +1947,9 @@ area between them stays).
 
 **Carried out of the frame.** Going forward, a cover also ends where the walker's own motion (step
 7: the real move of the region the text moved with, or the speed guide) carries its box wholly out
-of the frame (scrolled or dragged out of view), with no
+of the frame (scrolled or dragged out of view), or, placed at the step before, wholly out of the
+region it moved with (under a sticky header: a row scrolled under one was lost over the whole column
+to the end, the reads finding its copies further down), with no
 read needed: the mirror of the backward walk's rule. That frame's box is the union of the last box
 and the moved one, clipped to the frame, so the source frames before it, which show the text cut at
 the edge, stay covered, and the cover ends one analysed frame after it: a text cut at the edge is

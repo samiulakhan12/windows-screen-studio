@@ -677,21 +677,41 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     return { box: xfBox(w, w.tpl.box, xf), xf }
   }
   const outOfFrame = (b: Box): boolean => right(b) <= 0 || bottom(b) <= 0 || b[0] >= size.width || b[1] >= size.height
-  /** Whether `xf` moves the walker's cover box out through an edge of the frame: past a side it moves toward (a box resting over an edge, its padding beyond it, moving along it, is not). */
-  const outward = (w: Walker, xf: Xf): boolean => {
+  const frameBox: Box = [0, 0, size.width, size.height]
+  /**
+   * Whether `xf` moves the walker's cover box out through an edge of `within` (the region it moves
+   * with, else the frame): past a side it moves toward (a box resting over an edge, its padding beyond
+   * it, moving along it, is not). The region's edge inside the frame is where a scrolled page goes under
+   * what does not scroll (a sticky header): the tiles there do not change, so the text is not there.
+   */
+  const outward = (w: Walker, xf: Xf, within: Box | null = null): boolean => {
     const dx = xf.dx - w.off.dx
     const dy = xf.dy - w.off.dy
     const b = xfBox(w, w.tpl.box, xf)
-    return (dx < -0.25 && b[0] < 0) || (dy < -0.25 && b[1] < 0) || (dx > 0.25 && right(b) > size.width) || (dy > 0.25 && bottom(b) > size.height)
+    const e = within ? inner(within) : frameBox
+    return (dx < -0.25 && b[0] < e[0]) || (dy < -0.25 && b[1] < e[1]) || (dx > 0.25 && right(b) > right(e)) || (dy > 0.25 && bottom(b) > bottom(e))
   }
   /**
-   * A text its own motion moves partly out of the frame is cut at the edge, not gone and not fading: it
-   * is placed where that motion puts it, and the box holds the union of its last box and the moved one
-   * (clipped), so every frame up to the one it is wholly out stays covered (§5.8). False when the motion
-   * does not take it past an edge it moves toward.
+   * A region's edges inside the frame, one tile in: the region is known to a tile, and a sticky header
+   * covers the top of the region's first row of tiles (its tiles change below the header's edge). A text
+   * scrolling toward it is cut there already: its padded template takes in the header's edge and matches
+   * nowhere (0.5 where it was going, at the frame its padding met the edge).
    */
-  const atEdge = (w: Walker, f: number, m: { box: Box; xf: Xf }): boolean => {
-    if (!outward(w, m.xf)) return false
+  const inner = (r: Box): Box => {
+    const x0 = r[0] > 0 ? r[0] + tile : r[0]
+    const y0 = r[1] > 0 ? r[1] + tile : r[1]
+    const x1 = right(r) < size.width ? right(r) - tile : right(r)
+    const y1 = bottom(r) < size.height ? bottom(r) - tile : bottom(r)
+    return [x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0)]
+  }
+  /**
+   * A text its own motion moves partly out of the frame, or of the region it moves with, is cut at the
+   * edge, not gone and not fading: it is placed where that motion puts it, and the box holds the union of
+   * its last box and the moved one (clipped), so every frame up to the one it is wholly out stays covered
+   * (§5.8). False when the motion does not take it past an edge it moves toward.
+   */
+  const atEdge = (w: Walker, f: number, m: { box: Box; xf: Xf }, within: Box | null = null): boolean => {
+    if (!outward(w, m.xf, within)) return false
     place(w, f, m.xf, clip(union(w.box, m.box), size))
     return true
   }
@@ -709,7 +729,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
           startBackward(w, f, clip(back.box, size))
           return
         }
-        if (w.pending === null && atEdge(w, f, back)) return
+        if (w.pending === null && atEdge(w, f, back, !w.lost && best !== null ? region : null)) return
       }
       // A page change with no match where the walker's own motion puts the text: the text came with the
       // page. A change the look pass saw as a move of the text's region (a scroll, a drag) is no page
@@ -737,19 +757,21 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       w.hold = { until, lastChange: t }
       return
     }
-    // Forward, the backward rule's mirror: the region the text moved with carried it out of the frame
-    // (scrolled or dragged out of view), from where it was last placed: it is gone from here on. Found
-    // end to end: without it, text scrolled off the screen was lost, its lost area the whole scrolled
-    // region, to the end of the recording (a template search over a whole page always finds a part).
+    // Forward, the backward rule's mirror: the region the text moved with carried it out of the frame,
+    // or out of that region (scrolled or dragged out of view, or under a sticky header, whose tiles do not
+    // change), from where it was last placed: it is gone from here on. Found end to end: without it, text
+    // scrolled off the screen was lost, its lost area the whole scrolled region, to the end of the
+    // recording (a template search over a whole page always finds a part); and a row scrolled under a
+    // sticky header was lost over the whole column to the end, the read finding its copies further down.
     // Cut at the edge on the way out, it is there still: the cover holds the union.
     if (dir === 1 && !w.hold && w.pending === null) {
       const gone = motionOf(w, f, best)
-      if (gone && outOfFrame(gone.box)) {
+      if (gone && (outOfFrame(gone.box) || (!w.lost && best !== null && region !== null && !overlaps(gone.box, region)))) {
         setBox(w, f, clip(union(w.box, gone.box), size))
         endForward(w, f, true)
         return
       }
-      if (gone && atEdge(w, f, gone)) return
+      if (gone && atEdge(w, f, gone, !w.lost && best !== null ? region : null)) return
     }
     if (w.pending !== null && dir === 1) {
       endForward(w, w.pending)
@@ -857,8 +879,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       // a text resting at the edge, its padding over it, is matched as any other.
       const leaving = (a: (typeof asks)[number]): boolean => {
         const pred = predicted(a.w)
-        const ways = [guide(a.w, f), ...(a.best ? [{ dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }] : [])]
-        return ways.some((x) => outward(a.w, x))
+        if (outward(a.w, guide(a.w, f))) return true
+        return !!a.best && outward(a.w, { dx: pred.dx + a.best.dx, dy: pred.dy + a.best.dy, scale: pred.scale }, a.w.lost ? null : a.region)
       }
       const far = rest.filter((a) => !leaving(a))
       const res = far.length ? await m.match(

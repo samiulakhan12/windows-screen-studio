@@ -676,6 +676,24 @@ describe('auto-blur P4: following', () => {
     expect(uncovered(followed, 30, mine, 0.5, 3)).toEqual([])
     expect(near(pathBox(followed, 30)(2.5), mine.at(2.5)!)).toBe(true)
   })
+
+  it('A row a scroll carries under a sticky header is covered while any of it shows and its cover ends once it is wholly under the header, the region\'s edge being its edge (found end to end: its padded template met the header\'s edge and matched nowhere, and the row was lost over the whole column to the end of the recording)', async () => {
+    // A header 40 px tall does not change; the list below it (its region from the tile row at 32) scrolls up 10 px an analysed frame from 1 s.
+    const column: Box = [0, 32, 352, 1048]
+    const k = (t: number): number => Math.max(0, Math.round((t - 1) * 30))
+    const yAt = (t: number): number => 200 - 10 * k(t)
+    const shown: Planted = { key: KEY, text: 'x', at: (t) => (yAt(t) + 24 > 40 ? [16, Math.max(40, yAt(t)), 200, Math.min(24, yAt(t) + 24 - 40)] : null) }
+    // The list repeats every 336 px; the look pass offers the scroll and the shift of a whole period behind it.
+    const look = lookOf(HD, 30, 4, (_i, t) => (k(t) >= 1 && t < 3.5 ? { changed: [column], moves: [move(column, 0, -10, 0.9, [[0, 326, 0.8]])] } : {}))
+    // The template is cut padded 5 px: it matches only while its padding is below the header's edge; its copy a period down matches as well as it.
+    const score = (t: number, b: Box): number => ([0, 336].some((d) => yAt(t) + d - 5 >= 40 && at(b, [16, yAt(t) + d, 200, 24])) ? 0.95 : 0.3)
+    const own: Box = [16, 200, 200, 24]
+    const [track] = await walkSpan([start(0.5, own)], 1, look, readIndex(), placeMatcher(own, score), NO_HINTS, HD)
+    const under = sourceFrames(30, 0.5, 4).find((t) => shown.at(t) === null)!
+    expect(uncovered(track, 30, shown, 0.5, under)).toEqual([])
+    // Wholly out of the list's region the frame after (its box under 32): the cover ends one analysed frame later, not where the box would leave the frame.
+    expect(track.end).toBeLessThanOrEqual(under + 2 / 30 + 1e-6)
+  })
 })
 
 /** Unused helpers kept typed for the scripts above. */
