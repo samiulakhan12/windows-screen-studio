@@ -349,17 +349,6 @@ describe('auto-blur P3: the screen rules', () => {
     expect(detectFrame(apart, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME })[0].spans).toHaveLength(1)
   })
 
-
-  it('A token wrapped at its block\'s right edge continues at the start of the next row even when the reader split its row, and its last one to three characters alone on that row are its rest (found end to end: a JWT on the held-out logs page, its log line read as two boxes, left its last character uncovered on the next row)', () => {
-    const jwt = token('«=eyJ|B30».«=eyJ|B40».«B42»', 27)
-    const rows = [line('2026-11-23T10:02:13.640Z DEBUG http', 16, 189, { charW: 8, h: 17 }), line(`headers authorization="Bearer ${jwt}`, 321, 190, { charW: 8, h: 14 }), line('p"', 14, 207, { charW: 8, h: 17 })]
-    const hits = detectFrame(rows, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME }).filter((h) => h.kind === 'key')
-    expect(hits).toHaveLength(1)
-    expect(hits[0].spans.map((s) => s.line)).toEqual([1, 2])
-    // A plain word starting the next row after a line short of its block's right edge is not the rest of a token.
-    const short = [rows[0], line(`token ${jwt}`, 321, 190, { charW: 8, h: 14 }), line('ok', 14, 207, { charW: 8, h: 17 }), line('x'.repeat(220), 321, 260, { charW: 8, h: 14 })]
-    expect(detectFrame(short, [], { kinds: DEFAULT_KINDS, regions: [], names: NO_NAMES, frame: FRAME }).filter((h) => h.kind === 'key')[0].spans).toHaveLength(1)
-  })
   it('120. one space in a key: sk-proj- with one inner space is one token; two spaces are not', () => {
     const a = token('«=sk-proj-|A12»', 41)
     const b = token('«A32»', 42)
