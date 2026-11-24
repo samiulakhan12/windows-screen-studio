@@ -1121,7 +1121,8 @@ async function main() {
     await win.keyboard.press('Control+c')
     await win.keyboard.press('Control+v')
     await af.savedProject(home, 'rec-a12', (p) => (p.covers ?? []).length === 5, 'paste adds the two copied covers')
-    // Three blur shapes turned into covers.
+    // Three blur shapes turned into covers, from the Shapes tab (several items selected show the Selection view).
+    await af.openShapes(win)
     await win.click('[data-testid="privacy-weak-turn"]')
     const turned = await af.savedProject(home, 'rec-a12', (p) => !(p.shapes ?? []).some((s) => s.kind === 'blur') && (p.covers ?? []).length === 8, 'the three blurs are covers')
     console.log(`  ${turned.covers.length} covers after turning the blurs into covers`)
