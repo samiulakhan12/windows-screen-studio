@@ -23,6 +23,9 @@ function videoOf(projectId: string): { video: HTMLVideoElement; queue: Promise<u
     const video = document.createElement('video')
     video.muted = true
     video.preload = 'auto'
+    // As the preview's own video (editor/media.ts): without it the canvas the ring is read from is
+    // tainted, getImageData throws, and every pick gave Dark.
+    video.crossOrigin = 'anonymous'
     video.src = mediaUrl(projectId, 'screen.mp4')
     v = { video, queue: Promise.resolve() }
     // One project's video at a time: an older project's is let go.
