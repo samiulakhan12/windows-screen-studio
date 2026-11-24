@@ -326,8 +326,17 @@ export function trackText(project: Pick<Project, 'transcript' | 'bleeps'>, segme
   return maskChars(segment.text)
 }
 
+/**
+ * `text`, made from the project's stored texts, as it leaves Flown (§7.5): the spoken forms masked,
+ * as privateView masks its fields. `text` itself without private bleeps.
+ */
+export function privateText(project: Pick<Project, 'transcript' | 'bleeps'>, text: string): string {
+  return maskPrivate(text, spokenForms(project))
+}
+
 /** The stored texts made from, or typed beside, captions that the private view masks (§7.5). */
 export const PRIVATE_TEXT_FIELDS: readonly string[] = Object.freeze([
+  'name',
   'chapters[].title',
   'titles[].title',
   'titles[].subtitle',
@@ -359,6 +368,8 @@ export function privateView<P extends Project>(project: P): P {
   if (forms && (forms.phrases.length || forms.digits.length)) {
     const mask = (s: string | undefined): string | undefined => (typeof s === 'string' ? maskPrivate(s, forms) : s)
     const patch: Partial<Project> = {}
+    // The name: the pack's title becomes it (Use as the recording's name), and the description file, the share post and a browser frame carry it.
+    if (typeof project.name === 'string' && mask(project.name) !== project.name) patch.name = mask(project.name)!
     if (project.chapters?.some((c) => mask(c.title) !== c.title)) patch.chapters = project.chapters.map((c) => (mask(c.title) === c.title ? c : { ...c, title: mask(c.title)! }))
     if (project.titles?.some((c) => mask(c.title) !== c.title || mask(c.subtitle) !== c.subtitle))
       patch.titles = project.titles.map((c) => {

@@ -2501,16 +2501,19 @@ no field holds a form, and never changes the stored project. The user still sees
 own text in the panels that edit it (the chapter list, the title card fields, the pack's text
 boxes, the guide's step fields); the preview, every export and every other output use the view.
 
-Its fields (`PRIVATE_TEXT_FIELDS`): `chapters[].title`; `titles[].title` and `.subtitle`;
-`publish.description`; `guide.title`, `.intro`, `.expected`, `.actual`, `.details[].text`, and every
-string of `.steps[]` and `.added[]`.
+Its fields (`PRIVATE_TEXT_FIELDS`): `name` (the pack's title becomes it through *Use as the
+recording's name*; the description sidecar, the share post and a browser frame's title bar carry it);
+`chapters[].title`; `titles[].title` and `.subtitle`; `publish.description`; `guide.title`, `.intro`,
+`.expected`, `.actual`, `.details[].text`, and every string of `.steps[]` and `.added[]`. A text made
+from them outside the view (the description sidecar's title, a part's "Part 1 of …") is masked the
+same way with `privateText(project, text)`.
 
 | Text | Where it is made | How the private forms are masked |
 |---|---|---|
 | Chapter names, found or made by AI | `src/shared/chapters/names.ts`, `chaptersRun.ts` | drawn and written from `privateView`: the chapter bar (`chapterBarLayer.ts`), the file's chapter metadata (`chaptersOf`, `exporter.ts:273-276`), the chapters sidecar, the pack's chapters, timeline markers |
 | Chapter title cards (finding 12) | `titles[]` made from chapters | drawn from `privateView` (`titleCardLayer.ts`), so the preview, every export, thumbnails and guide shots show the masked card |
 | Graphics made from captions (pop-ups, counters, list cards, quote cards) | drawn from caption words with `maskBleeped` | drawn: `maskBleeped` also applies `maskPrivate` when the project has private bleeps |
-| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the dialog says so (§2.13) |
+| Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the title, once *Use as the recording's name* made it the name, goes out from `privateView` in the description sidecar (its title line, and a part's) and the share post; the dialog says so (§2.13) |
 | Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | made from masked segments; written from `privateView` (`guideRun.ts`, PDF, HTML, Markdown, clipboard) |
 | Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments |
 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` |
@@ -2714,8 +2717,8 @@ applies with no change of its own. Line numbers are at `37f9355`.
 | 17 | Home thumbnails | `Home.tsx:201-238` `captureThumbnail` (drawImage `:231`, `toDataURL` `:232`), cache `:195-199` | `ProjectSummary` gains `thumbCovers?: NormRect[]`, computed in main by `listProjects` (`src/main/projects.ts:147-159`) with `thumbCovers(project, from, to)`: the boxes of the covers and of the blur and pixelate shapes active **anywhere** in `[t − 0.1 s, t + 0.1 s]`. The thumbnail's time `t` is worked out in one place, `thumbTime(duration)` = min(1, duration × 0.15) (contracts), which `captureThumbnail` (`Home.tsx:221`, today from the element's `video.duration`) and main both call with `project.duration`, so the two cannot drift apart by more than the window. `captureThumbnail` fills the boxes in Dark after drawing the frame and before `toDataURL`; the cache key adds a hash of the boxes. Absent when there are none, so other projects' summaries and thumbnails are unchanged. Question 13: the crop |
 | 18 | Filmstrip on the timeline | `src/main/filmstrip.ts:35-50`, `:161`, cache written `:208`; drawn by `src/renderer/src/editor/Filmstrip.tsx` | each tile shows the last key frame at or before its time `t` (`-skip_frame nokey`, `round=up`, `filmstrip.ts:30-46`), which can be up to one key-frame interval earlier (15 frames). So each tile is drawn with the boxes of every cover active anywhere in `[t − 15 / fps − 0.02 s, t]` filled in Dark (`fillCoverTiles`, P1); the cache file stays raw on this PC, beside `screen.mp4` itself |
 | 19 | Project copies: Duplicate, Make vertical or square, Short clips, Shorter version | `projectCopy.ts:154-235` (write `:229`); `duplicate.ts:75-90`, `clipCopy.ts:141-153`, `short60.ts:269` | covers ride `...project`; every copy, clip copies included, keeps every cover and private bleep (§4.7); written with the legacy shapes (§4.6). Copies made before Find get its covers through *Also cover the copies* and *Bring them over* (§2.12, §5.10) |
-| 20 | Share after export | `src/main/share/shareService.ts` (`isExported` gate `:20`), `copyToFolder.ts:152`, `webhookPost.ts:37` | exported files only; posted text is the pack's (row 21) |
-| 21 | Publishing copy pack: copy, sidecar description, share post | `pack.ts:88-91`, `publishRun.ts:158`, `PublishDialog.tsx` | text only: masked segments, `privateView` for the saved description (§7.5), `aiTextFor`; the dialog's note (§2.13) |
+| 20 | Share after export | `src/main/share/shareService.ts` (`isExported` gate `:20`), `copyToFolder.ts:152`, `webhookPost.ts:37` | exported files only; the post names the video by `privateView(project).name`, which the export dialog passes as the share's title after the export and from its done view (row 21) |
+| 21 | Publishing copy pack: copy, sidecar description, share post | `pack.ts:88-91`, `publishRun.ts:158`, `PublishDialog.tsx`; `exportBundleRun.ts` `sidecarText` | text only: masked segments, `aiTextFor`; Copy and Copy tags through `maskPrivate`; the saved description from `privateView`; without one (and for each part) the description file's title line and a part's "of" through `privateText`; the share post's name from `privateView` (§7.5); the dialog's note (§2.13) |
 | 22 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` (§7.5) |
 | 23 | Caption contrast probe | `contrastProbe.ts:55-79` (drawFrame `:67`) | reads the covered frame; emits nothing |
 | 24 | Internal readers that output numbers only: scene scan, still detection, the look pass | `sceneScan.ts:289`, `analysisIpc.ts:168`, §5.2 | no pixels leave |

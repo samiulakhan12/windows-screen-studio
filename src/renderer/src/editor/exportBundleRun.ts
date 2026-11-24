@@ -14,7 +14,7 @@ import type { BatchExtras } from './exporter'
 import type { TimelineRequest } from '../../../shared/api/export'
 import { writeTimelineStep } from './timelineRun'
 import { t } from '../../../shared/i18n/t'
-import { privateView } from '../../../shared/privacy/spoken'
+import { privateText, privateView } from '../../../shared/privacy/spoken'
 
 /**
  * What one file per chapter exports for `part`: the part's project (its clips and freezes give the
@@ -74,7 +74,8 @@ export function sidecarText(kind: SidecarKind, req: BundleRequest, language?: st
   const chapters = outputChapters(project.chapters ?? [], project.clips, plan)
   if (kind === 'chapters') return chapterListText(chapters, length)
   // With the copy pack's saved YouTube description (NW-13), that text as its Copy gives it; a part keeps its own.
-  if (kind === 'description') return exportDescription(project, req.title, length, chapters, req.part)
+  // Its title and a part's "of" are the project's name or a chapter's: masked as the view masks them (§9 row 21).
+  if (kind === 'description') return exportDescription(project, privateText(req.project, req.title), length, chapters, req.part ? { ...req.part, of: privateText(req.project, req.part.of) } : undefined)
   return null
 }
 
