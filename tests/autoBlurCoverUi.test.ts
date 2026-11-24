@@ -233,6 +233,33 @@ describe('auto-blur P1: adding covers', () => {
     expect(row).toMatch(/\)\)\}\s*<CoverShapeButton services=\{services\} \/>\s*<\/div>/)
   })
 
+  it('PrivacySection shows Find\'s result line once Find ended (§2.6), as Review\'s header does, with Review; none while Find runs', async () => {
+    const runs = await load<{ beginRun(r: unknown): boolean; endRun(id: string, o: unknown): void; resetRuns(): void }>('privacy/findRuns')
+    runs.resetRuns()
+    setUp(project({ covers: [cover('a', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)], { found: 'check', kind: 'email', group: 'g1' })] }))
+    const root = { type: PrivacySection, props: { services: services(), onFind: () => undefined } }
+    // Before any Find: no result line.
+    let els = render(root)
+    expect(byTestId(els, 'find-result')).toBeUndefined()
+    // A run of this project ends with what it found.
+    runs.beginRun({ projectId: 'p', requestId: 'r1', by: 'find', stop: async () => undefined })
+    expect(byTestId(render(root), 'find-result')).toBeUndefined()
+    runs.endRun('r1', { ok: true, found: 3, check: 1, said: 1, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    els = render(root)
+    const line = byTestId(els, 'find-result')!
+    expect(line.props.role).toBe('status')
+    expect(allByTestId(els, 'find-sentence').map((x) => textOf(x).trim())).toEqual(['Found 3 private items.', '1 of them is to check.', '1 was said aloud and is bleeped.'])
+    expect(byTestId(els, 'privacy-find')).toBeDefined()
+    click(byTestId(els, 'find-review'))
+    expect(events.commands.at(-1)).toBe('review')
+    // A run of another project shows nothing here.
+    runs.resetRuns()
+    runs.beginRun({ projectId: 'other', requestId: 'r2', by: 'find', stop: async () => undefined })
+    runs.endRun('r2', { ok: true, found: 1, check: 0, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    expect(byTestId(render(root), 'find-result')).toBeUndefined()
+    runs.resetRuns()
+  })
+
   it('the Covers row sits between the Shapes row and the Images row (§2.3), and the Cover section below Private info (§2.2)', () => {
     const timeline = fs.readFileSync('src/renderer/src/editor/Timeline.tsx', 'utf8')
     // The labels' column and the tracks' column, each in the timeline's order.
