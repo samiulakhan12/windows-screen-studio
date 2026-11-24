@@ -2,6 +2,17 @@
 
 ## Next release
 
+- **Private information is covered for you** (F-07, LT-05): *Find private info…* in the Shapes tab
+  (also in the palette and Polish) reads the screen on this PC and covers passwords, codes and QR
+  codes, keys and tokens, email addresses, card, bank, phone and ID numbers, names you list and
+  pop-up notifications with solid covers that follow the text as it scrolls. Review them in *Review*
+  (*Keep covered* or *Uncover*, *Peek* under a cover, Check rows first); every export, thumbnail,
+  guide screenshot and copy is covered. With captions, numbers and keys read out loud get private
+  bleeps and are masked in captions, translations, chapters and AI requests. Draw your own covers with
+  the *Cover* tool, follow them, or cover a text everywhere it shows. The text reader is a 27.6 MB
+  download, the first time you use it, checked before use; nothing leaves your PC. Blur and pixelate
+  now say that blurred text can sometimes be read back, with *Turn into a cover*.
+
 - **Captions keep working after OpenAI retires whisper-1** (NW-09): OpenAI removes `whisper-1` on
   26 February 2027. Flown now works with its replacement, `gpt-transcribe`, which gives text
   without timings: Flown times each word from where the recording has sound and marks those times
