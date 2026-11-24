@@ -9,7 +9,7 @@ import type { FindProgress, ReaderState } from '../../../shared/api/privacy'
 import { t } from '../../../shared/i18n/t'
 import { askConfirm } from '../i18n/askConfirm'
 import type { EditorServices } from '../editor/context'
-import { FindLine } from './FindLine'
+import { FindLine, type FindLinePlace } from './FindLine'
 import { runFor, subscribeRuns } from './findRuns'
 
 let reader: ReaderState | null = null
@@ -75,7 +75,7 @@ export function useFindProgress(projectId: string): FindProgress | null {
  * The one progress line of §2.6 (a polite status, announced at most every 10% and at each phase
  * change), with *Stop*; once a run of `projectId` ended, its result line (§2.6) with *Review*.
  */
-export function FindProgressLine(props: { projectId: string; onReview?: () => void }): JSX.Element | null {
+export function FindProgressLine(props: { projectId: string; onReview?: () => void; place?: FindLinePlace }): JSX.Element | null {
   return createElement(FindLine, props)
 }
 

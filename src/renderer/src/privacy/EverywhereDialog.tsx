@@ -185,7 +185,7 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
     case 'running':
       body = (
         <div data-testid="everywhere-running">
-          <FindProgressLine projectId={props.services.store.state.id} />
+          <FindProgressLine projectId={props.services.store.state.id} place="dialog" />
         </div>
       )
       foot = (

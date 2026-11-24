@@ -24,6 +24,52 @@ export function phaseText(p: FindProgress): string {
   }
 }
 
+/**
+ * Where Find's lines show (§2.6, §11): the Shapes tab's Private info section, Review's header, which
+ * covers the Inspector and so the section while it is open, and Cover this text everywhere's dialog.
+ * A project's progress line, and its result line, show in one place at a time, the one in front
+ * (the dialog, then Review, then the section): each is a live region, and two of them said every
+ * step and the result twice, where §11 says it once.
+ */
+export type FindLinePlace = 'section' | 'review' | 'dialog'
+const PLACE_RANK: Record<FindLinePlace, number> = { section: 0, review: 1, dialog: 2 }
+const mountedLines = new Map<string, Map<number, FindLinePlace>>()
+const placeListeners = new Set<() => void>()
+let lineInstances = 0
+
+function subscribePlaces(l: () => void): () => void {
+  placeListeners.add(l)
+  return () => void placeListeners.delete(l)
+}
+
+function setLinePlace(key: string, instance: number, place: FindLinePlace | null): void {
+  const here = mountedLines.get(key) ?? new Map<number, FindLinePlace>()
+  if (place) here.set(instance, place)
+  else here.delete(instance)
+  if (here.size) mountedLines.set(key, here)
+  else mountedLines.delete(key)
+  for (const l of [...placeListeners]) l()
+}
+
+/** Whether a line of `kind` for `projectId` at `place` is the one that shows: no line of the project's in front of it is mounted. */
+export function lineShows(kind: 'progress' | 'result', projectId: string, place: FindLinePlace): boolean {
+  for (const other of mountedLines.get(`${kind}:${projectId}`)?.values() ?? []) if (PLACE_RANK[other] > PLACE_RANK[place]) return false
+  return true
+}
+
+/** Registers this line while it is mounted, and whether it is the one that shows (§2.6). */
+function useLineShows(kind: 'progress' | 'result', projectId: string, place: FindLinePlace): boolean {
+  const instance = useRef(0)
+  if (!instance.current) instance.current = ++lineInstances
+  useEffect(() => {
+    const key = `${kind}:${projectId}`
+    setLinePlace(key, instance.current, place)
+    return () => setLinePlace(key, instance.current, null)
+  }, [kind, projectId, place])
+  const shows = (): boolean => lineShows(kind, projectId, place)
+  return useSyncExternalStore(subscribePlaces, shows, shows)
+}
+
 /** Where focus goes once a run stopped here: its result line where it shows, else the section's *Find private info…*. */
 function focusAfterStop(projectId: string): void {
   const doc = (globalThis as { document?: Document }).document
@@ -36,13 +82,15 @@ function focusAfterStop(projectId: string): void {
  * Find's progress line (docs/design/auto-blur.md §2.6, §11): the phase, the time left (main's second
  * estimate) and *Stop* for a run of this window; for another request of the project (Cover this
  * text everywhere's), its progress since the line showed. Its live region speaks at each phase
- * change and at most every 10%; the visible text follows every step. Nothing when no run goes on.
+ * change and at most every 10%; the visible text follows every step. Nothing when no run goes on,
+ * or when the project's line shows in a place in front of `place` (§2.6).
  */
-export function FindLine({ projectId }: { projectId: string; onReview?: () => void }): JSX.Element | null {
+export function FindLine({ projectId, place = 'section' }: { projectId: string; onReview?: () => void; place?: FindLinePlace }): JSX.Element | null {
   const runOf = (): FindRun | null => runFor(projectId)
   const run = useSyncExternalStore(subscribeRuns, runOf, runOf)
   const [loose, setLoose] = useState<FindProgress | null>(null)
   const said = useRef({ phase: '', step: -1, text: '' })
+  const shows = useLineShows('progress', projectId, place)
   useEffect(() => {
     const api = (globalThis as { window?: { api?: { onFindProgress?: (l: (p: FindProgress) => void) => () => void } } }).window?.api
     if (typeof api?.onFindProgress !== 'function') return
@@ -51,7 +99,7 @@ export function FindLine({ projectId }: { projectId: string; onReview?: () => vo
     })
   }, [projectId])
   const progress = run?.progress ?? loose
-  if (!progress) return null
+  if (!progress || !shows) return null
   const text = phaseText(progress)
   // Announced at a phase change and every 10%, never more often (§11).
   const step = progress.phase === 'look' || progress.phase === 'read' ? Math.floor(percentOf(progress) / 10) : 0
@@ -121,15 +169,17 @@ export function outcomeSentences(o: FindOutcome): string[] {
  * The last run's result line for `projectId` (§2.6): *Found 3 private items.*, then each of what
  * applies as a sentence of its own; *found nothing* with the *What Find does not see* link; a
  * failure with its cause in one sentence, and *Download again* for damaged reader files; *Review*
- * when it found something and `onReview` is given. A polite status, said once when it shows.
+ * when it found something and `onReview` is given. A polite status, said once when it shows: only
+ * in the place in front (§2.6), so Review's header and the section it covers never both say it.
  */
-export function FindResultLine({ projectId, onReview }: { projectId: string; onReview?: () => void }): JSX.Element | null {
+export function FindResultLine({ projectId, onReview, place = 'section' }: { projectId: string; onReview?: () => void; place?: FindLinePlace }): JSX.Element | null {
   const outcomeOf = (): FindOutcome | null => outcomeFor(projectId)
   const outcome = useSyncExternalStore(subscribeRuns, outcomeOf, outcomeOf)
   const runningNow = (): boolean => !!runFor(projectId)
   const running = useSyncExternalStore(subscribeRuns, runningNow, runningNow)
   const [notSee, setNotSee] = useState(false)
-  if (!outcome || running) return null
+  const shows = useLineShows('result', projectId, place)
+  if (!outcome || running || !shows) return null
   const sentences = outcomeSentences(outcome)
   const none = outcome.ok && outcome.found === 0
   const listId = `find-not-see-${projectId.replace(/[^A-Za-z0-9_-]/g, '-')}`

@@ -547,4 +547,42 @@ describe('auto-blur P5: Find', () => {
     runs.endRun('rf', { ok: false, reason: 'tooLarge' })
     expect(allByTestId(view(), 'find-sentence').map((s) => textOf(s).trim())).toEqual(['This recording is too large for Find to read: more than 7680 × 4320 pixels.'])
   })
+
+  it('Find’s progress and result lines show in one place at a time, the one in front: Review’s header over the Private info section it covers, Cover this text everywhere’s dialog over both, so each live region is said once (§2.6, §11)', () => {
+    const live = (els: El[]): El[] => els.filter((e) => e.props.role === 'status' && e.props['aria-live'] === 'polite')
+    const result = (place?: string): unknown => ({ type: FindResultLine, props: { projectId: 'pl', ...(place ? { place } : {}) } })
+    const progress = (place?: string): unknown => ({ type: reader.FindProgressLine, props: { projectId: 'pl', ...(place ? { place } : {}) } })
+    runs.beginRun({ projectId: 'pl', requestId: 'pl1', by: 'find', stop: async () => undefined })
+    runs.endRun('pl1', { ok: true, found: 2, check: 0, said: 0, failedReads: 1, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    // The section alone shows the result.
+    expect(allByTestId(render(result()), 'find-result')).toHaveLength(1)
+    unmountAll()
+    // Review open over it: once Review's line is mounted (React renders the section again when the places change), one line, one live region.
+    render([result('review'), result()])
+    let els = render([result('review'), result()])
+    expect(allByTestId(els, 'find-result')).toHaveLength(1)
+    expect(live(els)).toHaveLength(1)
+    // The section's line is the one that goes: rendered alone while Review's is mounted, it shows nothing.
+    expect(allByTestId(render([result()]), 'find-result')).toHaveLength(0)
+    // Review closed: the section shows it again.
+    unmountAll()
+    expect(allByTestId(render(result()), 'find-result')).toHaveLength(1)
+    unmountAll()
+    // The progress line, likewise, and the dialog's in front of Review's.
+    runs.beginRun({ projectId: 'pl', requestId: 'pl2', by: 'find', stop: async () => undefined })
+    render([progress('review'), progress()])
+    els = render([progress('review'), progress()])
+    expect(allByTestId(els, 'find-progress')).toHaveLength(1)
+    expect(live(els)).toHaveLength(1)
+    render([progress('dialog'), progress('review'), progress()])
+    els = render([progress('dialog'), progress('review'), progress()])
+    expect(allByTestId(els, 'find-progress')).toHaveLength(1)
+    expect(allByTestId(render([progress('review')]), 'find-progress')).toHaveLength(0)
+    unmountAll()
+    // Another project's line is not in front of this one's.
+    const other = { type: reader.FindProgressLine, props: { projectId: 'other', place: 'review' } }
+    render([other, progress()])
+    expect(allByTestId(render([other, progress()]), 'find-progress')).toHaveLength(1)
+    runs.endRun('pl2', null)
+  })
 })

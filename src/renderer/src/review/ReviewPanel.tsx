@@ -804,11 +804,11 @@ export function ReviewPanel({
         </button>
       </div>
       {/* Find private info's progress line (docs/design/auto-blur.md §2.6). */}
-      <FindProgressLine projectId={project.id} />
+      <FindProgressLine projectId={project.id} place="review" />
       {(hasPrivate || privateOnly || !!record || running) && (
         <div className="review-private" data-testid="review-private">
           {confirm && <ReviewConfirm text={confirm.text} detail={confirm.detail} action={confirm.action} onAnswer={closeConfirm} />}
-          <FindResultLine projectId={project.id} />
+          <FindResultLine projectId={project.id} place="review" />
           {record && !running && unfinished(record) && (
             <p className="review-private-line" data-testid="review-unfinished">
               <span>{t(PRIVACY_COPY.review.unfinished, { time: readToTime(project) })}</span>{' '}
