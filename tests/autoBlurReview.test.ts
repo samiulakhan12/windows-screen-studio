@@ -153,3 +153,15 @@ describe('auto-blur P5: Review rows', () => {
     expect(privacyKinds(p)).toEqual(['password', 'phone'])
   })
 })
+
+describe('auto-blur P5: test numbers', () => {
+  it('the panel’s numbered tests (161-185, 241-258) each exist exactly once', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const numbers = [...Array.from({ length: 25 }, (_v, i) => 161 + i), ...Array.from({ length: 18 }, (_v, i) => 241 + i)]
+    const found = new Map<number, number>()
+    for (const file of fs.readdirSync(__dirname).filter((f) => /^autoBlur.*\.test\.ts$/.test(f)))
+      for (const m of fs.readFileSync(path.join(__dirname, file), 'utf8').matchAll(/\bit\(\s*(['"`])(\d+)\. /g)) found.set(Number(m[2]), (found.get(Number(m[2])) ?? 0) + 1)
+    for (const n of numbers) expect(found.get(n), `test ${n}`).toBe(1)
+  })
+})

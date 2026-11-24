@@ -81,6 +81,7 @@ import { itemLabel, presetName } from './exportNames'
 import { chaptersNoteText } from './exportNames'
 import { hidesSomething } from '../../../shared/privacy/coverData'
 import { PrivacyExportNote } from '../privacy/PrivacyExportNote'
+import { openPrivateReview } from '../privacy/reviewRequest'
 
 interface Props {
   project: Project
@@ -374,6 +375,9 @@ export function ExportDialog(props: Props): JSX.Element {
   const [batch, setBatch] = useState(loadBatch)
   const [settingsOpen, setSettingsOpen] = useState(() => readJson<boolean>(OPEN_KEY, true) !== false)
   const [phase, setPhase] = useState<Phase>({ kind: 'settings' })
+  // Find private info running for this video holds Export until what it found is applied, or Stop Find and export (auto-blur §2.12).
+  const [findHold, setFindHold] = useState(false)
+  const [exportAfterFind, setExportAfterFind] = useState(false)
   const [caps, setCaps] = useState<ExportCapabilities | null>(null)
   const [webCodecsGpu, setWebCodecsGpu] = useState<boolean | null>(null)
   const [copy, setCopy] = useState<CopyState>({ kind: 'idle' })
@@ -822,10 +826,18 @@ export function ExportDialog(props: Props): JSX.Element {
 
   // The Export button: the export the dialog shows now (none where its button is off), started at
   // once, or after the HEVC probe when these settings ask for HEVC and it still runs (§2.1).
-  const canExport = mode === 'single' ? !(audioOnly && !hasSound) : items.length > 0
+  const canExport = (mode === 'single' ? !(audioOnly && !hasSound) : items.length > 0) && !findHold
   exportNow.current = canExport ? () => withLuts(mode === 'single' ? start : startBatch) : null
   const asksHevc = mode === 'single' ? options.codec === 'hevc' : items.some((it) => it.options.codec === 'hevc')
   const onExport = (): void => void afterProbe(asksHevc && (hevcProbe === 'idle' || hevcProbe === 'probing') ? probe('hevc') : null, () => exportNow.current)
+  // Stop Find and export: the export starts once what Find found is applied and drawn (auto-blur §2.12).
+  useEffect(() => {
+    if (!exportAfterFind || findHold) return
+    setExportAfterFind(false)
+    onExport()
+    // Once, on the render that shows Find's results.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportAfterFind, findHold])
 
   // One file per chapter (F-11): each chapter's range of the edit, into a folder, as a batch.
   const startChapters = async (): Promise<void> => {
@@ -1051,7 +1063,19 @@ export function ExportDialog(props: Props): JSX.Element {
         {phase.kind === 'settings' && (
           <>
             {/* What Find private info has not checked or is still checking (docs/design/auto-blur.md §2.8); part P5 wires its actions. */}
-            <PrivacyExportNote project={props.project} onReview={() => undefined} onFind={() => undefined} onWait={() => undefined} onStopAndExport={() => undefined} />
+            <PrivacyExportNote
+              project={props.project}
+              onReview={() => {
+                props.onClose()
+                openPrivateReview(group.command)
+              }}
+              onFind={() => {
+                props.onClose()
+                group.command('findPrivate')
+              }}
+              onWait={setFindHold}
+              onStopAndExport={() => setExportAfterFind(true)}
+            />
             <div className="export-body">
               <aside className="export-side">
                 <div className={`export-preview ${audioOnly ? 'audio-only' : ''}`}>

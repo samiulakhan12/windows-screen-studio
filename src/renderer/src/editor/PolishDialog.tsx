@@ -41,7 +41,12 @@ import { availableState, onSpeechRead, spokenLanguage, useSpeechState } from './
 import { runPolish, type PolishRowState, type PolishRun } from './polishRunner'
 import './polish.css'
 import { keepVersionBefore } from '../versions/autoVersion'
-import { useReaderState } from '../privacy/readerState'
+import { useFindProgress, useReaderState } from '../privacy/readerState'
+import { phaseText } from '../privacy/FindLine'
+import { findChoices, minutesOf, screenChecked } from '../../../shared/privacy/findState'
+import { firstEstimate } from '../../../shared/privacy/plan'
+import { readPrivacyPrefs } from '../../../shared/privacy/coverData'
+import type { PrivacyPrefs } from '../../../shared/types'
 
 /** The Polish button: the Captions step's cost line holds its click to ask before a paid run (smart-tools.md §11.5). */
 const POLISH_START = 'polish-start'
@@ -131,9 +136,30 @@ export function PolishDialog(props: {
   const presets = [...BUILT_IN_PRESETS, ...(userPresets ?? [])]
   const styleFound = !!options?.styleId && presets.some((p) => p.id === options.styleId)
   const ready = !!options && providers !== null && userPresets !== null && speech.status !== 'loading'
-  // Find private info's row shows once the text reader's state is known (docs/design/auto-blur.md §14.5, part P5).
+  // Find private info's row shows only with the text reader downloaded (docs/design/auto-blur.md §2.10, §14.5).
   const reader = useReaderState()
-  const steps = POLISH_STEPS.filter((step) => step !== 'privacy' || reader !== null)
+  const steps = POLISH_STEPS.filter((step) => step !== 'privacy' || reader?.status === 'ready')
+  // Its hint: the first estimate, or that the screen is already checked with Settings' or this video's kinds.
+  const [privacyPrefs, setPrivacyPrefs] = useState<PrivacyPrefs | null>(null)
+  useEffect(() => {
+    let alive = true
+    window.api.getPref('privacy').then(
+      (raw) => alive && setPrivacyPrefs(readPrivacyPrefs(raw)),
+      () => undefined
+    )
+    return () => {
+      alive = false
+    }
+  }, [])
+  const privacyHint =
+    reader?.status === 'ready'
+      ? {
+          minutes: minutesOf(firstEstimate(project.duration, project.capture?.fps ?? 60, { width: project.width, height: project.height }, reader.decodeMs)),
+          checked: screenChecked(project, findChoices(project, privacyPrefs).kinds)
+        }
+      : undefined
+  // While its step runs, the row shows Find's phase lines.
+  const findProgress = useFindProgress(project.id)
   /** Whether a row is on: chosen and able to run (a row that cannot run shows unchecked; the remembered option stays). */
   const isOn = (step: PolishStep): boolean => !!options && steps.includes(step) && (step === 'style' ? styleFound : options[step] && !available[step])
   const anything = steps.some(isOn)
@@ -221,7 +247,8 @@ export function PolishDialog(props: {
             local: chosenId === LOCAL_TRANSCRIBER_ID,
             bangla: !!transcriber && 'model' in transcriber && transcriber.model === BANGLA_MODEL,
             // In wide frames Polish's caption look adds no pop-ups (Captions Studio §11.8).
-            wide: frameShape(captionFrame(project)) === 'wide'
+            wide: frameShape(captionFrame(project)) === 'wide',
+            ...(privacyHint ? { privacy: privacyHint } : {})
           })
     const disabled = !ready || loading || !!why
     return (
@@ -294,7 +321,7 @@ export function PolishDialog(props: {
       <RowMark phase={row.phase} />
       <span className="polish-name">{polishStepLabel(step)}</span>
       <span className="polish-text" role={row.phase === 'working' ? 'status' : undefined}>
-        {row.text}
+        {step === 'privacy' && findProgress && row.phase !== 'done' && row.phase !== 'skipped' ? phaseText(findProgress) : row.text}
       </span>
       {row.canSkip && (
         <button className="btn ghost small" onClick={() => (step === 'captions' ? runRef.current?.skipCaptions() : runRef.current?.skipFace())}>
