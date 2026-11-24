@@ -182,7 +182,8 @@ identical runs (1ffd5ea), and A17 runs the guard in compare mode against it: pas
 
 Run whole once on the final build with the host helper and the models in each test HOME's userData
 (`SSW_OCR_MODELS`, checked by size and SHA-256), and the pictures saved (`SSW_E2E_DOC_SHOTS=1`).
-34 cases pass, 18 fail:
+34 cases passed and 18 failed in that run; A12, whose driver was fixed after it (9d0e8b4), passes run
+alone on the same build, so 35 pass and 17 fail:
 
 | Case | Result |
 |---|---|
@@ -200,7 +201,7 @@ Run whole once on the final build with the host helper and the models in each te
 | A9 The reader's download | **passes**: from a local mirror, resumed with Range after a cut, Remove, and a file that is not the pinned one refused and said |
 | A10 A crash in one read | **passes**: the helper started once more, the failed reads recorded and said, lost areas covering them |
 | A11 Keyboard and screen reader | **passes**: the flow by keyboard, the focus rules, one tab stop on the Covers row; the in-test audit (names, references, ids, dialogs, menus) finds nothing |
-| A12 Multi-select | **fails** at its last step in this run (the Shapes tab not reopened before *Turn them all into covers*; the driver is fixed in 9d0e8b4 and not run again); the count, the disabled fields' reasons, colour, delete, undo, copy and paste passed |
+| A12 Multi-select | **passes** run alone after the whole run (`SSW_E2E_ONLY='A12:'`): the count, the disabled fields' reasons, colour, nudge, delete, undo, copy and paste, and three blurs turned into covers (8 covers after). In the whole run it failed at its last step only, because the driver did not reopen the Shapes tab before *Turn them all into covers* (fixed in 9d0e8b4) |
 | A13 Polish with Find private info | **fails**: the covers hid 51% of a frame on average (What is left 1) |
 | A14 The guide's Blur an area | **passes**: the cover is red, from step 2's shot frame, with the playhead on the blue page |
 | A15 Follow and Everywhere | **passes**: the followed cover holds the email while it scrolls away; every place of the text covered |
@@ -211,7 +212,15 @@ Run whole once on the final build with the host helper and the models in each te
 | A20 Copies made before Find | **fails**: Bring them over and Also cover the copy work, but the clip's export differs over the two recordings on 209 of 1,145 frames (the scroll frames of What is left 2) |
 | A21 Review at speed | **fails**: 201 rows, V turns Peek while reviewing on, 100 rows kept by keyboard, but the magnified view was gone afterwards |
 
-@@E2E@@
+### Every other end-to-end file
+
+The 77 other files in `tests/e2e/` (the English guard among them), each run alone under
+`xvfb-run -a -s "-screen 0 1920x1080x24"` without `TMPDIR`, on the final build (source of 3d64b0b; the
+commits after it change tests and docs only), with the canonical `native/bin` (no host `ssw-ocr` in it):
+**all 77 passed on the first run**, none needed its one retry. 4,221 s in all; the longest were
+`editing-polish` 216 s, `export` 189 s, `offline-captions` 155 s, `camera-director` 144 s. The English
+guard passed in compare mode against the re-recorded baseline. No real failure was found, so no fix or
+regression test came from this run.
 
 
 ## Sizes
@@ -255,7 +264,7 @@ Found by this integration and not fixed here (each needs design or measuring wor
 4. **A16's other cases.** `tooltip` and `type-email` pass (every planted item covered in every frame).
    `select-text` 600 of 720 item-frames covered, `window-drag` 194 of 240, `type-key` 0 of 118 (no cover:
    the secret typed into a terminal is never found), and the scale and held-out sets fail on item 1.
-5. **Other e2e results**: see Tests. A7's new Spanish translation did not replace the one made before
+5. **A7, A13 and A21** (see Tests). A7's new Spanish translation did not replace the one made before
    Find (the export used the old one, masked); A13 (Polish) covered 51% of a frame on average on the short
    recording; A21's magnified view was gone after 100 rows kept by keyboard.
 6. **The scan swallows a walk's error.** `followAll`'s failure is caught and every hit becomes a lost
