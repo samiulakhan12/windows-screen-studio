@@ -116,7 +116,7 @@ export function ShapesPanel(props: InspectorProps): JSX.Element {
         </div>
         <p className="hint">{t('text.shapesPanel.shapesStayOnThe')}</p>
       </Section>
-      <PrivacySection services={services} onFind={() => props.onCommand?.('findPrivate')} />
+      <PrivacySection services={services} onFind={() => props.onCommand?.('findPrivate')} {...(props.flush ? { flush: props.flush } : {})} />
       {/* The selected covers (auto-blur §2.2): below Private info. */}
       <CoverSection services={services} coverIds={selection?.kind === 'cover' ? [selection.id] : []} shapeIds={shape ? [shape.id] : []} />
 

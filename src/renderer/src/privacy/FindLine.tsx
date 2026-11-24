@@ -70,6 +70,19 @@ function useLineShows(kind: 'progress' | 'result', projectId: string, place: Fin
   return useSyncExternalStore(subscribePlaces, shows, shows)
 }
 
+/**
+ * Whether the result line of `projectId` at `place` shows now: an outcome, no run going on, and no
+ * line of the project's in front of it (§2.6). What goes with the line (the section's copies offer)
+ * shows with it.
+ */
+export function useResultLineShown(projectId: string, place: FindLinePlace): boolean {
+  const outcomeOf = (): boolean => !!outcomeFor(projectId) && !runFor(projectId)
+  const ended = useSyncExternalStore(subscribeRuns, outcomeOf, outcomeOf)
+  const front = (): boolean => lineShows('result', projectId, place)
+  const shows = useSyncExternalStore(subscribePlaces, front, front)
+  return ended && shows
+}
+
 /** Where focus goes once a run stopped here: its result line where it shows, else the section's *Find private info…*. */
 function focusAfterStop(projectId: string): void {
   const doc = (globalThis as { document?: Document }).document

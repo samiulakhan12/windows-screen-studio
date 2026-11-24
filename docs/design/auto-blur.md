@@ -940,15 +940,17 @@ downloaded the reader, is unchanged.
 
 **Copies made before Find.** Short clips, vertical and square versions, Duplicate and shorter
 versions are separate projects on the same recording (`copyOf`, `clipOf`). After Find, and after
-*Keep covered* or *Done reviewing*, on a project that has copies, Find's result line and Review's
-header offer:
+*Keep covered* or *Done reviewing*, on a project that has copies, Find's result line (in the Private
+info section, or in Review's header while Review covers it, §2.6) and Review's header offer:
 
 | Key | English |
 |---|---|
 | `privacy.copies.offer` | `{count, plural, one {Also cover the copy made from this video} other {Also cover the {n} copies made from this video}}` |
 | `privacy.copies.done` | `{count, plural, one {Covered the copy made from this video. Its covers wait in its Review.} other {Covered the {n} copies made from this video. Their covers wait in their Review.}}` |
 
-It adds this video's covers and private bleeps to each copy, as suggestions, through main (§5.10).
+It adds this video's covers and private bleeps to each copy, as suggestions, through main (§5.10),
+which reads this project from its `project.json`, so the offer first has the editor's saver write it
+(Review gets the saver's flush from the editor, the Private info section through the Inspector).
 Covers are in source seconds of the shared `screen.mp4`, so they are copied as they are.
 
 ### 2.13 Captions, translations and transcription
@@ -3833,7 +3835,7 @@ export function setPrivateNames(names: unknown): void
 | `src/renderer/src/privacy/coverPick.ts` (new) | `function ringColourAt(projectId: string, t: number, box: NormRect): Promise<string>` |
 | `src/renderer/src/privacy/followRun.ts` (new) | `function runFollow(services: EditorServices, coverId: string, signal: AbortSignal): Promise<'done' \| 'none' \| 'stopped' \| 'busy' \| 'failed'>`; `function runEverywhere(services: EditorServices, coverId: string, remember: EverywhereRequest['remember'], signal: AbortSignal): Promise<{ added: number; name: string \| null } \| null>` |
 | `src/renderer/src/privacy/filmstripCovers.ts` (stub from the contracts) | `function fillCoverTiles(ctx: CanvasRenderingContext2D, project: Project, fps: number, tiles: readonly { t: number; x: number; y: number; w: number; h: number }[]): void` (window `[t − 15 / fps − 0.02, t]`); `function fillCoverPixels(pixels: Uint8ClampedArray, width: number, height: number, project: Project, t: number): void` (look chips) |
-| `src/renderer/src/privacy/PrivacySection.tsx`, `CoverSection.tsx`, `WeakBlurNote.tsx`, `CoverShapeButton.tsx`, `CoverTrack.tsx`, `CoverHandles.tsx`, `PeekBanner.tsx`, `PeekInset.tsx`, `EverywhereDialog.tsx`, `covers.css` (stubs from the contracts) | `function PrivacySection(props: { services: EditorServices; onFind: () => void }): JSX.Element \| null`; `function CoverSection(props: { services: EditorServices; coverIds: readonly string[]; shapeIds: readonly string[] }): JSX.Element \| null`; `function WeakBlurNote(props: { services: EditorServices; shapeId: string }): JSX.Element \| null`; `function CoverShapeButton(props: { services: EditorServices }): JSX.Element \| null`; `function CoverTrack(props: TrackSlotProps): JSX.Element \| null` (the props every timeline row takes, `Timeline.tsx:855-859`); `function CoverHandles(props: { project: Project; selection: Selection; view: SceneView }): JSX.Element \| null`; `function PeekBanner(): JSX.Element \| null`; `function PeekInset(props: { services: EditorServices; view: SceneView }): JSX.Element \| null`; `function EverywhereDialog(props: { services: EditorServices; coverId: string; onClose: () => void }): JSX.Element` |
+| `src/renderer/src/privacy/PrivacySection.tsx`, `CoverSection.tsx`, `WeakBlurNote.tsx`, `CoverShapeButton.tsx`, `CoverTrack.tsx`, `CoverHandles.tsx`, `PeekBanner.tsx`, `PeekInset.tsx`, `EverywhereDialog.tsx`, `covers.css` (stubs from the contracts) | `function PrivacySection(props: { services: EditorServices; onFind: () => void; flush?: () => unknown }): JSX.Element \| null` (`flush`: the editor's saver, given through the Inspector, for the copies offer with its result line, §2.12); `function CoverSection(props: { services: EditorServices; coverIds: readonly string[]; shapeIds: readonly string[] }): JSX.Element \| null`; `function WeakBlurNote(props: { services: EditorServices; shapeId: string }): JSX.Element \| null`; `function CoverShapeButton(props: { services: EditorServices }): JSX.Element \| null`; `function CoverTrack(props: TrackSlotProps): JSX.Element \| null` (the props every timeline row takes, `Timeline.tsx:855-859`); `function CoverHandles(props: { project: Project; selection: Selection; view: SceneView }): JSX.Element \| null`; `function PeekBanner(): JSX.Element \| null`; `function PeekInset(props: { services: EditorServices; view: SceneView }): JSX.Element \| null`; `function EverywhereDialog(props: { services: EditorServices; coverId: string; onClose: () => void }): JSX.Element` |
 | `src/renderer/src/editor/player.ts`, `joinStills.ts`, `previewAudio.ts` | the preview scene through `peekedScene` (peek and marks); the listened bleep left out of the preview's gains |
 | `src/renderer/src/guide/guideRun.ts` | `export async function blurArea(services: EditorServices, step: GuideStep, opts: { after: boolean; scale: number; onSelect(sel: Selection): void }): Promise<string>` (the cover's id) and `export async function blurTypedText(store: EditStore<Project>, typing: GuideStep, marked: { t: number }, scan: SceneScan \| null, scale: number, colourAt: (t: number, box: NormRect) => Promise<string>): Promise<void>`: each awaits `ringColourAt` at the step's own shot time, then makes one update (§2.11) |
 | the files of §14.4 | the `'cover'` branches, through `coverGroup.ts` |

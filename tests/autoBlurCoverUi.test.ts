@@ -26,7 +26,10 @@ const api = {
   everywhere: null as null | ((req: Record<string, unknown>) => Promise<unknown>),
   download: null as null | (() => Promise<unknown>),
   stopped: [] as string[],
-  names: [] as string[][]
+  names: [] as string[][],
+  copies: [] as { id: string; name: string; open: boolean }[],
+  covered: [] as string[][],
+  order: [] as string[]
 }
 const windowListeners = new Map<string, ((e: unknown) => void)[]>()
 vi.stubGlobal('window', {
@@ -38,7 +41,13 @@ vi.stubGlobal('window', {
     coverEverywhere: (req: Record<string, unknown>) => api.everywhere!(req),
     downloadReader: () => api.download!(),
     stopFind: async (id: string) => void api.stopped.push(id),
-    setPrivateNames: async (names: string[]) => void api.names.push(names)
+    setPrivateNames: async (names: string[]) => void api.names.push(names),
+    copies: async () => api.copies,
+    coverCopies: async (_id: string, ids: string[]) => {
+      api.order.push('coverCopies')
+      api.covered.push(ids)
+      return { covered: ids.length, skipped: [] }
+    }
   },
   addEventListener: (type: string, fn: (e: unknown) => void) => windowListeners.set(type, [...(windowListeners.get(type) ?? []), fn]),
   removeEventListener: (type: string, fn: (e: unknown) => void) => windowListeners.set(type, (windowListeners.get(type) ?? []).filter((f) => f !== fn)),
@@ -257,6 +266,46 @@ describe('auto-blur P1: adding covers', () => {
     runs.beginRun({ projectId: 'other', requestId: 'r2', by: 'find', stop: async () => undefined })
     runs.endRun('r2', { ok: true, found: 1, check: 0, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
     expect(byTestId(render(root), 'find-result')).toBeUndefined()
+    runs.resetRuns()
+  })
+
+  it('with Find\'s result line, on a project with copies, the Private info section offers Also cover the copies, the editor writing the project first; while Review\'s header shows the line, the section shows neither (§2.12, §2.6)', async () => {
+    const runs = await load<{ beginRun(r: unknown): boolean; endRun(id: string, o: unknown): void; resetRuns(): void }>('privacy/findRuns')
+    const lines = await load<{ FindResultLine: Comp }>('privacy/FindLine')
+    runs.resetRuns()
+    unmountAll()
+    setUp(project({ covers: [cover('a', 1, 3, [key(1, 0.1, 0.1, 0.2, 0.05)], { found: 'check', kind: 'email', group: 'g1' })], privacy: { find: { at: 'x', kinds: ['email'], listened: false, reader: 'pp-ocrv6-tiny+small-careful-long' } } }))
+    api.copies = [{ id: 'copy1', name: 'Short', open: false }]
+    api.covered = []
+    api.order = []
+    const root = { type: PrivacySection, props: { services: services(), onFind: () => undefined, flush: () => void api.order.push('flush') } }
+    // No result line yet: nothing offered.
+    expect(byTestId(await settle(root), 'copies-offer')).toBeUndefined()
+    runs.beginRun({ projectId: 'p', requestId: 'c1', by: 'find', stop: async () => undefined })
+    runs.endRun('c1', { ok: true, found: 1, check: 1, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    unmountAll()
+    let els = await settle(root)
+    expect(byTestId(els, 'find-result')).toBeDefined()
+    expect(textOf(byTestId(els, 'copies-offer'))).toBe('Also cover the copy made from this video')
+    click(byTestId(els, 'copies-offer'))
+    for (let i = 0; i < 5; i++) await Promise.resolve()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(api.order).toEqual(['flush', 'coverCopies'])
+    expect(api.covered).toEqual([['copy1']])
+    expect(textOf(byTestId(render(root), 'copies-done'))).toBe('Covered the copy made from this video. Its covers wait in its Review.')
+    // Review open over the section: its header has the line and the offer, the section neither.
+    unmountAll()
+    const review = { type: lines.FindResultLine, props: { projectId: 'p', place: 'review' } }
+    await settle([review, root])
+    els = await settle([review, root])
+    expect(allByTestId(els, 'find-result')).toHaveLength(1)
+    expect(byTestId(els, 'copies-offer')).toBeUndefined()
+    // The editor gives the Inspector its saver's flush, and the Shapes tab passes it to the section.
+    const editorView = fs.readFileSync('src/renderer/src/views/Editor.tsx', 'utf8')
+    const at = editorView.search(/<Inspector\s/)
+    const inspector = editorView.slice(at, editorView.indexOf('/>', at))
+    expect(inspector).toContain('flush={() => saver.flush()}')
+    expect(fs.readFileSync('src/renderer/src/editor/panels/ShapesPanel.tsx', 'utf8')).toMatch(/<PrivacySection [^\n]*\{\.\.\.\(props\.flush \? \{ flush: props\.flush \} : \{\}\)\} \/>/)
     runs.resetRuns()
   })
 

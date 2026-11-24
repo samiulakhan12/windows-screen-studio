@@ -2004,6 +2004,7 @@ function EditorSession({
             onDeleteClip={actions.deleteClip}
             onRestore={actions.restore}
             onCutRange={actions.cut}
+            flush={() => saver.flush()}
           />
           {reviewOpen && (
             <ReviewPanel

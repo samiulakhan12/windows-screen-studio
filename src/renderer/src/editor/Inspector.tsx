@@ -62,6 +62,8 @@ export interface InspectorProps {
   groupReveal?: number
   /** Runs an editor command (the Selection view's buttons run the same handlers as the keys). */
   onCommand?: (id: CommandId) => void
+  /** Writes the project as the user sees it (the editor's saver), before main reads its project.json (auto-blur §2.12). */
+  flush?: () => unknown
 }
 
 /** Ignoring and using clicks, straightening the cursor path (shared/editor/inputEdits.ts). */

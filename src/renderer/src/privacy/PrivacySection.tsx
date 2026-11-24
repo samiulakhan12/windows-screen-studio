@@ -14,7 +14,8 @@ import { useKeymap } from '../editor/keymapContext'
 import { coverLength, setCoverLength } from './coverCommands'
 import { ringColourAt } from './coverPick'
 import { showCoverMarks, usePeek } from './peek'
-import { FindResultLine } from './FindLine'
+import { FindResultLine, useResultLineShown } from './FindLine'
+import { CopiesOffer } from './CopiesOffer'
 import { FindProgressLine, useFindProgress, useReaderState } from './readerState'
 import { openPrivateReview } from './reviewRequest'
 import './covers.css'
@@ -62,13 +63,14 @@ async function writeShowCovers(on: boolean): Promise<void> {
  * items and of those to check with *Review*, the reader line, *Show where covers are*, the blur and
  * pixelate line with *Turn them all into covers*, and the *What Find does not see* disclosure.
  */
-export function PrivacySection(props: { services: EditorServices; onFind: () => void }): JSX.Element | null {
+export function PrivacySection(props: { services: EditorServices; onFind: () => void; flush?: () => unknown }): JSX.Element | null {
   const { store } = props.services
   const group = useGroup()
   const keymap = useKeymap()
   const project = useSyncExternalStore(store.subscribe, () => store.state)
   const reader = useReaderState()
   const progress = useFindProgress(project.id)
+  const resultShown = useResultLineShown(project.id, 'section')
   const peek = usePeek()
   const [menu, setMenu] = useState(false)
   const [length, setLength] = useState<CoverLength>(coverLength)
@@ -194,6 +196,8 @@ export function PrivacySection(props: { services: EditorServices; onFind: () => 
             </button>
             {/* Once Find ended, its result line (§2.6), here as in Review's header, with Review. */}
             <FindResultLine projectId={project.id} onReview={() => openPrivateReview(group.command)} />
+            {/* With the result line, on a project with copies: Also cover the copies (§2.12); the editor writes the project first. */}
+            {resultShown && <CopiesOffer services={props.services} {...(props.flush ? { flush: props.flush } : {})} />}
           </>
         )}
         {reader?.status === 'none' && (
