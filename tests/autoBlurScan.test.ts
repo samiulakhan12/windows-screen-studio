@@ -11,16 +11,16 @@ const { readLookCache, writeLookCache, lookKeyOf } = await import('../src/main/p
 const { RulesHost } = await import('../src/main/privacy/rulesHost')
 const { coverEverywhere, followCover, forgetReads, keptLines, runFind, ScanUnavailable, underCover } = await import('../src/main/privacy/scan')
 const { projectFileText } = await import('../src/main/projectFile')
-const { parsePath, pathKeys, writePath } = await import('../src/shared/privacy/coverPath')
+const { coverSlack, drawnBox, parsePath, pathKeys, writePath } = await import('../src/shared/privacy/coverPath')
 const { privateBleepWord, LEGACY_PREFIX } = await import('../src/shared/privacy/coverData')
 const { addRead, planReads, hintsOf } = await import('../src/shared/privacy/plan')
 const { migrateProject } = await import('../src/shared/engine/project')
 import type { FindProgress, FindRequest, FindResult, FoundCover } from '../src/shared/api/privacy'
 import type { ScanDeps, ScanHelper } from '../src/main/privacy/scan'
 import type { Box, ReadResult } from '../src/shared/privacy/protocol'
-import type { Bleep, Cover, Project, ProjectSummary } from '../src/shared/types'
+import type { Bleep, Cover, CursorTrack, Project, ProjectSummary } from '../src/shared/types'
 import { base, key, rng } from './autoBlurFixtures'
-import { FakeHelper, HD, inside, lookOf, plantedLines, type FakeScript, type Planted } from './autoBlurScanFixtures'
+import { FakeHelper, HD, inside, lookOf, move, plantedLines, type FakeScript, type Planted } from './autoBlurScanFixtures'
 
 /*
  * The scan in main (docs/design/auto-blur.md §5; §17.1 tests 153-158, 237-240): runFind, Follow, the
@@ -280,6 +280,80 @@ describe('auto-blur P4: the scan', () => {
     for (const f of r2.found.filter((x) => x.kind === 'email' || x.kind === 'name')) {
       expect(f.end).toBeCloseTo(20, 2)
       expect(f.lost).toBe(true)
+    }
+  })
+
+  it('A key typed or pasted on a terminal\'s last line, then Enter scrolling the terminal up, and a token a command prints while its output scrolls the terminal, are covered in every source frame (found by review: the typing rule held the line the text scrolled to back to the typing\'s start, and the key showed a line lower while it was typed)', async () => {
+    // A terminal at 1080p60, rows 20 px apart, characters 10 px wide; the last row at y 1064.
+    const FPS = 60
+    const yOf = (r: number): number => 4 + r * 20
+    const LAST = 53
+    const token = 'ghp_Zq8RkT2vLm9XwP4nB7cY1dF6gH3jK5sA0eUo'
+    /** Find over a terminal scripted by `rowsAt` (its lines at t), the look data and the cursor; the source frames where `secret` (at t) is not inside a drawn cover. */
+    const findOver = async (rowsAt: (t: number) => { text: string; box: Box }[], look: ReturnType<typeof lookOf>, cursor: CursorTrack | null, planted: Planted[], secret: (t: number) => Box | null, seconds: number): Promise<string[]> => {
+      const dir = mkdtempSync(path.join(tmpdir(), 'flown-scan-'))
+      roots.push(dir)
+      writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
+      const read = (t: number, areas: readonly Box[]): ReadResult => ({
+        t,
+        lines: rowsAt(t)
+          .filter((l) => areas.some((a) => { const i = [Math.max(a[0], l.box[0]), Math.max(a[1], l.box[1]), Math.min(a[0] + a[2], l.box[0] + l.box[2]), Math.min(a[1] + a[3], l.box[1] + l.box[3])]; return i[2] > i[0] && i[3] > i[1] && (i[2] - i[0]) * (i[3] - i[1]) >= 0.5 * l.box[2] * l.box[3] }))
+          .map((l) => ({ box: [...l.box] as Box, quad: [], variants: [{ model: 'tiny' as const, text: l.text, conf: 0.95, spans: Array.from({ length: l.text.length }, (_v, i) => [l.box[0] + i * 10, l.box[0] + (i + 1) * 10] as [number, number]) }], ring: '#0c0c0c', spread: 2 })),
+        qr: []
+      })
+      const deps: ScanDeps = { helper: async () => new FakeHelper({ look, planted, read: (t, areas) => read(t, areas) }, []) as unknown as ScanHelper, readProject: async () => base('rec-1', seconds, { fps: FPS }), projectDir: () => dir, readCursor: async () => cursor, log: () => undefined }
+      const r = await runFind(request({ kinds: ['key'] }), noProgress, never, deps)
+      expect(r.ok).toBe(true)
+      if (!r.ok) return ['find failed']
+      const covers: Cover[] = r.found.map((f, i) => ({ id: `c${i}`, start: f.start, end: f.end, path: f.path, color: f.color }))
+      const bad: string[] = []
+      for (let i = 0; i < seconds * FPS; i++) {
+        const t = Math.round((i / FPS) * 1e6) / 1e6
+        const b = secret(t)
+        if (b && !covers.some((c) => { const d = drawnBox(c, t, coverSlack(FPS)); return !!d && inside(b, [d.x * 1920, d.y * 1080, d.w * 1920, d.h * 1080], 1) })) bad.push(`${t.toFixed(3)} y ${b[1]}`)
+      }
+      return bad
+    }
+    // Typed one character every 0.1 s from 2 s (Enter 0.2 s after the last), or pasted at 2 s (Enter at 2.2 s); Enter scrolls 3 rows.
+    for (const mode of ['type', 'paste'] as const) {
+      const typedAt = (i: number): number => (mode === 'paste' ? 2 : Math.round((2 + 0.1 * i) * 30) / 30)
+      const enter = mode === 'paste' ? 2.2 : typedAt(39) + 0.2
+      const scrollAt = Math.round((enter + 1 / 30) * 30) / 30
+      const chars = (t: number): number => [...Array(40).keys()].filter((i) => t >= typedAt(i) - 1e-6).length
+      const row = (t: number): number => (t >= scrollAt - 1e-6 ? LAST - 3 : LAST)
+      const label = '$ export GITHUB_TOKEN='
+      const rowsAt = (t: number) => [
+        { text: label + token.slice(0, chars(t)), box: [8, yOf(row(t)), (label.length + chars(t)) * 10, 16] as Box },
+        ...(t >= scrollAt - 1e-6 ? [{ text: '$', box: [8, yOf(LAST), 10, 16] as Box }] : [])
+      ]
+      const planted: Planted[] = [{ key: 'cmd', text: label + token, at: (t) => (chars(t) === 40 ? [8, yOf(row(t)), (label.length + 40) * 10, 16] : null) }]
+      const look = lookOf(HD, FPS, 8, (_i, t) => {
+        if (Math.abs(t - scrollAt) < 1e-6) return { changed: [[0, 0, 1920, 1080]], moves: [move([0, 0, 1920, 1080], 0, -60)] }
+        if (mode === 'paste' && Math.abs(t - 2) < 1e-6) return { changed: [[228, yOf(LAST), 410, 16]] }
+        for (let i = 0; mode === 'type' && i < 40; i++) if (Math.abs(t - typedAt(i)) < 1e-6) return { changed: [[228 + 10 * i, yOf(LAST), 20, 16]] }
+        return {}
+      })
+      const cursor = { samples: [], clicks: [], valid: true, keys: mode === 'paste' ? [{ t: 2, label: 'Ctrl + V' }, { t: 2.2, label: 'Enter' }] : [], typing: mode === 'type' ? [{ t: 2, end: enter }] : [] } as unknown as CursorTrack
+      const bad = await findOver(rowsAt, look, cursor, planted, (t) => (chars(t) ? [228, yOf(row(t)), 10 * chars(t), 16] : null), 8)
+      expect(bad, mode).toEqual([])
+    }
+    // `cat .env` typed (2.0-2.8 s), then its 12 output lines one an analysed frame from 2.9 s, each scrolling the terminal up a row; the token is the third.
+    const out0 = Math.round(2.9 * 30) / 30
+    const outAt = (k: number): number => Math.round((out0 + k / 30) * 30) / 30
+    const scrolled = (t: number): number => [...Array(12).keys()].filter((k) => t >= outAt(k) - 1e-6).length + (t >= outAt(12) - 1e-6 ? 1 : 0)
+    const rowOf = (k: number, t: number): number | null => (t < outAt(k) - 1e-6 ? null : LAST - (scrolled(t) - (k + 1)))
+    const lineOf = (k: number): string => (k === 2 ? `GITHUB_TOKEN=${token}` : `NODE_ENV_SETTING_${k}=development`)
+    const rowsAt = (t: number) => [...Array(12).keys()].flatMap((k) => { const r = rowOf(k, t); return r === null || r < 0 ? [] : [{ text: lineOf(k), box: [8, yOf(r), lineOf(k).length * 10, 16] as Box }] })
+    const tokenLine = (t: number): Box | null => { const r = rowOf(2, t); return r === null ? null : [8, yOf(r), lineOf(2).length * 10, 16] }
+    const look = lookOf(HD, FPS, 6, (_i, t) => {
+      for (let k = 0; k <= 12; k++) if (Math.abs(t - outAt(k)) < 1e-6) return { changed: [[0, 0, 1920, 1080]], moves: [move([0, 0, 1920, 1080], 0, -20)] }
+      for (let i = 0; i < 9; i++) if (Math.abs(t - (2 + i * 0.1)) < 1e-6) return { changed: [[100 + i * 10, yOf(LAST), 20, 16]] }
+      return {}
+    })
+    const typing = { samples: [], clicks: [], valid: true, keys: [], typing: [{ t: 2, end: 2.8 }] } as unknown as CursorTrack
+    for (const cursor of [typing, null]) {
+      const bad = await findOver(rowsAt, look, cursor, [{ key: 'tok', text: lineOf(2), at: tokenLine }], (t) => { const b = tokenLine(t); return b ? [b[0] + 130, b[1], b[2] - 130, 16] : null }, 6)
+      expect(bad, cursor ? 'output, typing recorded' : 'output, no cursor data').toEqual([])
     }
   })
 

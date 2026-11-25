@@ -628,9 +628,15 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
   /** Whether a match shows the text there: one clear match, or a part at 0.85 (a copy of it). Without the reader, any part at 0.5. */
   const found = (r: TrackMatch | undefined): boolean => (reads.templateOnly ? maxPart(r) >= ABSENT_SCORE : clear(r) || maxPart(r) >= PRESENT_SCORE)
 
+  /**
+   * The walker's line band where its text is now (the typing rule, §5.8): the rows of its cover box at its
+   * last place, from its line's left edge (as far before the text as at its read) to the frame's right
+   * edge. A text a scroll carried there was typed on the band it came from, not on this one.
+   */
   const lineBand = (w: Walker): Box => {
-    const b = w.start.box
-    return [Math.min(w.start.line[0], b[0]), b[1], size.width - Math.min(w.start.line[0], b[0]), b[3]]
+    const b = xfBox(w, w.tpl.box, w.off)
+    const x0 = Math.max(0, b[0] - Math.max(0, w.start.box[0] - w.start.line[0]) * w.off.scale)
+    return [x0, b[1], size.width - x0, b[3]]
   }
 
   /** The changed tiles of frame `cf` inside `area`, as boxes (video pixels). */
@@ -980,6 +986,16 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       const { rel, best, region } = movesFor(f, w.box)
       asks.push({ w, rel, best, region, xfs: candidatesFor(w, f, rel) })
     }
+    /**
+     * Placed by a clear match at f. Going back across a real move of the region its text moved with (a
+     * scroll, a drag), the text was typed, if it was, where it came from: the typing rule is tried again
+     * there (§5.8).
+     */
+    const placedBy = (a: (typeof asks)[number], xf: Xf): void => {
+      place(a.w, f, xf)
+      a.w.region = a.region
+      if (dir === -1 && a.best && (a.best.dx || a.best.dy)) typingBack(a.w, f)
+    }
     if (asks.length) {
       // Near first: the candidates landing where the walker's own predictions and its region's real move
       // put the text. A copy of the same text further away (a list showing one email on many rows, its
@@ -1000,8 +1016,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       for (const a of asks) {
         const r = first.find((x) => x.track === a.w.index)
         if (clear(r)) {
-          place(a.w, f, r!.best!)
-          a.w.region = a.region
+          placedBy(a, r!.best!)
           continue
         }
         nearRes.set(a.w, r)
@@ -1028,8 +1043,7 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
       for (const a of rest) {
         const r = far.includes(a) ? res.find((x) => x.track === a.w.index) : nearRes.get(a.w)
         if (clear(r)) {
-          place(a.w, f, r!.best!)
-          a.w.region = a.region
+          placedBy(a, r!.best!)
           continue
         }
         // Zoom inside the recorded app: the whole region changed with no real move.
@@ -1159,15 +1173,28 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         }
   }
 
-  /** The typing rule going back from a start (§5.8): text that grew in its line band just before its read is covered back to the burst's start with one box. */
+  /**
+   * The typing rule going back from frame R, where the walker's text is (§5.8): text that grew in its line
+   * band just before R is covered back to the burst's start with one box, but never across a real move of
+   * the region its text is in (a scroll, a drag): what came into the band with the move was typed where it
+   * came from. The walk follows the move back and applies the rule again there (found by review: a key
+   * typed on a terminal's last line, then Enter scrolling it up, had the band it scrolled to held back to
+   * the burst's start, and the key showed a line lower while it was typed).
+   */
   function typingBack(w: Walker, R: number): void {
     const band = lineBand(w)
     let first = -1
     let last = frames[R].t
     let elsewhere = false
     let changes = 0
+    let floor = 0
     const tiles: Box[] = []
     for (let j = R; j >= 1; j--) {
+      const moved = movesFor(j - 1, w.box).best
+      if (moved && (moved.dx || moved.dy)) {
+        floor = j
+        break
+      }
       const tj = frames[j].t
       const lh = Math.max(1, w.start.line[3])
       const near = clip([band[0], band[1] - 2 * lh, band[2], band[3] + 4 * lh], size)
@@ -1189,6 +1216,8 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     if (!covered && (elsewhere || changes < 2)) return
     let startIndex = first - 1 >= 0 ? first - 1 : 0
     if (burst) startIndex = Math.min(startIndex, Math.max(0, frameNear(look, burst.t) - 1))
+    // Not across the move: before it the text was elsewhere, and the walk follows it there.
+    startIndex = Math.max(startIndex, floor)
     let box = w.box
     for (const c of tiles) box = union(box, c)
     box = clip(box, size)

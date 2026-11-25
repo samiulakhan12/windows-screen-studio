@@ -434,6 +434,46 @@ describe('auto-blur P4: following', () => {
     expect(once.end).toBeLessThan(deletedAt(0) + 0.1)
   })
 
+  it('Text typed or pasted on a terminal\'s last line, then Enter scrolling it up, is covered where it was typed: the typing rule holds its band only back to the scroll, and the walk follows the scroll back and applies the rule again there (found by review: the band where the text scrolled to was held back to the burst\'s start, and the key showed one line lower while it was typed)', async () => {
+    // 1080p60, rows 20 px apart: "$ export GITHUB_TOKEN=" then a 40-character token on the last row (y 1064). Typed one
+    // character every 0.1 s from 2 s, or pasted at 2 s; Enter 0.2 s after the last one scrolls the terminal up by `rows`.
+    const X0 = 8
+    const TX = X0 + 22 * 10
+    const token = 'ghp_Zq8RkT2vLm9XwP4nB7cY1dF6gH3jK5sA0eUo'
+    const scene = (rows: number, mode: 'type' | 'paste', hinted: boolean) => {
+      const yLast = 1064
+      const yAfter = yLast - 20 * rows
+      const typedAt = (i: number): number => (mode === 'paste' ? 2 : Math.round((2 + 0.1 * i) * 30) / 30)
+      const enter = mode === 'paste' ? 2.2 : typedAt(39) + 0.2
+      const scrollAt = Math.round((enter + 1 / 30) * 30) / 30
+      // Times to a microsecond, as the look data and the source frames have them.
+      const chars = (t: number): number => (t < 2 - 1e-6 ? 0 : mode === 'paste' ? 40 : [...Array(40).keys()].filter((i) => t >= typedAt(i) - 1e-6).length)
+      const y = (t: number): number => (t >= scrollAt - 1e-6 ? yAfter : yLast)
+      // What shows (the typed characters) and what the follow session matches (the whole token).
+      const shown: Planted = { key: KEY, text: token, at: (t) => (chars(t) ? [TX, y(t), 10 * chars(t), 16] : null) }
+      const whole: Planted = { key: KEY, text: token, at: (t) => (chars(t) === 40 ? [TX, y(t), 400, 16] : null) }
+      const look = lookOf(HD, 60, 8, (_i, t) => {
+        if (Math.abs(t - scrollAt) < 1e-6) return { changed: [[0, 0, 1920, 1080]], moves: [move([0, 0, 1920, 1080], 0, -20 * rows)] }
+        if (mode === 'paste' && Math.abs(t - 2) < 1e-6) return { changed: [[TX, yLast, 400, 16]] }
+        for (let i = 0; mode === 'type' && i < 40; i++) if (Math.abs(t - typedAt(i)) < 1e-6) return { changed: [[TX + 10 * i, yLast, 20, 16]] }
+        return {}
+      })
+      const hints = !hinted ? NO_HINTS : hintsOf({ samples: [], clicks: [], valid: true, keys: mode === 'paste' ? [{ t: 2, label: 'Ctrl + V' }] : [], typing: mode === 'type' ? [{ t: 2, end: enter }] : [] } as CursorTrack)
+      const R = Math.round((scrollAt + 0.3) * 30) / 30
+      const cover: Box = [TX - 6, yAfter - 6, 412, 28]
+      const line: Box = [X0, yAfter, 620, 16]
+      const s = { ...start(R, cover, line, 'h0', token), parts: partsOf([TX, yAfter, 400, 16], 16) }
+      const reads = readIndex([readOf(0, [[0, 0, 1920, 1080]], [{ box: [X0, yLast - 20, 100, 16], text: '$ ls' }]), readOf(R, [[0, 0, 1920, 1080]], [{ box: line, text: '$ export GITHUB_TOKEN=' + token }], [{ id: 'h0', key: KEY, box: cover, parts: s.parts }])])
+      return { shown, whole, look, hints, s, reads, R }
+    }
+    for (const [rows, mode, hinted] of [[3, 'type', true], [2, 'type', true], [3, 'paste', true], [3, 'type', false]] as const) {
+      const c = scene(rows, mode, hinted)
+      const [back] = await walkSpan([c.s], -1, c.look, c.reads, matcherOf([c.whole]), c.hints, HD, { duration: 8 })
+      expect(uncovered({ ...back, end: c.R }, 60, c.shown, 0, c.R), `${mode}, ${rows} rows, ${hinted ? 'with' : 'without'} cursor data`).toEqual([])
+      expect(back.start).toBeGreaterThan(1.9)
+    }
+  })
+
   /** A matcher scoring each candidate by where it puts the text's own box (`own`) at t, searching ±8 px around it; second is the best score of a place more than 2 px from the best. */
   const placeMatcher = (own: Box, score: (t: number, at: Box) => number, check: (t: number, area: Box) => ReadResult | null = () => null): Matcher & { asked: number[] } => {
     const cx = own[0] + own[2] / 2

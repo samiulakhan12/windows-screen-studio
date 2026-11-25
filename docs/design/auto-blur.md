@@ -2090,6 +2090,17 @@ most of a part is there, so the rules above would leave its first characters unc
   with one box: the union of the own box and every changed tile of the line band in that span. That
   piece is marked `lost` (it covers an area). The cover's start then follows the evidence rule above
   from there.
+  **New: in place only.** The line band is where the text is at the frame the rule starts from, and
+  the piece never reaches back across a real move (step 2) of the region the text is in: what came
+  into the band with a scroll or a drag was typed, if it was, where it came from. The walk follows the
+  move back as it follows any move, and once it places the text across a real move it applies the rule
+  again there, on the band the text came from. Found by review: a key typed or pasted on a terminal's
+  last line, then Enter scrolling the terminal up, was read only after the scroll (the typing read and
+  the settle read are merged); the typing burst covered the scroll, so the band the key scrolled to was
+  held back to the burst's start and the walk skipped the frames between, and the key showed a line
+  lower while it was typed (248 of 360 source frames in a whole Find), and a token a command printed
+  while its output scrolled the terminal showed on 20 frames. Going forward the band follows the text
+  in the same way.
 - Going forward, when the parts stop matching while the line band changes inside a typing burst (the
   text is being deleted or changed), or, with no typing hint, while only the line band changes in a
   burst (changed again less than 0.3 s after it last changed, as text deleted one key at a time is:
