@@ -183,7 +183,9 @@ export function outcomeSentences(o: FindOutcome): string[] {
  * applies as a sentence of its own; *found nothing* with the *What Find does not see* link; a
  * failure with its cause in one sentence, and *Download again* for damaged reader files; *Review*
  * when it found something and `onReview` is given. A polite status, said once when it shows: only
- * in the place in front (§2.6), so Review's header and the section it covers never both say it.
+ * in the place in front (§2.6), so Review's header and the section it covers never both say it. The
+ * list *What Find does not see* opens is after the status, never inside it: added inside, its twelve
+ * sentences were said as a change of the result (second review, finding [25]).
  */
 export function FindResultLine({ projectId, onReview, place = 'section' }: { projectId: string; onReview?: () => void; place?: FindLinePlace }): JSX.Element | null {
   const outcomeOf = (): FindOutcome | null => outcomeFor(projectId)
@@ -197,30 +199,32 @@ export function FindResultLine({ projectId, onReview, place = 'section' }: { pro
   const none = outcome.ok && outcome.found === 0
   const listId = `find-not-see-${projectId.replace(/[^A-Za-z0-9_-]/g, '-')}`
   return (
-    <div className="find-result" role="status" aria-live="polite" data-testid="find-result" data-find-result={projectId} tabIndex={-1}>
-      <p className="find-result-text">
-        {sentences.map((s, i) => (
-          <span key={i} className="find-sentence" data-testid="find-sentence">
-            {s}{' '}
-          </span>
-        ))}
-      </p>
-      <div className="find-result-actions">
-        {none && (
-          <button type="button" className="link" aria-expanded={notSee} aria-controls={listId} onClick={() => setNotSee((o) => !o)} data-testid="find-not-see">
-            {t(PRIVACY_COPY.run.notSeeLink)}
-          </button>
-        )}
-        {!outcome.ok && outcome.reason === 'reader' && (
-          <button type="button" className="link" onClick={() => void window.api.downloadReader().catch(() => undefined)} data-testid="find-download-again">
-            {t(PRIVACY_COPY.run.downloadAgain)}
-          </button>
-        )}
-        {outcome.ok && outcome.found > 0 && onReview && (
-          <button type="button" className="link" onClick={onReview} data-testid="find-review">
-            {t(PRIVACY_COPY.run.openReview)}
-          </button>
-        )}
+    <>
+      <div className="find-result" role="status" aria-live="polite" data-testid="find-result" data-find-result={projectId} tabIndex={-1}>
+        <p className="find-result-text">
+          {sentences.map((s, i) => (
+            <span key={i} className="find-sentence" data-testid="find-sentence">
+              {s}{' '}
+            </span>
+          ))}
+        </p>
+        <div className="find-result-actions">
+          {none && (
+            <button type="button" className="link" aria-expanded={notSee} aria-controls={listId} onClick={() => setNotSee((o) => !o)} data-testid="find-not-see">
+              {t(PRIVACY_COPY.run.notSeeLink)}
+            </button>
+          )}
+          {!outcome.ok && outcome.reason === 'reader' && (
+            <button type="button" className="link" onClick={() => void window.api.downloadReader().catch(() => undefined)} data-testid="find-download-again">
+              {t(PRIVACY_COPY.run.downloadAgain)}
+            </button>
+          )}
+          {outcome.ok && outcome.found > 0 && onReview && (
+            <button type="button" className="link" onClick={onReview} data-testid="find-review">
+              {t(PRIVACY_COPY.run.openReview)}
+            </button>
+          )}
+        </div>
       </div>
       {none && notSee && (
         <ul className="find-not-see" id={listId} data-testid="find-not-see-list">
@@ -229,6 +233,6 @@ export function FindResultLine({ projectId, onReview, place = 'section' }: { pro
           ))}
         </ul>
       )}
-    </div>
+    </>
   )
 }

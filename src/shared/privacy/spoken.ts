@@ -6,6 +6,7 @@
  */
 import type { Bleep, CaptionSegment, CaptionWord, Project } from '../types'
 import { isPrivateBleep, privateGroupOf, privateKindOf } from './coverData'
+import { runDigitsOf } from './detect/saidDigits'
 
 export interface SpokenForms {
   /** Word and phrase forms, matched on word boundaries and case-insensitively. */
@@ -26,74 +27,8 @@ function digitOf(ch: string): number {
   return -1
 }
 
-/** Number words said one digit or one number at a time (§7.2): English, Bangla (both ways), Spanish and Hindi. */
-const NUMBER_WORDS: ReadonlyMap<string, string> = new Map(
-  [
-    ['zero', '0'], ['oh', '0'], ['nought', '0'], ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4'], ['five', '5'], ['six', '6'], ['seven', '7'], ['eight', '8'], ['nine', '9'],
-    ['ten', '10'], ['eleven', '11'], ['twelve', '12'], ['thirteen', '13'], ['fourteen', '14'], ['fifteen', '15'], ['sixteen', '16'], ['seventeen', '17'], ['eighteen', '18'], ['nineteen', '19'],
-    ['twenty', '20'], ['thirty', '30'], ['forty', '40'], ['fifty', '50'], ['sixty', '60'], ['seventy', '70'], ['eighty', '80'], ['ninety', '90'],
-    ['শূন্য', '0'], ['এক', '1'], ['দুই', '2'], ['তিন', '3'], ['চার', '4'], ['পাঁচ', '5'], ['ছয়', '6'], ['সাত', '7'], ['আট', '8'], ['নয়', '9'],
-    ['জিরো', '0'], ['ওয়ান', '1'], ['টু', '2'], ['থ্রি', '3'], ['ফোর', '4'], ['ফাইভ', '5'], ['সিক্স', '6'], ['সেভেন', '7'], ['এইট', '8'], ['নাইন', '9'],
-    ['cero', '0'], ['uno', '1'], ['dos', '2'], ['tres', '3'], ['cuatro', '4'], ['cinco', '5'], ['seis', '6'], ['siete', '7'], ['ocho', '8'], ['nueve', '9'],
-    ['शून्य', '0'], ['एक', '1'], ['दो', '2'], ['तीन', '3'], ['चार', '4'], ['पाँच', '5'], ['छह', '6'], ['सात', '7'], ['आठ', '8'], ['नौ', '9']
-  ].map(([w, d]) => [w.normalize('NFC'), d] as [string, string])
-)
-const REPEAT: ReadonlyMap<string, number> = new Map([
-  ['double', 2],
-  ['triple', 3]
-])
-
 /** A word without the punctuation and symbols around it, NFC (vowel signs and the nukta kept). */
 const bare = (w: string): string => w.normalize('NFC').replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '')
-
-/** The digits a word says (a digit token, a number word, "twenty-five"), or null. */
-function wordDigits(word: string): string | null {
-  const w = bare(word).toLowerCase()
-  if (!w) return null
-  let digits = ''
-  let all = true
-  for (const ch of w) {
-    const d = digitOf(ch)
-    if (d < 0 && ch !== '-' && ch !== '.') all = false
-    else if (d >= 0) digits += String(d)
-  }
-  if (all && digits) return digits
-  const named = NUMBER_WORDS.get(w)
-  if (named) return named
-  // "twenty-five", "forty two" written as one token.
-  const parts = w.split('-')
-  if (parts.length === 2) {
-    const tens = NUMBER_WORDS.get(parts[0])
-    const ones = NUMBER_WORDS.get(parts[1])
-    if (tens && ones && tens.length === 2 && tens.endsWith('0') && ones.length === 1 && ones !== '0') return tens[0] + ones
-  }
-  return null
-}
-
-/** The digit string a run of own words says, or null when one of them is not a number. */
-function runDigits(words: readonly string[]): string | null {
-  let out = ''
-  let repeat = 1
-  for (let i = 0; i < words.length; i++) {
-    const w = bare(words[i]).toLowerCase()
-    const times = REPEAT.get(w)
-    if (times) {
-      repeat = times
-      continue
-    }
-    let d = wordDigits(words[i])
-    if (d === null) return null
-    // "twenty five": a tens word then a ones word make one number.
-    const next = i + 1 < words.length ? wordDigits(words[i + 1]) : null
-    if (d.length === 2 && d.endsWith('0') && next && next.length === 1 && next !== '0' && NUMBER_WORDS.has(bare(words[i + 1]).toLowerCase())) {
-      d = d[0] + next
-      i++
-    }
-    out += repeat > 1 && d.length === 1 ? d.repeat(repeat) : d
-    repeat = 1
-  }
-  return out || null
-}
 
 /** The usual written groupings of a digit string: 4-4-4-4, 3-3-4, 3-2-4 (and the string alone), spaced and dashed. */
 function groupings(digits: string): string[] {
@@ -184,7 +119,8 @@ export function spokenForms(project: Pick<Project, 'transcript' | 'bleeps'>): Sp
       .filter((w) => bare(w))
     if (!words.length) continue
     const kind = privateKindOf(list[0])
-    const number = kind === 'email' || kind === 'name' || kind === 'password' ? null : runDigits(words)
+    // Read as the spoken rules read a run (fillers, "oh", "double", every language's number words), so a run they find has its digits.
+    const number = kind === 'email' || kind === 'name' || kind === 'password' ? null : runDigitsOf(words)
     if (number) {
       for (const g of groupings(number)) digits.add(g)
       continue

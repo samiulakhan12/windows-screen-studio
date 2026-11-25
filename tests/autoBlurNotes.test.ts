@@ -95,6 +95,9 @@ vi.stubGlobal('CSS', { escape: (s: string) => s })
 for (const name of ['HTMLElement', 'HTMLButtonElement', 'HTMLInputElement', 'HTMLTextAreaElement']) vi.stubGlobal(name, class {})
 mockReact()
 vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = { last: false }
+vi.doMock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 // A new cover's colour is read from the recording: answered here.
 vi.doMock('../src/renderer/src/privacy/coverPick', () => ({ ringColourAt: async () => '#123456', coverColourNow: async () => '#654321' }))
 
@@ -157,6 +160,7 @@ async function readerIs(state: ReaderState): Promise<void> {
 
 beforeEach(async () => {
   unmountAll()
+  keys.last = false
   runs.resetRuns()
   api.prefs.clear()
   api.calls.length = 0
@@ -483,6 +487,77 @@ describe('auto-blur P5: notes, copies and Settings', () => {
     expect(store.state).toBe(copy)
     els = render(exportNote(copy))
     expect(byTestId(els, 'export-note-from-original')).toBeUndefined()
+  })
+
+  it('the copies offer says how many copies main could not cover and offers those again, never that it covered 0 copies; the keyboard stays on the offer while it works and goes to the line once every copy is covered (§5.10; second review, finding [26])', async () => {
+    const w = (globalThis as unknown as { window: { api: Record<string, (...a: unknown[]) => Promise<unknown>> } }).window.api
+    const cover = w.coverCopies
+    const answers: (() => Promise<unknown>)[] = []
+    w.coverCopies = async (...a: unknown[]) => {
+      api.covered.push(a[1] as string[])
+      return answers.shift()!()
+    }
+    try {
+      const p: Project = { ...base('orig', 60), covers: [found('a', 1)], privacy: { find: { at: 'x', kinds: ['email'], listened: false, reader: READER } } }
+      editor(p)
+      api.copies = [
+        { id: 'copy1', name: 'Short', open: false },
+        { id: 'copy2', name: 'Vertical', open: false }
+      ]
+      const offer = (): unknown => ({ type: CopiesOffer, props: { services: contexts.editor } })
+      let els = await settle(offer())
+      // Main writes one copy and cannot write the other (its project.json locked), pressed with the keyboard.
+      keys.last = true
+      let answer: (v: unknown) => void = () => undefined
+      answers.push(() => new Promise((r) => (answer = r)))
+      press(byTestId(els, 'copies-offer'))
+      await flush()
+      els = render(offer())
+      // While it works it waits with aria-disabled (a disabled button would drop the keyboard to the page), and a second press does nothing.
+      expect(byTestId(els, 'copies-offer')!.props.disabled).toBeFalsy()
+      expect(byTestId(els, 'copies-offer')!.props['aria-disabled']).toBe('true')
+      press(byTestId(els, 'copies-offer'))
+      await flush()
+      expect(api.covered).toEqual([['copy1', 'copy2']])
+      answer({ covered: 1, skipped: ['copy2'] })
+      await flush()
+      els = render(offer())
+      expect(text(els, 'copies-done')).toBe('Covered the copy made from this video. Its covers wait in its Review.')
+      expect(text(els, 'copies-left')).toBe('Flown could not cover 1 copy made from this video. Try again, or open the copy and bring the covers over from its export dialog.')
+      expect(text(els, 'copies-offer')).toBe('Also cover the copy made from this video')
+      // Again: only the copy left is asked for; then both are covered, and the line takes the keyboard from the offer that goes.
+      focused.length = 0
+      answers.push(async () => ({ covered: 1, skipped: [] }))
+      press(byTestId(els, 'copies-offer'))
+      await flush()
+      els = render(offer())
+      expect(api.covered).toEqual([['copy1', 'copy2'], ['copy2']])
+      expect(text(els, 'copies-done')).toBe('Covered the 2 copies made from this video. Their covers wait in their Review.')
+      expect(byTestId(els, 'copies-left')).toBeUndefined()
+      expect(byTestId(els, 'copies-offer')).toBeUndefined()
+      expect(focused.at(-1)?.props['data-testid']).toBe('copies-result')
+      // The call fails, or main covers none (the original unreadable): nothing says covered; both are offered again.
+      const failures: (() => Promise<unknown>)[] = [
+        async () => {
+          throw new Error('Error invoking remote method')
+        },
+        async () => ({ covered: 0, skipped: ['copy1', 'copy2'] })
+      ]
+      for (const fail of failures) {
+        unmountAll()
+        els = await settle(offer())
+        answers.push(fail)
+        press(byTestId(els, 'copies-offer'))
+        await flush()
+        els = render(offer())
+        expect(byTestId(els, 'copies-done')).toBeUndefined()
+        expect(textOf(byTestId(els, 'copies-result'))).not.toMatch(/Covered/)
+        expect(text(els, 'copies-left')).toBe('Flown could not cover 2 copies made from this video. Try again, or open each copy and bring the covers over from its export dialog.')
+        expect(text(els, 'copies-offer')).toBe('Also cover the 2 copies made from this video')
+      }
+    } finally {
+      w.coverCopies = cover
+    }
   })
 
   it('the copies offer and a copy’s export note read the project as the user sees it: the editor writes it before main reads its file (§5.10, §9 row 10)', async () => {

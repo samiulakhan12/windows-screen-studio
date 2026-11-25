@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { dragAnnotationTimes } from '../../../shared/editor/annotations'
 import { deleteCovers, moveCoverTime, setCoverEnds } from '../../../shared/editor/coverEdit'
 import { followsText } from '../../../shared/editor/coverGroup'
@@ -131,15 +131,25 @@ export function CoverTrack({ px, win, duration, selection, onSelect, scrub, snap
   )
   const [focused, setFocused] = useState(0)
   const rowRef = useRef<HTMLDivElement>(null)
+  /** A key moved the tab stop to an item that was not drawn yet: the render that draws it focuses it. */
+  const focusNext = useRef(false)
   const pxRef = useRef(px)
   pxRef.current = px
   const drags = useRef(0)
+  const current = Math.min(focused, Math.max(0, items.length - 1))
+  // The focus follows the tab stop (§11). The row draws only the items inside the timeline's
+  // window, the tab stop and the selected ones, so the item a key moves to may be drawn first by
+  // the render that makes it the tab stop; each drawn item carries its index among all the items.
+  useEffect(() => {
+    if (!focusNext.current) return
+    focusNext.current = false
+    rowRef.current?.querySelector<HTMLElement>(`[data-item-index="${current}"]`)?.focus()
+  })
   if (!covers.length) return null
 
   const selected = new Set<string>()
   if (selection?.kind === 'cover') selected.add(selection.id)
   for (const k of group.group.keys) if (k.startsWith('cover:')) selected.add(k.slice(6))
-  const current = Math.min(focused, Math.max(0, items.length - 1))
   const keysOf = (bar: CoverBar): ItemKey[] => bar.ids.map((id) => itemKey('cover', id))
 
   /** Selects a bar's covers: one cover is the single selection, a group's bar every cover of it (§2.3). */
@@ -149,12 +159,18 @@ export function CoverTrack({ px, win, duration, selection, onSelect, scrub, snap
     else group.select(keys, keys[0])
   }
 
+  /**
+   * Moves the focus, the tab stop and the selection to item i together (finding 36). The item is
+   * found by its own index, never by its place among the drawn items: with the timeline zoomed in,
+   * the bars outside its window are not drawn (second review, finding [6]). One not drawn yet is
+   * focused by the render that makes it the tab stop, which always draws it.
+   */
   const focusItem = (i: number): void => {
     const n = Math.max(0, Math.min(items.length - 1, i))
     setFocused(n)
-    const el = rowRef.current?.querySelectorAll<HTMLElement>('[data-cover-item]')[n]
-    el?.focus()
-    // Selection follows focus on the row (finding 36).
+    const el = rowRef.current?.querySelector<HTMLElement>(`[data-item-index="${n}"]`)
+    if (el) el.focus()
+    else focusNext.current = true
     const it = items[n]
     if (it?.type === 'bar') selectBar(it.bar)
   }
@@ -195,7 +211,12 @@ export function CoverTrack({ px, win, duration, selection, onSelect, scrub, snap
       if (it.type !== 'bar') return
       store.update((p) => deleteCovers(p, it.bar.ids))
       group.notice(t(PRIVACY_COPY.cover.uncovered))
-      group.select([], null)
+      // The item that takes its place (the one after it, or before it at the end) becomes the tab
+      // stop: it takes the focus once drawn, and the selection with it.
+      const next = items[current + 1] ?? items[current - 1]
+      if (next?.type === 'bar') selectBar(next.bar)
+      else group.select([], null)
+      focusNext.current = true
     } else if (e.key === 'Escape') rowRef.current?.focus()
     else handled = false
     if (handled) {
@@ -298,6 +319,7 @@ export function CoverTrack({ px, win, duration, selection, onSelect, scrub, snap
             <div
               key={`thin:${it.mark.start}`}
               data-cover-item=""
+              data-item-index={i}
               role="option"
               aria-selected={false}
               aria-label={name}
@@ -332,6 +354,7 @@ export function CoverTrack({ px, win, duration, selection, onSelect, scrub, snap
           <div
             key={bar.key}
             data-cover-item=""
+            data-item-index={i}
             data-cover={bar.ids[0]}
             data-start={bar.start}
             data-end={bar.end}

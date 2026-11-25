@@ -145,18 +145,30 @@ export function captionsToTranslate(project: Project, language: string): Caption
 }
 
 /**
+ * What a translate request masks over each caption it sends (auto-blur §7.4, §7.6): the sorted ids
+ * of the private bleeps over it in `project`, the project aiTextFor masks the request with. Taken
+ * when the request is sent, for withTranslation to say what each answer was made from.
+ */
+export function maskedWhenSent(project: Pick<Project, 'transcript' | 'bleeps'>, sent: readonly CaptionSegment[]): ReadonlyMap<string, string> {
+  return new Map(sent.map((s) => [s.id, maskedForOf(project, s.id)]))
+}
+
+/**
  * The project with a translation written into the track in `language` (§11.9: the AI provider's
  * 'translate' answer writes a track instead of replacing the captions; one undo step), or null
  * when the answer cannot be used: checked by applyTextResult against the captions sent (the same
  * ids and times, none left out), and never in the spoken language. A caption whose text changed
- * since it was sent keeps what its track had (it stays out of date); the others get the new text
- * with a hash of the text it was made from. The track's other captions are kept; captions that
- * are gone leave the track.
+ * since it was sent keeps what its track had (it stays out of date), and so does one whose private
+ * bleeps changed since (auto-blur §7.4: a bleep Find added while the request was out, so its answer
+ * was made from the words said, or one removed, so it was made from the masked text); the others get
+ * the new text with a hash of the text it was made from and, when the request masked it, the private
+ * bleeps it masked (`masked`, from maskedWhenSent when the request was sent). The track's other
+ * captions are kept; captions that are gone leave the track.
  */
 export function withTranslation(
   project: Project,
   /** `host`: a service's (smart-tools.md §10.6), with `by: 'openai'`; the track then says "translated with <host>". */
-  t: { language: string; by: CaptionTrack['by']; model: string; createdAt: string; sent: readonly CaptionSegment[]; answer: unknown; host?: string }
+  t: { language: string; by: CaptionTrack['by']; model: string; createdAt: string; sent: readonly CaptionSegment[]; masked: ReadonlyMap<string, string>; answer: unknown; host?: string }
 ): Project | null {
   const spoken = project.transcript?.language
   if (!project.transcript || (spoken && sameLanguage(spoken, t.language))) return null
@@ -168,8 +180,9 @@ export function withTranslation(
     const sent = t.sent[i]
     const text = cleanCaptionText(s.text).slice(0, CAPTION_MAX_CHARS)
     // Sent through aiTextFor, a caption under private bleeps went masked: its translation says so (auto-blur §7.4, §7.6).
-    const maskedFor = maskedForOf(project, sent.id)
-    if (now.get(sent.id)?.text === sent.text && text && cleanCaptionText(sent.text)) fresh.set(sent.id, { id: sent.id, text, src: textHash(sent.text), ...(maskedFor ? { maskedFor } : {}) })
+    const maskedFor = t.masked.get(sent.id) ?? ''
+    if (now.get(sent.id)?.text === sent.text && maskedForOf(project, sent.id) === maskedFor && text && cleanCaptionText(sent.text))
+      fresh.set(sent.id, { id: sent.id, text, src: textHash(sent.text), ...(maskedFor ? { maskedFor } : {}) })
   })
   const kept = new Map((trackOf(project, t.language)?.segments ?? []).map((s) => [s.id, s]))
   const segments = project.transcript.segments.flatMap((s) => {

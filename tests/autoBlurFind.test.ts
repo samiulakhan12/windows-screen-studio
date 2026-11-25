@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { FindProgress, FindRequest, FindResult, FoundCover, ReaderState } from '../src/shared/api/privacy'
 import { EditStore } from '../src/shared/editor/editStore'
 import { DEFAULT_KEYMAP } from '../src/shared/editor/shortcuts'
@@ -8,7 +8,7 @@ import { PALETTE_COMMANDS, WAITING_COMMANDS, commandInfo } from '../src/shared/e
 import { captionsSig, outcomeOf } from '../src/shared/privacy/findState'
 import { isPrivateBleep } from '../src/shared/privacy/coverData'
 import type { Project, Transcript } from '../src/shared/types'
-import { allByTestId, byTestId, contexts, focused, mockReact, render, settle, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { allByTestId, byTestId, contexts, descendants, focused, mockReact, render, settle, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 import { base, words } from './autoBlurFixtures'
 
 /*
@@ -88,7 +88,7 @@ const { FindDialog } = await load<{ FindDialog: Comp }>('privacy/FindDialog')
 const { RegionsDialog } = await load<{ RegionsDialog: Comp }>('privacy/RegionsDialog')
 const { FindResultLine } = await load<{ FindResultLine: Comp }>('privacy/FindLine')
 const reader = await load<{ FindProgressLine: Comp; confirmLeaveFind(s: unknown): Promise<boolean>; resetReaderState(): void; subscribeReader(l: () => void): () => void; readerNow(): ReaderState | null; startReaderState(): void }>('privacy/readerState')
-const run = await load<{ startFind(s: unknown, c: unknown): Promise<string>; stopAndApply(s: unknown): Promise<void>; gatherPrivacy(p: Project, c: Transcript | null, s: AbortSignal): Promise<Record<string, unknown> | null> }>('privacy/privacyRun')
+const run = await load<{ startFind(s: unknown, c: unknown): Promise<string>; stopAndApply(s: unknown): Promise<void>; gatherPrivacy(p: Project, c: Transcript | null, s: AbortSignal): Promise<Record<string, unknown> | null>; runRegions(added: readonly string[]): string[] }>('privacy/privacyRun')
 const runs = await load<{ beginRun(r: unknown): boolean; endRun(id: string, o: unknown): void; resetRuns(): void; currentRun(): { requestId: string; progress: FindProgress } | null }>('privacy/findRuns')
 const follow = await load<{ runFollow(s: unknown, id: string, signal: AbortSignal): Promise<string>; readUnderCover(s: unknown, id: string): Promise<unknown>; runEverywhere(s: unknown, id: string, r: string, signal: AbortSignal): Promise<unknown> }>('privacy/followRun')
 const { PrivacySettings } = await load<{ PrivacySettings: Comp }>('privacy/PrivacySettings')
@@ -245,6 +245,43 @@ describe('auto-blur P5: Find', () => {
     // Done gives the regions added; the PC's is added at each run.
     expect(done).toEqual(['BD', 'IN', 'ES', 'GB', 'FR'])
     expect(textOf(els.find((e) => e.type === 'h2'))).toBe('Phone numbers from')
+  })
+
+  it("the PC's region is Windows' format locale's for every UI language (§2.5, §0 decision 2): an English UI on a PC in Great Britain finds British numbers, and the Find dialog, the regions dialog and Settings name it; formatting is unchanged", async () => {
+    const { resolveUiLanguage } = await import('../src/shared/i18n/locale')
+    const BN = [{ language: 'bn' as const, preview: false }]
+    // Main's ui:info: the region of app.getSystemLocale(), whatever the UI language; English still formats as en-US.
+    expect(resolveUiLanguage({}, ['en-GB'], 'en-GB', [], [])).toMatchObject({ language: 'en', formatLocale: 'en-US', region: 'GB' })
+    expect(resolveUiLanguage({ language: 'en' }, ['en-US'], 'bn-BD', BN, [])).toMatchObject({ language: 'en', formatLocale: 'en-US', region: 'BD' })
+    expect(resolveUiLanguage({ language: 'bn' }, ['bn-BD'], 'en-GB', BN, [])).toMatchObject({ language: 'bn', formatLocale: 'bn', region: 'GB' })
+    expect(resolveUiLanguage({}, ['en-US'], 'en-US', [], [])).toMatchObject({ region: 'US' })
+    expect(resolveUiLanguage({}, [], 'not a locale', [], [])).not.toHaveProperty('region')
+    // A system locale with a POSIX code set or modifier (Electron gives 'en-US@posix' on a Linux PC without LANG) still
+    // names its region; the format locale reads it as before.
+    expect(resolveUiLanguage({}, [], 'en-US@posix', [], [])).toMatchObject({ formatLocale: 'en-US', region: 'US' })
+    expect(resolveUiLanguage({}, [], 'en_GB.UTF-8', [], [])).toMatchObject({ formatLocale: 'en-US', region: 'GB' })
+    expect(resolveUiLanguage({ language: 'bn' }, [], 'bn_BD.UTF-8@latn', BN, [])).toMatchObject({ formatLocale: 'bn', region: 'BD' })
+    expect(resolveUiLanguage({ language: 'es' }, [], 'es-419', [{ language: 'es', preview: false }], [])).not.toHaveProperty('region')
+    // The window boots with that ui:info: an English UI on a PC in Great Britain.
+    const boot = await load<{ bootLanguage(view: string): Promise<{ formatLocale: string }> }>('i18n/boot')
+    const winApi = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    winApi.uiInfo = async () => resolveUiLanguage({}, ['en-GB'], 'en-GB', [], [])
+    onTestFinished(async () => {
+      delete winApi.uiInfo
+      await boot.bootLanguage('main')
+    })
+    expect((await boot.bootLanguage('main')).formatLocale).toBe('en-US')
+    expect(run.runRegions([])).toEqual(['GB'])
+    expect(run.runRegions(['BD'])).toEqual(['GB', 'BD'])
+    // The Find dialog names it; the regions dialog has it always on, first; Settings names it.
+    editor(base('gb', 30))
+    let els = await settle(dialog())
+    expect(textOf(byTestId(els, 'find-regions'))).toBe('Phone numbers from: United Kingdom Change…')
+    const regions = render({ type: RegionsDialog, props: { regions: [], onDone: () => undefined, onCancel: () => undefined } })
+    const first = regions.filter((e) => e.type === 'input' && e.props['data-region'])[0]
+    expect([first.props['data-region'], first.props.checked, first.props.disabled]).toEqual(['GB', true, true])
+    els = await settle({ type: PrivacySettings, props: { reveal: false } })
+    expect(textOf(byTestId(els, 'privacy-settings-regions'))).toBe('Phone numbers from United Kingdom Change…')
   })
 
   it('170. startFind saves first, runs detectSaid on the captions, applies one update through afterGestures, and records captionsSig at the start (finding 14)', async () => {
@@ -546,6 +583,27 @@ describe('auto-blur P5: Find', () => {
     runs.beginRun({ projectId: 'rl', requestId: 'rf', by: 'find', stop: async () => undefined })
     runs.endRun('rf', { ok: false, reason: 'tooLarge' })
     expect(allByTestId(view(), 'find-sentence').map((s) => textOf(s).trim())).toEqual(['This recording is too large for Find to read: more than 7680 × 4320 pixels.'])
+  })
+
+  it('What Find does not see, opened from the result line, is a list after its live region, never inside it: Find’s result is said once, and opening the list says nothing (second review, finding [25])', () => {
+    const view = (): El[] => render({ type: FindResultLine, props: { projectId: 'ns' } })
+    runs.beginRun({ projectId: 'ns', requestId: 'ns1', by: 'find', stop: async () => undefined })
+    runs.endRun('ns1', { ok: true, found: 0, check: 0, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    let els = view()
+    const live = (): El => els.find((e) => e.props.role === 'status' && e.props['aria-live'] === 'polite')!
+    expect(live().props['data-testid']).toBe('find-result')
+    const link = byTestId(els, 'find-not-see')!
+    press(link)
+    els = view()
+    const list = byTestId(els, 'find-not-see-list')!
+    expect(descendants(list).filter((e) => e.type === 'li')).toHaveLength(12)
+    expect(link.props['aria-controls']).toBe(list.props.id)
+    // The live region holds the result's sentence and its link, not the list.
+    expect(descendants(live()).includes(list)).toBe(false)
+    expect(textOf(live())).toBe('Find private info found nothing private. What Find does not see')
+    expect(els.filter((e) => e.props.role === 'status')).toHaveLength(1)
+    runs.resetRuns()
+    unmountAll()
   })
 
   it('Find’s progress and result lines show in one place at a time, the one in front: Review’s header over the Private info section it covers, Cover this text everywhere’s dialog over both, so each live region is said once (§2.6, §11)', () => {

@@ -40,7 +40,8 @@ vi.stubGlobal('window', {
     underCover: (req: Record<string, unknown>) => api.under!(req),
     coverEverywhere: (req: Record<string, unknown>) => api.everywhere!(req),
     downloadReader: () => api.download!(),
-    stopFind: async (id: string) => void api.stopped.push(id),
+    // A stop of one request (a Follow's, an Everywhere's) is written with its request id after the project's.
+    stopFind: async (id: string, requestId?: string) => void api.stopped.push(requestId === undefined ? id : `${id} ${requestId}`),
     setPrivateNames: async (names: string[]) => void api.names.push(names),
     copies: async () => api.copies,
     coverCopies: async (_id: string, ids: string[]) => {
@@ -58,6 +59,9 @@ vi.stubGlobal('Path2D', class {})
 for (const name of ['HTMLElement', 'Node', 'HTMLInputElement', 'HTMLButtonElement', 'HTMLCanvasElement']) vi.stubGlobal(name, class {})
 mockReact()
 vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = { last: false }
+vi.doMock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 // The colour a new cover takes is read from the recording: answered here.
 vi.doMock('../src/renderer/src/privacy/coverPick', () => ({ ringColourAt: async () => '#123456', coverColourNow: async () => '#654321' }))
 // The reader's state is part P5's; the tests set it.
@@ -168,6 +172,7 @@ const flush = async (): Promise<void> => {
 }
 
 beforeEach(() => {
+  keys.last = false
   events.selects = []
   events.notices = []
   events.commands = []
@@ -460,6 +465,33 @@ describe('auto-blur P1: the Private info section', () => {
     await flush()
     expect(api.prefs.get('privacy')).toEqual({})
   })
+
+  it("choosing a length in Add cover's menu with the keyboard gives the focus back to the menu button, as Escape does; a click leaves it where clicks leave it (second review, finding [24])", async () => {
+    setUp(project())
+    const root = { type: PrivacySection, props: { services: services(), onFind: () => undefined } }
+    let els = await settle(root)
+    // Enter on the menu button opens the menu on its first item.
+    keys.last = true
+    click(byTestId(els, 'privacy-add-cover-menu'))
+    els = render(root)
+    expect(focused.at(-1)?.props['data-testid']).toBe('privacy-length-three')
+    // Enter on To the end of the video: the menu closes, the cover is added, the menu button has the focus.
+    focused.length = 0
+    click(byTestId(els, 'privacy-length-toEnd'))
+    els = render(root)
+    expect(byTestId(els, 'privacy-length-toEnd')).toBeUndefined()
+    expect(events.commands).toEqual(['addCover'])
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['privacy-add-cover-menu'])
+    // With the pointer: no focus moves (a clicked control does not keep it, focus.ts).
+    keys.last = false
+    click(byTestId(els, 'privacy-add-cover-menu'))
+    els = render(root)
+    focused.length = 0
+    click(byTestId(els, 'privacy-length-whole'))
+    els = render(root)
+    expect(events.commands).toEqual(['addCover', 'addCover'])
+    expect(focused).toEqual([])
+  })
 })
 
 describe('auto-blur P1: the Cover section', () => {
@@ -675,14 +707,18 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     // In the section: Stop changes nothing and keeps the focus on Follow.
     setUp(project({ covers: [email()] }))
     const root = { type: CoverSection, props: { services: services(), coverIds: ['c'], shapeIds: [] } }
-    api.follow = (req) => new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    api.follow = (req) => {
+      asked = req
+      return new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    }
     let els = render(root)
     click(byTestId(els, 'cover-follow'))
     els = render(root)
     expect(textOf(els.find((e) => e.props.className === 'cover-following'))).toContain('Following…')
     focused.length = 0
     click(byTestId(els, 'cover-follow-stop'))
-    expect(api.stopped).toEqual(['p'])
+    // Stop stops this Follow alone, by its request: a Find of the same video goes on (second review, finding [20]).
+    expect(api.stopped).toEqual([`p ${asked!.requestId}`])
     answer({ ok: false, projectId: 'p', reason: 'stopped' })
     await flush()
     els = render(root)
@@ -704,6 +740,35 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     await flush()
     els = render(root)
     expect(textOf(byTestId(els, 'cover-status'))).toBe('Flown found no text under this cover to follow.')
+  })
+
+  it('pressing Follow what is under it with the keyboard moves the focus to its Stop, which replaces it while following runs; with a click the focus stays where clicks leave it (second review, finding [23])', async () => {
+    setUp(project({ covers: [email()] }))
+    const root = { type: CoverSection, props: { services: services(), coverIds: ['c'], shapeIds: [] } }
+    let answer: (v: unknown) => void = () => undefined
+    api.follow = (req) => new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    let els = render(root)
+    keys.last = true
+    focused.length = 0
+    click(byTestId(els, 'cover-follow'))
+    els = render(root)
+    expect(byTestId(els, 'cover-follow')).toBeUndefined()
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['cover-follow-stop'])
+    // Its Stop gives the focus back to Follow (finding 37).
+    click(byTestId(els, 'cover-follow-stop'))
+    answer({ ok: false, projectId: 'p', reason: 'stopped' })
+    await flush()
+    els = render(root)
+    expect(focused.at(-1)?.props['data-testid']).toBe('cover-follow')
+    // A click on Follow: nothing takes the focus while it runs.
+    keys.last = false
+    focused.length = 0
+    click(byTestId(els, 'cover-follow'))
+    els = render(root)
+    expect(byTestId(els, 'cover-follow-stop')).toBeDefined()
+    expect(focused).toEqual([])
+    answer({ ok: false, projectId: 'p', reason: 'stopped' })
+    await flush()
   })
 
   it('62. runEverywhere adds text covers in one step; with remember project and a name-like text it adds the returned name to privacy.names in the same step, with settings to Settings\' names, and the open dialogs show the new list (finding 28); with a text that is not name-like nothing is added', async () => {
@@ -821,17 +886,22 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     }
     ;(radios[1].props.onChange as () => void)()
     els = render(root)
+    api.stopped = []
     click(byTestId(els, 'everywhere-start'))
     els = render(root)
     expect(byTestId(els, 'everywhere-running')).toBeDefined()
     expect(sent).toMatchObject({ projectId: 'p', remember: 'project' })
     click(byTestId(els, 'everywhere-stop'))
-    expect(api.stopped).toEqual(['p'])
+    // Stop stops this run alone, by its request: a Find of the same video goes on (second review, finding [20]).
+    expect(api.stopped).toEqual([`p ${sent!.requestId}`])
     ended({ ok: true, projectId: 'p', requestId: sent!.requestId, found: [{ kind: 'text', score: 1, group: 'x', start: 12, end: 14, path: writePath([key(12, 0.5, 0.2, 0.25, 0.04)]), color: '#203040' }], failedReads: 0, thinSpans: '', stopped: true, readTo: 14, reader: 'r' })
     els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-done'))).toBe('Covered 1 more place.')
-    // Failed.
+    // Closing the dialog asks main to forget the text it read for this request, and nothing else (§5.9 step 1).
+    api.stopped = []
     unmountAll()
+    expect(api.stopped).toEqual([`p ${sent!.requestId}`])
+    // Failed.
     api.everywhere = async () => ({ ok: false, projectId: 'p', requestId: 'x', reason: 'failed' })
     els = await settle(root)
     click(byTestId(els, 'everywhere-start'))
@@ -870,7 +940,7 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     reader.state = { status: 'ready', bytes: 1, decodeMs: 4 }
     const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, 4))
     expect(minutes).toBeGreaterThan(1)
-    api.under = async () => ({ ok: true, nameLike: false })
+    api.under = async () => ({ ok: true, nameLike: false, kept: false })
     const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
     let els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(`About ${minutes} minutes on this PC. You can keep editing; keep this video open until Find ends.`)
@@ -885,6 +955,23 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     api.under = async () => ({ ok: false, reason: 'noText' })
     els = await settle(root)
     expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
+  })
+
+  it("EverywhereDialog shows Find's estimate only when Cover everywhere will read the video: right after Find main keeps its reads and only follows them there, so no estimate shows (§5.9 step 2; second review, finding [27])", async () => {
+    // A 20-minute 1080p recording at 60 fps: Find's first estimate is several minutes.
+    setUp(project({ duration: 1200, covers: [email()] }))
+    reader.state = { status: 'ready', bytes: 1, decodeMs: null }
+    const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
+    api.under = async () => ({ ok: true, nameLike: false, kept: true })
+    let els = await settle(root)
+    expect(byTestId(els, 'everywhere-start')).toBeDefined()
+    expect(textOf(els.find((e) => e.props.className === 'modal-body'))).toBe('Flown reads the text under this cover, finds it wherever it shows in this video, and covers it there.')
+    expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
+    // No reads kept (none, gone after 10 minutes, or a Find running): Everywhere runs Find for the text, with its estimate.
+    unmountAll()
+    api.under = async () => ({ ok: true, nameLike: false, kept: false })
+    els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toMatch(/^About \d+ minutes on this PC\./)
   })
 })
 
@@ -1078,6 +1165,57 @@ describe('auto-blur P1: the Covers row', () => {
     player.seeks = []
     ;(rowOf(els).props.onKeyDown as (e: unknown) => void)(keyEvent('Enter'))
     expect(player.seeks).toEqual([5])
+  })
+
+  it('the focus, the tab stop and the selection stay on one bar while the timeline draws only the bars near its view, so Delete uncovers the bar that has the focus (second review, finding [6])', () => {
+    // A 10-minute recording with covers at 0:05, 3:00 and 6:00: zoomed in, the timeline draws the
+    // bars inside its window, the tab stop and the selected bars (Timeline.tsx's renderWindow).
+    const long = (): Project => ({
+      ...createProject({ id: 'p', name: 'p', duration: 600, width: W, height: H, hasWebcam: false, hasAudio: true, webcamOffset: 0, zooms: [], cursorValid: true, capture: { method: 'native', cursorInVideo: false, region: null, fps: 60 } }),
+      covers: [cover('A', 5, 8, [key(5, 0.1, 0.1, 0.2, 0.05)]), cover('B', 180, 183, [key(180, 0.1, 0.3, 0.2, 0.05)]), cover('C', 360, 363, [key(360, 0.5, 0.5, 0.2, 0.05)])]
+    })
+    const run = (win: { start: number; end: number }, keys: string[]): { focus: unknown; tabStop: unknown; selected: unknown; left: string[] } => {
+      setUp(long())
+      unmountAll()
+      player.time = 181
+      const selected: { current: { kind: string; id: string } | null } = { current: null }
+      const root = { type: () => ({ type: track.CoverTrack, props: { px: 20, win, duration: 600, selection: selected.current, onSelect: (s: typeof selected.current) => void (selected.current = s), scrub: () => undefined, snap } }), props: {} }
+      let els = render(root)
+      // As the browser does: focus() runs the element's onFocus at once.
+      const settleFocus = (before: number): void => {
+        els = render(root)
+        if (focused.length > before) (focused.at(-1)!.props.onFocus as () => void)()
+        els = render(root)
+      }
+      // Tab reaches the row's one tab stop.
+      const stop = bars(els).find((b) => b.props.tabIndex === 0)!
+      focused.push(stop)
+      settleFocus(0)
+      for (const k of keys) {
+        const before = focused.length
+        ;(rowOf(els).props.onKeyDown as (e: unknown) => void)(keyEvent(k))
+        settleFocus(before)
+      }
+      return {
+        focus: focused.at(-1)?.props['data-cover'],
+        tabStop: bars(els).find((b) => b.props.tabIndex === 0)?.props['data-cover'],
+        selected: selected.current?.id,
+        left: store.state.covers!.map((c) => c.id)
+      }
+    }
+    // Tab onto A scrolls the timeline to it (0:00-1:07 drawn): Right moves the focus, the tab stop and the selection to B together.
+    expect(run({ start: 0, end: 67 }, ['ArrowRight'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B', 'C'] })
+    // Delete uncovers B, the bar with the focus; the focus and the selection move to the bar in its place.
+    expect(run({ start: 0, end: 67 }, ['ArrowRight', 'Delete'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'C'] })
+    expect(events.notices.at(-1)).toBe('Uncovered. It will show in exports.')
+    // Zoomed in around 3:00 (2:30-4:10 drawn): Right twice reaches C, drawn only as the tab stop; Left comes back to B.
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'B', 'C'] })
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight', 'ArrowLeft'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B', 'C'] })
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight', 'ArrowLeft', 'Delete'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'C'] })
+    // End, then Delete on the last bar: the bar before it takes the focus and the selection.
+    expect(run({ start: 150, end: 250 }, ['End', 'Delete'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B'] })
+    // Home from the far end comes back to A, drawn only as the tab stop.
+    expect(run({ start: 300, end: 400 }, ['End', 'Home'])).toEqual({ focus: 'A', tabStop: 'A', selected: 'A', left: ['A', 'B', 'C'] })
   })
 })
 

@@ -104,6 +104,7 @@
     "src/shared/privacy/detect/qr.ts",
     "src/shared/privacy/detect/rows.ts",
     "src/shared/privacy/detect/said.ts",
+    "src/shared/privacy/detect/saidDigits.ts",
     "src/shared/privacy/detect/score.ts",
     "src/shared/privacy/detect/tables.ts",
     "src/shared/privacy/detect/windows.ts",

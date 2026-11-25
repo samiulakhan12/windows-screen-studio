@@ -20,6 +20,8 @@ import { CostLine } from '../../ai/CostLine'
 import { runCostText } from '../../ai/useCost'
 import { LocalProgress, LocalWritten } from '../../ai/LocalProgress'
 import { aiTextFor } from '../../ai/aiTextFor'
+import { keepMaskedCaptions, maskRequest } from '../../../../shared/privacy/aiRequest'
+import type { AiTextRequest } from '../../../../shared/api/ai'
 
 const digitOptions = (): { value: CleanupChoices['digits']; label: string }[] => [
   { value: 'above-ten', label: t('captions.cleanup.digits.aboveTen') },
@@ -194,12 +196,17 @@ export function CleanupSection({ project }: { project: Project }): JSX.Element {
       run.current = mine
       setBusy(true)
       setRunning(mine.id)
+      // The captions as the provider gets them, masked for secrets said aloud with the project aiTextFor
+      // masks the request from: a caption it masked never takes the answer (auto-blur §7.4).
+      const from = store.state
+      const request: AiTextRequest = { task: 'cleanup', segments: asked }
+      const maskedSent = maskRequest(request, from).segments ?? asked
       try {
-        const result = await aiTextFor(store.state, chosen.id, { task: 'cleanup', segments: asked }, mine.id)
+        const result = await aiTextFor(from, chosen.id, request, mine.id)
         if (mine.cancelled || !live.current) return
         // What the run cost, for the notice (smart-tools.md §11.6).
         cost = runCostText(result.usage, chosen)
-        if (result.task === 'cleanup') fix = result
+        if (result.task === 'cleanup') fix = { ...result, segments: [...keepMaskedCaptions(result.segments, asked, maskedSent)] }
         else leftOut = t('captions.cleanup.leftOut.otherAnswer')
       } catch (err) {
         if (mine.cancelled || !live.current) return

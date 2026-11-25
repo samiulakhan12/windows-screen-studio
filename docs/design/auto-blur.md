@@ -471,7 +471,9 @@ and *Cover this text everywhere…* are disabled, each with its reason (`oneForB
 - On opening, the dialog asks main to read the text under the cover at the playhead (`underCover`,
   §5.9) and shows `reading`. Then it shows one of: `needsReader` with *Download*
   (`privacy.find.readerDownload`, the download's progress and failure lines of §2.5); `noText`; or
-  the body, the estimate (`privacy.find.estimate`) and *Cover everywhere*.
+  the body, the estimate (`privacy.find.estimate`) and *Cover everywhere*. The estimate shows only
+  when *Cover everywhere* will read the video, that is when main keeps no reads of a Find of this
+  video (`kept`, §5.9 step 1); with them it only follows their places.
 - The *Also add it to the names to hide* choice (radio buttons, *No* checked) shows only when main
   says the text looks like a name (§5.9). A key, a password, a code or a number is never offered.
 - While it runs, the dialog shows the progress line of §2.6 with *Stop*; *Stop* keeps what was found
@@ -591,9 +593,14 @@ select on the kind's id (§12.1).
   (§4.3) and default from Settings (§2.14). *Listen* is on whenever the project has captions, unless
   the user unticked it for this project (`Project.privacy.listen: false`); Settings has no listen
   choice.
-- Regions: the PC's region (`app.getSystemLocale()` region, read in main) and the UI language's region
+- Regions: the PC's region (`app.getSystemLocale()` region, read in main, whatever the UI language:
+  `UiInfo.region`, since an English UI formats as `en-US` on every PC and another language takes the
+  system locale's region only when that locale is in the same language) and the UI language's region
   (`bn` → BD, `hi` → IN, `es` → ES, `en` → none) are always on; the user adds up to 5 in a list of
-  every region the phone metadata knows, by country name.
+  every region the phone metadata knows, by country name. An English UI on a PC in Great Britain finds
+  British numbers, a Bangla UI there British and Bangladeshi ones. A POSIX code set or modifier on
+  the locale is read past (`en_GB.UTF-8`, and `en-US@posix`, which Electron gives on a Linux PC
+  without a language set); the format locale reads the locale as before.
 - The estimate is §5.11's first estimate. It is replaced by a second one after the look pass (§2.6).
 - *Listen* is unchecked and disabled with `privacy.find.listenNone` when the project has no
   captions.
@@ -947,11 +954,18 @@ info section, or in Review's header while Review covers it, §2.6) and Review's 
 |---|---|
 | `privacy.copies.offer` | `{count, plural, one {Also cover the copy made from this video} other {Also cover the {n} copies made from this video}}` |
 | `privacy.copies.done` | `{count, plural, one {Covered the copy made from this video. Its covers wait in its Review.} other {Covered the {n} copies made from this video. Their covers wait in their Review.}}` |
+| `privacy.copies.notCovered` | `{count, plural, one {Flown could not cover {n} copy made from this video. Try again, or open the copy and bring the covers over from its export dialog.} other {Flown could not cover {n} copies made from this video. Try again, or open each copy and bring the covers over from its export dialog.}}` |
 
 It adds this video's covers and private bleeps to each copy, as suggestions, through main (§5.10),
 which reads this project from its `project.json`, so the offer first has the editor's saver write it
 (Review gets the saver's flush from the editor, the Private info section through the Inspector).
 Covers are in source seconds of the shared `screen.mp4`, so they are copied as they are.
+
+Then `done` counts the copies that have this video's covers, and `notCovered` the copies main skipped
+(one it could not read or save, or every copy when the call failed), and the offer stays for those,
+counted again; pressed, it asks for them alone. Nothing says it covered none: the line once read
+"Covered the 0 copies made from this video" when the call failed, and dropped the copies main had
+skipped, so a copy could keep the secret with nothing said (second review, finding [26]).
 
 ### 2.13 Captions, translations and transcription
 
@@ -1352,15 +1366,16 @@ field.
 
 **The bleep limit.** `readBleeps` keeps at most `MAX_BLEEPS = 2000` and, past it, the earliest by time
 (`studioData.ts:779`), so a project near the limit could lose its latest private bleeps on the next
-load. Two rules prevent it:
+load, and Tidy captions with bleeping cut the same way when it added bleeps. Two rules prevent it:
 
 - `saidBleeps` (§7.2) keeps the total at or under `MAX_BLEEPS`: past it, it merges private bleeps
   that are close in time, across groups if it must (each merge only grows a bleep, and the merged
   bleep takes the earlier group). When even that cannot fit, Find's result says so
   (`privacy.run.saidFull`: "Too many bleeps: some secrets said aloud could not be bleeped. Remove
   bleeps you do not need and find again.") and the hits it could not place are counted in Review.
-- `readBleeps` keeps private bleeps first when it must cut (then the earliest of the rest). A project
-  with no private bleeps is cut exactly as today.
+- Every cut of a list of bleeps (`keptBleeps`, `studioData.ts`: `readBleeps`, and Tidy captions
+  adding the bleeps it finds, `tidyCaptions`) keeps private bleeps first when it must cut (then the
+  earliest of the rest). A project with no private bleeps is cut exactly as today.
 
 ### 4.5 Preferences
 
@@ -2187,8 +2202,12 @@ tooltip over text before its first read, and text typed into a field or a termin
   1. `underCover { projectId, requestId, t, box }` reads the cover's box at the playhead's frame,
      keeps the characters of its lines that lie inside the box (the read's margin reaches the words
      beside the cover on the same line, and "to priya.raman@example.com" was then looked for
-     everywhere, never finding the email standing alone), and answers `{ ok: true, nameLike } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
-     keeps the text for that request id only, until the dialog closes. `nameLike` is true when the
+     everywhere, never finding the email standing alone), and answers `{ ok: true, nameLike, kept } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
+     keeps the text for that request id only, until the dialog closes. `kept` says whether main
+     keeps the last Find's reads of this video (step 2), so the dialog shows Find's estimate only
+     when *Cover everywhere* will read the video: right after Find it only follows the kept places,
+     in seconds, where it once showed Find's whole first estimate, about 9 minutes for 20 minutes
+     of 1080p60 (second review, finding [27]). `nameLike` is true when the
      text is at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits
      it. A key, a password, a code or a number is never name-like.
   2. `coverEverywhere { projectId, requestId, remember }` looks for the same folded text in the kept
@@ -2204,6 +2223,14 @@ tooltip over text before its first read, and text typed into a field or a termin
      screen's text reaches the renderer, by the user's explicit choice, and it then shows in the names
      list. Every other result holds no text (test 233). The dialogs that show the list read it again
      afterwards (finding 28).
+- **Stop** (second review, finding [20]): Follow's *Stop*, and Everywhere's *Stop* or its dialog
+  closing, stop that run alone. The renderer sends `privacy:stopFind` with the run's request id;
+  main aborts only the run of that request (the Follow, the text under a cover or Everywhere) and
+  forgets the text read under the cover for it, which is how the text is kept "until the dialog
+  closes" (step 1). A Find of the same video goes on, with the reads it keeps for Everywhere: a
+  Follow is allowed while Find runs, and its Stop once also stopped that Find, covered what it had
+  not followed to the end of the video and forgot its reads. Find's own *Stop*, Polish's and leaving
+  the editor send no request id and stop every run of the video, forgetting every text kept.
 
 ### 5.10 Find again, groups, merging and applying (P4 `found.ts`)
 
@@ -2255,8 +2282,9 @@ tooltip over text before its first read, and text typed into a field or a termin
   `copyOf.id` is this one (`ProjectSummary.copyOf`); `privacy:coverCopies { projectId, copyIds }`
   reads each copy's `project.json`, adds this project's covers and private bleeps with
   `withFoundCovers` as suggestions (kinds, groups and tiers kept; containment and the copy's own
-  rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor
-  is skipped and says so; it can use *Bring them over* (§2.12). `privacy:originCovers { projectId }`
+  rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor,
+  or that main cannot read or save, is skipped and returned in `skipped`; the offer says how many
+  copies were not covered and offers them again (§2.12), and the copy can use *Bring them over*. `privacy:originCovers { projectId }`
   answers how many of the original's covers and private bleeps a copy lacks, and returns them for
   *Bring them over*. Main reads the project open in the editor from its `project.json` for both, so
   the renderer first writes it as the user sees it, as the export's timeline does (§9 row 10): the
@@ -2822,13 +2850,31 @@ just made (decision 11).
   … नौ. Fillers inside a run: `um`, `uh`, `then`, `dash`, `space`, `comma`, `is`, উম, `y`, `guion`. A run
   ends at a pause over 2.0 s or any other word. `and` ends a run: as a filler it turned "400, 300 and
   1500, 800" into a Luhn-valid card. So "4917 6123 4567 eight nine zero four" across two captions is
-  one run (finding 10).
+  one run (finding 10). Runs are read in `saidDigits.ts`, which the spoken forms (§7.3) read too.
+- **Breaks inside a run**: where a sentence ends (`.`, `!`, `?`, `।`, `…` at a word's end), a clause
+  ends (`,`, `;`, `:`) or a new caption starts between two of its numbers, a run may say more than
+  one number: "4917 6123 4567 8904. One second" is a card and a word, "My verification code is
+  482913. Oh wait" a code and a word, "That was step two. 4917 6123 4567 8904" a word and a card,
+  "4829, then two factor" a code and a word. The whole run and every stretch of it between breaks (up
+  to 20 digits) are tried with the rules below, and the best are kept, never two over one number: the
+  higher score first, then the one across fewer strong breaks, then the longer. A strong break is a
+  sentence end, a new caption, or a clause end between a number written in digits and one said in
+  words ("4 8 2 9 1 3, two more steps"). A number word alone beyond a strong break is the next
+  sentence's or clause's word, or the last one's, never part of the number. A clause end between
+  numbers said in words is a pause inside one number ("চার আট দুই নয়, এক তিন", test 131). One between
+  numbers written in digits is a grouping pause ("4829, 1234" is one code) or parts a list: a stretch
+  holding one is never cut out of the run there, so no part of "the colour code is 255, 128, 0" is a
+  code. So finding 10's card split by a full stop, valid only whole, stays whole, and a number word
+  starting the next sentence or clause never joins, or hides, the number before it (second review,
+  finding [4]). Flown's docs read as speech give the same 10 hits as before; read the same way, the
+  README and changelog files of the installed packages (`node_modules`, 514 files, 437,298 words, 25
+  November 2026) give the same 97 hits as the rules before these breaks.
 - **Rules on runs** (the label context is the 12 words or 10 s before the run):
 
   | Kind | Rule |
   |---|---|
   | card | 13-19 digits with Luhn and an issuer prefix (no label needed), or with a card word |
-  | code | 4-8 digits with a code word (code, OTP, verification, passcode, PIN, কোড, ওটিপি, পিন, código, कोड, ओटीपी, पिन), said as one number, single digits or groups; never a year or a version |
+  | code | 4-8 digits with a code word (code, OTP, verification, passcode, PIN, কোড, ওটিপি, পিন, código, कोड, ओटीपी, पिन), said as one number, single digits, groups of 3-4, or two or three pairs said in one go ("forty eight twenty nine", "25 48 91"); never a year or a version, nor pairs that say a year ("twenty twenty-four") or that a break parts |
   | phone | 7-15 digits with a phone word, valid for one of the user's regions by the same libphonenumber check as the screen (§6.8), or a Bangladeshi mobile `01[3-9]` + 8 digits (or `8801…`) with no label |
   | id | 6-20 digits with an ID word (social security, SSN, account, routing, passport, licence, national insurance, Aadhaar, NID, অ্যাকাউন্ট, হিসাব, পাসপোর্ট, এনআইডি, cuenta, खाता, आधार) |
   | password | a password word followed at once by `is`, `was`, `=`, `:`, হলো, হল, হচ্ছে, `es`, है, `it's`; then up to 6 words, ending at a pause over 1.0 s or the sentence's end. "it skips password boxes" gives nothing |
@@ -2871,7 +2917,10 @@ for each group of private bleeps, **from the hit's own words, never from the pad
   on its own.
 - **A number run is its digit string** with its usual written groupings (4-4-4-4, 3-3-4, 3-2-4,
   spaced and dashed), never its number words: a card said "four nine one seven …" gives
-  `4917…`, not "four" or "nine".
+  `4917…`, not "four" or "nine". The own words are read as the rules read a run (`runDigitsOf`,
+  `saidDigits.ts`: fillers inside it, "oh" and "o" inside it, "double" and "triple", every language's
+  number words), so every number the rules find has its digit form and its typed copies are masked
+  ("two one three, um, three seven three …" gives `2133734253`; second review, finding [18]).
 - For emails said aloud, the address as written (`name@domain.tld`).
 
 `maskPrivate(text, forms): string` replaces every occurrence of a form in `text` with `•` for each of
@@ -2894,12 +2943,21 @@ project has no private bleeps it is never called.
   unless its `maskedFor` equals the sorted ids of the private bleeps over that caption, joined by
   `,`. `maskedFor` is written by the translate request's result handling when the request was masked
   (§7.6), so a caption translated again after Find shows its translation, which was made from the
-  masked text. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
+  masked text. It is what the request masked when it was sent (`maskedWhenSent`, taken with the
+  project `aiTextFor` masks the request from), never the private bleeps there when the answer lands:
+  a caption whose private bleeps changed while the request was out (Find added one, so the answer was
+  made from the words said, or *Uncover* removed one, so it was made from the masked text) keeps what
+  its track had, as a caption whose text changed meanwhile does, and stays one to translate. A
+  caption shown as `••••` is one to translate again (`maskedToTranslate`): `captionsToTranslate`
   sends it with those out of date or missing, so the track's *Translate again* (§2.13) makes the
-  translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
-  the sidecars (`exportBundleRun.ts:65-73`) and every export.
+  translation that replaces it, also when the spoken text did not change since the track was made.
+  This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`), the
+  sidecars (`exportBundleRun.ts:65-73`) and every export.
 - **Tidy and Clean up** (finding 13): what they change under a private bleep is still masked by time,
-  and the request they send is masked (§7.6), so the service never saw the words.
+  and the request they send is masked (§7.6), so the service never saw the words. The AI fix's answer
+  is never stored over a caption the request masked (`keepMaskedCaptions`, `aiRequest.ts`): such a
+  caption keeps the rules' tidy of its own words, so no `•` is ever written into the captions and
+  *Uncover* brings every word back (second review, finding [17]).
 
 ### 7.5 Every other text made from captions
 
@@ -2922,10 +2980,11 @@ same way with `privateText(project, text)`.
 |---|---|---|
 | Chapter names, found or made by AI | `src/shared/chapters/names.ts`, `chaptersRun.ts` | drawn and written from `privateView`: the chapter bar (`chapterBarLayer.ts`), the file's chapter metadata (`chaptersOf`, `exporter.ts:273-276`), the chapters sidecar, the pack's chapters, timeline markers |
 | Chapter title cards (finding 12) | `titles[]` made from chapters | drawn from `privateView` (`titleCardLayer.ts`), so the preview, every export, thumbnails and guide shots show the masked card |
-| Graphics made from captions (pop-ups, counters, list cards, quote cards) | drawn from caption words with `maskBleeped` | drawn: `maskBleeped` also applies `maskPrivate` when the project has private bleeps |
+| Graphics made from captions (pop-ups, counters, list cards, quote cards) | drawn from caption words with `maskBleeped` | drawn with `maskDrawn(project, text)` (`cleanup.ts`): `maskBleeped` with the project's spoken forms, so `maskPrivate` applies when the project has private bleeps, also to a list card, a pop-up without an anchor or a counter's label made before Find (Polish runs its caption look before its privacy step). The graphics layer (a pop-up's text, a list's title and items, a counter's label) and the title card layer (a quote card) call it; no drawer calls `maskBleeped` without the forms |
 | Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the title, once *Use as the recording's name* made it the name, goes out from `privateView` in the description sidecar (its title line, and a part's) and the share post; the dialog says so (§2.13) |
 | Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | made from masked segments; written from `privateView` (`guideRun.ts`, PDF, HTML, Markdown, clipboard) |
 | Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments |
+| The captions' AI summary | Captions › AI tools (`CaptionsPanel.tsx`), from masked segments | copied with `privateText`, so a summary made before Find leaves Flown masked once Find has bleeped what it says |
 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` |
 | Review titles for captions | `captionReview.ts` | private bleeps are not listed as *Bleep* rows; their titles never hold words (§2.7) |
 | Transcript text export | `transcriptText.ts` | from `maskedSegments` |
@@ -2935,8 +2994,13 @@ same way with `privateText(project, text)`.
 scene draw it. The exporter's own project inputs (`chaptersOf`), the bundle's sidecars
 (`exportBundleRun.ts`), the pack's outputs (`publishRun.ts`, `PublishDialog.tsx`'s copy and share),
 the guide's outputs (`guideRun.ts`), the timeline (`timelineRun.ts`) and `maskRequest` (§7.6) each take
-`privateView(project)` at their entry. Removing a private bleep (*Uncover*) brings every word back
-everywhere, in the same undo step, because nothing stored changed.
+`privateView(project)` at their entry. So do the names files leave Flown under and the texts the
+export dialog copies, which a chapter named before Find (Polish names chapters before its privacy
+step) or a name holding a code said aloud would otherwise carry: the export dialog's *Copy chapters*,
+the files of one file per chapter (their thumbnails and sidecars take their names), the batch's file
+names and the name its save dialog offers (`ExportDialog.tsx`), the guide's file name (`guideRun.ts`)
+and the name *Export captions* offers (`CaptionsPanel.tsx`). Removing a private bleep (*Uncover*)
+brings every word back everywhere, in the same undo step, because nothing stored changed.
 
 ### 7.6 AI requests (`aiTextFor`, contracts)
 
@@ -2954,7 +3018,7 @@ everywhere, in the same undo step, because nothing stored changed.
   itself (the same object) when the project has no private bleeps, so every request of an old project
   is byte for byte what it is today (test 20).
 - **Translate** results: when a translate request was masked, the segments that came back carry
-  `maskedFor` (§7.4).
+  `maskedFor`, the private bleeps it masked over their captions when it was sent (§7.4).
 - **Ordinary bleeps** are not applied to AI requests by this wave: that would change what old projects
   send. Private bleeps and their forms are.
 - **Pictures**: only the guide's *Write titles* with *Also send the screenshots* sends pictures
@@ -3137,7 +3201,8 @@ applies with no change of its own. Line numbers are at `37f9355`.
 | 27 | Project folder copies by the user (Explorer) | outside Flown | `project.json` holds covers and the legacy shapes; `screen.mp4` is the raw recording, as today. §2.9's list says so: `privacy.notSee.folder`, "The project folder on this PC keeps the original recording, without covers." (test 63 checks the list) |
 | 28 | The Style tab's colour look chips | `src/renderer/src/editor/panels/ColourControls.tsx:136-170` (`thumbPixels`, `LookThumb`: the playhead's frame at 96×54) | a preview-only picture, but it is the raw frame: `LookThumb` fills the boxes of the covers active at the playhead, in Dark, into the 96×54 pixels before grading (`fillCoverPixels`, P1, contracts stub draws nothing) |
 | 29 | The cover outlines and the magnified view under Peek | P1 `drawCoverMarks`, `PeekInset` (§8.5) | preview only: set only on the player's preview scene or drawn on their own canvas; `forOutput` strips the marks at every export entry point (test 17) |
-| 30 | Title cards and the chapter bar | `titleCardLayer.ts`, `chapterBarLayer.ts`, through `drawFrame` | drawn from the scene's project, which is `privateView` (§7.5), so rows 1-6 and 12 carry the masking |
+| 30 | Title cards, the chapter bar and graphics made from captions | `titleCardLayer.ts`, `chapterBarLayer.ts`, `graphicsLayer.ts`, through `drawFrame` | drawn from the scene's project, which is `privateView` (§7.5), so rows 1-6 and 12 carry the masking; a pop-up's text, a list card's title and items, a counter's label and a quote card through `maskDrawn` (§7.5's table) |
+| 31 | The names files leave Flown under, and the export dialog's *Copy chapters* | `ExportDialog.tsx` (Copy chapters, the files of one file per chapter, whose thumbnails and sidecars take their names, the batch's file names, the name its save dialog offers), `guideRun.ts` `guideFileName`, `CaptionsPanel.tsx` *Export captions* | from `privateView` (§7.5) |
 
 ---
 
@@ -3272,7 +3337,9 @@ New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy
 `privacy:cancelReaderDownload`, `privacy:removeReader`, `privacy:find`, `privacy:stopFind`,
 `privacy:follow`, `privacy:underCover`, `privacy:everywhere`, `privacy:copies`,
 `privacy:coverCopies`, `privacy:originCovers`, `privacy:names`, and the events
-`privacy:readerProgress` and `privacy:findProgress`.
+`privacy:readerProgress` and `privacy:findProgress`. `privacy:stopFind` takes the project id and,
+for a Follow's or an Everywhere's own Stop, that run's request id (of the request ids' form, else
+refused) (§5.9).
 
 - **Every handler checks its sender first**, as `analysisIpc.ts:216-218` does (`fromApp`, through
   `isAppUrl`): a frame that is not Flown's own page can neither start the model download (network)
@@ -3294,7 +3361,13 @@ New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy
   Left and Right move between bars and thin-span marks, Home and End go to the first and last, Enter
   selects (a group's bar selects the group), Ctrl+Enter toggles one cover in the selection, Delete
   uncovers, Shift+Left and Shift+Right move the nearer end by one frame, Escape returns focus to the
-  row. Selection follows focus on the row (finding 36).
+  row. Selection follows focus on the row (finding 36). The focus, the tab stop, the selection and
+  what Delete acts on are always the same item. Zoomed in, the timeline draws only the bars near its
+  view (`renderWindow`, three viewports wide), the tab stop and the selected bars, so the row finds an
+  item by its index among all its items, never by its place among the drawn ones, and an item a key
+  moves to that is not drawn yet is focused by the render that makes it the tab stop (second review,
+  finding [6]). After Delete the item that takes the uncovered bar's place (the next one, or the one
+  before at the end) takes the focus and the selection; the row goes when its last cover does.
 - **Review by keyboard**: N or ↓ and P or ↑ move, K keeps covered, Delete uncovers, V turns *Peek
   while reviewing* on and off (private rows only, §2.8), Enter on a row with places expands them
   (Review's parts). A pass over 200 private rows needs no mouse and no pressing of Peek again (test
@@ -3308,21 +3381,34 @@ New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy
   each disabled action has its reason as `aria-describedby` text (`oneForBox`, `oneForFollow`,
   `oneForEverywhere`, `privacy.cover.outside`), never a tooltip alone.
 - **Live regions**: Find's progress is a polite status, announced at most every 10% and at each phase
-  change; its result is announced once. Following announces `privacy.cover.followDone` or
-  `followNone`. *Uncover* announces `privacy.cover.uncovered`.
+  change; its result is announced once. The list that *What Find does not see* opens from the result
+  line is placed after that status, never inside it, so opening it announces nothing: inside, its
+  twelve sentences were added to the live region and said as a change of the result (second review,
+  finding [25]). Following announces `privacy.cover.followDone` or `followNone`. *Uncover* announces
+  `privacy.cover.uncovered`.
 - **Focus**:
   - Opening *Find private info…* moves focus to the dialog's first checkbox; closing it returns focus
     to the control that opened it; *Find* returns focus to the section's progress line (finding 31).
   - Review's *Show all changes* and the kind filter keep focus on the control used (finding 32); with
     nothing left of a filtered kind, the list says `privacy.review.emptyKind` and focus moves to the
     filter (finding 34).
-  - *Follow*'s *Stop* keeps focus on *Follow what is under it*; when following ends, focus moves to
-    the cover's status line. *Keep covered* in the Cover section moves focus to the section's title,
-    because the suggestion lines it removes held it (finding 37).
+  - Pressing *Follow what is under it* with the keyboard moves focus to its *Stop*, which takes the
+    button's place while following runs (second review, finding [23]). *Follow*'s *Stop* keeps focus
+    on *Follow what is under it*; when following ends, focus moves to the cover's status line. *Keep
+    covered* in the Cover section moves focus to the section's title, because the suggestion lines it
+    removes held it (finding 37).
+  - *Add cover*'s length menu is a menu button: opening it moves focus to its first item, and
+    choosing a length with the keyboard returns focus to the menu button, as Escape does, instead of
+    letting it fall to the page with the menu (second review, finding [24]).
+  - Where a click starts these (Follow, a length), the focus stays where clicks leave it
+    (`lastInputWasKey`, `src/renderer/src/editor/focus.ts`), so Space still plays.
   - The confirms (*Uncover all …*, *Done reviewing*, leaving during Find) start on the button that
     changes nothing.
   - The export note's buttons close the dialog first and move focus to Review or the Find dialog
     (finding 30).
+  - *Also cover the copies* waits with `aria-disabled` while main works, so the keyboard stays on it,
+    and stays for the copies not covered; once every copy is covered, focus pressed there by the
+    keyboard moves to the line that says so.
 - **Contrast** (WCAG AA, `src/renderer/src/styles.css`): text uses `--text-1`, `--text-2` and
   `--text-3` on `--surface-1` (17:1, 7.2:1, 5.4:1). The Check edge uses `--warning` (#fbbf24) on
   `--surface-2` (10.2:1) beside a text badge, so colour is never the only sign. Waiting bars have a
@@ -3493,8 +3579,8 @@ core to the editor; the preview keeps playing at full rate on the reference PC (
 | Typing in a box field | merged by key while the field has focus, then `seal` |
 | Find's results (covers, bleeps, record) | one `store.update` through `afterGestures` (§5.10, finding 16) |
 | *Stop*, *Stop Find and export*, leaving during Find | what was found: one `store.update` through `afterGestures`, then the export or the leave |
-| *Follow what is under it* | one update through `afterGestures` when it lands; *Stop* changes nothing |
-| *Cover this text everywhere*, with a name added to this video's list | one update through `afterGestures` |
+| *Follow what is under it* | one update through `afterGestures` when it lands; *Stop* changes nothing and stops that Follow alone (§5.9) |
+| *Cover this text everywhere*, with a name added to this video's list | one update through `afterGestures`; *Stop* keeps what was found so far and stops that run alone (§5.9) |
 | *Bring them over* on a copy | one update |
 | *Also cover the copies* | no step in this project; each copy's file changes once, while it is closed (§5.10) |
 | Keep all … covered, Uncover all …, Done reviewing | `heldInSlices` with `removeSteps` (`src/shared/review/slices.ts:103`), one step; *Uncover all* keeps a version first |
@@ -3828,7 +3914,7 @@ export type FollowResult =
   | { ok: true; projectId: string; requestId: string; path: string; start: number; end: number; walked: { start: number; end: number }; lostSpans: string; thin: boolean }
   | { ok: false; projectId: string; requestId: string; reason: 'none' | 'stopped' | 'busy' | 'failed' }
 export interface UnderCoverRequest { projectId: string; requestId: string; t: number; box: NormRect }
-export type UnderCoverResult = { ok: true; nameLike: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
+export type UnderCoverResult = { ok: true; nameLike: boolean; kept: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
 export interface EverywhereRequest { projectId: string; requestId: string; remember: 'no' | 'project' | 'settings' }
 export type EverywhereResult = (Extract<FindResult, { ok: true }> & { addedName?: string }) | Extract<FindResult, { ok: false }>
 export interface CopyInfo { id: string; name: string; open: boolean }
@@ -3840,7 +3926,7 @@ export interface PrivacyApi {
   removeReader(): Promise<ReaderState>
   onReaderState(listener: (state: ReaderState) => void): () => void
   findPrivate(request: FindRequest): Promise<FindResult>
-  stopFind(projectId: string): Promise<void>
+  stopFind(projectId: string, requestId?: string): Promise<void>  // with requestId: that Follow, text under a cover or Everywhere alone (§5.9)
   onFindProgress(listener: (progress: FindProgress) => void): () => void
   followCover(request: FollowRequest): Promise<FollowResult>
   underCover(request: UnderCoverRequest): Promise<UnderCoverResult>
@@ -3998,7 +4084,7 @@ line only).
 | `detect/names.ts` (new) | `function compileNames(entries: readonly string[], neverHide: readonly string[]): NameMatcher`; `function findNames(line: CleanLine, m: NameMatcher): Hit[]`; `function saidNames(words: readonly CaptionWord[], m: NameMatcher): SaidHit[]`; `function looksLikeName(text: string): boolean` (§5.9: at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits it) |
 | `detect/qr.ts` (new) | `function classQr(payload: string \| null): { kind: 'qr'; score: number; class: 'secret' \| 'personal' \| 'other' \| 'undecoded' }` |
 | `detect/score.ts`, `detect/detect.ts` (new) | `interface Hit { kind: PrivateKind; rule: string; score: number; spans: { line: number; start: number; end: number }[]; box: Box }`; `interface DetectOptions { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher; frame: { width: number; height: number } }`; `function detectFrame(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Hit[]` (every variant, union, dedupe, padded cover boxes; the width rounding is `found.ts`'s); `function needsCareful(line: ReadLine, hits: readonly Hit[], index: number): boolean` (careful-long's trigger) |
-| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[]): DigitRun[]`; `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
+| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[], captionStarts?: ReadonlySet<number>): DigitRun[]` (from `detect/saidDigits.ts`, with `runDigitsOf(texts: readonly string[]): string \| null`, which `spoken.ts` reads own words with, §7.3); `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
 | `detect/tables.ts` (new) | the label lists (en, bn, es, hi), issuer prefixes, IBAN lengths, gitleaks-derived patterns, allow lists, region names per language code |
 | `src/shared/privacy/vendor/libphonenumber/**`, `vendor/double-metaphone.js` (generated) | vendored, each file with a GENERATED header naming the package, version and SHA-256 |
 | `scripts/vendor-privacy.mjs` (new) | downloads the pinned tarballs, checks SHA-512 integrity and SHA-256, copies the files of §6.14, drops `//# sourceMappingURL` lines; `--check` compares |
@@ -4841,7 +4927,9 @@ pixels under the covers (two different secrets, same everything else), and the t
   draws the opaque boxes over the covers' places.
 - **A7. Spoken secrets.** A fixture with captions saying a card number and a code: private bleeps; the
   captions, a Spanish translation, the SRT sidecar, chapter names and a fake AI service's recorded
-  requests hold no digit of them; the export's sound is muted there.
+  requests hold no digit of them; the export's sound is muted there. A chapter and the recording's name
+  hold the code too (named before Find): the export dialog's Copy chapters, the files of one file per
+  chapter and the name the save dialog offers hold no digit of it (§7.5).
 - **A8. One undo step.** Find's results are one undo; a timeline drag during Find keeps both.
 - **A9. The reader's download.** From a local fake mirror: download, resume after a cut, a wrong hash
   refused, Remove.

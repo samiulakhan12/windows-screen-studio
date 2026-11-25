@@ -2,12 +2,13 @@
  * Secrets said aloud (docs/design/auto-blur.md §7.2, §4.4), run in the renderer on the captions the
  * project holds when Find starts or Polish has just made. Every word of every caption in time order is
  * one stream: caption boundaries and full stops do not end a run of digits, a pause over 2.0 s or any
- * other word does, and `and` ends a run (finding 10, "400, 300 and 1500, 800"). Each hit keeps its own
- * word span; spoken forms and masks are built from it, never from the bleep's padded time (finding
- * 11). Each hit becomes a private bleep whose word holds its kind and its said text's group, never the
+ * other word does, and `and` ends a run (finding 10, "400, 300 and 1500, 800"). Where a run crosses a
+ * sentence or clause end or a new caption, the numbers between those breaks are tried too, so a number
+ * word that starts the next sentence never hides the number before it. Each hit keeps its own word
+ * span; spoken forms and masks are built from it, never from the bleep's padded time (finding 11).
+ * Each hit becomes a private bleep whose word holds its kind and its said text's group, never the
  * text (§4.4). Pure.
  */
-import { asciiDigits } from '../../captions/numbers'
 import { MAX_BLEEPS } from '../../captions/studioData'
 import { captionWordTimes } from '../../editor/transcript'
 import type { Bleep, CaptionWord, PrivateKind, Transcript } from '../../types'
@@ -18,27 +19,10 @@ import { foldText } from './clean'
 import { detectFrame } from './detect'
 import { saidNames, type NameMatcher, NO_NAMES } from './names'
 import { validPhone } from './phones'
-import {
-  BD_MOBILE,
-  DIGIT_TOKEN,
-  SAID_ADDRESS_STOP,
-  SAID_ADDRESS_WORD,
-  SAID_AT,
-  SAID_DIGITS,
-  SAID_DOT,
-  SAID_FILLERS,
-  SAID_IS,
-  SAID_LABELS,
-  SAID_REPEAT,
-  SAID_TENS,
-  SAID_TENS_HYPHEN,
-  SAID_TLDS,
-  SENTENCE_END,
-  VERSION_TOKEN,
-  WORD_EDGES,
-  YEAR,
-  ZERO_INSIDE_ONLY
-} from './tables'
+import { digitRuns, saidWord, type DigitRun } from './saidDigits'
+import { BD_MOBILE, SAID_ADDRESS_STOP, SAID_ADDRESS_WORD, SAID_AT, SAID_DOT, SAID_IS, SAID_LABELS, SAID_TLDS, SENTENCE_END, WORD_EDGES, YEAR } from './tables'
+
+export { digitRuns, saidWord, type DigitRun }
 
 export interface SaidHit {
   kind: PrivateKind
@@ -54,18 +38,7 @@ export interface SaidHit {
   words: [number, number]
 }
 
-export interface DigitRun {
-  /** The digits said. */
-  digits: string
-  /** The first and last word of the run (indices into the words). */
-  first: number
-  last: number
-  /** The digits each number word or token gave, in order ("4917", "6", "1", …). */
-  tokens: string[]
-}
-
-/** A pause that ends a run of digits, and one that ends a password said aloud (seconds). */
-const RUN_PAUSE = 2.0
+/** A pause that ends a password said aloud (seconds). */
 const PASSWORD_PAUSE = 1.0
 /** The label context of a run: the 12 words or 10 s before it. */
 const CONTEXT_WORDS = 12
@@ -76,87 +49,57 @@ const WIDEN_ESTIMATED = 0.15
 /** Private bleeps of one said text closer than this are merged first when the bleeps are full. */
 const MERGE_GAP = 1.0
 
-/** A word as compared: NFC, lower case, punctuation and symbols off its ends, digits of every script as ASCII. */
-export const saidWord = (w: string): string => asciiDigits(w.normalize('NFC').toLowerCase().replace(WORD_EDGES, ''))
-
-/** The digits a bare word says ('' for none). */
-function wordDigits(w: string): string {
-  if (/^\d+$/.test(w)) return w
-  if (VERSION_TOKEN.test(w)) return ''
-  if (DIGIT_TOKEN.test(w)) return w.replace(/\D/g, '')
-  if (Object.hasOwn(SAID_DIGITS, w)) return SAID_DIGITS[w]
-  const hy = SAID_TENS_HYPHEN.exec(w)
-  if (hy) return SAID_TENS[hy[1]] + SAID_DIGITS[hy[2]]
-  if (Object.hasOwn(SAID_TENS, w)) return SAID_TENS[w] + '0'
-  return ''
-}
-
 /**
- * Runs of digits said over the caption words in time order (§7.2): across captions and full stops,
- * ended by a pause over 2.0 s or a word that is neither a number word nor a filler (`and` ends one).
+ * A run said as a code: one 4-8 digit number, single digits (4 or more), groups of 3-4, or two or
+ * three pairs said in one go ("forty eight twenty nine", "25 48 91"); never a year or a version, nor
+ * pairs that say a year ("twenty twenty-four") or that a sentence or clause end parts ("chapter
+ * twelve. Thirty four tests", "lines 12, 34").
  */
-export function digitRuns(words: readonly CaptionWord[]): DigitRun[] {
-  const runs: DigitRun[] = []
-  let cur: DigitRun | null = null
-  let repeat = 0
-  const close = (): void => {
-    if (cur && cur.digits.length) runs.push(cur)
-    cur = null
-    repeat = 0
-  }
-  const open = (i: number): DigitRun => (cur ??= { digits: '', first: i, last: i, tokens: [] })
-  for (let i = 0; i < words.length; i++) {
-    const w = saidWord(words[i].text)
-    if (cur && i > 0 && words[i].start - words[i - 1].end > RUN_PAUSE) close()
-    if (Object.hasOwn(SAID_REPEAT, w)) {
-      open(i).last = i
-      repeat = SAID_REPEAT[w]
-      continue
-    }
-    let d = wordDigits(w)
-    if (ZERO_INSIDE_ONLY.has(w) && !cur) d = ''
-    // "twenty five": a tens word and a ones word make one number.
-    if (d.length === 2 && d.endsWith('0') && i + 1 < words.length) {
-      const next = saidWord(words[i + 1].text)
-      const ones = Object.hasOwn(SAID_DIGITS, next) ? SAID_DIGITS[next] : ''
-      if (ones.length === 1 && ones !== '0' && !ZERO_INSIDE_ONLY.has(next) && /^[a-z]+$/.test(next) && words[i + 1].start - words[i].end <= RUN_PAUSE) {
-        const run = open(i)
-        run.digits += d[0] + ones
-        run.tokens.push(d[0] + ones)
-        run.last = i + 1
-        repeat = 0
-        i++
-        continue
-      }
-    }
-    if (d) {
-      const run = open(i)
-      if (repeat && d.length === 1) d = d.repeat(repeat)
-      repeat = 0
-      run.digits += d
-      run.tokens.push(d)
-      run.last = i
-    } else if (cur && SAID_FILLERS.has(w)) {
-      continue
-    } else close()
-  }
-  close()
-  return runs
-}
-
-/** A run said as a code: one 4-8 digit number, single digits (4 or more), or groups of 3-4; never a year or a version. */
-function codeShaped(r: DigitRun): boolean {
+function codeShaped(r: Pick<DigitRun, 'tokens' | 'breaks'>): boolean {
   const t = r.tokens
   if (t.some((x) => YEAR.test(x))) return false
-  return (t.length === 1 && t[0].length >= 4) || (t.length >= 4 && t.every((x) => x.length <= 2)) || (t.length >= 2 && t.every((x) => x.length === 3 || x.length === 4))
+  const pairs = t.length >= 2 && t.length <= 3 && !r.breaks.length && t.every((x) => x.length === 2) && !t.some((x, i) => i > 0 && YEAR.test(t[i - 1] + x))
+  return (t.length === 1 && t[0].length >= 4) || (t.length >= 4 && t.every((x) => x.length <= 2)) || (t.length >= 2 && t.every((x) => x.length === 3 || x.length === 4)) || pairs
+}
+
+/** Every caption word in time order (guessed times where the caption has none), and the indices of the words that start a caption. */
+function wordsInOrder(transcript: Pick<Transcript, 'segments'> | null | undefined): { words: CaptionWord[]; starts: Set<number> } {
+  const out: CaptionWord[] = []
+  const firsts = new Set<CaptionWord>()
+  for (const seg of transcript?.segments ?? []) {
+    const ws = captionWordTimes(seg)
+    if (ws.length) firsts.add(ws[0])
+    out.push(...ws)
+  }
+  const words = out.map((w, i) => ({ w, i })).sort((a, b) => a.w.start - b.w.start || a.i - b.i).map(({ w }) => w)
+  const starts = new Set<number>()
+  words.forEach((w, i) => void (firsts.has(w) && starts.add(i)))
+  return { words, starts }
 }
 
 /** Every caption word in time order (guessed times where the caption has none). */
 export function transcriptWords(transcript: Pick<Transcript, 'segments'> | null | undefined): CaptionWord[] {
-  const out: CaptionWord[] = []
-  for (const seg of transcript?.segments ?? []) out.push(...captionWordTimes(seg))
-  return out.map((w, i) => ({ w, i })).sort((a, b) => a.w.start - b.w.start || a.i - b.i).map(({ w }) => w)
+  return wordsInOrder(transcript).words
 }
+
+/** Tokens a..b of run `r` as a run of their own, with the breaks inside it (so pairs a comma parts stay no code). */
+function partOf(r: DigitRun, a: number, b: number): DigitRun {
+  const tokens = r.tokens.slice(a, b + 1)
+  const inside = (k: number): boolean => k > a && k <= b
+  return {
+    digits: tokens.join(''),
+    first: r.spans[a][0],
+    last: r.spans[b][1],
+    tokens,
+    spans: r.spans.slice(a, b + 1),
+    spelled: r.spelled.slice(a, b + 1),
+    breaks: r.breaks.filter(inside).map((k) => k - a),
+    stops: r.stops.filter(inside).map((k) => k - a)
+  }
+}
+
+/** The longest number any rule reads (an ID, 20 digits): no longer part of a run is tried. */
+const MAX_RULE_DIGITS = 20
 
 const hitOf = (words: readonly CaptionWord[], kind: PrivateKind, score: number, first: number, last: number, group: string): SaidHit => ({
   kind,
@@ -175,7 +118,7 @@ const wordsKey = (words: readonly CaptionWord[], first: number, last: number): s
 /** Secrets said aloud in the captions (§7.2): cards, codes, phones, IDs, passwords, emails and listed names. */
 export function detectSaid(transcript: Pick<Transcript, 'segments'> | null | undefined, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[] {
   const kinds = new Set(options.kinds)
-  const words = transcriptWords(transcript)
+  const { words, starts } = wordsInOrder(transcript)
   if (!words.length) return []
   const found: SaidHit[] = []
   const contextOf = (i: number): string => {
@@ -184,20 +127,71 @@ export function detectSaid(transcript: Pick<Transcript, 'segments'> | null | und
     for (let k = i - 1; k >= 0 && k >= i - CONTEXT_WORDS && words[k].start >= t0; k--) out.unshift(words[k].text.normalize('NFC'))
     return out.join(' ')
   }
-  for (const r of digitRuns(words)) {
+  /** The rule a run said passes (§7.2's table, the first that holds), or null. */
+  const ruleOf = (r: DigitRun): { kind: PrivateKind; score: number } | null => {
     const d = r.digits
     const context = contextOf(r.first)
     const said = (k: keyof typeof SAID_LABELS): boolean => SAID_LABELS[k].test(context)
-    const group = 'd:' + d
-    if (d.length >= 13 && d.length <= 19 && luhn(d) && cardNetwork(d)) found.push(hitOf(words, 'card', 0.96, r.first, r.last, group))
-    else if (d.length >= 13 && d.length <= 19 && said('card')) found.push(hitOf(words, 'card', 0.85, r.first, r.last, group))
-    else if (d.length >= 4 && d.length <= 8 && said('code') && codeShaped(r)) found.push(hitOf(words, 'code', 0.9, r.first, r.last, group))
+    if (d.length >= 13 && d.length <= 19 && luhn(d) && cardNetwork(d)) return { kind: 'card', score: 0.96 }
+    if (d.length >= 13 && d.length <= 19 && said('card')) return { kind: 'card', score: 0.85 }
+    if (d.length >= 4 && d.length <= 8 && said('code') && codeShaped(r)) return { kind: 'code', score: 0.9 }
     // An ID word is more particular than a phone word ("social security number"): IDs first.
-    else if (d.length >= 6 && d.length <= 20 && said('id')) found.push(hitOf(words, 'id', 0.85, r.first, r.last, group))
-    else if (d.length >= 7 && d.length <= 15 && (said('phone') || BD_MOBILE.test(d))) {
+    if (d.length >= 6 && d.length <= 20 && said('id')) return { kind: 'id', score: 0.85 }
+    if (d.length >= 7 && d.length <= 15 && (said('phone') || BD_MOBILE.test(d))) {
       // The same check as on screen (§6.8): valid for one of the regions, or a Bangladeshi mobile.
       const valid = validPhone(d, options.regions) || (BD_MOBILE.test(d) && validPhone(d.startsWith('880') ? d : '880' + d.replace(/^0/, ''), [], true))
-      found.push(hitOf(words, 'phone', valid ? 0.92 : 0.85, r.first, r.last, group))
+      return { kind: 'phone', score: valid ? 0.92 : 0.85 }
+    }
+    return null
+  }
+  for (const r of digitRuns(words, starts)) {
+    const whole = ruleOf(r)
+    if (!r.breaks.length) {
+      if (whole) found.push(hitOf(words, whole.kind, whole.score, r.first, r.last, 'd:' + r.digits))
+      continue
+    }
+    // A run across a sentence or clause end or a new caption may say more than one number ("… 8904. One
+    // second", "Step two: 482913", "4829, then two factor"): the whole run and each stretch between its
+    // breaks are tried, and the best are kept, never two over one token: the higher score first, then
+    // the one across fewer strong breaks, then the longer (a code said in two groups with a comma).
+    // A strong break is a sentence end, a new caption, or a clause end between a number written in
+    // digits and one said in words ("4 8 2 9 1 3, two more steps"). A number word alone beyond a strong
+    // break is the next sentence's or clause's word, or the last one's, never a digit of the number
+    // ("482913. Two more steps"). A clause end between numbers said in words is a pause inside one
+    // ("চার আট দুই নয়, এক তিন"). One between numbers written in digits is a grouping pause ("4829,
+    // 1234") or parts a list ("rgb 100, 200, 15"): a stretch that holds one is never cut out of the run
+    // there, as no part of a list is a number of its own. Finding 10's card split by a full stop is only
+    // valid whole, so it stays whole.
+    const strong = r.breaks.filter((k) => r.stops.includes(k) || r.spelled[k - 1] !== r.spelled[k])
+    const listed = r.breaks.filter((k) => !strong.includes(k) && !r.spelled[k - 1] && !r.spelled[k])
+    const strongIn = (a: number, b: number): number[] => strong.filter((k) => k > a && k <= b)
+    /** Tokens a..b may be one number: no lone number word beyond a strong break, and not cut out of a list. */
+    const may = (a: number, b: number): boolean => {
+      const inside = strongIn(a, b)
+      if (inside.length && ((inside[0] === a + 1 && r.spelled[a]) || (inside[inside.length - 1] === b && r.spelled[b]))) return false
+      return !(listed.some((k) => k > a && k <= b) && (listed.includes(a) || listed.includes(b + 1)))
+    }
+    const n = r.tokens.length
+    const tried: { a: number; b: number; run: DigitRun; kind: PrivateKind; score: number; strong: number }[] = whole && may(0, n - 1) ? [{ a: 0, b: n - 1, run: r, ...whole, strong: strong.length }] : []
+    const edges = [0, ...r.breaks, n]
+    for (let i = 0; i + 1 < edges.length; i++) {
+      for (let j = i + 1; j < edges.length; j++) {
+        if (i === 0 && j === edges.length - 1) continue
+        const a = edges[i]
+        const b = edges[j] - 1
+        const part = partOf(r, a, b)
+        if (part.digits.length > MAX_RULE_DIGITS) break
+        if (!may(a, b)) continue
+        const rule = ruleOf(part)
+        if (rule) tried.push({ a, b, run: part, ...rule, strong: strongIn(a, b).length })
+      }
+    }
+    tried.sort((x, y) => y.score - x.score || x.strong - y.strong || y.run.digits.length - x.run.digits.length || x.a - y.a)
+    const taken: boolean[] = []
+    for (const t of tried) {
+      if (taken.slice(t.a, t.b + 1).some(Boolean)) continue
+      for (let k = t.a; k <= t.b; k++) taken[k] = true
+      found.push(hitOf(words, t.kind, t.score, t.run.first, t.run.last, 'd:' + t.run.digits))
     }
   }
   // Emails said aloud: <1-4 words> at | at the rate <domain word> dot <tld word> [dot <tld word>].

@@ -19,6 +19,7 @@ import { fmt } from '../../../shared/i18n/fmt'
 import { t, type MessageKey } from '../../../shared/i18n/t'
 import type { Cover, NormRect, Project, Shape } from '../../../shared/types'
 import type { EditorServices } from '../editor/context'
+import { lastInputWasKey } from '../editor/focus'
 import { useGroup } from '../editor/groupContext'
 import { NumberField } from '../i18n/NumberField'
 import { setWholePath, subscribeWholePath, wholePathOn } from './coverCommands'
@@ -96,8 +97,9 @@ export function CoverSection(props: { services: EditorServices; coverIds: readon
   const [everywhere, setEverywhere] = useState<string | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const followRef = useRef<HTMLButtonElement>(null)
+  const stopRef = useRef<HTMLButtonElement>(null)
   const statusRef = useRef<HTMLParagraphElement>(null)
-  const focusNext = useRef<'title' | 'follow' | 'status' | null>(null)
+  const focusNext = useRef<'title' | 'follow' | 'stop' | 'status' | null>(null)
   const uid = `cover-${useId().replace(/:/g, '')}`
 
   const { covers, weak } = chosen(project, group.group.keys, props.coverIds)
@@ -110,6 +112,7 @@ export function CoverSection(props: { services: EditorServices; coverIds: readon
     focusNext.current = null
     if (target === 'title') titleRef.current?.focus()
     else if (target === 'follow') followRef.current?.focus()
+    else if (target === 'stop') stopRef.current?.focus()
     else if (target === 'status') statusRef.current?.focus()
   })
   // A status line belongs to the cover it was about.
@@ -144,6 +147,9 @@ export function CoverSection(props: { services: EditorServices; coverIds: readon
   const follow = async (): Promise<void> => {
     if (!one) return
     const stop = new AbortController()
+    // Its Stop takes the place of the button pressed: the keyboard goes on to it, not to the page
+    // (second review, finding [23]). A click leaves the focus where clicks leave it (focus.ts).
+    if (lastInputWasKey()) focusNext.current = 'stop'
     setFollowing({ id: one.id, stop })
     setStatus(null)
     const r = await runFollow(props.services, one.id, stop.signal)
@@ -303,6 +309,7 @@ export function CoverSection(props: { services: EditorServices; coverIds: readon
               <span className="cover-following" role="status">
                 <span>{t(PRIVACY_COPY.cover.following)}</span>{' '}
                 <button
+                  ref={stopRef}
                   type="button"
                   className="btn ghost small"
                   onClick={() => {

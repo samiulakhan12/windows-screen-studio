@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { captionsToTranslate, maskedToTranslate, outOfDate, withTranslation } from '../src/shared/captions/captionTracks'
+import { burnedSegments, captionsToTranslate, maskedToTranslate, maskedWhenSent, outOfDate, withShownTrack, withTranslation } from '../src/shared/captions/captionTracks'
+import { languageSubtitleFile } from '../src/shared/captions/subtitles'
 import { privateBleepWord } from '../src/shared/privacy/coverData'
 import { maskRequest } from '../src/shared/privacy/aiRequest'
 import { trackText } from '../src/shared/privacy/spoken'
@@ -29,6 +30,7 @@ function translatedBeforeFind(): { project: Project; card: CaptionSegment; plain
     model: 'm',
     createdAt: '2026-11-20T11:00:00.000Z',
     sent,
+    masked: maskedWhenSent(before, sent),
     answer: sent.map((s) => ({ ...s, text: s.id === 's0' ? 'Mi tarjeta es 4111 1111 1111 1111' : 'Gracias por ver' }))
   })
   if (!translated) throw new Error('the translation before Find was not written')
@@ -61,6 +63,7 @@ describe('auto-blur: Translate again after Find replaces the masked translation'
       model: 'm',
       createdAt: '2026-11-21T09:00:00.000Z',
       sent,
+      masked: maskedWhenSent(project, sent),
       answer: request.segments.map((s) => ({ ...s, text: `[es] ${s.text}` }))
     })
     expect(next).not.toBeNull()
@@ -81,5 +84,55 @@ describe('auto-blur: Translate again after Find replaces the masked translation'
     const ordinary: Project = { ...plain, bleeps: [{ id: 'b1', start: 0.6, end: 0.9, word: 'damn', sound: 'tone' }] }
     expect(maskedToTranslate(ordinary, 'es')).toEqual([])
     expect(captionsToTranslate(ordinary, 'es')).toEqual([])
+  })
+})
+
+describe('auto-blur §7.4: a translation answered after the private bleeps over its captions changed', () => {
+  const DIGITS = /4111|1111/
+  /** The Spanish captions as drawn on the video and in the Spanish SRT. */
+  const spanish = (p: Project): string => [...burnedSegments(withShownTrack(p, 'es')).map((s) => s.text), languageSubtitleFile(p, 'es', 'srt')].join('\n')
+
+  it('sent before Find, answered after it: the answer, made from the words said, is not stamped as masked; the caption keeps what its track had and stays to translate', () => {
+    const { project: found } = translatedBeforeFind()
+    // The request leaves before Find: no private bleep yet, so nothing in it is masked.
+    const { bleeps: _b, ...before } = found
+    void _b
+    const fresh: Project = { ...before, captionTracks: [] }
+    const sent = captionsToTranslate(fresh, 'es')
+    const request = maskRequest({ task: 'translate', segments: sent, targetLanguage: 'Spanish' } as AiTextRequest, fresh)
+    expect(JSON.stringify(request)).toMatch(DIGITS)
+    const masked = maskedWhenSent(fresh, sent)
+    // Find lands while it is out: the card number said aloud gets its private bleep. Then the answer lands.
+    const after: Project = { ...fresh, bleeps: found.bleeps }
+    const next = withTranslation(after, { language: 'es', by: 'anthropic', model: 'm', createdAt: '2026-11-21T09:00:00.000Z', sent, masked, answer: request.segments.map((s) => ({ ...s, text: `[es] ${s.text}` })) })!
+    expect(next).not.toBeNull()
+    const track = next.captionTracks![0]
+    // The card's caption is left untranslated (it shows masked, as said); the other is written.
+    expect(track.segments.map((s) => s.id)).toEqual(['s1'])
+    expect(spanish(next)).not.toMatch(DIGITS)
+    expect(captionsToTranslate(next, 'es').map((s) => s.id)).toEqual(['s0'])
+    // With a translation made before Find, that one stays, masked whole, and is offered again.
+    const kept = withTranslation(found, { language: 'es', by: 'anthropic', model: 'm', createdAt: '2026-11-21T09:00:00.000Z', sent, masked, answer: request.segments.map((s) => ({ ...s, text: `[es] ${s.text}` })) })!
+    const seg = kept.captionTracks![0].segments.find((s) => s.id === 's0')!
+    expect(seg.text).toBe('Mi tarjeta es 4111 1111 1111 1111')
+    expect(seg).not.toHaveProperty('maskedFor')
+    expect(spanish(kept)).not.toMatch(DIGITS)
+    expect(maskedToTranslate(kept, 'es')).toEqual(['s0'])
+  })
+
+  it('sent masked, its private bleep removed (Uncover) before the answer lands: the answer, made from the masked text, is not written; the caption keeps what its track had', () => {
+    const { project } = translatedBeforeFind()
+    const sent = captionsToTranslate(project, 'es')
+    const request = maskRequest({ task: 'translate', segments: sent, targetLanguage: 'Spanish' } as AiTextRequest, project)
+    expect(JSON.stringify(request)).not.toMatch(DIGITS)
+    const masked = maskedWhenSent(project, sent)
+    expect(masked.get('s0')).toBe('p1')
+    const uncovered: Project = { ...project, bleeps: [] }
+    const next = withTranslation(uncovered, { language: 'es', by: 'anthropic', model: 'm', createdAt: '2026-11-21T09:00:00.000Z', sent, masked, answer: request.segments.map((s) => ({ ...s, text: `[es] ${s.text}` })) })
+    // Nothing usable: the track keeps the translation made before Find, which shows the words again.
+    const seg = (next ?? uncovered).captionTracks![0].segments.find((s) => s.id === 's0')!
+    expect(seg.text).toBe('Mi tarjeta es 4111 1111 1111 1111')
+    expect(seg.text).not.toContain('•')
+    expect(trackText(uncovered, seg)).toBe(seg.text)
   })
 })

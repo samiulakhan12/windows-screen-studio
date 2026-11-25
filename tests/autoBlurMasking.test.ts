@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { burnedSegments, withTranslation } from '../src/shared/captions/captionTracks'
+import { burnedSegments, maskedWhenSent, withTranslation } from '../src/shared/captions/captionTracks'
 import { maskBleeped, maskedSegments } from '../src/shared/captions/cleanup'
 import { languageSubtitleFile, spokenSegments } from '../src/shared/captions/subtitles'
 import { trackCues } from '../src/shared/captions/trackCues'
@@ -97,7 +97,7 @@ describe('auto-blur contracts: captions and texts made from captions', () => {
     expect(read[1].segments.every((s) => !('maskedFor' in s))).toBe(true)
     // A translation answered for a masked request carries maskedFor.
     const sent = p0.transcript!.segments
-    const fresh = withTranslation(p0, { language: 'de', by: 'local', model: 'm', createdAt: '2026-11-20T12:00:00.000Z', sent, answer: sent.map((s) => ({ id: s.id, start: s.start, end: s.end, text: `de ${s.id}` })) })!
+    const fresh = withTranslation(p0, { language: 'de', by: 'local', model: 'm', createdAt: '2026-11-20T12:00:00.000Z', sent, masked: maskedWhenSent(p0, sent), answer: sent.map((s) => ({ id: s.id, start: s.start, end: s.end, text: `de ${s.id}` })) })!
     const de = fresh.captionTracks!.find((x) => x.language === 'de')!
     expect(de.segments.find((s) => s.id === 'k1')!.maskedFor).toBe('p1')
     expect(de.segments.find((s) => s.id === 'k3')!).not.toHaveProperty('maskedFor')

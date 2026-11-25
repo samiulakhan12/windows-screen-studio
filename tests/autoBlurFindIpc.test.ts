@@ -35,11 +35,11 @@ vi.mock('../src/main/projects', () => ({
 
 const { PRIVACY_CHANNELS } = await import('../src/shared/api/privacy')
 const { registerFindIpc, setFindDeps, findRunning } = await import('../src/main/privacy/findIpc')
-const { keptLines, runFind, forgetReads, underCover, coverEverywhere, followCover } = await import('../src/main/privacy/scan')
+const { keptLines, runFind, forgetReads, underCover, underKept, coverEverywhere, followCover } = await import('../src/main/privacy/scan')
 const { stopAnalyses } = await import('../src/main/analysisIpc')
 const { foldText } = await import('../src/shared/privacy/detect/clean')
 const { answer } = await import('../src/main/privacy/rulesWorker')
-import type { FindRequest, FindResult } from '../src/shared/api/privacy'
+import type { EverywhereResult, FindRequest, FindResult, FollowResult } from '../src/shared/api/privacy'
 import type { ScanDeps, ScanHelper, ScanRules } from '../src/main/privacy/scan'
 import type { Box } from '../src/shared/privacy/protocol'
 import { base, rng } from './autoBlurFixtures'
@@ -196,6 +196,103 @@ describe('auto-blur P4: Find in main', () => {
     expect(everywhereFollows).toBeGreaterThan(reads12[0])
     expect(reads12[1]).toBeGreaterThan(s2.log.lastIndexOf('close', reads12[1]))
     expect(s2.log.lastIndexOf('close', reads12[1])).toBeGreaterThan(everywhereFollows)
+  })
+
+  it("A Follow's or an Everywhere's Stop stops that run alone: a Find of the same video goes on and keeps its reads for Everywhere, and the text read under the cover for that request is forgotten; Find's Stop still stops every run of the video (second review, finding [20])", async () => {
+    const box = { x: EMAIL[0] / 1920, y: EMAIL[1] / 1080, w: EMAIL[2] / 1920, h: EMAIL[3] / 1080 }
+    // Find's reads after 4 s wait for one gate; the Follow's read of the email at 8 s for another.
+    const findGate = gate()
+    const followGate = gate()
+    const s = scene({ gate: (t) => (t === 8 ? followGate.wait() : t > 4 ? findGate.wait() : Promise.resolve()) })
+    const running = call<FindResult>(PRIVACY_CHANNELS.find, find('rec-1', 'n1'))
+    await waitFor(() => s.log.some((l) => l.startsWith('read 5.3')))
+    const following = call<FollowResult>(PRIVACY_CHANNELS.follow, { projectId: 'rec-1', requestId: 'n2', t: 8, box, start: 7, end: 9, path: `7 ${box.x} ${box.y} ${box.w} ${box.h}` })
+    await waitFor(() => s.log.some((l) => l.startsWith('read 8 ')))
+    // The Follow's Stop names its request.
+    await call(PRIVACY_CHANNELS.stopFind, 'rec-1', 'n2')
+    followGate.open()
+    expect(await following).toEqual({ ok: false, projectId: 'rec-1', requestId: 'n2', reason: 'stopped' })
+    expect(findRunning()).toBe(true)
+    findGate.open()
+    const r = await running
+    expect(r.ok && r.stopped).toBe(false)
+    expect(r.ok && r.found.length).toBeGreaterThan(0)
+    expect(keptLines('rec-1', s.now())).toBeGreaterThan(0)
+
+    // Everywhere, its own Find of the text going ahead of a running Find's reads: its Stop leaves that Find alone.
+    // Find's first three reads wait for one gate; the text under the cover is read; Everywhere's reads wait for another.
+    const findGate2 = gate()
+    const everywhereGate = gate()
+    let urgent = false
+    const s2 = scene({ gate: (_t, n) => (n < 3 ? findGate2.wait() : urgent ? everywhereGate.wait() : Promise.resolve()) }, undefined, inProcess)
+    const second = call<FindResult>(PRIVACY_CHANNELS.find, find('rec-1', 'n3'))
+    await waitFor(() => s2.log.filter((l) => l.startsWith('read')).length >= 3)
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'n4', t: 8, box })).toEqual({ ok: true, nameLike: false, kept: false })
+    expect(underKept('n4')).toBe(true)
+    urgent = true
+    const reads = s2.log.filter((l) => l.startsWith('read')).length
+    const everywhere = call<EverywhereResult>(PRIVACY_CHANNELS.everywhere, { projectId: 'rec-1', requestId: 'n4', remember: 'no' })
+    await waitFor(() => s2.log.filter((l) => l.startsWith('read')).length > reads)
+    await call(PRIVACY_CHANNELS.stopFind, 'rec-1', 'n4')
+    // The text read under the cover for it is forgotten at once.
+    expect(underKept('n4')).toBe(false)
+    everywhereGate.open()
+    const ev = await everywhere
+    expect(ev.ok && ev.stopped).toBe(true)
+    expect(findRunning()).toBe(true)
+    urgent = false
+    findGate2.open()
+    const r2 = await second
+    expect(r2.ok && r2.stopped).toBe(false)
+    expect(keptLines('rec-1', s2.now())).toBeGreaterThan(0)
+
+    // A request id main does not accept is refused; Find's Stop (no request) stops every run and forgets every text.
+    await expect(Promise.resolve().then(() => h.handlers.get(PRIVACY_CHANNELS.stopFind)!(app(), 'rec-1', '../x'))).rejects.toThrow('Invalid request')
+    await expect(Promise.resolve().then(() => h.handlers.get(PRIVACY_CHANNELS.stopFind)!(app(), 'rec-1', 7))).rejects.toThrow('Invalid request')
+    const findGate3 = gate()
+    const followGate3 = gate()
+    const s3 = scene({ gate: (t) => (t === 8 ? followGate3.wait() : t > 4 ? findGate3.wait() : Promise.resolve()) })
+    const third = call<FindResult>(PRIVACY_CHANNELS.find, find('rec-1', 'n5'))
+    await waitFor(() => s3.log.some((l) => l.startsWith('read 5.3')))
+    const following3 = call<FollowResult>(PRIVACY_CHANNELS.follow, { projectId: 'rec-1', requestId: 'n6', t: 8, box, start: 7, end: 9, path: `7 ${box.x} ${box.y} ${box.w} ${box.h}` })
+    await waitFor(() => s3.log.some((l) => l.startsWith('read 8 ')))
+    await call(PRIVACY_CHANNELS.stopFind, 'rec-1')
+    followGate3.open()
+    findGate3.open()
+    expect(await following3).toMatchObject({ ok: false, reason: 'stopped' })
+    const r3 = await third
+    expect(r3.ok && r3.stopped).toBe(true)
+    expect(findRunning()).toBe(false)
+    expect(keptLines('rec-1', s3.now())).toBe(0)
+  })
+
+  it('The text under a cover says whether main keeps the last Find’s reads of the video, which Everywhere then only follows: kept right after Find, not after Find’s Stop, 10 minutes later or for another video (§5.9 step 2; second review, finding [27])', async () => {
+    const box = { x: EMAIL[0] / 1920, y: EMAIL[1] / 1080, w: EMAIL[2] / 1920, h: EMAIL[3] / 1080 }
+    const s = scene()
+    const r = await call<FindResult>(PRIVACY_CHANNELS.find, find('rec-1', 'q1'))
+    expect(r.ok && !r.stopped).toBe(true)
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'q2', t: 8, box })).toEqual({ ok: true, nameLike: false, kept: true })
+    // Everywhere then makes no planned read of the video: it follows the kept places (its progress is never 'read').
+    const phases: string[] = []
+    const page = Object.assign(new EventEmitter(), { isDestroyed: () => false, send: (_c: string, p: { phase: string }) => void phases.push(p.phase) })
+    const ev = (await h.handlers.get(PRIVACY_CHANNELS.everywhere)!(app(page), { projectId: 'rec-1', requestId: 'q2', remember: 'no' })) as EverywhereResult
+    expect(ev.ok && ev.found.length).toBeGreaterThan(0)
+    expect(phases).toContain('follow')
+    expect(phases).not.toContain('read')
+    // Another video: not kept.
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-2', requestId: 'q3', t: 8, box })).toEqual({ ok: true, nameLike: false, kept: false })
+    // 10 minutes later: gone, and Everywhere reads the video (Find for the text, with Find's estimate).
+    s.advance(10 * 60 * 1000 + 1)
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'q4', t: 8, box })).toEqual({ ok: true, nameLike: false, kept: false })
+    phases.length = 0
+    expect(((await h.handlers.get(PRIVACY_CHANNELS.everywhere)!(app(page), { projectId: 'rec-1', requestId: 'q4', remember: 'no' })) as EverywhereResult).ok).toBe(true)
+    expect(phases).toContain('read')
+    // Find's Stop forgets them.
+    s.advance(-(10 * 60 * 1000 + 1))
+    await call(PRIVACY_CHANNELS.find, find('rec-1', 'q5'))
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'q6', t: 8, box })).toMatchObject({ ok: true, kept: true })
+    await call(PRIVACY_CHANNELS.stopFind, 'rec-1')
+    expect(await call(PRIVACY_CHANNELS.underCover, { projectId: 'rec-1', requestId: 'q7', t: 8, box })).toEqual({ ok: true, nameLike: false, kept: false })
   })
 
   it('233. No text leaves main: a JSON scan of every FindResult, FollowResult, UnderCoverResult and EverywhereResult of the e2e fixtures finds none of the planted strings, except addedName for a name-like text with remember set; the kept folded texts are gone after 10 minutes (a fake clock), on Stop, on stopAnalyses, on render-process-gone and on a new Find', async () => {

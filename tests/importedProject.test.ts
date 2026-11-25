@@ -72,8 +72,10 @@ describe('importedSource', () => {
     const imported = { ...recorded(), name: importName('C:\\Users\\me\\Videos\\demo.mp4'), source: { ...SOURCE, fileName: 'demo.mp4' } }
     expect(imported.name).toBe('demo')
     expect(`${safeFileName(exportBaseName(imported))}.mp4`).toBe('demo (edited).mp4')
-    // The Export dialog offers its file under this name.
-    expect(readFileSync(path.join(__dirname, '../src/renderer/src/editor/ExportDialog.tsx'), 'utf8')).toContain('safeFileName(exportBaseName(project))')
+    // The Export dialog offers its file under this name, from the project as it leaves Flown (the project itself without private bleeps, auto-blur §7.5).
+    const dialog = readFileSync(path.join(__dirname, '../src/renderer/src/editor/ExportDialog.tsx'), 'utf8')
+    expect(dialog).toContain('const view = privateView(project)')
+    expect(dialog).toContain('safeFileName(exportBaseName(view))')
   })
 
   it('has plain explanations for the editor', () => {

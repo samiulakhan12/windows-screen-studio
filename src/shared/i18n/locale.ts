@@ -92,6 +92,16 @@ function languageAndRegion(tag: string): { language: string; region?: string } |
 }
 
 /**
+ * The PC's region from its system locale (auto-blur §2.5): 'GB' of 'en-GB', also when the locale
+ * carries a POSIX code set or modifier ('en_GB.UTF-8', 'en-US@posix'); undefined when it names no
+ * two-letter region. Only Find's phone regions read it; the format locale reads the locale as before.
+ */
+function systemRegion(systemLocale: string): string | undefined {
+  const region = languageAndRegion(systemLocale.split(/[.@]/)[0])?.region
+  return region && /^[A-Z]{2}$/.test(region) ? region : undefined
+}
+
+/**
  * The Intl locale a UI language formats with (§9.4 step 2). English keeps each call site's own
  * profile (§11.2), so it is 'en-US'. Another language takes the system locale's region when the
  * system locale is the same language ('bn-BD', 'bn-IN', 'es-MX'), else the bare language; a digits
@@ -169,9 +179,12 @@ export function resolveUiLanguage(
     const candidates = [...preferred.map(languageOf), ...known, ...(p.seen ?? [])]
     offer = (candidates.find((l) => isShipped(l) && !offered.has(l)) as UiLanguage | undefined) ?? null
   }
+  // The PC's region, whatever the UI language (auto-blur §2.5): English formats as en-US, the region is still the PC's.
+  const region = systemRegion(systemLocale)
   return {
     language,
     formatLocale: formatLocaleOf(language, systemLocale, language === 'en' ? undefined : p.digits),
+    ...(region ? { region } : {}),
     dir: language === 'en' ? 'ltr' : dirOf(language),
     digits,
     system,

@@ -15,11 +15,11 @@ import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash, transcriptLanguage } from './captionTracks'
-import { MAX_BLEEPS } from './studioData'
+import { bleepTimeOrder, keptBleeps } from './studioData'
 import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 import { isPrivateBleep } from '../privacy/coverData'
-import { maskChars, maskPrivate, type SpokenForms } from '../privacy/spoken'
+import { maskChars, maskPrivate, spokenForms, type SpokenForms } from '../privacy/spoken'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
 export interface CleanupChoices {
@@ -978,6 +978,16 @@ export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined, 
   return changed ? out : text
 }
 
+/**
+ * `text` as the video draws it in `project` (pop-ups, list cards, counter labels, quote cards):
+ * maskBleeped with the project's spoken forms, so neither a bleeped word nor a secret said aloud
+ * (auto-blur §7.5) is drawn, also when the graphic was made before Find. Every drawer of text made
+ * from captions calls this, never maskBleeped without the forms. `text` itself when it has neither.
+ */
+export function maskDrawn(project: Pick<Project, 'transcript' | 'bleeps'>, text: string): string {
+  return maskBleeped(text, project.bleeps, project.bleeps?.length ? spokenForms(project) : null)
+}
+
 /** The share of [a, b] inside [s, e]. */
 const inside = (a: number, b: number, s: number, e: number): number => (b - a <= 0 ? (a >= s && a <= e ? 1 : 0) : Math.max(0, Math.min(b, e) - Math.max(a, s)) / (b - a))
 
@@ -1248,9 +1258,8 @@ export function tidyCaptions(
     const guessed = new Set<string>()
     const found = findBleeps(next.transcript!.segments, opts.bleep, opts.bleepSound, language, project.bleeps ?? [], project.duration, guessed)
     if (found.length) {
-      const all = [...(project.bleeps ?? []), ...found]
-        .sort((a, b) => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-        .slice(0, MAX_BLEEPS)
+      // Cut as a project is read: private bleeps first past the limit (auto-blur §4.4), never the latest of them.
+      const all = keptBleeps([...(project.bleeps ?? []), ...found].sort(bleepTimeOrder))
       bleeped = found.filter((b) => all.includes(b)).length
       estimated = found.filter((b) => all.includes(b) && guessed.has(b.id)).length
       next = { ...next, bleeps: all }

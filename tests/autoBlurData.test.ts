@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { bleepKey } from '../src/shared/captions/cleanup'
+import { bleepKey, DEFAULT_CLEANUP, tidyCaptions } from '../src/shared/captions/cleanup'
+import { spokenSegments } from '../src/shared/captions/subtitles'
 import { readBleeps } from '../src/shared/captions/studioData'
 import { cropProject, rectToCrop } from '../src/shared/engine/crop'
 import { migrateProject } from '../src/shared/engine/project'
@@ -518,6 +519,30 @@ describe('auto-blur contracts: data', () => {
     // In time order, the rest the earliest.
     expect(kept.map((b) => b.start)).toEqual([...kept.map((b) => b.start)].sort((a, b) => a - b))
     expect(kept.filter((b) => !isPrivateBleep(b)).map((b) => b.id)).toEqual(plain.slice(0, 1990).map((b) => b.id))
+  })
+
+  it('Tidy captions with bleeping keeps private bleeps first when it cuts at 2,000, as readBleeps does; a project with no private bleep is cut as before (second review, finding [22])', () => {
+    // A long project at the limit: 1,999 ordinary bleeps, then Find's private bleep over a card said at 3,500 s.
+    const ordinary: Bleep[] = Array.from({ length: 1999 }, (_v, i) => ({ id: `o${i}`, start: 100 + i * 1.4, end: 100 + i * 1.4 + 0.3, word: 'gosh', sound: 'tone' }))
+    const swear = words('k1', 10, 'well this is fucking broken')
+    const card = words('k2', 3500, 'my card number is 4917 6123 4567 8904')
+    const w = card.words!
+    const priv: Bleep = { id: 'pb-1', start: w[4].start - 0.05, end: w[7].end + 0.05, word: ':card:k3v9q2m8xa', sound: 'tone', auto: true }
+    const project: Project = { ...base('limit', 3600), transcript: { language: 'en', provider: 'local', model: 'm', createdAt: '2026-11-20T10:00:00.000Z', segments: [swear, card] }, bleeps: [...ordinary, priv] }
+    // Tidy with Standard bleeping finds the swear word at 10 s, earlier than every other bleep.
+    const out = tidyCaptions(project, { ...DEFAULT_CLEANUP, bleep: 'standard', words: [] })
+    const kept = out.project.bleeps!
+    expect(kept).toHaveLength(2000)
+    expect(kept.filter(isPrivateBleep).map((b) => b.id)).toEqual(['pb-1'])
+    expect(kept.map((b) => b.start)).toEqual([...kept.map((b) => b.start)].sort((a, b) => a - b))
+    expect(spokenSegments(out.project)[1].text).toBe('my card number is •••• •••• •••• ••••.')
+    // The new bleep is kept and counted; the latest ordinary one makes room.
+    expect(out.bleeped).toBe(1)
+    expect(kept.some((b) => b.id === 'o1998')).toBe(false)
+    // Without a private bleep, the earliest 2,000 as before.
+    const plain = tidyCaptions({ ...project, bleeps: [...ordinary, { id: 'o-last', start: 3400, end: 3400.3, word: 'gosh', sound: 'tone' }] }, { ...DEFAULT_CLEANUP, bleep: 'standard', words: [] })
+    expect(plain.project.bleeps!.map((b) => b.id)).toEqual(readBleeps([...plain.project.bleeps!], 3600)!.map((b) => b.id))
+    expect(plain.project.bleeps!.some((b) => b.id === 'o-last')).toBe(false)
   })
 
   it("195. Private bleep words: privateBleepWord, privateKindOf and privateGroupOf round-trip through readBleeps' lower-casing; ':' + kind alone reads with no group; no caption word's bleepKey parses as one", () => {

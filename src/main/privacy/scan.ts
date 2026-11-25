@@ -238,6 +238,11 @@ export function underKept(requestId: string): boolean {
   return under.has(requestId)
 }
 
+/** Forgets the text read under a cover for this request alone (its dialog closed, or its run stopped). */
+export function forgetUnder(requestId: string): void {
+  under.delete(requestId)
+}
+
 /* ---------- small helpers ---------- */
 
 const floorMs = (t: number): number => Math.floor(t * 1000 + 1e-6) / 1000
@@ -880,7 +885,8 @@ export async function underCover(request: UnderCoverRequest, signal: AbortSignal
     if (!foldText(text)) return { ok: false, reason: 'noText' }
     if (under.size >= 8) under.delete(under.keys().next().value!)
     under.set(request.requestId, { projectId: request.projectId, text, until: d.now() + KEEP_MS })
-    return { ok: true, nameLike: looksLikeName(text) }
+    // Whether Everywhere will only follow the kept reads, or read the video (the dialog's estimate, second review [27]).
+    return { ok: true, nameLike: looksLikeName(text), kept: keptFor(request.projectId, d.now()) !== null }
   } catch {
     return { ok: false, reason: 'failed' }
   } finally {

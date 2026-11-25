@@ -570,6 +570,29 @@ describe('Translate again from the keyboard (§2.15)', () => {
     expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(true)
   })
 
+  it('a translation sent before Find but answered after it is not taken as made from the masked text: the number is shown nowhere and the caption is offered again (auto-blur §7.4)', async () => {
+    const { burnedSegments, withShownTrack } = await import('../src/shared/captions/captionTracks')
+    const { privateBleepWord } = await import('../src/shared/privacy/coverData')
+    const spoken = { id: 'c1', start: 0, end: 2, text: 'My card is 4111 1111 1111 1111', words: [{ text: 'My', start: 0, end: 0.2 }, { text: 'card', start: 0.25, end: 0.45 }, { text: 'is', start: 0.5, end: 0.6 }, { text: '4111', start: 0.65, end: 0.95 }, { text: '1111', start: 1, end: 1.3 }, { text: '1111', start: 1.35, end: 1.6 }, { text: '1111', start: 1.65, end: 1.95 }] }
+    store.state = { ...base(), transcript: { language: 'en', segments: [spoken] } as Project['transcript'], captionTracks: [track('bn')] }
+    let release!: () => void
+    ai.wait = new Promise<void>((r) => (release = r))
+    let els = await settle(languages())
+    ;(byTestId(els, 'track-retranslate')!.props.onClick as () => void)()
+    await answer()
+    // Sent before Find: nothing was private, so the number went as said.
+    expect(sent).toHaveLength(1)
+    expect(JSON.stringify(sent)).toMatch(/4111/)
+    // Find lands while it is out, then the answer.
+    store.state = { ...store.state, bleeps: [{ id: 'p1', start: 0.6, end: 2, word: privateBleepWord('card', 'g1'), sound: 'tone', auto: true }] }
+    release()
+    els = await settle(languages())
+    const segs = store.state.captionTracks![0].segments
+    expect(segs.some((x) => x.maskedFor === 'p1')).toBe(false)
+    expect(burnedSegments(withShownTrack(store.state, 'bn')).map((x) => x.text).join(' ')).not.toMatch(/4111|1111/)
+    expect(byTestId(els, 'track-retranslate')!.props.disabled).toBe(false)
+  })
+
   it('stays on the page when a shortcut was pressed there while it ran (Right steps frames, it does not switch the captions)', async () => {
     store.state = { ...base(), captionTracks: [track('bn'), track('hi')] }
     keys.last = true

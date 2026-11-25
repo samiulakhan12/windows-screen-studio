@@ -51,11 +51,15 @@ export async function readPrefs(): Promise<PrivacyPrefs | null> {
   }
 }
 
-/** The PC's region (from Windows' format locale, read in main) and the UI language. */
+/**
+ * The PC's region (Windows' format locale's, read in main, whatever the UI language: an English UI
+ * formats as en-US on every PC) and the UI language. The format locale's region only when ui:info
+ * could not be read.
+ */
 export function uiRegion(): { pc: string | null; language: string } {
   try {
     const info = currentUiInfo()
-    const pc = /[-_]([A-Za-z]{2})\b/.exec(info.formatLocale)?.[1]?.toUpperCase() ?? null
+    const pc = info.region ?? /[-_]([A-Za-z]{2})\b/.exec(info.formatLocale)?.[1]?.toUpperCase() ?? null
     return { pc, language: info.language }
   } catch {
     return { pc: null, language: 'en' }
