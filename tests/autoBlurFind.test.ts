@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { FindProgress, FindRequest, FindResult, FoundCover, ReaderState } from '../src/shared/api/privacy'
 import { EditStore } from '../src/shared/editor/editStore'
 import { DEFAULT_KEYMAP } from '../src/shared/editor/shortcuts'
@@ -88,7 +88,7 @@ const { FindDialog } = await load<{ FindDialog: Comp }>('privacy/FindDialog')
 const { RegionsDialog } = await load<{ RegionsDialog: Comp }>('privacy/RegionsDialog')
 const { FindResultLine } = await load<{ FindResultLine: Comp }>('privacy/FindLine')
 const reader = await load<{ FindProgressLine: Comp; confirmLeaveFind(s: unknown): Promise<boolean>; resetReaderState(): void; subscribeReader(l: () => void): () => void; readerNow(): ReaderState | null; startReaderState(): void }>('privacy/readerState')
-const run = await load<{ startFind(s: unknown, c: unknown): Promise<string>; stopAndApply(s: unknown): Promise<void>; gatherPrivacy(p: Project, c: Transcript | null, s: AbortSignal): Promise<Record<string, unknown> | null> }>('privacy/privacyRun')
+const run = await load<{ startFind(s: unknown, c: unknown): Promise<string>; stopAndApply(s: unknown): Promise<void>; gatherPrivacy(p: Project, c: Transcript | null, s: AbortSignal): Promise<Record<string, unknown> | null>; runRegions(added: readonly string[]): string[] }>('privacy/privacyRun')
 const runs = await load<{ beginRun(r: unknown): boolean; endRun(id: string, o: unknown): void; resetRuns(): void; currentRun(): { requestId: string; progress: FindProgress } | null }>('privacy/findRuns')
 const follow = await load<{ runFollow(s: unknown, id: string, signal: AbortSignal): Promise<string>; readUnderCover(s: unknown, id: string): Promise<unknown>; runEverywhere(s: unknown, id: string, r: string, signal: AbortSignal): Promise<unknown> }>('privacy/followRun')
 const { PrivacySettings } = await load<{ PrivacySettings: Comp }>('privacy/PrivacySettings')
@@ -245,6 +245,37 @@ describe('auto-blur P5: Find', () => {
     // Done gives the regions added; the PC's is added at each run.
     expect(done).toEqual(['BD', 'IN', 'ES', 'GB', 'FR'])
     expect(textOf(els.find((e) => e.type === 'h2'))).toBe('Phone numbers from')
+  })
+
+  it("the PC's region is Windows' format locale's for every UI language (§2.5, §0 decision 2): an English UI on a PC in Great Britain finds British numbers, and the Find dialog, the regions dialog and Settings name it; formatting is unchanged", async () => {
+    const { resolveUiLanguage } = await import('../src/shared/i18n/locale')
+    const BN = [{ language: 'bn' as const, preview: false }]
+    // Main's ui:info: the region of app.getSystemLocale(), whatever the UI language; English still formats as en-US.
+    expect(resolveUiLanguage({}, ['en-GB'], 'en-GB', [], [])).toMatchObject({ language: 'en', formatLocale: 'en-US', region: 'GB' })
+    expect(resolveUiLanguage({ language: 'en' }, ['en-US'], 'bn-BD', BN, [])).toMatchObject({ language: 'en', formatLocale: 'en-US', region: 'BD' })
+    expect(resolveUiLanguage({ language: 'bn' }, ['bn-BD'], 'en-GB', BN, [])).toMatchObject({ language: 'bn', formatLocale: 'bn', region: 'GB' })
+    expect(resolveUiLanguage({}, ['en-US'], 'en-US', [], [])).toMatchObject({ region: 'US' })
+    expect(resolveUiLanguage({}, [], 'not a locale', [], [])).not.toHaveProperty('region')
+    // The window boots with that ui:info: an English UI on a PC in Great Britain.
+    const boot = await load<{ bootLanguage(view: string): Promise<{ formatLocale: string }> }>('i18n/boot')
+    const winApi = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    winApi.uiInfo = async () => resolveUiLanguage({}, ['en-GB'], 'en-GB', [], [])
+    onTestFinished(async () => {
+      delete winApi.uiInfo
+      await boot.bootLanguage('main')
+    })
+    expect((await boot.bootLanguage('main')).formatLocale).toBe('en-US')
+    expect(run.runRegions([])).toEqual(['GB'])
+    expect(run.runRegions(['BD'])).toEqual(['GB', 'BD'])
+    // The Find dialog names it; the regions dialog has it always on, first; Settings names it.
+    editor(base('gb', 30))
+    let els = await settle(dialog())
+    expect(textOf(byTestId(els, 'find-regions'))).toBe('Phone numbers from: United Kingdom Change…')
+    const regions = render({ type: RegionsDialog, props: { regions: [], onDone: () => undefined, onCancel: () => undefined } })
+    const first = regions.filter((e) => e.type === 'input' && e.props['data-region'])[0]
+    expect([first.props['data-region'], first.props.checked, first.props.disabled]).toEqual(['GB', true, true])
+    els = await settle({ type: PrivacySettings, props: { reveal: false } })
+    expect(textOf(byTestId(els, 'privacy-settings-regions'))).toBe('Phone numbers from United Kingdom Change…')
   })
 
   it('170. startFind saves first, runs detectSaid on the captions, applies one update through afterGestures, and records captionsSig at the start (finding 14)', async () => {

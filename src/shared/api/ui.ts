@@ -17,6 +17,11 @@ export interface UiPrefs {
 export interface UiInfo {
   language: UiLanguage
   formatLocale: string
+  /**
+   * The PC's region: Windows' format locale's (app.getSystemLocale(), 'GB' for en-GB), whatever the UI
+   * language; absent when that locale names none. Find's phone numbers start from it (auto-blur §2.5).
+   */
+  region?: string
   dir: 'ltr' | 'rtl'
   digits: 'native' | 'western'
   /** The language "Follow Windows" gives now. */

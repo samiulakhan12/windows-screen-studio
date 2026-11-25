@@ -591,9 +591,12 @@ select on the kind's id (§12.1).
   (§4.3) and default from Settings (§2.14). *Listen* is on whenever the project has captions, unless
   the user unticked it for this project (`Project.privacy.listen: false`); Settings has no listen
   choice.
-- Regions: the PC's region (`app.getSystemLocale()` region, read in main) and the UI language's region
+- Regions: the PC's region (`app.getSystemLocale()` region, read in main, whatever the UI language:
+  `UiInfo.region`, since an English UI formats as `en-US` on every PC and another language takes the
+  system locale's region only when that locale is in the same language) and the UI language's region
   (`bn` → BD, `hi` → IN, `es` → ES, `en` → none) are always on; the user adds up to 5 in a list of
-  every region the phone metadata knows, by country name.
+  every region the phone metadata knows, by country name. An English UI on a PC in Great Britain finds
+  British numbers, a Bangla UI there British and Bangladeshi ones.
 - The estimate is §5.11's first estimate. It is replaced by a second one after the look pass (§2.6).
 - *Listen* is unchecked and disabled with `privacy.find.listenNone` when the project has no
   captions.

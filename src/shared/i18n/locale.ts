@@ -169,9 +169,12 @@ export function resolveUiLanguage(
     const candidates = [...preferred.map(languageOf), ...known, ...(p.seen ?? [])]
     offer = (candidates.find((l) => isShipped(l) && !offered.has(l)) as UiLanguage | undefined) ?? null
   }
+  // The PC's region, whatever the UI language (auto-blur §2.5): English formats as en-US, the region is still the PC's.
+  const region = languageAndRegion(systemLocale)?.region
   return {
     language,
     formatLocale: formatLocaleOf(language, systemLocale, language === 'en' ? undefined : p.digits),
+    ...(region && /^[A-Z]{2}$/.test(region) ? { region } : {}),
     dir: language === 'en' ? 'ltr' : dirOf(language),
     digits,
     system,
