@@ -272,17 +272,28 @@ mod tests {
         assert!((t - 1140.0 - 1.0 / 3.0).abs() < 1e-9, "{t}");
     }
 
+    /// A folder of a test's own, removed when the test ends, also when it fails.
+    #[cfg(unix)]
+    struct Scratch(std::path::PathBuf);
+
+    #[cfg(unix)]
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
     /// A stand-in for ffmpeg that writes `aaaa` at once, `bbbb` 0.8 s later, then nothing for 30 s.
     #[cfg(unix)]
-    fn slow_ffmpeg() -> std::path::PathBuf {
+    fn slow_ffmpeg() -> (Scratch, std::path::PathBuf) {
         use std::os::unix::fs::PermissionsExt;
-        let dir = std::env::temp_dir().join(format!("ssw-ocr-limit-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let script = dir.join("slow-ffmpeg");
+        let dir = Scratch(std::env::temp_dir().join(format!("ssw-ocr-limit-{}", std::process::id())));
+        std::fs::create_dir_all(&dir.0).unwrap();
+        let script = dir.0.join("slow-ffmpeg");
         // The last sleep is the process itself (exec), so ending it closes the pipe as ending ffmpeg does.
         std::fs::write(&script, "#!/bin/sh\nprintf aaaa\nsleep 0.8\nprintf bbbb\nexec sleep 30\n").unwrap();
         std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
-        script
+        (dir, script)
     }
 
     /// While Flown records the helper is paused (§5.11): it reads none of ffmpeg's output, so ffmpeg
@@ -292,7 +303,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn time_paused_does_not_count_against_the_limit() {
-        let script = slow_ffmpeg();
+        let (_scratch, script) = slow_ffmpeg();
         let mut run = Run::spawn(script.to_str().unwrap(), &[], 1, Duration::from_millis(500)).unwrap();
         let mut frame = [0u8; 4];
         run.read_frame(&mut frame).unwrap();
@@ -310,7 +321,5 @@ mod tests {
         let t0 = Instant::now();
         assert!(run.read_frame(&mut frame).is_err());
         assert!(t0.elapsed() < Duration::from_secs(5), "{:?}", t0.elapsed());
-        drop(run);
-        let _ = std::fs::remove_dir_all(script.parent().unwrap());
     }
 }
