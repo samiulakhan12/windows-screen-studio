@@ -238,6 +238,11 @@ export function underKept(requestId: string): boolean {
   return under.has(requestId)
 }
 
+/** Forgets the text read under a cover for this request alone (its dialog closed, or its run stopped). */
+export function forgetUnder(requestId: string): void {
+  under.delete(requestId)
+}
+
 /* ---------- small helpers ---------- */
 
 const floorMs = (t: number): number => Math.floor(t * 1000 + 1e-6) / 1000

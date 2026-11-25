@@ -3,8 +3,8 @@
  * §5.9, §14.1). Main reads the text under a cover and walks it (P4's followCover, underCover and
  * coverEverywhere); what lands is applied in one update through `afterGestures`, against the project
  * as it is then, so a drag meanwhile is never overwritten and never overwrites it (finding 16).
- * *Stop* changes nothing. The screen's text never reaches the renderer, except a name the user
- * chose to remember (§5.9 step 3).
+ * *Stop* changes nothing, and stops that run alone: a Find of the same video goes on. The screen's
+ * text never reaches the renderer, except a name the user chose to remember (§5.9 step 3).
  */
 import type { EverywhereRequest, FoundCover, UnderCoverResult } from '../../../shared/api/privacy'
 import { displayTime } from '../../../shared/editor/clips'
@@ -31,9 +31,12 @@ function coverAtPlayhead(services: EditorServices, coverId: string): { cover: Co
   return box ? { cover, t, box } : null
 }
 
-/** Stops main's work for the project when `signal` aborts (*Stop*). */
-function stopWith(signal: AbortSignal, projectId: string): () => void {
-  const stop = (): void => void window.api.stopFind(projectId).catch(() => undefined)
+/**
+ * Stops main's run for request `requestId` when `signal` aborts (*Stop*), and only it: a Find of the
+ * same video goes on, with the reads it keeps for Everywhere (second review, finding [20]).
+ */
+function stopWith(signal: AbortSignal, projectId: string, requestId: string): () => void {
+  const stop = (): void => void window.api.stopFind(projectId, requestId).catch(() => undefined)
   signal.addEventListener('abort', stop)
   return () => signal.removeEventListener('abort', stop)
 }
@@ -49,7 +52,7 @@ export async function runFollow(services: EditorServices, coverId: string, signa
   if (signal.aborted) return 'stopped'
   const projectId = services.store.state.id
   const requestId = newRequestId('follow')
-  const off = stopWith(signal, projectId)
+  const off = stopWith(signal, projectId, requestId)
   try {
     const r = await window.api.followCover({ projectId, requestId, t: at.t, box: at.box, start: at.cover.start, end: at.cover.end, path: at.cover.path })
     if (signal.aborted) return 'stopped'
@@ -71,8 +74,8 @@ export async function runFollow(services: EditorServices, coverId: string, signa
   }
 }
 
-/** The text under each cover read for *Cover this text everywhere*: main keeps it for this request id only. */
-const underRequests = new Map<string, string>()
+/** The request that read the text under each cover for *Cover this text everywhere*: main keeps the text for it only. */
+const underRequests = new Map<string, { projectId: string; requestId: string }>()
 
 /**
  * Asks main to read the text under cover `coverId` at the playhead (§5.9 step 1). Main keeps the
@@ -82,17 +85,23 @@ export async function readUnderCover(services: EditorServices, coverId: string):
   const at = coverAtPlayhead(services, coverId)
   if (!at) return { ok: false, reason: 'failed' }
   const requestId = newRequestId('under')
-  underRequests.set(coverId, requestId)
+  const projectId = services.store.state.id
+  underRequests.set(coverId, { projectId, requestId })
   try {
-    return await window.api.underCover({ projectId: services.store.state.id, requestId, t: at.t, box: at.box })
+    return await window.api.underCover({ projectId, requestId, t: at.t, box: at.box })
   } catch {
     return { ok: false, reason: 'failed' }
   }
 }
 
-/** Forgets the read of cover `coverId` (the dialog closed). */
+/**
+ * Forgets the read of cover `coverId` (the dialog closed): main stops that request's run if it still
+ * goes on, and forgets the text it read for it (§5.9 step 1: kept until the dialog closes).
+ */
 export function forgetUnderCover(coverId: string): void {
+  const read = underRequests.get(coverId)
   underRequests.delete(coverId)
+  if (read) void window.api.stopFind(read.projectId, read.requestId).catch(() => undefined)
 }
 
 /** Listeners told when the names to hide changed (the dialogs that show the list read it again, finding 28). */
@@ -144,9 +153,10 @@ export function withEverywhereCovers(project: Project, origin: Cover | undefined
  */
 export async function runEverywhere(services: EditorServices, coverId: string, remember: EverywhereRequest['remember'], signal: AbortSignal): Promise<{ added: number; name: string | null } | null> {
   const projectId = services.store.state.id
-  const requestId = underRequests.get(coverId)
-  if (!requestId || signal.aborted) return null
-  const off = stopWith(signal, projectId)
+  const read = underRequests.get(coverId)
+  if (!read || read.projectId !== projectId || signal.aborted) return null
+  const { requestId } = read
+  const off = stopWith(signal, projectId, requestId)
   try {
     const r = await window.api.coverEverywhere({ projectId, requestId, remember })
     // An answer for another project or request changes nothing (§5.1, test 247).

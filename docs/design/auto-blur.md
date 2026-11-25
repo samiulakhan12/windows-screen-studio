@@ -2128,6 +2128,14 @@ tooltip over text before its first read, and text typed into a field or a termin
      screen's text reaches the renderer, by the user's explicit choice, and it then shows in the names
      list. Every other result holds no text (test 233). The dialogs that show the list read it again
      afterwards (finding 28).
+- **Stop** (second review, finding [20]): Follow's *Stop*, and Everywhere's *Stop* or its dialog
+  closing, stop that run alone. The renderer sends `privacy:stopFind` with the run's request id;
+  main aborts only the run of that request (the Follow, the text under a cover or Everywhere) and
+  forgets the text read under the cover for it, which is how the text is kept "until the dialog
+  closes" (step 1). A Find of the same video goes on, with the reads it keeps for Everywhere: a
+  Follow is allowed while Find runs, and its Stop once also stopped that Find, covered what it had
+  not followed to the end of the video and forgot its reads. Find's own *Stop*, Polish's and leaving
+  the editor send no request id and stop every run of the video, forgetting every text kept.
 
 ### 5.10 Find again, groups, merging and applying (P4 `found.ts`)
 
@@ -3193,7 +3201,9 @@ New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy
 `privacy:cancelReaderDownload`, `privacy:removeReader`, `privacy:find`, `privacy:stopFind`,
 `privacy:follow`, `privacy:underCover`, `privacy:everywhere`, `privacy:copies`,
 `privacy:coverCopies`, `privacy:originCovers`, `privacy:names`, and the events
-`privacy:readerProgress` and `privacy:findProgress`.
+`privacy:readerProgress` and `privacy:findProgress`. `privacy:stopFind` takes the project id and,
+for a Follow's or an Everywhere's own Stop, that run's request id (of the request ids' form, else
+refused) (§5.9).
 
 - **Every handler checks its sender first**, as `analysisIpc.ts:216-218` does (`fromApp`, through
   `isAppUrl`): a frame that is not Flown's own page can neither start the model download (network)
@@ -3420,8 +3430,8 @@ core to the editor; the preview keeps playing at full rate on the reference PC (
 | Typing in a box field | merged by key while the field has focus, then `seal` |
 | Find's results (covers, bleeps, record) | one `store.update` through `afterGestures` (§5.10, finding 16) |
 | *Stop*, *Stop Find and export*, leaving during Find | what was found: one `store.update` through `afterGestures`, then the export or the leave |
-| *Follow what is under it* | one update through `afterGestures` when it lands; *Stop* changes nothing |
-| *Cover this text everywhere*, with a name added to this video's list | one update through `afterGestures` |
+| *Follow what is under it* | one update through `afterGestures` when it lands; *Stop* changes nothing and stops that Follow alone (§5.9) |
+| *Cover this text everywhere*, with a name added to this video's list | one update through `afterGestures`; *Stop* keeps what was found so far and stops that run alone (§5.9) |
 | *Bring them over* on a copy | one update |
 | *Also cover the copies* | no step in this project; each copy's file changes once, while it is closed (§5.10) |
 | Keep all … covered, Uncover all …, Done reviewing | `heldInSlices` with `removeSteps` (`src/shared/review/slices.ts:103`), one step; *Uncover all* keeps a version first |
@@ -3766,7 +3776,7 @@ export interface PrivacyApi {
   removeReader(): Promise<ReaderState>
   onReaderState(listener: (state: ReaderState) => void): () => void
   findPrivate(request: FindRequest): Promise<FindResult>
-  stopFind(projectId: string): Promise<void>
+  stopFind(projectId: string, requestId?: string): Promise<void>  // with requestId: that Follow, text under a cover or Everywhere alone (§5.9)
   onFindProgress(listener: (progress: FindProgress) => void): () => void
   followCover(request: FollowRequest): Promise<FollowResult>
   underCover(request: UnderCoverRequest): Promise<UnderCoverResult>

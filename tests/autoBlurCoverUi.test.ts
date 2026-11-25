@@ -40,7 +40,8 @@ vi.stubGlobal('window', {
     underCover: (req: Record<string, unknown>) => api.under!(req),
     coverEverywhere: (req: Record<string, unknown>) => api.everywhere!(req),
     downloadReader: () => api.download!(),
-    stopFind: async (id: string) => void api.stopped.push(id),
+    // A stop of one request (a Follow's, an Everywhere's) is written with its request id after the project's.
+    stopFind: async (id: string, requestId?: string) => void api.stopped.push(requestId === undefined ? id : `${id} ${requestId}`),
     setPrivateNames: async (names: string[]) => void api.names.push(names),
     copies: async () => api.copies,
     coverCopies: async (_id: string, ids: string[]) => {
@@ -675,14 +676,18 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     // In the section: Stop changes nothing and keeps the focus on Follow.
     setUp(project({ covers: [email()] }))
     const root = { type: CoverSection, props: { services: services(), coverIds: ['c'], shapeIds: [] } }
-    api.follow = (req) => new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    api.follow = (req) => {
+      asked = req
+      return new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    }
     let els = render(root)
     click(byTestId(els, 'cover-follow'))
     els = render(root)
     expect(textOf(els.find((e) => e.props.className === 'cover-following'))).toContain('Following…')
     focused.length = 0
     click(byTestId(els, 'cover-follow-stop'))
-    expect(api.stopped).toEqual(['p'])
+    // Stop stops this Follow alone, by its request: a Find of the same video goes on (second review, finding [20]).
+    expect(api.stopped).toEqual([`p ${asked!.requestId}`])
     answer({ ok: false, projectId: 'p', reason: 'stopped' })
     await flush()
     els = render(root)
@@ -821,17 +826,22 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     }
     ;(radios[1].props.onChange as () => void)()
     els = render(root)
+    api.stopped = []
     click(byTestId(els, 'everywhere-start'))
     els = render(root)
     expect(byTestId(els, 'everywhere-running')).toBeDefined()
     expect(sent).toMatchObject({ projectId: 'p', remember: 'project' })
     click(byTestId(els, 'everywhere-stop'))
-    expect(api.stopped).toEqual(['p'])
+    // Stop stops this run alone, by its request: a Find of the same video goes on (second review, finding [20]).
+    expect(api.stopped).toEqual([`p ${sent!.requestId}`])
     ended({ ok: true, projectId: 'p', requestId: sent!.requestId, found: [{ kind: 'text', score: 1, group: 'x', start: 12, end: 14, path: writePath([key(12, 0.5, 0.2, 0.25, 0.04)]), color: '#203040' }], failedReads: 0, thinSpans: '', stopped: true, readTo: 14, reader: 'r' })
     els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-done'))).toBe('Covered 1 more place.')
-    // Failed.
+    // Closing the dialog asks main to forget the text it read for this request, and nothing else (§5.9 step 1).
+    api.stopped = []
     unmountAll()
+    expect(api.stopped).toEqual([`p ${sent!.requestId}`])
+    // Failed.
     api.everywhere = async () => ({ ok: false, projectId: 'p', requestId: 'x', reason: 'failed' })
     els = await settle(root)
     click(byTestId(els, 'everywhere-start'))

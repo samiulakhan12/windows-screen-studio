@@ -24,13 +24,14 @@ import { coverCopies, listCopies, originCovers, type CopiesDeps } from './copies
 import { setPrivateNames } from './names'
 import { HelperError, OcrHelper } from './readerHelper'
 import { recordDecodeSpeed, startReader } from './readerModels'
-import { coverEverywhere, followCover, forgetReads, runFind, ScanUnavailable, setReaderStart, underCover, type ScanDeps, type ScanHelper } from './scan'
+import { coverEverywhere, followCover, forgetReads, forgetUnder, runFind, ScanUnavailable, setReaderStart, underCover, type ScanDeps, type ScanHelper } from './scan'
 
 const fromApp = (e: IpcMainInvokeEvent): void => {
   if (!isAppUrl(e.senderFrame?.url ?? '')) throw new Error('Not allowed')
 }
 
 const PROJECT_ID = /^[a-zA-Z0-9_-]{1,128}$/
+const REQUEST_ID = /^[a-zA-Z0-9_-]{1,64}$/
 
 /** The recording's length, read by main from the project's own file (the request's times are checked against it). */
 async function durationOf(raw: unknown): Promise<number | null> {
@@ -108,6 +109,8 @@ export function setFindDeps(scan: ScanDeps, copies: CopiesDeps = {}): void {
 
 interface Run {
   projectId: string
+  /** The Follow's, text-under-a-cover's or Everywhere's request it answers (Find's own run has none). */
+  requestId?: string
   controller: AbortController
   done: Promise<unknown>
 }
@@ -142,11 +145,11 @@ const sendTo =
 /** The scan's dependencies in the app: the recording state, and this PC's decode speed kept for the next estimate (§5.11). */
 const deps = (): ScanDeps => ({ recording: isToolbarVisible, recordDecode: recordDecodeSpeed, ...scanDeps })
 
-/** Runs `work` as one of the other runs of `projectId`, stopped with Find's Stop. */
-async function other<T>(projectId: string, sender: WebContents | undefined, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+/** Runs `work` as one of the other runs of `projectId`, for request `requestId`: stopped by its own Stop, and by Find's. */
+async function other<T>(projectId: string, requestId: string, sender: WebContents | undefined, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
   const controller = new AbortController()
   const unwatch = watchSender(sender, () => controller.abort())
-  const run: Run = { projectId, controller, done: Promise.resolve() }
+  const run: Run = { projectId, requestId, controller, done: Promise.resolve() }
   others.add(run)
   try {
     const done = work(controller.signal)
@@ -199,10 +202,20 @@ export function registerFindIpc(): void {
       unwatch()
     }
   })
-  ipcMain.handle(PRIVACY_CHANNELS.stopFind, (e, projectId: unknown) => {
+  ipcMain.handle(PRIVACY_CHANNELS.stopFind, (e, projectId: unknown, requestId?: unknown) => {
     fromApp(e)
     if (typeof projectId !== 'string' || !PROJECT_ID.test(projectId)) throw new Error('Invalid request')
-    // Stop: what Find found so far comes back through its own request; the texts it kept are forgotten.
+    if (requestId !== undefined && requestId !== null) {
+      if (typeof requestId !== 'string' || !REQUEST_ID.test(requestId)) throw new Error('Invalid request')
+      // A Follow's or an Everywhere's Stop, or its dialog closing: that run alone stops, and the text
+      // read under the cover for it is forgotten. A Find of the project goes on, with the reads it
+      // keeps for Everywhere (second review, finding [20]).
+      for (const r of others) if (r.projectId === projectId && r.requestId === requestId) r.controller.abort()
+      forgetUnder(requestId)
+      return
+    }
+    // Find's Stop, Polish's and leaving the editor: every run of the project stops; what Find found so
+    // far comes back through its own request; the texts kept are forgotten.
     for (const r of [find, ...others]) if (r && r.projectId === projectId) r.controller.abort()
     forgetReads()
   })
@@ -214,7 +227,7 @@ export function registerFindIpc(): void {
     if (following) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
     following = true
     try {
-      return await other(request.projectId, e.sender, (signal) => followCover(request, signal, deps()))
+      return await other(request.projectId, request.requestId, e.sender, (signal) => followCover(request, signal, deps()))
     } finally {
       following = false
     }
@@ -224,7 +237,7 @@ export function registerFindIpc(): void {
     const duration = await durationOf(raw)
     const request = duration === null ? null : validateUnderCoverRequest(raw, duration)
     if (!request) throw new Error('Invalid request')
-    return other(request.projectId, e.sender, (signal) => underCover(request, signal, deps()))
+    return other(request.projectId, request.requestId, e.sender, (signal) => underCover(request, signal, deps()))
   })
   ipcMain.handle(PRIVACY_CHANNELS.everywhere, async (e, raw: unknown): Promise<EverywhereResult> => {
     fromApp(e)
@@ -234,7 +247,7 @@ export function registerFindIpc(): void {
     if (following) return { ok: false, projectId: request.projectId, requestId: request.requestId, reason: 'busy' }
     following = true
     try {
-      return await other(request.projectId, e.sender, (signal) => coverEverywhere(request, sendTo(e.sender), signal, deps()))
+      return await other(request.projectId, request.requestId, e.sender, (signal) => coverEverywhere(request, sendTo(e.sender), signal, deps()))
     } finally {
       following = false
     }

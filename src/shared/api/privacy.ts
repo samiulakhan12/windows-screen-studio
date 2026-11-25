@@ -127,7 +127,12 @@ export interface PrivacyApi {
   removeReader(): Promise<ReaderState>
   onReaderState(listener: (state: ReaderState) => void): () => void
   findPrivate(request: FindRequest): Promise<FindResult>
-  stopFind(projectId: string): Promise<void>
+  /**
+   * Stops Find and every other run of the project, and forgets the texts kept (Find's Stop, Polish's,
+   * leaving the editor). With `requestId`, only that Follow's, text-under-a-cover's or Everywhere's
+   * run stops, and the text read under the cover for it is forgotten; Find goes on.
+   */
+  stopFind(projectId: string, requestId?: string): Promise<void>
   onFindProgress(listener: (progress: FindProgress) => void): () => void
   followCover(request: FollowRequest): Promise<FollowResult>
   underCover(request: UnderCoverRequest): Promise<UnderCoverResult>
@@ -152,7 +157,7 @@ export const PRIVACY_CHANNELS = {
   readerProgress: 'privacy:readerProgress',
   /** invoke (FindRequest) → FindResult */
   find: 'privacy:find',
-  /** invoke (projectId) → void */
+  /** invoke (projectId, requestId?) → void */
   stopFind: 'privacy:stopFind',
   /** event FindProgress */
   findProgress: 'privacy:findProgress',

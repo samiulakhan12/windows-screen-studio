@@ -10,7 +10,7 @@ export const privacyApi: PrivacyApi = {
   removeReader: () => ipcRenderer.invoke(PRIVACY_CHANNELS.removeReader),
   onReaderState: (listener) => subscribe<ReaderState>(PRIVACY_CHANNELS.readerProgress, listener),
   findPrivate: (request) => ipcRenderer.invoke(PRIVACY_CHANNELS.find, request),
-  stopFind: (projectId) => ipcRenderer.invoke(PRIVACY_CHANNELS.stopFind, projectId),
+  stopFind: (projectId, requestId) => (requestId === undefined ? ipcRenderer.invoke(PRIVACY_CHANNELS.stopFind, projectId) : ipcRenderer.invoke(PRIVACY_CHANNELS.stopFind, projectId, requestId)),
   onFindProgress: (listener) => subscribe<FindProgress>(PRIVACY_CHANNELS.findProgress, listener),
   followCover: (request) => ipcRenderer.invoke(PRIVACY_CHANNELS.follow, request),
   underCover: (request) => ipcRenderer.invoke(PRIVACY_CHANNELS.underCover, request),
