@@ -408,6 +408,11 @@ export function ExportDialog(props: Props): JSX.Element {
   // Share without a server (F-22): copy to a cloud folder and post to a chat after export, per preset.
   const share = useAfterExport(options.preset)
   const { project } = props
+  // What leaves Flown from this dialog is named and copied from the private view (auto-blur §7.5):
+  // Copy chapters' text, each part's file name (its thumbnail and sidecars take its stem), the batch's
+  // file names and the names the save dialog suggests. The view changes texts only, so the parts'
+  // ranges are the stored chapters' own.
+  const view = privateView(project)
   const clips = project.clips
   // Fonts text uses that cannot be loaded (their text is drawn with the default font) and images
   // that cannot be shown (left out): said below, so another PC's missing files are no surprise.
@@ -480,8 +485,8 @@ export function ExportDialog(props: Props): JSX.Element {
   const hasSound = hasSoundtrack(project, hasClickSounds)
   const preset = presetById(options.preset)
   const userPreset = (options.userPreset && store?.presets.find((p) => p.id === options.userPreset)) || null
-  const chapters = useMemo(() => outputChapters(project.chapters ?? [], clips, plan), [project.chapters, clips, plan])
-  const parts = useMemo(() => chapterParts(project), [project])
+  const chapters = useMemo(() => outputChapters(view.chapters ?? [], clips, plan), [view.chapters, clips, plan])
+  const parts = useMemo(() => chapterParts(view), [view])
   const bundleHas = { captions: !!project.transcript?.segments.some((seg) => seg.text.trim()), chapters: chapters.length > 0, stillAcross: stillAcrossChapters(project, parts) }
   const perChapter = bundle.perChapter && !perChapterBlocked(bundleHas, mode) && parts.length > 0
   const partNames = useMemo(() => partFileNames(parts, FORMAT_EXTENSIONS[options.format]), [parts, options.format])
@@ -683,9 +688,9 @@ export function ExportDialog(props: Props): JSX.Element {
     else if (Number.isFinite(mb) && mb >= TARGET_MB_RANGE.min && mb <= TARGET_MB_RANGE.max) set({ targetSizeMB: Math.round(mb * 10) / 10 })
   }
 
-  const baseName = safeFileName(exportBaseName(project))
+  const baseName = safeFileName(exportBaseName(view))
   // The name a share posts (auto-blur §9 rows 20 and 21): from the private view, secrets said aloud masked.
-  const shownName = privateView(project).name
+  const shownName = view.name
   // The subtitle languages ticked (Captions Studio §2.13, §11.10): one SRT or VTT file each, and
   // with Also inside the video one stream each (read by the exporter as subtitleLanguages and by
   // the bundle as languages, part P2's plumbing).
@@ -819,7 +824,7 @@ export function ExportDialog(props: Props): JSX.Element {
     })
     if (!chosen) return
     const { folder, found } = chosen
-    const names = batchFileNames(project.name, items)
+    const names = batchFileNames(shownName, items)
     const made: CodecUiCaps = found ? { ...uiCaps, hevc: webCodecs.hevc ? 'webcodecs' : found.length ? found : 'none' } : uiCaps
     const jobs: BatchJob[] = items.map((it, i) => ({ key: it.key, label: itemLabel(it, checkedUserPresets), fileName: names[i], options: streamed(itemSettings(it, made).options) }))
     await runBatch(folder, jobs, (_i, path, j) =>
@@ -1144,7 +1149,7 @@ export function ExportDialog(props: Props): JSX.Element {
                       </p>
                       {items.length > 0 && (
                         <ul className="export-batch-files">
-                          {batchFileNames(project.name, items).map((name, i) => {
+                          {batchFileNames(shownName, items).map((name, i) => {
                             const made = itemSettings(items[i])
                             const s = exportSize(project, made.options)
                             return (

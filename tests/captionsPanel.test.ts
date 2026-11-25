@@ -1723,6 +1723,40 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
   })
 })
 
+describe('CaptionsPanel: Export captions (auto-blur §7.5)', () => {
+  let m: Mods
+  beforeAll(() => void RENDERED.add('ExportSection'))
+  afterAll(() => void RENDERED.delete('ExportSection'))
+  beforeEach(async () => {
+    m = await fresh()
+  })
+
+  it('offers the file under the name as it leaves Flown: a name holding a code said aloud is masked, the stored name is not', async () => {
+    const saved: unknown[][] = []
+    const api = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api
+    api.saveCaptions = (...args: unknown[]) => (saved.push(args), Promise.resolve('/out/captions.srt'))
+    onTestFinished(() => void delete api.saveCaptions)
+    const text = 'The code is 629153 now'
+    const words = text.split(' ').map((w, i) => ({ text: w, start: i * 0.4, end: i * 0.4 + 0.35 }))
+    const transcript = { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: words[words.length - 1].end, text, words }] }
+    store.state = { ...store.state, name: 'Code 629153 walkthrough', transcript, bleeps: [{ id: 'pb-1', start: words[3].start - 0.05, end: words[3].end + 0.05, word: ':code:k3v9q2m8xa', sound: 'tone', auto: true }] }
+    let out = render(m.panel)
+    click(out, 'Export captions…')
+    await flush()
+    out = render(m.panel)
+    expect(saved).toHaveLength(1)
+    expect(saved[0][0]).toBe('Code •••••• walkthrough')
+    expect(String(saved[0][2])).not.toMatch(/629153/)
+    expect(store.state.name).toBe('Code 629153 walkthrough')
+    // Without private bleeps the name is the stored one.
+    store.state = { ...store.state, bleeps: undefined }
+    out = render(m.panel)
+    click(out, 'Export captions…')
+    await flush()
+    expect(saved[1][0]).toBe('Code 629153 walkthrough')
+  })
+})
+
 describe('CaptionsPanel: Add a caption language… (Captions Studio §2.14)', () => {
   it('brings Languages into view once; the next visit to the tab opens at the top, and Languages still takes its request', () => {
     // The module CaptionsPanel was imported with (later tests import fresh copies).

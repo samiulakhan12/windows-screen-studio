@@ -2815,8 +2815,13 @@ same way with `privateText(project, text)`.
 scene draw it. The exporter's own project inputs (`chaptersOf`), the bundle's sidecars
 (`exportBundleRun.ts`), the pack's outputs (`publishRun.ts`, `PublishDialog.tsx`'s copy and share),
 the guide's outputs (`guideRun.ts`), the timeline (`timelineRun.ts`) and `maskRequest` (§7.6) each take
-`privateView(project)` at their entry. Removing a private bleep (*Uncover*) brings every word back
-everywhere, in the same undo step, because nothing stored changed.
+`privateView(project)` at their entry. So do the names files leave Flown under and the texts the
+export dialog copies, which a chapter named before Find (Polish names chapters before its privacy
+step) or a name holding a code said aloud would otherwise carry: the export dialog's *Copy chapters*,
+the files of one file per chapter (their thumbnails and sidecars take their names), the batch's file
+names and the name its save dialog offers (`ExportDialog.tsx`), the guide's file name (`guideRun.ts`)
+and the name *Export captions* offers (`CaptionsPanel.tsx`). Removing a private bleep (*Uncover*)
+brings every word back everywhere, in the same undo step, because nothing stored changed.
 
 ### 7.6 AI requests (`aiTextFor`, contracts)
 
@@ -3018,6 +3023,7 @@ applies with no change of its own. Line numbers are at `37f9355`.
 | 28 | The Style tab's colour look chips | `src/renderer/src/editor/panels/ColourControls.tsx:136-170` (`thumbPixels`, `LookThumb`: the playhead's frame at 96×54) | a preview-only picture, but it is the raw frame: `LookThumb` fills the boxes of the covers active at the playhead, in Dark, into the 96×54 pixels before grading (`fillCoverPixels`, P1, contracts stub draws nothing) |
 | 29 | The cover outlines and the magnified view under Peek | P1 `drawCoverMarks`, `PeekInset` (§8.5) | preview only: set only on the player's preview scene or drawn on their own canvas; `forOutput` strips the marks at every export entry point (test 17) |
 | 30 | Title cards and the chapter bar | `titleCardLayer.ts`, `chapterBarLayer.ts`, through `drawFrame` | drawn from the scene's project, which is `privateView` (§7.5), so rows 1-6 and 12 carry the masking |
+| 31 | The names files leave Flown under, and the export dialog's *Copy chapters* | `ExportDialog.tsx` (Copy chapters, the files of one file per chapter, whose thumbnails and sidecars take their names, the batch's file names, the name its save dialog offers), `guideRun.ts` `guideFileName`, `CaptionsPanel.tsx` *Export captions* | from `privateView` (§7.5) |
 
 ---
 
@@ -4719,7 +4725,9 @@ pixels under the covers (two different secrets, same everything else), and the t
   draws the opaque boxes over the covers' places.
 - **A7. Spoken secrets.** A fixture with captions saying a card number and a code: private bleeps; the
   captions, a Spanish translation, the SRT sidecar, chapter names and a fake AI service's recorded
-  requests hold no digit of them; the export's sound is muted there.
+  requests hold no digit of them; the export's sound is muted there. A chapter and the recording's name
+  hold the code too (named before Find): the export dialog's Copy chapters, the files of one file per
+  chapter and the name the save dialog offers hold no digit of it (§7.5).
 - **A8. One undo step.** Find's results are one undo; a timeline drag during Find keeps both.
 - **A9. The reader's download.** From a local fake mirror: download, resume after a cut, a wrong hash
   refused, Remove.

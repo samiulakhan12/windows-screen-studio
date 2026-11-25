@@ -124,9 +124,10 @@ export async function saveGuide(
   const kind = deps.smaller && (format === 'html' || format === 'demo') ? SMALLER : FORMAT_IMAGES[format]
   const images = await convertImages(deps.images, kind, deps.signal)
   if (deps.signal.aborted) return null
-  // The guide's words leave Flown from the private view (auto-blur §7.5).
-  const doc = buildGuideDoc(privateView(deps.project), deps.steps, images, await guideBrand(deps.project), deps.scale)
-  const name = guideFileName(deps.project, format)
+  // The guide's words, and the file's name the save dialog offers, leave Flown from the private view (auto-blur §7.5).
+  const shown = privateView(deps.project)
+  const doc = buildGuideDoc(shown, deps.steps, images, await guideBrand(deps.project), deps.scale)
+  const name = guideFileName(shown, format)
   if (format === 'markdown') {
     const md = guideMarkdown(doc)
     const bytes = [...doc.steps.flatMap((s) => (s.image ? [s.image.bytes] : [])), ...(doc.bug?.actualImage ? [doc.bug.actualImage.bytes] : [])]

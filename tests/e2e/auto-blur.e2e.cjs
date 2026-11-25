@@ -1413,7 +1413,7 @@ async function main() {
     await offline(app)
   })
 
-  await test('A7: spoken secrets: private bleeps; captions, a Spanish translation, the SRT, chapter names and the AI requests hold no digit of them; the sound is muted there', async (ctx) => {
+  await test('A7: spoken secrets: private bleeps; captions, a Spanish translation, the SRT, chapter names, Copy chapters, the output file names and the AI requests hold no digit of them; the sound is muted there', async (ctx) => {
     const home = readerHome('a7')
     const rec = await smallRecordings()
     const media = path.join(af.CACHE, 'a7-spoken.mp4')
@@ -1433,7 +1433,8 @@ async function main() {
     }
     const captionTracks = [{ language: 'es', by: 'anthropic', model: 'm', createdAt: '2026-11-20T12:00:00.000Z', segments: [{ id: 's0', text: 'Mi tarjeta es 4111 1111 1111 1111.', src: src(segments[0].text) }, { id: 's1', text: 'El código es 629153.', src: src(segments[1].text) }] }]
     const chapters = [{ id: 'ch1', t: 0, title: 'Intro' }, { id: 'ch2', t: 3.5, title: 'Code 629153' }]
-    af.seed(home, { id: 'rec-a7', name: 'Spoken', media, seconds: rec.seconds, width: rec.width, height: rec.height, fps: A1_FPS, extra: { hasAudio: true, transcript, captionTracks, chapters } })
+    // The name holds the code too, as when the pack's title made before Find became it (Use as the recording's name).
+    af.seed(home, { id: 'rec-a7', name: 'Spoken 629153', media, seconds: rec.seconds, width: rec.width, height: rec.height, fps: A1_FPS, extra: { hasAudio: true, transcript, captionTracks, chapters } })
     const { app, win } = await start(ctx, home)
     // A fake AI service in main, recording every request.
     await app.evaluate(({ ipcMain }) => {
@@ -1447,7 +1448,7 @@ async function main() {
         return null
       })
     })
-    await openProject(win, 'Spoken')
+    await openProject(win, 'Spoken 629153')
     const found = await runFind(ctx, win, home, 'rec-a7')
     const priv = (found.project.bleeps ?? []).filter((b) => b.word.startsWith(':'))
     console.log(`  ${priv.length} private bleeps: ${priv.map((b) => `${b.word.split(':')[1]} ${b.start}-${b.end}`).join(', ')}`)
@@ -1512,6 +1513,42 @@ async function main() {
       const under = tone440(b.start + 0.02, b.end - 0.02)
       h.assert(under < tone440(6.2, 6.8) / 100, `the sound is muted under ${b.word.split(':')[1]} (${b.start}-${b.end} s)`)
     }
+    // What the export dialog names and copies leaves Flown from the private view too (§7.5): Copy chapters, the
+    // files of one file per chapter (their thumbnails and sidecars take their names) and the name the save dialog offers.
+    const noCode = (text) => !/629153|629|153/.test(text)
+    await win.evaluate(() => {
+      localStorage.setItem('export-mode', 'single')
+      localStorage.setItem('export-bundle', JSON.stringify({ srt: false, vtt: false, chapters: false, thumbnail: false, description: false, perChapter: true }))
+    })
+    await app.evaluate(({ clipboard }) => clipboard.writeText('nothing yet'))
+    await win.click('header button.primary:has-text("Export")')
+    await win.waitForSelector('.modal[aria-label="Export"] [data-testid="export-chapters"]')
+    await win.click('[data-testid="export-chapters"] button:has-text("Copy chapters")')
+    await af.until(async () => (await app.evaluate(({ clipboard }) => clipboard.readText())) !== 'nothing yet', 'the chapters on the clipboard', 5000)
+    const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
+    console.log(`  Copy chapters: ${JSON.stringify(copied)}`)
+    h.assert(copied.includes('Code ••••••') && noCode(copied), `Copy chapters holds no digit of the code (${JSON.stringify(copied)})`)
+    const partFiles = await win.$$eval('[data-testid="export-part-files"] .name', (els) => els.map((e) => e.textContent))
+    console.log(`  one file per chapter: ${JSON.stringify(partFiles)}`)
+    h.assert(partFiles.length === 2 && partFiles[1].startsWith('02 Code ••••••') && partFiles.every(noCode), `the files of one file per chapter hold no digit of the code (${JSON.stringify(partFiles)})`)
+    await closeModal(win)
+    await win.evaluate(() => localStorage.setItem('export-bundle', JSON.stringify({})))
+    await app.evaluate(({ dialog }) => {
+      globalThis.__offered = []
+      dialog.showSaveDialog = async (...args) => {
+        const o = args.find((a) => a && typeof a === 'object' && 'defaultPath' in a)
+        globalThis.__offered.push(o ? o.defaultPath : '')
+        return { canceled: true }
+      }
+    })
+    await win.click('header button.primary:has-text("Export")')
+    await win.waitForSelector('.modal[aria-label="Export"]')
+    await clickExport(win)
+    await af.until(async () => (await app.evaluate(() => globalThis.__offered.length)) > 0, 'the save dialog asked', 10000)
+    const offered = path.basename((await app.evaluate(() => globalThis.__offered[0])).replace(/\\/g, '/'))
+    console.log(`  the save dialog offers: ${JSON.stringify(offered)}`)
+    h.assert(offered === 'Spoken ••••••.mp4', `the save dialog offers the name masked (${JSON.stringify(offered)})`)
+    await closeModal(win)
     await offline(app)
   })
 
