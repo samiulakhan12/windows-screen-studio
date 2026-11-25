@@ -1352,15 +1352,16 @@ field.
 
 **The bleep limit.** `readBleeps` keeps at most `MAX_BLEEPS = 2000` and, past it, the earliest by time
 (`studioData.ts:779`), so a project near the limit could lose its latest private bleeps on the next
-load. Two rules prevent it:
+load, and Tidy captions with bleeping cut the same way when it added bleeps. Two rules prevent it:
 
 - `saidBleeps` (§7.2) keeps the total at or under `MAX_BLEEPS`: past it, it merges private bleeps
   that are close in time, across groups if it must (each merge only grows a bleep, and the merged
   bleep takes the earlier group). When even that cannot fit, Find's result says so
   (`privacy.run.saidFull`: "Too many bleeps: some secrets said aloud could not be bleeped. Remove
   bleeps you do not need and find again.") and the hits it could not place are counted in Review.
-- `readBleeps` keeps private bleeps first when it must cut (then the earliest of the rest). A project
-  with no private bleeps is cut exactly as today.
+- Every cut of a list of bleeps (`keptBleeps`, `studioData.ts`: `readBleeps`, and Tidy captions
+  adding the bleeps it finds, `tidyCaptions`) keeps private bleeps first when it must cut (then the
+  earliest of the rest). A project with no private bleeps is cut exactly as today.
 
 ### 4.5 Preferences
 

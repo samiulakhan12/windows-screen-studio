@@ -780,12 +780,22 @@ export function readBleeps(raw: unknown, duration: number): Bleep[] | undefined 
       ...opt('auto', v.auto === true ? (true as const) : undefined)
     })
   }
-  const byTime = (a: Bleep, b: Bleep): number => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-  out.sort(byTime)
-  // Past the limit, private bleeps are kept first, then the earliest of the rest (auto-blur §4.4); without any, cut as before.
-  const kept = out.length > MAX_BLEEPS && out.some(isPrivateBleep) ? [...out.filter(isPrivateBleep), ...out.filter((b) => !isPrivateBleep(b))].slice(0, MAX_BLEEPS).sort(byTime) : out.slice(0, MAX_BLEEPS)
-  const unique = uniqueIds(kept, 'b')
+  out.sort(bleepTimeOrder)
+  const unique = uniqueIds(keptBleeps(out), 'b')
   return unique.length ? unique : undefined
+}
+
+/** Bleeps in time order: by start, then end, then id. */
+export const bleepTimeOrder = (a: Bleep, b: Bleep): number => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
+/**
+ * At most MAX_BLEEPS of `sorted` (bleeps in time order), wherever a list of bleeps is cut (reading
+ * a project, Tidy captions adding bleeps): past the limit, private bleeps are kept first, then the
+ * earliest of the rest, in time order (auto-blur §4.4); without any, the earliest, as before.
+ */
+export function keptBleeps(sorted: readonly Bleep[]): Bleep[] {
+  if (sorted.length > MAX_BLEEPS && sorted.some(isPrivateBleep)) return [...sorted.filter(isPrivateBleep), ...sorted.filter((b) => !isPrivateBleep(b))].slice(0, MAX_BLEEPS).sort(bleepTimeOrder)
+  return sorted.slice(0, MAX_BLEEPS)
 }
 
 /* ---------- automation records (rule 8) ---------- */

@@ -15,7 +15,7 @@ import { STANDARD_WORDS, STRICT_WORDS } from './bleepWords'
 import { applyTextResult } from './edit'
 import { parseNumberWords } from './numbers'
 import { textHash, transcriptLanguage } from './captionTracks'
-import { MAX_BLEEPS } from './studioData'
+import { bleepTimeOrder, keptBleeps } from './studioData'
 import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 import { isPrivateBleep } from '../privacy/coverData'
@@ -1258,9 +1258,8 @@ export function tidyCaptions(
     const guessed = new Set<string>()
     const found = findBleeps(next.transcript!.segments, opts.bleep, opts.bleepSound, language, project.bleeps ?? [], project.duration, guessed)
     if (found.length) {
-      const all = [...(project.bleeps ?? []), ...found]
-        .sort((a, b) => a.start - b.start || a.end - b.end || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-        .slice(0, MAX_BLEEPS)
+      // Cut as a project is read: private bleeps first past the limit (auto-blur §4.4), never the latest of them.
+      const all = keptBleeps([...(project.bleeps ?? []), ...found].sort(bleepTimeOrder))
       bleeped = found.filter((b) => all.includes(b)).length
       estimated = found.filter((b) => all.includes(b) && guessed.has(b.id)).length
       next = { ...next, bleeps: all }
