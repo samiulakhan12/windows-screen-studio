@@ -1079,6 +1079,57 @@ describe('auto-blur P1: the Covers row', () => {
     ;(rowOf(els).props.onKeyDown as (e: unknown) => void)(keyEvent('Enter'))
     expect(player.seeks).toEqual([5])
   })
+
+  it('the focus, the tab stop and the selection stay on one bar while the timeline draws only the bars near its view, so Delete uncovers the bar that has the focus (second review, finding [6])', () => {
+    // A 10-minute recording with covers at 0:05, 3:00 and 6:00: zoomed in, the timeline draws the
+    // bars inside its window, the tab stop and the selected bars (Timeline.tsx's renderWindow).
+    const long = (): Project => ({
+      ...createProject({ id: 'p', name: 'p', duration: 600, width: W, height: H, hasWebcam: false, hasAudio: true, webcamOffset: 0, zooms: [], cursorValid: true, capture: { method: 'native', cursorInVideo: false, region: null, fps: 60 } }),
+      covers: [cover('A', 5, 8, [key(5, 0.1, 0.1, 0.2, 0.05)]), cover('B', 180, 183, [key(180, 0.1, 0.3, 0.2, 0.05)]), cover('C', 360, 363, [key(360, 0.5, 0.5, 0.2, 0.05)])]
+    })
+    const run = (win: { start: number; end: number }, keys: string[]): { focus: unknown; tabStop: unknown; selected: unknown; left: string[] } => {
+      setUp(long())
+      unmountAll()
+      player.time = 181
+      let selected: { kind: string; id: string } | null = null
+      const root = { type: () => ({ type: track.CoverTrack, props: { px: 20, win, duration: 600, selection: selected, onSelect: (s: typeof selected) => void (selected = s), scrub: () => undefined, snap } }), props: {} }
+      let els = render(root)
+      // As the browser does: focus() runs the element's onFocus at once.
+      const settleFocus = (before: number): void => {
+        els = render(root)
+        if (focused.length > before) (focused.at(-1)!.props.onFocus as () => void)()
+        els = render(root)
+      }
+      // Tab reaches the row's one tab stop.
+      const stop = bars(els).find((b) => b.props.tabIndex === 0)!
+      focused.push(stop)
+      settleFocus(0)
+      for (const k of keys) {
+        const before = focused.length
+        ;(rowOf(els).props.onKeyDown as (e: unknown) => void)(keyEvent(k))
+        settleFocus(before)
+      }
+      return {
+        focus: focused.at(-1)?.props['data-cover'],
+        tabStop: bars(els).find((b) => b.props.tabIndex === 0)?.props['data-cover'],
+        selected: selected?.id,
+        left: store.state.covers!.map((c) => c.id)
+      }
+    }
+    // Tab onto A scrolls the timeline to it (0:00-1:07 drawn): Right moves the focus, the tab stop and the selection to B together.
+    expect(run({ start: 0, end: 67 }, ['ArrowRight'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B', 'C'] })
+    // Delete uncovers B, the bar with the focus; the focus and the selection move to the bar in its place.
+    expect(run({ start: 0, end: 67 }, ['ArrowRight', 'Delete'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'C'] })
+    expect(events.notices.at(-1)).toBe('Uncovered. It will show in exports.')
+    // Zoomed in around 3:00 (2:30-4:10 drawn): Right twice reaches C, drawn only as the tab stop; Left comes back to B.
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'B', 'C'] })
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight', 'ArrowLeft'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B', 'C'] })
+    expect(run({ start: 150, end: 250 }, ['ArrowRight', 'ArrowRight', 'ArrowLeft', 'Delete'])).toEqual({ focus: 'C', tabStop: 'C', selected: 'C', left: ['A', 'C'] })
+    // End, then Delete on the last bar: the bar before it takes the focus and the selection.
+    expect(run({ start: 150, end: 250 }, ['End', 'Delete'])).toEqual({ focus: 'B', tabStop: 'B', selected: 'B', left: ['A', 'B'] })
+    // Home from the far end comes back to A, drawn only as the tab stop.
+    expect(run({ start: 300, end: 400 }, ['End', 'Home'])).toEqual({ focus: 'A', tabStop: 'A', selected: 'A', left: ['A', 'B', 'C'] })
+  })
 })
 
 describe('auto-blur P1: the preview', () => {

@@ -3215,7 +3215,13 @@ New channels (preload `src/preload/privacy.ts`): `privacy:readerState`, `privacy
   Left and Right move between bars and thin-span marks, Home and End go to the first and last, Enter
   selects (a group's bar selects the group), Ctrl+Enter toggles one cover in the selection, Delete
   uncovers, Shift+Left and Shift+Right move the nearer end by one frame, Escape returns focus to the
-  row. Selection follows focus on the row (finding 36).
+  row. Selection follows focus on the row (finding 36). The focus, the tab stop, the selection and
+  what Delete acts on are always the same item. Zoomed in, the timeline draws only the bars near its
+  view (`renderWindow`, three viewports wide), the tab stop and the selected bars, so the row finds an
+  item by its index among all its items, never by its place among the drawn ones, and an item a key
+  moves to that is not drawn yet is focused by the render that makes it the tab stop (second review,
+  finding [6]). After Delete the item that takes the uncovered bar's place (the next one, or the one
+  before at the end) takes the focus and the selection; the row goes when its last cover does.
 - **Review by keyboard**: N or ↓ and P or ↑ move, K keeps covered, Delete uncovers, V turns *Peek
   while reviewing* on and off (private rows only, §2.8), Enter on a row with places expands them
   (Review's parts). A pass over 200 private rows needs no mouse and no pressing of Peek again (test
