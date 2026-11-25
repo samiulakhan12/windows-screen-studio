@@ -6,7 +6,9 @@ import { isPrivateBleep, privateGroupOf, privateKindOf } from '../src/shared/pri
 import { compileNames, NO_NAMES } from '../src/shared/privacy/detect/names'
 import { detectSaid, digitRuns, saidBleeps, saidWord, transcriptWords, type SaidHit } from '../src/shared/privacy/detect/said'
 import { SAID_KINDS } from '../src/shared/privacy/kinds'
-import type { Bleep, Transcript } from '../src/shared/types'
+import { maskPrivate, spokenForms, type SpokenForms } from '../src/shared/privacy/spoken'
+import type { Bleep, Project, Transcript } from '../src/shared/types'
+import { base } from './autoBlurFixtures'
 import { ROOT, speechTranscript } from './autoBlurRulesFixtures'
 
 /* Auto-blur P3: secrets said aloud (docs/design/auto-blur.md §7.2, §4.4, tests 129-133, 225 and 226). */
@@ -195,5 +197,57 @@ describe('auto-blur P3: secrets said aloud', () => {
     const em = detectSaid(speechTranscript('mail jane at gmail dot com <pause 5> or jane at gmail dot com'), { kinds: SAID_KINDS, regions: [], names: NO_NAMES })
     expect(em).toHaveLength(2)
     expect(em[0].group).toBe(em[1].group)
+  })
+})
+
+/** The spoken forms of the private bleeps Find makes for `words` said (§7.3). */
+function formsOf(words: string, regions = ['US', 'BD']): { project: Project; forms: SpokenForms | null } {
+  const transcript = speechTranscript(words)
+  const hits = detectSaid(transcript, { kinds: SAID_KINDS, regions, names: NO_NAMES })
+  const project: Project = { ...base('said-forms', 120), transcript: { ...transcript, language: 'en' }, bleeps: saidBleeps(hits, [], sequence(11)).bleeps }
+  return { project, forms: spokenForms(project) }
+}
+
+describe('auto-blur §7.2-7.3: runs across sentence ends, codes in pairs, and the digit forms of every run the rules find', () => {
+  it('a number said before or after a number word across a sentence or clause end or a new caption is found with its own words and digits; finding 10 still holds (second review, finding [4])', () => {
+    // A number word starting the next sentence, or the caption after, does not join the number.
+    expect(kinds('Pay with 4917 6123 4567 8904. || One second, let me check.')).toEqual(['card: 4917 6123 4567 8904.'])
+    expect(kinds('Pay with 4917 6123 4567 8904. One second, let me check.')).toEqual(['card: 4917 6123 4567 8904.'])
+    expect(kinds('Pay with 4917 6123 4567 8904 || one more thing')).toEqual(['card: 4917 6123 4567 8904'])
+    expect(kinds('My card number is 4917 6123 4567 8904. || One second.')).toEqual(['card: 4917 6123 4567 8904.'])
+    expect(kinds('My card number is 4917 6123 4567 8904. || Twenty twenty-four was the year.')).toEqual(['card: 4917 6123 4567 8904.'])
+    expect(kinds('My verification code is 482913. || Two more steps.')).toEqual(['code: 482913.'])
+    expect(kinds('My verification code is 482913. || Oh wait, it expired.')).toEqual(['code: 482913.'])
+    expect(kinds('The PIN is 4829. || One more thing.')).toEqual(['code: 4829.'])
+    expect(kinds('the code is 4829, then two factor is on')).toEqual(['code: 4829,'])
+    expect(kinds('your OTP is 4 8 2 9 1 3. || Ten seconds later')).toEqual(['code: 4 8 2 9 1 3.'])
+    expect(kinds('Call me at 213 373 4253. || Two things after that.', { regions: ['US'] })).toEqual(['phone: 213 373 4253.'])
+    // … or ending the sentence before it.
+    expect(kinds('That was step two. || 4917 6123 4567 8904 is the card')).toEqual(['card: 4917 6123 4567 8904'])
+    // Finding 10: a number a full stop or a new caption splits is found whole; one said in groups with commas too.
+    expect(kinds('the card is 4917 6123. || 4567 8904.')).toEqual(['card: 4917 6123. 4567 8904.'])
+    expect(kinds('the code is 4, 8, 2, 9')).toEqual(['code: 4, 8, 2, 9'])
+    expect(kinds('the code is 4829, 1234')).toEqual(['code: 4829, 1234'])
+    // Two numbers a sentence end parts are two.
+    expect(kinds('the code is 4829. 1234.')).toEqual(['code: 4829.', 'code: 1234.'])
+    // The spoken form is the number's own digits: its typed copies are masked.
+    const card = formsOf('My card number is 4917 6123 4567 8904. || One second.').forms!
+    expect(card.digits).toContain('4917612345678904')
+    expect(maskPrivate('Billing 4917 6123 4567 8904', card)).toBe('Billing •••• •••• •••• ••••')
+    expect(maskPrivate('Card 4917-6123-4567-8904', card)).toBe('Card ••••-••••-••••-••••')
+    expect(maskPrivate('OTP 482913', formsOf('your OTP is 4 8 2 9 1 3. || Ten seconds later').forms)).toBe('OTP ••••••')
+    // Nothing new is found in numbers that sentence ends part.
+    for (const none of ['In step one. Two more steps.', 'Call me at five. Six thirty works too.', 'The code is in chapter twelve. Thirty four tests cover it.', 'I have two cats. Three dogs, four birds.']) expect(kinds(none), none).toEqual([])
+  })
+
+  it('codes and PINs said in two or three pairs are found; pairs that say a year, or that a sentence end parts, are not (second review, finding [16])', () => {
+    expect(kinds('my PIN is forty eight twenty nine')).toEqual(['code: forty eight twenty nine'])
+    expect(kinds('my PIN is forty-eight twenty-nine')).toEqual(['code: forty-eight twenty-nine'])
+    expect(kinds('my PIN is 48 29')).toEqual(['code: 48 29'])
+    expect(kinds('the verification code is twenty five forty eight ninety one')).toEqual(['code: twenty five forty eight ninety one'])
+    expect(kinds('the verification code is 25 48 91')).toEqual(['code: 25 48 91'])
+    expect(formsOf('my PIN is forty eight twenty nine').forms!.digits).toContain('4829')
+    // A year said in pairs is never a code, nor are pairs without a code word.
+    for (const none of ['the code shipped in twenty twenty-four', 'the code shipped in twenty twenty four and more', 'the code from nineteen ninety nine', 'we had forty eight twenty nine times', 'The code is in chapter twelve. Thirty four tests cover it.']) expect(kinds(none), none).toEqual([])
   })
 })

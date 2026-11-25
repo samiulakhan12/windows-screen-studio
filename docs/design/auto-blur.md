@@ -2701,13 +2701,23 @@ just made (decision 11).
   … नौ. Fillers inside a run: `um`, `uh`, `then`, `dash`, `space`, `comma`, `is`, উম, `y`, `guion`. A run
   ends at a pause over 2.0 s or any other word. `and` ends a run: as a filler it turned "400, 300 and
   1500, 800" into a Luhn-valid card. So "4917 6123 4567 eight nine zero four" across two captions is
-  one run (finding 10).
+  one run (finding 10). Runs are read in `saidDigits.ts`.
+- **Breaks inside a run**: where a sentence ends (`.`, `!`, `?`, `।`, `…` at a word's end), a clause
+  ends (`,`, `;`, `:`) or a new caption starts between two of its numbers, a run may say more than
+  one number: "4917 6123 4567 8904. One second" is a card and a word, "My verification code is
+  482913. Oh wait" a code and a word, "That was step two. 4917 6123 4567 8904" a word and a card. The
+  whole run and every stretch of it between breaks (up to 20 digits) are tried with the rules below,
+  and the best are kept, never two over one number: the higher score first, then the one across fewer
+  sentence ends or new captions, then the longer. So finding 10's card split by a full stop, valid
+  only whole, stays whole; a code said in two groups with a comma ("4829, 1234") is one code; and a
+  number word starting the next sentence never joins, or hides, the number before it (second review,
+  finding [4]). Flown's docs read as speech give the same 10 hits as before.
 - **Rules on runs** (the label context is the 12 words or 10 s before the run):
 
   | Kind | Rule |
   |---|---|
   | card | 13-19 digits with Luhn and an issuer prefix (no label needed), or with a card word |
-  | code | 4-8 digits with a code word (code, OTP, verification, passcode, PIN, কোড, ওটিপি, পিন, código, कोड, ओटीपी, पिन), said as one number, single digits or groups; never a year or a version |
+  | code | 4-8 digits with a code word (code, OTP, verification, passcode, PIN, কোড, ওটিপি, পিন, código, कोड, ओटीपी, पिन), said as one number, single digits, groups of 3-4, or two or three pairs said in one go ("forty eight twenty nine", "25 48 91"); never a year or a version, nor pairs that say a year ("twenty twenty-four") or that a break parts |
   | phone | 7-15 digits with a phone word, valid for one of the user's regions by the same libphonenumber check as the screen (§6.8), or a Bangladeshi mobile `01[3-9]` + 8 digits (or `8801…`) with no label |
   | id | 6-20 digits with an ID word (social security, SSN, account, routing, passport, licence, national insurance, Aadhaar, NID, অ্যাকাউন্ট, হিসাব, পাসপোর্ট, এনআইডি, cuenta, खाता, आधार) |
   | password | a password word followed at once by `is`, `was`, `=`, `:`, হলো, হল, হচ্ছে, `es`, है, `it's`; then up to 6 words, ending at a pause over 1.0 s or the sentence's end. "it skips password boxes" gives nothing |
@@ -3886,7 +3896,7 @@ line only).
 | `detect/names.ts` (new) | `function compileNames(entries: readonly string[], neverHide: readonly string[]): NameMatcher`; `function findNames(line: CleanLine, m: NameMatcher): Hit[]`; `function saidNames(words: readonly CaptionWord[], m: NameMatcher): SaidHit[]`; `function looksLikeName(text: string): boolean` (§5.9: at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits it) |
 | `detect/qr.ts` (new) | `function classQr(payload: string \| null): { kind: 'qr'; score: number; class: 'secret' \| 'personal' \| 'other' \| 'undecoded' }` |
 | `detect/score.ts`, `detect/detect.ts` (new) | `interface Hit { kind: PrivateKind; rule: string; score: number; spans: { line: number; start: number; end: number }[]; box: Box }`; `interface DetectOptions { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher; frame: { width: number; height: number } }`; `function detectFrame(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Hit[]` (every variant, union, dedupe, padded cover boxes; the width rounding is `found.ts`'s); `function needsCareful(line: ReadLine, hits: readonly Hit[], index: number): boolean` (careful-long's trigger) |
-| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[]): DigitRun[]`; `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
+| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[], captionStarts?: ReadonlySet<number>): DigitRun[]` (from `detect/saidDigits.ts`); `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
 | `detect/tables.ts` (new) | the label lists (en, bn, es, hi), issuer prefixes, IBAN lengths, gitleaks-derived patterns, allow lists, region names per language code |
 | `src/shared/privacy/vendor/libphonenumber/**`, `vendor/double-metaphone.js` (generated) | vendored, each file with a GENERATED header naming the package, version and SHA-256 |
 | `scripts/vendor-privacy.mjs` (new) | downloads the pinned tarballs, checks SHA-512 integrity and SHA-256, copies the files of §6.14, drops `//# sourceMappingURL` lines; `--check` compares |
