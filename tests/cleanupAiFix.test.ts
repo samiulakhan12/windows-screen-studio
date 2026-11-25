@@ -156,4 +156,27 @@ describe('Tidy captions with the AI fix (§11.7 rule 6)', () => {
     unmountAll()
     expect(ids.stopped).toEqual(ids.sent)
   })
+
+  it('a caption the request masked (a secret said aloud under a private bleep) keeps its own words: the fix never stores •, and Uncover brings every word back (auto-blur §7.4)', async () => {
+    const { spokenSegments } = await import('../src/shared/captions/subtitles')
+    const text = 'my card is 4917 6123 4567 8904 thanks'
+    const words = text.split(' ').map((w, i) => ({ text: w, start: 3 + i * 0.4, end: 3 + i * 0.4 + 0.35 }))
+    const card = { id: 'c2', start: 3, end: words[words.length - 1].end, text, words }
+    const bleep = { id: 'pb-1', start: words[3].start - 0.05, end: words[6].end + 0.05, word: ':card:k3v9q2m8xa', sound: 'tone' as const, auto: true as const }
+    store = testStore({ ...base(), transcript: { language: 'en', segments: [base().transcript!.segments[0], card] } as Project['transcript'], bleeps: [bleep] })
+    contexts.editor = { store, player: { time: 0, subscribe: () => () => undefined } }
+    let els = await settle(cleanup())
+    els = await settle(cleanup())
+    ;(byTestId(els, 'cleanup-run')!.props.onClick as () => void)()
+    await settle(cleanup())
+    // The provider saw the card masked and answered it back as it was sent.
+    expect(sent[0].segments[1].text).toBe('my card is •••• •••• •••• •••• thanks.')
+    const [fixed, kept] = store.state.transcript!.segments
+    // The other caption takes the fix; the masked one keeps the rules' tidy of its own words.
+    expect(fixed.text).toBe('We use Qbexel for 25 reports.')
+    expect(kept.text).toBe('my card is 4917 6123 4567 8904 thanks.')
+    expect(kept.text).not.toContain('•')
+    // Uncover: the private bleep removed, every word is back.
+    expect(spokenSegments({ ...store.state, bleeps: [] })[1].text).toBe('my card is 4917 6123 4567 8904 thanks.')
+  })
 })

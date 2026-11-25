@@ -2795,7 +2795,10 @@ project has no private bleeps it is never called.
   translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
   the sidecars (`exportBundleRun.ts:65-73`) and every export.
 - **Tidy and Clean up** (finding 13): what they change under a private bleep is still masked by time,
-  and the request they send is masked (§7.6), so the service never saw the words.
+  and the request they send is masked (§7.6), so the service never saw the words. The AI fix's answer
+  is never stored over a caption the request masked (`keepMaskedCaptions`, `aiRequest.ts`): such a
+  caption keeps the rules' tidy of its own words, so no `•` is ever written into the captions and
+  *Uncover* brings every word back (second review, finding [17]).
 
 ### 7.5 Every other text made from captions
 

@@ -63,3 +63,18 @@ export function maskRequest<R extends object>(request: R, project: Pick<Project,
   }
   return walk(timed, forms, null) as R
 }
+
+/**
+ * An AI answer that rewrites captions sent through maskRequest (§7.4, §7.6: Tidy captions' AI fix):
+ * each caption whose text the request masked keeps the text it was sent with, its own words, so a
+ * masked character is never stored over what was said and Uncover brings every word back; the
+ * others keep the answer's text. `maskedSent` is maskRequest's output for `sent` (the same captions,
+ * as the provider got them). `answer` itself when the request masked none.
+ */
+export function keepMaskedCaptions<S extends { id: string; text: string }>(answer: readonly S[], sent: readonly CaptionSegment[], maskedSent: readonly CaptionSegment[]): readonly S[] {
+  const own = new Map(sent.map((s) => [s.id, s.text]))
+  const masked = new Set(maskedSent.filter((s) => own.has(s.id) && own.get(s.id) !== s.text).map((s) => s.id))
+  if (!masked.size) return answer
+  return answer.map((s) => (masked.has(s.id) && own.get(s.id) !== s.text ? { ...s, text: own.get(s.id)! } : s))
+}
+
