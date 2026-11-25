@@ -10,7 +10,8 @@
 //   node scripts/privacy/make-track-fixtures.mjs <out_dir> [--case <id>] [--seconds <s>] [--size <w>x<h>] [--seed <n>]
 //
 // A case may hold its own length (the toasts, whose notifications live 2.8 s; the flick, at rest 5.2 s
-// before each of its three flicks). Writes <id>.mp4
+// before each of its three flicks) and the keystrokes cursor.json would hold for it (`cursor`: typing
+// bursts and shortcut keys, in frames; the truth file gives them in seconds). Writes <id>.mp4
 // (-c:v libx264rgb -qp 0 -r 60) and <id>.truth.json per case: { fps, width, height,
 // frames: [{ n, items: [{ id, kind, on, text, box: [x, y, w, h] }] }] }, an item listed in the frames
 // it shows in. The evaluation frames at 150% and 200% display scale and the held-out frames come from
@@ -156,6 +157,16 @@ export const CASES = {
     css: '.term{position:absolute;inset:0;background:#0c0c0c;color:#ddd;font-family:monospace;padding:12px;white-space:nowrap}',
     html: `<div class="term">${O('$ export AWS_SECRET_ACCESS_KEY=')}<span data-k="key" data-t="" id="f"></span></div>`,
     script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.secret)};const up=Math.min(s.length,Math.floor(n/2));const k=n<80?up:Math.max(0,up-(n-80));const f=document.getElementById("f");f.textContent=s.slice(0,k);f.dataset.t=s.slice(0,k)}`
+  }),
+  'type-key-enter': (v) => ({
+    // A key typed on a full terminal's last line, a character every two frames from frame 4, then Enter
+    // at frame 90: two lines of output and a new prompt scroll the terminal up three lines. Keystrokes
+    // were recorded: one typing burst, ending at Enter. The key is read only after the scroll, and was
+    // covered there back to the burst's start while it was typed a line lower (§5.8, the typing rule).
+    css: '.term{position:absolute;inset:0;background:#0c0c0c;color:#ddd;font:14px/20px monospace;padding:0 12px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;white-space:nowrap}.term div{height:20px;flex:none}',
+    html: `<div class="term">${Array.from({ length: 40 }, (_v, i) => `<div>${O(`Compiling module ${i + 1} of 40 (${((i * 37) % 90) + 10} ms)`)}</div>`).join('')}<div>${O('$ export GITHUB_TOKEN=')}<span data-k="key" data-t="" id="f"></span></div>${['Token saved for github.com.', 'Done in 0.4 s.', '$'].map((t, i) => `<div id="o${i}" style="display:none">${O(t)}</div>`).join('')}</div>`,
+    script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.token)};const k=n<4?0:Math.min(s.length,Math.floor((n-4)/2)+1);const f=document.getElementById("f");f.textContent=s.slice(0,k);f.dataset.t=s.slice(0,k);for(let i=0;i<3;i++)document.getElementById("o"+i).style.display=n>=90?"block":"none"}`,
+    cursor: { typing: [[4, 90]], keys: [[90, 'Enter']] }
   })
 }
 
@@ -205,7 +216,7 @@ async function renderCase(browser, id, out, { seconds, width, height, seed }) {
   const make = CASES[id]
   if (!make) throw new Error(`make-track-fixtures: no case ${id} (${Object.keys(CASES).join(', ')})`)
   const t = THEMES.light
-  const { css, html, script, seconds: own } = make(plantValues(makeTokens(seed)))
+  const { css, html, script, seconds: own, cursor } = make(plantValues(makeTokens(seed)))
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 })
   await page.setContent(`<!doctype html><html><head><meta charset="utf-8"><style>${baseCss(t)}html,body{margin:0;overflow:hidden}${css}</style></head><body>${html}<script>${script}</script></body></html>`)
   await page.evaluate(() => document.fonts.ready)
@@ -221,7 +232,9 @@ async function renderCase(browser, id, out, { seconds, width, height, seed }) {
     }
     const video = path.join(out, `${id}.mp4`)
     execFileSync(ffmpeg(), ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(tmp, 'f%05d.png'), '-c:v', 'libx264rgb', '-qp', '0', '-r', String(FPS), video])
-    writeFileSync(path.join(out, `${id}.truth.json`), JSON.stringify({ version: 1, case: id, fps: FPS, width, height, seed, frames }) + '\n')
+    // A case's cursor.json hints (keystrokes recorded: typing bursts and shortcut keys), in seconds.
+    const hints = cursor ? { typing: (cursor.typing ?? []).map(([a, b]) => ({ t: a / FPS, end: b / FPS })), keys: (cursor.keys ?? []).map(([f, label]) => ({ t: f / FPS, label })) } : undefined
+    writeFileSync(path.join(out, `${id}.truth.json`), JSON.stringify({ version: 1, case: id, fps: FPS, width, height, seed, frames, ...(hints ? { cursor: hints } : {}) }) + '\n')
     console.log(`${id}: ${count} frames, ${frames.reduce((s, f) => s + f.items.length, 0)} item boxes`)
   } finally {
     await page.close()

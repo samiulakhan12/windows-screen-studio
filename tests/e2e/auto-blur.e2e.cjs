@@ -739,7 +739,7 @@ async function a2Case(ctx, { name, extra = {}, routes, env = {}, lossy = [], pre
 
 /* ---------- A16: the rendered tracking set ---------- */
 
-const TRACK_CASES = ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag', 'toasts', 'tooltip', 'type-email', 'type-key']
+const TRACK_CASES = ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag', 'toasts', 'tooltip', 'type-email', 'type-key', 'type-key-enter']
 
 /**
  * The tracking set's cache key: its generator and the evaluation set's helpers it plants with, so a
@@ -786,7 +786,7 @@ function trackCase(id) {
   decodeEach(src, truth.width, truth.height, truth.frames.length, (n, img) => {
     items[n] = (byN.get(n)?.items ?? []).filter((it) => it.on).map((it) => ({ ...it, ink: af.inkRect(img, it.box) })).filter((it) => it.ink)
   })
-  return { media, total: truth.frames.length, fps: truth.fps, width: truth.width, height: truth.height, seconds: truth.frames.length / truth.fps, itemsAt: (n) => items[n] ?? [] }
+  return { media, total: truth.frames.length, fps: truth.fps, width: truth.width, height: truth.height, seconds: truth.frames.length / truth.fps, itemsAt: (n) => items[n] ?? [], ...(truth.cursor ? { cursor: truth.cursor } : {}) }
 }
 
 /**
@@ -813,7 +813,8 @@ async function evalSetCase(tag, args, scale) {
 async function trackFind(ctx, name, c) {
   const home = readerHome(`a16-${name}`)
   const id = `rec-a16-${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
-  af.seed(home, { id, name: `Track ${name}`, media: c.media, seconds: c.seconds, width: c.width, height: c.height, fps: c.fps, cursor: { samples: [], clicks: [], keys: [], shapes: [], scale: c.scale ?? 1, valid: true } })
+  // The keystrokes a case recorded (typing bursts, shortcut keys), as cursor.json holds them.
+  af.seed(home, { id, name: `Track ${name}`, media: c.media, seconds: c.seconds, width: c.width, height: c.height, fps: c.fps, cursor: { samples: [], clicks: [], keys: [], shapes: [], scale: c.scale ?? 1, valid: true, ...(c.cursor ?? {}) } })
   const { app, win } = await start(ctx, home)
   await openProject(win, `Track ${name}`)
   const found = await runFind(ctx, win, home, id, { names: c.names ?? [] })
