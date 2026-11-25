@@ -346,42 +346,53 @@ describe('auto-blur P4: the scan', () => {
     expect(lost[0].end).toBe(12.3)
   })
 
-  it('A failed read\'s lost area starts after the last good read of its areas, not at its own frame: a text that came in with the burst the read was planned for is covered in every frame it shows, whether it stays or the next read of its place lacks it (found by review: an email shown from 2.0 s whose settle read at 2.3 s failed showed uncovered from 2.000 to 2.267 s)', async () => {
+  it('A failed read\'s lost area, and that of what a capped read left unread, starts after the last good read of its areas, not at its own frame: a text that came in with the burst the read was planned for is covered in every frame it shows, whether it stays or the next read of its place lacks it (found by review: an email shown from 2.0 s whose settle read at 2.3 s failed showed uncovered from 2.000 to 2.267 s)', async () => {
     const shown: Box = [600, 300, 460, 30]
     const panel: Box = [576, 288, 512, 64]
     const near = (t: number, x: number): boolean => Math.abs(t - x) < 1e-6
     const slack = coverSlack(30)
-    for (const goneAt of [null, 8]) {
-      const planted: Planted[] = [{ key: 'email', text: ADDRESS, at: (t) => (t >= 2 && (goneAt === null || t < goneAt) ? shown : null) }]
-      // A list below changes every 0.5 s, so Find keeps reading there, and over the email's panel only when it changes.
-      const look = lookOf(HD, 30, 20, (_i, t) => ({ changed: [...(near(t, 2) || (goneAt !== null && near(t, goneAt)) ? [panel] : []), ...(t > 0 && near(t * 2, Math.round(t * 2)) ? [[0, 640, 1920, 400] as Box] : [])] }))
-      let failedAt: number | null = null
-      const s = scene({
-        look,
-        planted,
-        // The settle read of the email's panel fails.
-        read: (t, areas) => (failedAt === null && t > 2 && t < 3 && areas.some((a) => inside(shown, a)) ? ((failedAt = t), 'fail') : undefined)
-      })
-      const r = await runFind(request({ requestId: `r-failed-${goneAt}`, kinds: ['email'] }), noProgress, never, s.deps)
-      expect(r.ok && r.failedReads, `gone ${goneAt}`).toBe(1)
-      if (!r.ok) return
-      expect(failedAt).toBeCloseTo(2.3, 6)
-      // Covered from one source frame after the last good read of the panel (the first read, at 0 s), until the next good read of it, or the end.
-      const lost = r.found.filter((f) => f.lost && f.kind === 'text')
-      expect(lost.map((f) => [f.start, f.end])).toEqual([[0.033, goneAt === null ? 20 : 8.3]])
-      const bad: string[] = []
-      for (let k = 0; k < 20 * 30; k++) {
-        const t = Math.round((k / 30) * 1e6) / 1e6
-        const p = planted[0].at(t)
-        if (!p) continue
-        const ok = r.found.some((f) => {
-          const d = drawnBox({ id: 'c', start: f.start, end: f.end, path: f.path, color: f.color }, t, slack)
-          return !!d && inside(p, [d.x * 1920, d.y * 1080, d.w * 1920, d.h * 1080], 1)
-        })
-        if (!ok) bad.push(t.toFixed(3))
-      }
-      expect(bad, `gone ${goneAt}`).toEqual([])
+    /** Whether every point of `p` (every 2 px, its edges included) lies in one of `boxes` (1 px of slack). */
+    const coveredBy = (p: Box, boxes: readonly Box[]): boolean => {
+      const steps = (from: number, size: number): number[] => [...Array.from({ length: Math.floor(size / 2) + 1 }, (_v, i) => from + 2 * i), from + size]
+      return steps(p[0], p[2]).every((x) => steps(p[1], p[3]).every((y) => boxes.some((b) => x >= b[0] - 1 && x <= b[0] + b[2] + 1 && y >= b[1] - 1 && y <= b[1] + b[3] + 1)))
     }
+    for (const how of ['failed', 'capped'] as const)
+      for (const goneAt of [null, 8]) {
+        const what = `${how}, gone ${goneAt}`
+        const planted: Planted[] = [{ key: 'email', text: ADDRESS, at: (t) => (t >= 2 && (goneAt === null || t < goneAt) ? shown : null) }]
+        // A list below changes every 0.5 s, so Find keeps reading there, and over the email's panel only when it changes.
+        const look = lookOf(HD, 30, 20, (_i, t) => ({ changed: [...(near(t, 2) || (goneAt !== null && near(t, goneAt)) ? [panel] : []), ...(t > 0 && near(t * 2, Math.round(t * 2)) ? [[0, 640, 1920, 400] as Box] : [])] }))
+        let failedAt: number | null = null
+        const s = scene({
+          look,
+          planted,
+          // The settle read of the email's panel fails, or reaches a cap, as do both halves it is read again in.
+          read: (t, areas) => {
+            if (!(t > 2 && t < 3)) return undefined
+            if (how === 'capped') return { t, lines: [], qr: [], partial: areas.map((a) => [...a] as Box) }
+            return failedAt === null && areas.some((a) => inside(shown, a)) ? ((failedAt = t), 'fail') : undefined
+          }
+        })
+        const r = await runFind(request({ requestId: `r-${how}-${goneAt}`, kinds: ['email'] }), noProgress, never, s.deps)
+        expect(r.ok && r.failedReads, what).toBe(how === 'failed' ? 1 : 2)
+        if (!r.ok) return
+        if (how === 'failed') expect(failedAt).toBeCloseTo(2.3, 6)
+        // Covered from one source frame after the last good read of the panel (the first read, at 0 s), until the next good read of it, or the end.
+        const lost = r.found.filter((f) => f.lost && f.kind === 'text')
+        expect(lost.map((f) => [f.start, f.end]), what).toEqual(Array.from({ length: how === 'failed' ? 1 : 2 }, () => [0.033, goneAt === null ? 20 : 8.3]))
+        const bad: string[] = []
+        for (let k = 0; k < 20 * 30; k++) {
+          const t = Math.round((k / 30) * 1e6) / 1e6
+          const p = planted[0].at(t)
+          if (!p) continue
+          const boxes = r.found.flatMap((f): Box[] => {
+            const d = drawnBox({ id: 'c', start: f.start, end: f.end, path: f.path, color: f.color }, t, slack)
+            return d ? [[d.x * 1920, d.y * 1080, d.w * 1920, d.h * 1080]] : []
+          })
+          if (!coveredBy(p, boxes)) bad.push(t.toFixed(3))
+        }
+        expect(bad, what).toEqual([])
+      }
   })
 
   it('155. Stop: the found covers come back with unfinished walks run to the end as lost areas over their last box and region; stopped and readTo are set', async () => {
