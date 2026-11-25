@@ -874,7 +874,8 @@ export async function underCover(request: UnderCoverRequest, signal: AbortSignal
     if (!foldText(text)) return { ok: false, reason: 'noText' }
     if (under.size >= 8) under.delete(under.keys().next().value!)
     under.set(request.requestId, { projectId: request.projectId, text, until: d.now() + KEEP_MS })
-    return { ok: true, nameLike: looksLikeName(text) }
+    // Whether Everywhere will only follow the kept reads, or read the video (the dialog's estimate, second review [27]).
+    return { ok: true, nameLike: looksLikeName(text), kept: keptFor(request.projectId, d.now()) !== null }
   } catch {
     return { ok: false, reason: 'failed' }
   } finally {

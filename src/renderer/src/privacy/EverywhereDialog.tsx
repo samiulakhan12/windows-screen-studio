@@ -16,12 +16,12 @@ type State =
   | { kind: 'reader' }
   | { kind: 'noText' }
   | { kind: 'busy' }
-  | { kind: 'ready'; nameLike: boolean }
+  | { kind: 'ready'; nameLike: boolean; kept: boolean }
   | { kind: 'running' }
   | { kind: 'done'; added: number }
   | { kind: 'failed' }
 
-const stateOf = (r: UnderCoverResult): State => (r.ok ? { kind: 'ready', nameLike: r.nameLike } : r.reason === 'reader' ? { kind: 'reader' } : r.reason === 'noText' ? { kind: 'noText' } : r.reason === 'busy' ? { kind: 'busy' } : { kind: 'failed' })
+const stateOf = (r: UnderCoverResult): State => (r.ok ? { kind: 'ready', nameLike: r.nameLike, kept: r.kept === true } : r.reason === 'reader' ? { kind: 'reader' } : r.reason === 'noText' ? { kind: 'noText' } : r.reason === 'busy' ? { kind: 'busy' } : { kind: 'failed' })
 
 /**
  * *Cover this text everywhere* (docs/design/auto-blur.md §2.2, §5.9): a modal dialog labelled by its
@@ -150,15 +150,18 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
       foot = closeButton(true)
       break
     case 'ready': {
-      // Find's first estimate (§2.2, §5.11): it runs Find for this text when the last Find's reads are gone.
+      // Find's first estimate (§2.2, §5.11), only when it runs Find for this text: with the last Find's
+      // reads kept, it only follows them, reading nothing (second review, finding [27]).
       const p = props.services.store.state
-      const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, reader?.status === 'ready' ? reader.decodeMs : null))
+      const minutes = state.kept ? null : minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, reader?.status === 'ready' ? reader.decodeMs : null))
       body = (
         <>
           <p>{t(PRIVACY_COPY.everywhere.body)}</p>
-          <p className="privacy-line" data-testid="everywhere-estimate">
-            {t(PRIVACY_COPY.find.estimate, { count: minutes, n: fmt.count(minutes) })}
-          </p>
+          {minutes !== null && (
+            <p className="privacy-line" data-testid="everywhere-estimate">
+              {t(PRIVACY_COPY.find.estimate, { count: minutes, n: fmt.count(minutes) })}
+            </p>
+          )}
           {state.nameLike && (
             <fieldset className="cover-remember" data-testid="everywhere-remember">
               <legend>{t(PRIVACY_COPY.everywhere.remember)}</legend>

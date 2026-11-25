@@ -471,7 +471,9 @@ and *Cover this text everywhere…* are disabled, each with its reason (`oneForB
 - On opening, the dialog asks main to read the text under the cover at the playhead (`underCover`,
   §5.9) and shows `reading`. Then it shows one of: `needsReader` with *Download*
   (`privacy.find.readerDownload`, the download's progress and failure lines of §2.5); `noText`; or
-  the body, the estimate (`privacy.find.estimate`) and *Cover everywhere*.
+  the body, the estimate (`privacy.find.estimate`) and *Cover everywhere*. The estimate shows only
+  when *Cover everywhere* will read the video, that is when main keeps no reads of a Find of this
+  video (`kept`, §5.9 step 1); with them it only follows their places.
 - The *Also add it to the names to hide* choice (radio buttons, *No* checked) shows only when main
   says the text looks like a name (§5.9). A key, a password, a code or a number is never offered.
 - While it runs, the dialog shows the progress line of §2.6 with *Stop*; *Stop* keeps what was found
@@ -2118,8 +2120,12 @@ tooltip over text before its first read, and text typed into a field or a termin
   1. `underCover { projectId, requestId, t, box }` reads the cover's box at the playhead's frame,
      keeps the characters of its lines that lie inside the box (the read's margin reaches the words
      beside the cover on the same line, and "to priya.raman@example.com" was then looked for
-     everywhere, never finding the email standing alone), and answers `{ ok: true, nameLike } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
-     keeps the text for that request id only, until the dialog closes. `nameLike` is true when the
+     everywhere, never finding the email standing alone), and answers `{ ok: true, nameLike, kept } | { ok: false, reason: 'noText' | 'reader' | 'failed' }`. Main
+     keeps the text for that request id only, until the dialog closes. `kept` says whether main
+     keeps the last Find's reads of this video (step 2), so the dialog shows Find's estimate only
+     when *Cover everywhere* will read the video: right after Find it only follows the kept places,
+     in seconds, where it once showed Find's whole first estimate, about 9 minutes for 20 minutes
+     of 1080p60 (second review, finding [27]). `nameLike` is true when the
      text is at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits
      it. A key, a password, a code or a number is never name-like.
   2. `coverEverywhere { projectId, requestId, remember }` looks for the same folded text in the kept
@@ -3785,7 +3791,7 @@ export type FollowResult =
   | { ok: true; projectId: string; requestId: string; path: string; start: number; end: number; walked: { start: number; end: number }; lostSpans: string; thin: boolean }
   | { ok: false; projectId: string; requestId: string; reason: 'none' | 'stopped' | 'busy' | 'failed' }
 export interface UnderCoverRequest { projectId: string; requestId: string; t: number; box: NormRect }
-export type UnderCoverResult = { ok: true; nameLike: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
+export type UnderCoverResult = { ok: true; nameLike: boolean; kept: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
 export interface EverywhereRequest { projectId: string; requestId: string; remember: 'no' | 'project' | 'settings' }
 export type EverywhereResult = (Extract<FindResult, { ok: true }> & { addedName?: string }) | Extract<FindResult, { ok: false }>
 export interface CopyInfo { id: string; name: string; open: boolean }

@@ -940,7 +940,7 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     reader.state = { status: 'ready', bytes: 1, decodeMs: 4 }
     const minutes = minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, 4))
     expect(minutes).toBeGreaterThan(1)
-    api.under = async () => ({ ok: true, nameLike: false })
+    api.under = async () => ({ ok: true, nameLike: false, kept: false })
     const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
     let els = await settle(root)
     expect(textOf(byTestId(els, 'everywhere-estimate'))).toBe(`About ${minutes} minutes on this PC. You can keep editing; keep this video open until Find ends.`)
@@ -955,6 +955,23 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     api.under = async () => ({ ok: false, reason: 'noText' })
     els = await settle(root)
     expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
+  })
+
+  it("EverywhereDialog shows Find's estimate only when Cover everywhere will read the video: right after Find main keeps its reads and only follows them there, so no estimate shows (§5.9 step 2; second review, finding [27])", async () => {
+    // A 20-minute 1080p recording at 60 fps: Find's first estimate is several minutes.
+    setUp(project({ duration: 1200, covers: [email()] }))
+    reader.state = { status: 'ready', bytes: 1, decodeMs: null }
+    const root = { type: EverywhereDialog, props: { services: services(), coverId: 'c', onClose: () => undefined } }
+    api.under = async () => ({ ok: true, nameLike: false, kept: true })
+    let els = await settle(root)
+    expect(byTestId(els, 'everywhere-start')).toBeDefined()
+    expect(textOf(els.find((e) => e.props.className === 'modal-body'))).toBe('Flown reads the text under this cover, finds it wherever it shows in this video, and covers it there.')
+    expect(byTestId(els, 'everywhere-estimate')).toBeUndefined()
+    // No reads kept (none, gone after 10 minutes, or a Find running): Everywhere runs Find for the text, with its estimate.
+    unmountAll()
+    api.under = async () => ({ ok: true, nameLike: false, kept: false })
+    els = await settle(root)
+    expect(textOf(byTestId(els, 'everywhere-estimate'))).toMatch(/^About \d+ minutes on this PC\./)
   })
 })
 

@@ -321,7 +321,8 @@ describe('auto-blur P4: the scan', () => {
     const s = scene()
     await runFind(request(), noProgress, never, s.deps)
     const box = { x: EMAIL[0] / 1920, y: EMAIL[1] / 1080, w: EMAIL[2] / 1920, h: EMAIL[3] / 1080 }
-    expect(await underCover({ projectId: 'rec-1', requestId: 'u1', t: 6, box }, never, s.deps)).toEqual({ ok: true, nameLike: false })
+    // Main says the reads are kept, so the dialog shows no estimate (second review, finding [27]).
+    expect(await underCover({ projectId: 'rec-1', requestId: 'u1', t: 6, box }, never, s.deps)).toEqual({ ok: true, nameLike: false, kept: true })
     const readsBefore = s.log.filter((l) => l.startsWith('read')).length
     const kept = await coverEverywhere({ projectId: 'rec-1', requestId: 'u1', remember: 'no' }, noProgress, never, s.deps)
     expect(kept.ok).toBe(true)
@@ -334,7 +335,7 @@ describe('auto-blur P4: the scan', () => {
     // Ten minutes later the kept reads are gone: a Find of that text alone, with progress, that Stop ends.
     s.advance(10 * 60 * 1000 + 1)
     expect(keptLines('rec-1', 1_000_000 + 10 * 60 * 1000 + 1)).toBe(0)
-    expect(await underCover({ projectId: 'rec-1', requestId: 'u2', t: 6, box }, never, s.deps)).toMatchObject({ ok: true })
+    expect(await underCover({ projectId: 'rec-1', requestId: 'u2', t: 6, box }, never, s.deps)).toMatchObject({ ok: true, kept: false })
     const phases: string[] = []
     const limited = await coverEverywhere({ projectId: 'rec-1', requestId: 'u2', remember: 'no' }, (p) => phases.push(p.phase), never, s.deps)
     expect(limited.ok).toBe(true)
