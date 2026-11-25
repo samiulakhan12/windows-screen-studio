@@ -9,6 +9,7 @@ import { t, type MessageKey } from '../../../shared/i18n/t'
 import type { Shape } from '../../../shared/types'
 import type { EditorServices } from '../editor/context'
 import { Section } from '../editor/controls'
+import { lastInputWasKey } from '../editor/focus'
 import { useGroup } from '../editor/groupContext'
 import { useKeymap } from '../editor/keymapContext'
 import { coverLength, setCoverLength } from './coverCommands'
@@ -176,7 +177,10 @@ export function PrivacySection(props: { services: EditorServices; onFind: () => 
                   tabIndex={-1}
                   data-testid={`privacy-length-${l.value}`}
                   onClick={() => {
-                    closeMenu(false)
+                    // The keyboard goes back to the menu button, as Escape takes it, instead of falling
+                    // to the page with the menu (second review, finding [24]); a click leaves the focus
+                    // where clicks leave it (focus.ts).
+                    closeMenu(lastInputWasKey())
                     add(l.value)
                   }}
                 >

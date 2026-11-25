@@ -3253,9 +3253,16 @@ refused) (§5.9).
   - Review's *Show all changes* and the kind filter keep focus on the control used (finding 32); with
     nothing left of a filtered kind, the list says `privacy.review.emptyKind` and focus moves to the
     filter (finding 34).
-  - *Follow*'s *Stop* keeps focus on *Follow what is under it*; when following ends, focus moves to
-    the cover's status line. *Keep covered* in the Cover section moves focus to the section's title,
-    because the suggestion lines it removes held it (finding 37).
+  - Pressing *Follow what is under it* with the keyboard moves focus to its *Stop*, which takes the
+    button's place while following runs (second review, finding [23]). *Follow*'s *Stop* keeps focus
+    on *Follow what is under it*; when following ends, focus moves to the cover's status line. *Keep
+    covered* in the Cover section moves focus to the section's title, because the suggestion lines it
+    removes held it (finding 37).
+  - *Add cover*'s length menu is a menu button: opening it moves focus to its first item, and
+    choosing a length with the keyboard returns focus to the menu button, as Escape does, instead of
+    letting it fall to the page with the menu (second review, finding [24]).
+  - Where a click starts these (Follow, a length), the focus stays where clicks leave it
+    (`lastInputWasKey`, `src/renderer/src/editor/focus.ts`), so Space still plays.
   - The confirms (*Uncover all …*, *Done reviewing*, leaving during Find) start on the button that
     changes nothing.
   - The export note's buttons close the dialog first and move focus to Review or the Find dialog

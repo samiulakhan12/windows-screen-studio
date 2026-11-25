@@ -59,6 +59,9 @@ vi.stubGlobal('Path2D', class {})
 for (const name of ['HTMLElement', 'Node', 'HTMLInputElement', 'HTMLButtonElement', 'HTMLCanvasElement']) vi.stubGlobal(name, class {})
 mockReact()
 vi.doMock('../src/renderer/src/editor/modalFocus', () => ({ useModalFocus: () => undefined }))
+// Whether the last input was a key (focus.ts keeps it from the window's events, which these tests have not).
+const keys = { last: false }
+vi.doMock('../src/renderer/src/editor/focus', async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), lastInputWasKey: () => keys.last }))
 // The colour a new cover takes is read from the recording: answered here.
 vi.doMock('../src/renderer/src/privacy/coverPick', () => ({ ringColourAt: async () => '#123456', coverColourNow: async () => '#654321' }))
 // The reader's state is part P5's; the tests set it.
@@ -169,6 +172,7 @@ const flush = async (): Promise<void> => {
 }
 
 beforeEach(() => {
+  keys.last = false
   events.selects = []
   events.notices = []
   events.commands = []
@@ -461,6 +465,33 @@ describe('auto-blur P1: the Private info section', () => {
     await flush()
     expect(api.prefs.get('privacy')).toEqual({})
   })
+
+  it("choosing a length in Add cover's menu with the keyboard gives the focus back to the menu button, as Escape does; a click leaves it where clicks leave it (second review, finding [24])", async () => {
+    setUp(project())
+    const root = { type: PrivacySection, props: { services: services(), onFind: () => undefined } }
+    let els = await settle(root)
+    // Enter on the menu button opens the menu on its first item.
+    keys.last = true
+    click(byTestId(els, 'privacy-add-cover-menu'))
+    els = render(root)
+    expect(focused.at(-1)?.props['data-testid']).toBe('privacy-length-three')
+    // Enter on To the end of the video: the menu closes, the cover is added, the menu button has the focus.
+    focused.length = 0
+    click(byTestId(els, 'privacy-length-toEnd'))
+    els = render(root)
+    expect(byTestId(els, 'privacy-length-toEnd')).toBeUndefined()
+    expect(events.commands).toEqual(['addCover'])
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['privacy-add-cover-menu'])
+    // With the pointer: no focus moves (a clicked control does not keep it, focus.ts).
+    keys.last = false
+    click(byTestId(els, 'privacy-add-cover-menu'))
+    els = render(root)
+    focused.length = 0
+    click(byTestId(els, 'privacy-length-whole'))
+    els = render(root)
+    expect(events.commands).toEqual(['addCover', 'addCover'])
+    expect(focused).toEqual([])
+  })
 })
 
 describe('auto-blur P1: the Cover section', () => {
@@ -709,6 +740,35 @@ describe('auto-blur P1: Follow and Cover this text everywhere', () => {
     await flush()
     els = render(root)
     expect(textOf(byTestId(els, 'cover-status'))).toBe('Flown found no text under this cover to follow.')
+  })
+
+  it('pressing Follow what is under it with the keyboard moves the focus to its Stop, which replaces it while following runs; with a click the focus stays where clicks leave it (second review, finding [23])', async () => {
+    setUp(project({ covers: [email()] }))
+    const root = { type: CoverSection, props: { services: services(), coverIds: ['c'], shapeIds: [] } }
+    let answer: (v: unknown) => void = () => undefined
+    api.follow = (req) => new Promise((r) => (answer = (v) => r({ ...(v as object), requestId: req.requestId })))
+    let els = render(root)
+    keys.last = true
+    focused.length = 0
+    click(byTestId(els, 'cover-follow'))
+    els = render(root)
+    expect(byTestId(els, 'cover-follow')).toBeUndefined()
+    expect(focused.map((e) => e.props['data-testid'])).toEqual(['cover-follow-stop'])
+    // Its Stop gives the focus back to Follow (finding 37).
+    click(byTestId(els, 'cover-follow-stop'))
+    answer({ ok: false, projectId: 'p', reason: 'stopped' })
+    await flush()
+    els = render(root)
+    expect(focused.at(-1)?.props['data-testid']).toBe('cover-follow')
+    // A click on Follow: nothing takes the focus while it runs.
+    keys.last = false
+    focused.length = 0
+    click(byTestId(els, 'cover-follow'))
+    els = render(root)
+    expect(byTestId(els, 'cover-follow-stop')).toBeDefined()
+    expect(focused).toEqual([])
+    answer({ ok: false, projectId: 'p', reason: 'stopped' })
+    await flush()
   })
 
   it('62. runEverywhere adds text covers in one step; with remember project and a name-like text it adds the returned name to privacy.names in the same step, with settings to Settings\' names, and the open dialogs show the new list (finding 28); with a text that is not name-like nothing is added', async () => {
