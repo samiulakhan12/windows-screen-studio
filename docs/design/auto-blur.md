@@ -2805,6 +2805,7 @@ same way with `privateText(project, text)`.
 | Publishing pack (title, description, posts, chapters) | `publishSegments` (`pack.ts:88-91`), `ProjectPublish` | made from `maskedSegments`; the saved description goes out (copy, sidecar, share) from `privateView`; the title, once *Use as the recording's name* made it the name, goes out from `privateView` in the description sidecar (its title line, and a part's) and the share post; the dialog says so (§2.13) |
 | Guide step titles and notes | `stepTitles.ts`, `guideSegments` (`:119`), `GuideSettings` edits | made from masked segments; written from `privateView` (`guideRun.ts`, PDF, HTML, Markdown, clipboard) |
 | Short clip and shorter-version names | `clipsRun.ts`, `ShortClipsPanel.tsx` | made from masked segments |
+| The captions' AI summary | Captions › AI tools (`CaptionsPanel.tsx`), from masked segments | copied with `privateText`, so a summary made before Find leaves Flown masked once Find has bleeped what it says |
 | Search index | `search/extract.ts:67-73` | `maskPrivate` beside `maskBleeped` |
 | Review titles for captions | `captionReview.ts` | private bleeps are not listed as *Bleep* rows; their titles never hold words (§2.7) |
 | Transcript text export | `transcriptText.ts` | from `maskedSegments` |

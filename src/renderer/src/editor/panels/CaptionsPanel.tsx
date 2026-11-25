@@ -4,6 +4,7 @@ import { cleanCaptionText, CAPTION_MAX_CHARS } from '../../../../shared/captions
 import { findInCaptions, mergeWithNext, readSuggestedChapters, readSuggestedText, replaceInCaptions, splitCaption, typedCaption } from '../../../../shared/captions/edit'
 import { captionIndexAt } from '../../../../shared/captions/layout'
 import { languageSubtitleFile, spokenSegments, type SubtitleFormat } from '../../../../shared/captions/subtitles'
+import { privateText } from '../../../../shared/privacy/spoken'
 import { TRACK_LANGUAGES } from '../../../../shared/captions/captionTracks'
 import { displayTime } from '../../../../shared/editor/clips'
 import { reviewHint, undoHint, withShortcut } from '../../../../shared/editor/shortcuts'
@@ -1332,7 +1333,8 @@ function AiToolsSection({
                   aria-describedby={summaryChecks.length ? 'captions-summary-check' : undefined}
                   onClick={() =>
                     confirmed(t('captions.tools.summary'), 'Copy anyway', summary, () => {
-                      void navigator.clipboard.writeText(summary).then(
+                      // It leaves Flown from the private view (auto-blur §7.5): a summary made before Find says what was said.
+                      void navigator.clipboard.writeText(privateText(store.state, summary)).then(
                         () => onNotice(t('captions.tools.summaryCopied')),
                         () => onNotice(t('captions.tools.summaryNotCopied'))
                       )

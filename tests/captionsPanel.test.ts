@@ -1534,6 +1534,25 @@ describe('CaptionsPanel: AI tools from the command palette (NW-13)', () => {
     expect(panelNotices).toEqual(['Summary copied'])
   })
 
+  it('a summary made before Find is copied with the secrets said aloud since bleeped masked (auto-blur §7.5)', async () => {
+    let clipboardText = ''
+    const navigatorBefore = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { writeText: (t: string) => ((clipboardText = t), Promise.resolve()) } } })
+    onTestFinished(() => void (navigatorBefore ? Object.defineProperty(globalThis, 'navigator', navigatorBefore) : delete (globalThis as { navigator?: unknown }).navigator))
+    const text = 'Pay with card 4917 6123 4567 8904 today'
+    const words = text.split(' ').map((w, i) => ({ text: w, start: i * 0.4, end: i * 0.4 + 0.35 }))
+    store.state = { ...store.state, name: 'Demo', bleeps: undefined, transcript: { provider: 'openai', model: 'm', createdAt: '', segments: [{ id: 'a', start: 0, end: words[words.length - 1].end, text, words }] } }
+    await show()
+    command('summary')
+    let out = await answer(0, { task: 'summary', text: 'Pays with card 4917 6123 4567 8904.' })
+    // Find lands while the summary shows: a private bleep over the card number said aloud.
+    store.state = { ...store.state, bleeps: [{ id: 'pb-1', start: words[3].start - 0.05, end: words[6].end + 0.05, word: ':card:k3v9q2m8xa', sound: 'tone', auto: true }] }
+    out = render(m.panel)
+    click(out, 'Copy')
+    await flush()
+    expect(clipboardText).toBe('Pays with card •••• •••• •••• ••••.')
+  })
+
   it('a suggested title with a link nobody said shows the note, and Rename the recording asks first; the note describes its buttons (publish-pack §4.8)', async () => {
     const said = [{ id: 'a', start: 0, end: 5, text: 'You can download it from github.com/flown/recorder or from flown.app.' }]
     store.state = { ...store.state, name: 'Demo', transcript: { provider: 'openai', model: 'm', createdAt: '', segments: said } }
