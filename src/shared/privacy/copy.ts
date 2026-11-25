@@ -246,7 +246,8 @@ export const PRIVACY_COPY = {
   },
   copies: {
     offer: 'privacy.copies.offer',
-    done: 'privacy.copies.done'
+    done: 'privacy.copies.done',
+    notCovered: 'privacy.copies.notCovered'
   },
   settings: {
     title: 'privacy.settings.title',

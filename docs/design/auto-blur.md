@@ -952,11 +952,18 @@ info section, or in Review's header while Review covers it, §2.6) and Review's 
 |---|---|
 | `privacy.copies.offer` | `{count, plural, one {Also cover the copy made from this video} other {Also cover the {n} copies made from this video}}` |
 | `privacy.copies.done` | `{count, plural, one {Covered the copy made from this video. Its covers wait in its Review.} other {Covered the {n} copies made from this video. Their covers wait in their Review.}}` |
+| `privacy.copies.notCovered` | `{count, plural, one {Flown could not cover {n} copy made from this video. Try again, or open the copy and bring the covers over from its export dialog.} other {Flown could not cover {n} copies made from this video. Try again, or open each copy and bring the covers over from its export dialog.}}` |
 
 It adds this video's covers and private bleeps to each copy, as suggestions, through main (§5.10),
 which reads this project from its `project.json`, so the offer first has the editor's saver write it
 (Review gets the saver's flush from the editor, the Private info section through the Inspector).
 Covers are in source seconds of the shared `screen.mp4`, so they are copied as they are.
+
+Then `done` counts the copies that have this video's covers, and `notCovered` the copies main skipped
+(one it could not read or save, or every copy when the call failed), and the offer stays for those,
+counted again; pressed, it asks for them alone. Nothing says it covered none: the line once read
+"Covered the 0 copies made from this video" when the call failed, and dropped the copies main had
+skipped, so a copy could keep the secret with nothing said (second review, finding [26]).
 
 ### 2.13 Captions, translations and transcription
 
@@ -2179,8 +2186,9 @@ tooltip over text before its first read, and text typed into a field or a termin
   `copyOf.id` is this one (`ProjectSummary.copyOf`); `privacy:coverCopies { projectId, copyIds }`
   reads each copy's `project.json`, adds this project's covers and private bleeps with
   `withFoundCovers` as suggestions (kinds, groups and tiers kept; containment and the copy's own
-  rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor
-  is skipped and says so; it can use *Bring them over* (§2.12). `privacy:originCovers { projectId }`
+  rejected places apply), and writes it through `projectFileText`. A copy that is open in the editor,
+  or that main cannot read or save, is skipped and returned in `skipped`; the offer says how many
+  copies were not covered and offers them again (§2.12), and the copy can use *Bring them over*. `privacy:originCovers { projectId }`
   answers how many of the original's covers and private bleeps a copy lacks, and returns them for
   *Bring them over*. Main reads the project open in the editor from its `project.json` for both, so
   the renderer first writes it as the user sees it, as the export's timeline does (§9 row 10): the
@@ -3270,6 +3278,9 @@ refused) (§5.9).
     changes nothing.
   - The export note's buttons close the dialog first and move focus to Review or the Find dialog
     (finding 30).
+  - *Also cover the copies* waits with `aria-disabled` while main works, so the keyboard stays on it,
+    and stays for the copies not covered; once every copy is covered, focus pressed there by the
+    keyboard moves to the line that says so.
 - **Contrast** (WCAG AA, `src/renderer/src/styles.css`): text uses `--text-1`, `--text-2` and
   `--text-3` on `--surface-1` (17:1, 7.2:1, 5.4:1). The Check edge uses `--warning` (#fbbf24) on
   `--surface-2` (10.2:1) beside a text badge, so colour is never the only sign. Waiting bars have a

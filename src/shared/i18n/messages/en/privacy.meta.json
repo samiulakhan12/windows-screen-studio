@@ -623,6 +623,9 @@
   "copies.done": {
     "description": "Auto-blur private info, The export dialog. {count} selects the plural; {n} is the count as shown (formatted)."
   },
+  "copies.notCovered": {
+    "description": "Auto-blur private info, Find's result line and Review's header: after Also cover the copies, the copies Flown could not read or save, offered again just after. {count} selects the plural; {n} is the count as shown (formatted)."
+  },
   "settings.title": {
     "description": "Auto-blur private info, Settings › Private info."
   },

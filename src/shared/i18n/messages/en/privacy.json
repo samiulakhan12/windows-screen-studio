@@ -207,6 +207,7 @@
   "export.recordingsSkipped": "The timeline was not saved: it used the original recordings, and this video hides parts of them.",
   "copies.offer": "{count, plural, one {Also cover the copy made from this video} other {Also cover the {n} copies made from this video}}",
   "copies.done": "{count, plural, one {Covered the copy made from this video. Its covers wait in its Review.} other {Covered the {n} copies made from this video. Their covers wait in their Review.}}",
+  "copies.notCovered": "{count, plural, one {Flown could not cover {n} copy made from this video. Try again, or open the copy and bring the covers over from its export dialog.} other {Flown could not cover {n} copies made from this video. Try again, or open each copy and bring the covers over from its export dialog.}}",
   "settings.title": "Private info",
   "settings.reader": "Text reader",
   "settings.readerAbout": "Reads text on screen on this PC: PaddlePaddle's PP-OCRv6 models (Apache-2.0), a 27.6 MB download from Hugging Face (Qbexel's copy, or PaddlePaddle's own files).",
