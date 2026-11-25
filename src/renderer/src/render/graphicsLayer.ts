@@ -11,7 +11,7 @@
  * live in fixed cells. Nothing is drawn, and nothing is called on the frame, without graphics.
  */
 import { burnedSegments, captionLanguage } from '../../../shared/captions/captionTracks'
-import { maskBleeped } from '../../../shared/captions/cleanup'
+import { maskDrawn } from '../../../shared/captions/cleanup'
 import { textOn } from '../../../shared/captions/colors'
 import { emojiEntry } from '../../../shared/captions/emojiList'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
@@ -172,14 +172,14 @@ function shapeOf(ctx: Ctx, project: Project, g: Graphic, w: number, h: number): 
   return { w: m.width, h: listHeight(m, g.items.length), px: m.px }
 }
 
-/** A keyword's text: in capitals when the look writes in capitals; a bleeped word masked (§11.7). */
+/** A keyword's text: in capitals when the look writes in capitals; a bleeped word (§11.7) and a secret said aloud (auto-blur §7.5) masked. */
 const keywordText = (project: Project, g: KeywordGraphic, look: CaptionStudio): string => {
-  const text = maskBleeped(g.text, project.bleeps)
+  const text = maskDrawn(project, g.text)
   return look.text.case === 'upper' ? text.toLocaleUpperCase() : look.text.case === 'lower' ? text.toLocaleLowerCase() : text
 }
 
-/** A counter's label as drawn: a bleeped word masked (§11.7). */
-const counterLabel = (project: Project, g: CounterGraphic): string => maskBleeped(g.label ?? '', project.bleeps)
+/** A counter's label as drawn: a bleeped word (§11.7) and a secret said aloud (auto-blur §7.5) masked. */
+const counterLabel = (project: Project, g: CounterGraphic): string => maskDrawn(project, g.label ?? '')
 
 const counterFont = (project: Project, g: CounterGraphic, px: number): string => {
   const ref = fontRef(project, g)
@@ -631,7 +631,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
   if (g.title) {
     c.font = `${weightOf(ref, itemWeight + 200)} ${m.titlePx}px ${stack}`
     c.fillStyle = accent
-    c.fillText(maskBleeped(g.title, project.bleeps), left + m.padX, top + m.padY + m.titleH / 2)
+    c.fillText(maskDrawn(project, g.title), left + m.padX, top + m.padY + m.titleH / 2)
   }
   items.forEach((item, i) => {
     const p = EASE.out(progress(item.at, 0.22))
@@ -670,7 +670,7 @@ function drawList(c: Ctx, project: Project, g: ListGraphic, s: Shown, t: number,
     }
     c.font = `${itemWeight} ${m.px}px ${stack}`
     c.fillStyle = '#1c2030'
-    c.fillText(maskBleeped(item.text, project.bleeps), mx + r + m.px * 0.5, y, m.width - (mx + r + m.px * 0.5 - left) - m.padX)
+    c.fillText(maskDrawn(project, item.text), mx + r + m.px * 0.5, y, m.width - (mx + r + m.px * 0.5 - left) - m.padX)
     c.restore()
   })
   c.restore()

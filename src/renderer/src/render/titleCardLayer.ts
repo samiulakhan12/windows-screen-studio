@@ -1,7 +1,7 @@
 import { animationTime, isAnimated } from '../../../shared/engine/backgrounds'
 import { backgroundIsLight, luminance, titleColorOf, titleTextColorOf } from '../../../shared/editor/titles'
 import { captionLanguage } from '../../../shared/captions/captionTracks'
-import { maskBleeped } from '../../../shared/captions/cleanup'
+import { maskDrawn } from '../../../shared/captions/cleanup'
 import { catalogFamily, catalogId } from '../../../shared/captions/fontCatalog'
 import { STUDIO_BASE } from '../../../shared/captions/studioPresets'
 import { withWordDigits } from '../../../shared/captions/words'
@@ -497,7 +497,7 @@ function drawnCard(project: Project, card: TitleCard): TitleCard {
   const digits = project.captions?.digits
   let title = card.title
   if (digits && card.auto?.by === 'chapter') title = withWordDigits(title, digits, captionLanguage(project))
-  if (card.style === 'quote') title = maskBleeped(title, project.bleeps)
+  if (card.style === 'quote') title = maskDrawn(project, title)
   return title === card.title ? card : { ...card, title }
 }
 

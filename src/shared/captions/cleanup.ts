@@ -19,7 +19,7 @@ import { MAX_BLEEPS } from './studioData'
 import { alignedTextRanges, composeRanges, oneToOne, spacedPieceRanges, textMapRuns, wordCount, wordRanges } from './textMap'
 import { studioWordTexts } from './words'
 import { isPrivateBleep } from '../privacy/coverData'
-import { maskChars, maskPrivate, type SpokenForms } from '../privacy/spoken'
+import { maskChars, maskPrivate, spokenForms, type SpokenForms } from '../privacy/spoken'
 
 /** The Clean up section's choices (prefs `captionCleanup`, §2.9). */
 export interface CleanupChoices {
@@ -976,6 +976,16 @@ export function maskBleeped(text: string, bleeps: readonly Bleep[] | undefined, 
     return maskToken(t)
   })
   return changed ? out : text
+}
+
+/**
+ * `text` as the video draws it in `project` (pop-ups, list cards, counter labels, quote cards):
+ * maskBleeped with the project's spoken forms, so neither a bleeped word nor a secret said aloud
+ * (auto-blur §7.5) is drawn, also when the graphic was made before Find. Every drawer of text made
+ * from captions calls this, never maskBleeped without the forms. `text` itself when it has neither.
+ */
+export function maskDrawn(project: Pick<Project, 'transcript' | 'bleeps'>, text: string): string {
+  return maskBleeped(text, project.bleeps, project.bleeps?.length ? spokenForms(project) : null)
 }
 
 /** The share of [a, b] inside [s, e]. */
