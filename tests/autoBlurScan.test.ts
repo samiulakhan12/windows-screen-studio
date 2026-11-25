@@ -238,17 +238,56 @@ describe('auto-blur P4: the scan', () => {
     expect(stopped.ok && stopped.notFollowed).toBeUndefined()
   })
 
-  it('154. runFind and a failed read: a lost area from that frame until the next good read; failedReads counted (finding 23)', async () => {
+  it('154. runFind and a failed read: a lost area from the last good read of its areas until the next good read of them; failedReads counted (finding 23)', async () => {
     const s = scene({ read: (t) => (Math.abs(t - 2.3) < 0.01 ? 'fail' : undefined) })
     const r = await runFind(request(), noProgress, never, s.deps)
     expect(r.ok && r.failedReads).toBe(1)
     if (!r.ok) return
-    const lost = r.found.filter((f) => f.lost && f.start === 2.3)
+    // From one source frame after the last good read of its areas (the first read, at 0 s), not from its own frame at 2.3 s.
+    const lost = r.found.filter((f) => f.lost && f.kind === 'text' && f.start === 0.033)
     expect(lost).toHaveLength(1)
-    // It covers the read's areas (the email's region) until the next good read of them (the periodic read).
+    // It covers the read's areas (the email's region), also where the email came in, until the next good read of them (the settle read at 12.3 s).
+    expect(inside(EMAIL, boxOf(lost[0], 2))).toBe(true)
     expect(inside(EMAIL, boxOf(lost[0], 2.5))).toBe(true)
-    expect(lost[0].end).toBeGreaterThan(2.3)
-    expect(lost[0].end).toBeLessThanOrEqual(20)
+    expect(lost[0].end).toBe(12.3)
+  })
+
+  it('A failed read\'s lost area starts after the last good read of its areas, not at its own frame: a text that came in with the burst the read was planned for is covered in every frame it shows, whether it stays or the next read of its place lacks it (found by review: an email shown from 2.0 s whose settle read at 2.3 s failed showed uncovered from 2.000 to 2.267 s)', async () => {
+    const shown: Box = [600, 300, 460, 30]
+    const panel: Box = [576, 288, 512, 64]
+    const near = (t: number, x: number): boolean => Math.abs(t - x) < 1e-6
+    const slack = coverSlack(30)
+    for (const goneAt of [null, 8]) {
+      const planted: Planted[] = [{ key: 'email', text: ADDRESS, at: (t) => (t >= 2 && (goneAt === null || t < goneAt) ? shown : null) }]
+      // A list below changes every 0.5 s, so Find keeps reading there, and over the email's panel only when it changes.
+      const look = lookOf(HD, 30, 20, (_i, t) => ({ changed: [...(near(t, 2) || (goneAt !== null && near(t, goneAt)) ? [panel] : []), ...(t > 0 && near(t * 2, Math.round(t * 2)) ? [[0, 640, 1920, 400] as Box] : [])] }))
+      let failedAt: number | null = null
+      const s = scene({
+        look,
+        planted,
+        // The settle read of the email's panel fails.
+        read: (t, areas) => (failedAt === null && t > 2 && t < 3 && areas.some((a) => inside(shown, a)) ? ((failedAt = t), 'fail') : undefined)
+      })
+      const r = await runFind(request({ requestId: `r-failed-${goneAt}`, kinds: ['email'] }), noProgress, never, s.deps)
+      expect(r.ok && r.failedReads, `gone ${goneAt}`).toBe(1)
+      if (!r.ok) return
+      expect(failedAt).toBeCloseTo(2.3, 6)
+      // Covered from one source frame after the last good read of the panel (the first read, at 0 s), until the next good read of it, or the end.
+      const lost = r.found.filter((f) => f.lost && f.kind === 'text')
+      expect(lost.map((f) => [f.start, f.end])).toEqual([[0.033, goneAt === null ? 20 : 8.3]])
+      const bad: string[] = []
+      for (let k = 0; k < 20 * 30; k++) {
+        const t = Math.round((k / 30) * 1e6) / 1e6
+        const p = planted[0].at(t)
+        if (!p) continue
+        const ok = r.found.some((f) => {
+          const d = drawnBox({ id: 'c', start: f.start, end: f.end, path: f.path, color: f.color }, t, slack)
+          return !!d && inside(p, [d.x * 1920, d.y * 1080, d.w * 1920, d.h * 1080], 1)
+        })
+        if (!ok) bad.push(t.toFixed(3))
+      }
+      expect(bad, `gone ${goneAt}`).toEqual([])
+    }
   })
 
   it('155. Stop: the found covers come back with unfinished walks run to the end as lost areas over their last box and region; stopped and readTo are set', async () => {
@@ -576,7 +615,8 @@ parentPort.on('message', (m) => {
     const r = await runFind(request(), noProgress, never, { ...s.deps, rules: () => spinning })
     expect(r.ok && r.failedReads).toBe(1)
     if (!r.ok) return
-    expect(r.found.some((f) => f.lost && f.start === 5.3 && inside(NAME, boxOf(f, 5.5)))).toBe(true)
+    // Covered from one source frame after the last good read of its areas (the first read), so the name is covered from 5.0 s, where it came in, until the next good read there.
+    expect(r.found.some((f) => f.lost && f.kind === 'text' && f.start === 0.033 && f.end === 15.3 && inside(NAME, boxOf(f, 5)) && inside(NAME, boxOf(f, 5.5)))).toBe(true)
     expect(s.log.some((l) => l.startsWith('read 15.3'))).toBe(true)
   }, 20000)
 

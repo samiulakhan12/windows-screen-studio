@@ -665,8 +665,8 @@ and its results are applied only to the project and request that started it.
 - When Flown's window does not have the focus as Find ends, Windows shows `main.jobs.privacyDone`
   (`notificationFor`, `src/shared/jobs/longJobs.ts:160`, gains this one case; analysis jobs show no
   notification today).
-- A failed read never drops silently: its area becomes a lost area until the next good read there,
-  and `failedReads` says so (§5.6).
+- A failed read never drops silently: its area becomes a lost area from the last good read there
+  until the next one, and `failedReads` says so (§5.6).
 - Nor does a failed walk (§5.8: the follow session's error, such as the helper dying mid-walk or
   refusing a session): each item of its span is covered from the last read of its place without it
   to the end of the video, over its region, the log names the error's kind (§10.6), and
@@ -1852,8 +1852,14 @@ pointed at the tile and detector-scale path. This version checks that path on it
 pattern recall and padded coverage within 0.5 points of the whole-frame reads.
 
 **Failures.** Each read runs inside `catch_unwind`. A failed read answers `{ id, error }`: main marks
-its areas as a lost area from that frame until the next good read of them, and counts it for
-`privacy.run.failedReads` (finding 23). After any caught panic the helper drops and rebuilds its
+its areas as a lost area until the next good read of them, and counts it for
+`privacy.run.failedReads` (finding 23). The lost area starts where an item no walk followed starts
+(§2.6, `unreadSince`): one source frame after the last good read of those areas, else at the
+recording's start. The read was planned for what changed there before its frame (a settle read comes
+0.3 s or more after its burst, a merged one up to 5 s later), so the lost area does not start at the
+read's own frame: found by review, an email shown from 2.0 s whose settle read at 2.3 s failed showed
+uncovered for its first nine frames. The areas a capped read could not finish twice (§5.5) are
+covered the same way. After any caught panic the helper drops and rebuilds its
 plans (about 1.1 s), because tract's state inside a panicked run is not trusted. If the helper process
 dies (a stack overflow or an allocation failure is not caught by `catch_unwind`), every read in
 flight is marked failed (a lost area each), main starts the helper again once per Find, opens the
@@ -4617,8 +4623,8 @@ number of this list exists exactly once.
      most 2.3 times as long (finding 7).
 153. `runFind` with the fake helper: progress phases; the result holds no text (a JSON scan of it finds none
      of the planted strings).
-154. `runFind` and a failed read: a lost area from that frame until the next good read; `failedReads`
-     counted (finding 23).
+154. `runFind` and a failed read: a lost area from the last good read of its areas until the next good
+     read of them; `failedReads` counted (finding 23).
 155. *Stop*: the found covers come back with unfinished walks run to the end as lost areas over their
      last box and region; `stopped` and `readTo` are set.
 156. `followCover` returns `walked` and `lostSpans` with its path; without the reader, a template-only

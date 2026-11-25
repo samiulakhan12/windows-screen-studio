@@ -24,7 +24,7 @@ import { foundColour, groupExtras, hideLength } from '../../shared/privacy/found
 import { COVER_DARK } from '../../shared/privacy/kinds'
 import { addLookFrames, clip, emptyLook, frameNear, intersect, keyBefore, lookScale, lookStep, overlaps, union, type LookData, type Size } from '../../shared/privacy/look'
 import { findNotices } from '../../shared/privacy/notices'
-import { followAll, partsOf, unwalkedCover, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../../shared/privacy/paths'
+import { followAll, partsOf, unreadSince, unwalkedCover, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../../shared/privacy/paths'
 import { addRead, hintsOf, planReads, readBudget, secondEstimate, spansOf, type PlannedRead, type ReadHints, type ReadPlan } from '../../shared/privacy/plan'
 import type { Box, Candidate, HelperCommand, LookFrame, ModelPin, ReadLine, ReadResult, ReadVariant, TrackMatch } from '../../shared/privacy/protocol'
 import { READER_ID } from '../../shared/privacy/readerCatalog'
@@ -689,7 +689,9 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       const { from, box } = unwalkedCover(index.reads, look, h, 1 / fps)
       found.push({ kind: h.kind, score: h.score, group: groupOf(h.key), start: from, end: ceilMs(duration), path: pathOfBox(from, box, size, fps), color: h.color, lost: true, ...(h.thin ? { thin: true as const } : {}) })
     }
-    // 5. A failed read never drops silently: its areas covered from it until the next good read of them.
+    // 5. A failed read never drops silently: its areas covered until the next good read of them, from
+    // where the last good read of them left off (unreadSince, as for an item no walk followed): the read
+    // was planned for what changed there before its frame, a settle read 0.3 s or more after its burst.
     const sorted = [...done].sort((a, b) => a.t - b.t)
     for (const x of sorted) {
       const areas = x.failed ? x.areas : x.unread
@@ -697,7 +699,8 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
       let box = areas[0]
       for (const a of areas) box = union(box, a)
       const nextGood = sorted.find((y) => y.t > x.t && y.done && !y.failed && coverage(y.areas, box) >= 0.95)
-      found.push({ kind: 'text', score: 0.6, group: randomGroup(d.random), start: floorMs(x.t), end: ceilMs(nextGood ? nextGood.t : duration), path: pathOfBox(floorMs(x.t), box, size, fps), color: COVER_DARK, lost: true })
+      const from = Math.min(floorMs(x.t), unreadSince(index.reads, box, x.t, 1 / fps))
+      found.push({ kind: 'text', score: 0.6, group: randomGroup(d.random), start: from, end: ceilMs(nextGood ? nextGood.t : duration), path: pathOfBox(from, box, size, fps), color: COVER_DARK, lost: true })
     }
     // 6. Pop-up notifications, from the look data (§6.13).
     if (!req.target && req.kinds.includes('notice') && !stopped())

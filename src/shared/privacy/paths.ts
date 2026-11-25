@@ -1371,17 +1371,26 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
 }
 
 /**
+ * Where a place Find lost before `t` is covered from (§2.6, §5.6): one source frame (`frameS`) after the
+ * last good read before `t` that read it (its areas hold 95% of `box`), without `key` among its hits
+ * when one is given, else the recording's start. Nothing that came in there after that read was read.
+ */
+export function unreadSince(reads: readonly IndexedRead[], box: Box, t: number, frameS: number, key?: string): number {
+  let before: IndexedRead | null = null
+  for (const r of reads) if (r.t < t && !r.failed && coverage(r.areas, box) >= COVERED && (key === undefined || !r.hits.some((x) => x.key === key)) && (!before || r.t > before.t)) before = r
+  return before ? floorMs(before.t + frameS) : 0
+}
+
+/**
  * Where an item no walk followed is covered from (§2.6: Find stopped before a walk got to it, or its walk
  * failed): one source frame (`frameS`) after the last good read of its place without it, else the
- * recording's start, over its box and the regions changed at its read's frame.
+ * recording's start (unreadSince), over its box and the regions changed at its read's frame.
  */
 export function unwalkedCover(reads: readonly IndexedRead[], look: LookData, item: Pick<Placed, 't' | 'box' | 'key'>, frameS: number): { from: number; box: Box } {
-  let before: IndexedRead | null = null
-  for (const r of reads) if (r.t < item.t && !r.failed && coverage(r.areas, item.box) >= COVERED && !r.hits.some((x) => x.key === item.key) && (!before || r.t > before.t)) before = r
   let box = item.box
   const at = frameNear(look, item.t)
   if (at >= 0) for (const g of regionsAt(look, at)) if (overlaps(g, box)) box = union(box, g)
-  return { from: before ? floorMs(before.t + frameS) : 0, box }
+  return { from: unreadSince(reads, item.box, item.t, frameS, item.key), box }
 }
 
 /** Spans as "start end" pairs joined by ";" (3 decimals, outward). */
