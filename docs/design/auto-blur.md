@@ -1615,8 +1615,10 @@ The editor already loads the cursor track (`projects:load`, `src/main/projectsIp
   when the profile NCC has two close candidates.
 - **Display scale** (`CursorTrack.scale`, `types.ts:62`; 1 when absent): at 150-200% a field and its
   label are 1.5-2 times larger in video pixels. Every size given in screen pixels below is multiplied
-  by it: the typing read's box and the settle padding (§5.4) and the template search's radius
-  (§5.8).
+  by it: the typing read's box and the settle padding (§5.4). **Not** the helper's search window
+  (§5.8 step 3): it stays ±4 template pixels (±8 video pixels), which holds what the look pass's
+  moves are precise to (a look pixel, at most 8 video pixels at 4K, where text is twice as large), and
+  the template search's grid is set by that window, not by the scale (§5.8, evidence of absence).
 
 `cursor.json` holds no typed text (`src/main/recording/keystrokes.ts:1-6`, read only).
 
@@ -1942,8 +1944,8 @@ inverted (dark mode, a highlight), so one template serves both.
    0.75-1.0 for real scrolls), and taken for a move it ended walks by chance and kept zooms from
    being tried. Of a region's shifts, its own move (the first, continued from the frame before, §5.2)
    is its real move when it is real; an alternative scored a little higher is not.
-3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 × `scale`
-   template pixels (§5.3).
+3. For each candidate, each part is matched by gradient NCC at its predicted place ± 4 template
+   pixels (±8 video pixels; `RADIUS` in `follow.rs`, at any display scale, §5.3).
 4. **Placed** when at least one part scores 0.6 or more, the best candidate beats the next by 0.15 or
    more (one clear best match), and the placed parts agree within 2 px. **Near first**: each frame's
    match is asked first with only the candidates landing where the walker's own predictions put the
@@ -2019,6 +2021,15 @@ inverted (dark mode, a highlight), so one template serves both.
   evidence after a page change and the lost area, the whole page, lasted to the end; the text
   itself scores 0.87 or more. Without the reader (Follow, §5.9) the search alone is the evidence and
   keeps the old rule.
+  **New: the search is complete.** Its candidates stand on a grid 16 video pixels apart (twice the
+  helper's ±8), so the window about them reaches every place of the region, at any display scale and
+  in a region of any size; the helper is asked in calls of at most 1,200 candidates a track, and their
+  answers are joined as one (the best place, and the best of every place more than 2 px from it). A
+  search that left places unasked would be no evidence that the text is gone. Found by review: the grid
+  was 16 × the display scale (32 px at 200%) and grew by a quarter until it held 1,200 candidates (49 px
+  over a 1080p page), so a text a page laid out again had moved between its points was taken for gone,
+  and without the reader its cover ended while it showed (in 8 of 16 landing places over a page and 1
+  of 16 in a panel at 200% with the real helper).
 
 "Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
 §5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any

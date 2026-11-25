@@ -137,7 +137,7 @@ const BURST_S = 0.3
 /** Part width at most this many line heights, at most 3 parts (§5.8). */
 const PART_LINES = 6
 const MAX_PARTS = 3
-/** Most candidates of one template search. */
+/** Most candidates of one track in one call of a template search (a search asks as many calls as its grid needs). */
 const MAX_SEARCH = 1200
 /** A read covers a box when this share of it lies in the read's areas. */
 const COVERED = 0.95
@@ -149,6 +149,14 @@ const EXPLAINED = 0.5
 const WINDOW = 8
 /** Most check reads one walk asks for (each about 0.1 unit, §5.4); past them it waits for planned reads and stops. */
 const MAX_CHECKS = 8
+
+/** Points from `lo` to `hi` no more than 2 × WINDOW apart, both ends among them: the helper's window about them reaches every place between. */
+function gridOf(lo: number, hi: number): number[] {
+  const out: number[] = []
+  for (let v = lo; v <= hi; v += 2 * WINDOW) out.push(v)
+  if (!out.length || hi - out[out.length - 1] > 1e-6) out.push(Math.max(lo, hi))
+  return out
+}
 
 /** The own box cut into equal parts no wider than 6 line heights each, at most 3. */
 export function partsOf(own: Box, lineHeight: number): Box[] {
@@ -586,15 +594,20 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     return out
   }
 
-  /** Candidates searching the whole of `area` (and around), at scale 1 on a grid and at the zoom scales about its centre. */
+  /**
+   * Candidates searching the whole of `area` (and around), on a grid at the walker's scale and at the zoom
+   * scales about its centre. The grid is complete: its points are 2 × WINDOW apart, so the helper's window
+   * about them (±4 template pixels, ±8 video pixels, at any display scale) reaches every place, however
+   * large the area; a search that missed places would be no evidence that the text is gone (found by review:
+   * the grid grew to 49 px over a page and was 32 px at 200%, and a cover without the reader ended while its
+   * text showed in a page laid out again). `matchAll` asks the helper in calls of MAX_SEARCH.
+   */
   const searchCandidates = (w: Walker, area: Box, explained: readonly Box[] = []): Xf[] => {
     const s = w.off.scale
     const b = xfBox(w, w.tpl.box, { dx: 0, dy: 0, scale: s })
     const zone = clip([area[0] - b[2] / 2, area[1] - b[3] / 2, area[2] + b[2], area[3] + b[3]], size)
-    let step = 16 * hints.scale
-    while (Math.ceil(zone[2] / step) * Math.ceil(zone[3] / step) > MAX_SEARCH) step *= 1.25
     const out: Xf[] = []
-    for (let y = zone[1]; y <= bottom(zone) - b[3] / 2; y += step) for (let x = zone[0]; x <= right(zone) - b[2] / 2; x += step) out.push({ dx: x - b[0], dy: y - b[1], scale: s })
+    for (const y of gridOf(zone[1], bottom(zone) - b[3] / 2)) for (const x of gridOf(zone[0], right(zone) - b[2] / 2)) out.push({ dx: x - b[0], dy: y - b[1], scale: s })
     const pred = predicted(w)
     const zx = area[0] + area[2] / 2
     const zy = area[1] + area[3] / 2
@@ -624,6 +637,41 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
 
   const maxPart = (r: TrackMatch | undefined): number => (r ? r.parts.reduce<number>((mx, p) => (p !== null && p > mx ? p : mx), 0) : 0)
   const clear = (r: TrackMatch | undefined): boolean => !!r && !!r.best && maxPart(r) >= PLACE_SCORE && maxPart(r) - r.second >= CLEAR_BY
+
+  /**
+   * Every track's candidates asked of the helper in calls of at most MAX_SEARCH candidates a track, and the
+   * answers of each track joined as one answer of all its candidates: the best place, and as the second the
+   * best score of any other place more than 2 px from it (the helper's own rule within one call).
+   */
+  const matchAll = async (t: number, asks: readonly { w: Walker; candidates: Xf[] }[]): Promise<Map<Walker, TrackMatch | undefined>> => {
+    const got = new Map<Walker, TrackMatch[]>()
+    const rounds = Math.max(1, ...asks.map((a) => Math.ceil(a.candidates.length / MAX_SEARCH)))
+    for (let k = 0; k < rounds; k++) {
+      const now = asks.filter((a) => k === 0 || a.candidates.length > k * MAX_SEARCH)
+      const res = await m.match(t, now.map((a) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: a.candidates.slice(k * MAX_SEARCH, (k + 1) * MAX_SEARCH) })))
+      for (const a of now) {
+        const r = res.find((x) => x.track === a.w.index)
+        if (r) got.set(a.w, [...(got.get(a.w) ?? []), r])
+      }
+    }
+    const out = new Map<Walker, TrackMatch | undefined>()
+    for (const a of asks) {
+      const list = got.get(a.w) ?? []
+      const top = list.reduce<TrackMatch | undefined>((x, y) => (!x || (y.best && maxPart(y) > maxPart(x)) ? y : x), undefined)
+      if (!top || list.length < 2) {
+        out.set(a.w, top)
+        continue
+      }
+      let second = top.second
+      for (const r of list) {
+        if (r === top) continue
+        const apart = !r.best || !top.best || Math.abs(r.best.dx - top.best.dx) > 2 || Math.abs(r.best.dy - top.best.dy) > 2
+        second = Math.max(second, apart ? maxPart(r) : r.second)
+      }
+      out.set(a.w, { ...top, second })
+    }
+    return out
+  }
 
   /** Whether a match shows the text there: one clear match, or a part at 0.85 (a copy of it). Without the reader, any part at 0.5. */
   const found = (r: TrackMatch | undefined): boolean => (reads.templateOnly ? maxPart(r) >= ABSENT_SCORE : clear(r) || maxPart(r) >= PRESENT_SCORE)
@@ -1131,12 +1179,12 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         t,
         searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: w.paged ? unexplained(w, ownPlaces(w, f), explainedBy.get(w) ?? []) : ownPlaces(w, f) }))
       )
-      const res = await m.match(
+      const res = await matchAll(
         t,
-        searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))
+        searches.map((w) => ({ w, candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))
       )
       for (const w of searches) {
-        const r = res.find((x) => x.track === w.index)
+        const r = res.get(w)
         // Lost at a page change, its own places hold the new page: they are judged as the region's
         // other places are (one clear match, or a part at 0.85), never by the 0.5 of a text partly under
         // a tooltip, which the new page's content there reaches unread (0.53 on the held-out pages).

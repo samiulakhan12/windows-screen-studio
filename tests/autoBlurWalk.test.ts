@@ -498,6 +498,34 @@ describe('auto-blur P4: following', () => {
   }
   const at = (a: Box, b: Box): boolean => Math.abs(a[0] - b[0]) <= 2 && Math.abs(a[1] - b[1]) <= 2
 
+  it('The template search that evidence of absence rests on is complete: every place of its region is within the helper\'s window (±8 video pixels) of a candidate, at any display scale and in a region of any size, so a text that jumped inside a region that changed with no move is found, not taken for gone (found by review: the grid grew to 49 px over a page and to 32 px at 200%, and a cover without the reader ended while its text showed)', async () => {
+    const T: Box = [700, 400, 205, 14]
+    const scene = async (region: Box, jump: [number, number], scale: number) => {
+      const after: Box = [T[0] + jump[0], T[1] + jump[1], T[2], T[3]]
+      const text: Planted = { key: KEY, text: 'priya.raman@example.com', at: (t) => (t < 1.5 - 1e-6 ? T : after) }
+      // At 1.5 s the region changes with no move (a page or a panel laid out again): the text lands elsewhere in it.
+      const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 1.5) < 1e-6 ? { changed: [region] } : {}))
+      const hints = hintsOf({ samples: [], clicks: [], valid: true, scale } as CursorTrack)
+      const cover: Box = [T[0] - 6, T[1] - 6, T[2] + 12, T[3] + 12]
+      const s = { ...start(0.5, cover, T, 'h0'), parts: partsOf(T, T[3]) }
+      const [fwd] = await walkSpan([s], 1, look, readIndex([], true), matcherOf([text]), hints, HD, { duration: 4 })
+      return { fwd, after }
+    }
+    // A page at 100% and a 640×320 panel at 200%, with the text landing between where a grid of 49 px or 32 px asks.
+    const cases: { region: Box; scale: number; jumps: [number, number][] }[] = [
+      { region: [0, 0, 1920, 1080], scale: 1, jumps: [[200, 162], [212, 174], [224, 166], [236, 178], [-300, 300], [517, 233]] },
+      { region: [600, 340, 640, 320], scale: 2, jumps: [[56, 124], [72, 140], [24, 60], [-40, 100], [88, 30]] }
+    ]
+    for (const c of cases)
+      for (const jump of c.jumps) {
+        const { fwd, after } = await scene(c.region, jump, c.scale)
+        const label = `${c.region.join(',')} at ${c.scale * 100}%, the text moved ${jump.join(', ')}`
+        expect(fwd.end, label).toBe(4)
+        const at = pathBox(fwd, 30)
+        for (const t of [1.5, 2, 3, 3.9]) expect(inside(after, at(t)!), `${label}, ${t} s`).toBe(true)
+      }
+  })
+
   it('Evidence of absence on a page of other text: the template search finds the text only where it would place it (one clear match, or a part at 0.85), and never on a line the read read (found end to end: a search over a page of text always found a part at 0.5, and the cover blacked out the video to its end)', async () => {
     const T: Box = [400, 300, 200, 30]
     const page: Box = [0, 0, 1920, 1080]
