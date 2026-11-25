@@ -83,8 +83,8 @@ export interface UnderCoverRequest {
 
 /**
  * The text under a cover was read (§5.9 step 1): whether it looks like a name, and whether main keeps
- * the last Find's reads of this video (`kept`), which *Cover this text everywhere* then only follows,
- * reading nothing; without them it runs Find for the text, with Find's estimate.
+ * the last Find's reads of this video (`kept`), whose places *Cover this text everywhere* then only
+ * follows, with no planned read; without them it runs Find for the text, with Find's estimate.
  */
 export type UnderCoverResult = { ok: true; nameLike: boolean; kept: boolean } | { ok: false; reason: 'noText' | 'reader' | 'busy' | 'failed' }
 

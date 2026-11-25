@@ -151,7 +151,7 @@ export function EverywhereDialog(props: { services: EditorServices; coverId: str
       break
     case 'ready': {
       // Find's first estimate (§2.2, §5.11), only when it runs Find for this text: with the last Find's
-      // reads kept, it only follows them, reading nothing (second review, finding [27]).
+      // reads kept, it only follows their places, with no planned read (second review, finding [27]).
       const p = props.services.store.state
       const minutes = state.kept ? null : minutesOf(firstEstimate(p.duration, p.capture?.fps ?? 60, { width: p.width, height: p.height }, reader?.status === 'ready' ? reader.decodeMs : null))
       body = (
