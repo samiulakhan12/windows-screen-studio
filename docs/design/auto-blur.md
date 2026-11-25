@@ -2802,10 +2802,12 @@ project has no private bleeps it is never called.
   project `aiTextFor` masks the request from), never the private bleeps there when the answer lands:
   a caption whose private bleeps changed while the request was out (Find added one, so the answer was
   made from the words said, or *Uncover* removed one, so it was made from the masked text) keeps what
-  its track had, as a caption whose text changed meanwhile does, and stays one to translate. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
+  its track had, as a caption whose text changed meanwhile does, and stays one to translate. A
+  caption shown as `••••` is one to translate again (`maskedToTranslate`): `captionsToTranslate`
   sends it with those out of date or missing, so the track's *Translate again* (§2.13) makes the
-  translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
-  the sidecars (`exportBundleRun.ts:65-73`) and every export.
+  translation that replaces it, also when the spoken text did not change since the track was made.
+  This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`), the
+  sidecars (`exportBundleRun.ts:65-73`) and every export.
 - **Tidy and Clean up** (finding 13): what they change under a private bleep is still masked by time,
   and the request they send is masked (§7.6), so the service never saw the words. The AI fix's answer
   is never stored over a caption the request masked (`keepMaskedCaptions`, `aiRequest.ts`): such a
