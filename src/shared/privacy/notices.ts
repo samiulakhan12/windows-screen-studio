@@ -32,6 +32,10 @@ const STILL = 0.1
 const SLIDE_S = 0.5
 /** Most of its tiles change when it goes. */
 const GONE = 0.5
+/** A push starts with the toast's going: the next toast and the toast moving to the slot beside start together. */
+const PUSH_S = 0.17
+/** A stack of toasts is at most this share of the frame's height (Windows shows three). */
+const STACK_HEIGHT = 0.6
 
 /** Whether Find looks for notifications in this project: whole-screen recordings, never an imported video. */
 export function noticesApply(project: Pick<Project, 'capture' | 'source'>): boolean {
@@ -97,6 +101,31 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
   }
   const moved = (i: number, b: Box): boolean => frames[i].moves.some((m) => (m.dx || m.dy) && m.box[0] < b[0] + b[2] && b[0] < m.box[0] + m.box[2] && m.box[1] < b[1] + b[3] && b[1] < m.box[1] + m.box[3])
 
+  /** The first source frame a change seen at analysed frame `i` can show in: the one after the analysed frame before. */
+  const firstShown = (i: number): number => (i > 0 ? Math.min(frames[i].t, frames[i - 1].t + 1 / fps) : frames[i].t)
+  /** The regions of frame `k` overlapping `b`, as tile boxes. */
+  const touching = (k: number, b: TileBox): TileBox[] => regionsAt(look, k).map(toTiles).filter((g) => g.c0 <= b.c1 && b.c0 <= g.c1 && g.r0 <= b.r1 && b.r0 <= g.r1)
+  const joined = (a: TileBox, b: TileBox): TileBox => ({ c0: Math.min(a.c0, b.c0), r0: Math.min(a.r0, b.r0), c1: Math.max(a.c1, b.c1), r1: Math.max(a.r1, b.r1) })
+  /** A region along the stack's column (its columns within two tiles of the stack's), the stack staying within STACK_HEIGHT of the frame. */
+  const alongStack = (g: TileBox, stack: TileBox): boolean => g.c0 >= stack.c0 - 2 && g.c1 <= stack.c1 + 2 && (Math.max(stack.r1, g.r1) - Math.min(stack.r0, g.r0) + 1) * tile <= STACK_HEIGHT * H
+  /**
+   * Whether a notice's going at frame `gone` is a push: the next toast arriving in its slot and moving it to
+   * the slot beside (how Windows stacks them, the newest at the bottom), or the stack closing a gap. Its own
+   * change reaches beyond its box, along its column, within PUSH_S of its going, by half its height or more
+   * within SLIDE_S. The stack's box then, or null.
+   */
+  const pushOf = (gone: number, box: TileBox): TileBox | null => {
+    let stack = box
+    let early = false
+    for (let k = gone; k < n && frames[k].t - frames[gone].t <= SLIDE_S; k++)
+      for (const g of touching(k, box)) {
+        if (!alongStack(g, stack)) continue
+        if ((g.r0 < box.r0 || g.r1 > box.r1) && frames[k].t - frames[gone].t <= PUSH_S) early = true
+        stack = joined(stack, g)
+      }
+    return early && 2 * (box.r0 - stack.r0 + stack.r1 - box.r1) >= box.r1 - box.r0 + 1 ? stack : null
+  }
+
   const found: Notice[] = []
   const used = new Set<string>()
   for (let i = 1; i < n; i++) {
@@ -152,16 +181,49 @@ export function findNotices(look: LookData, project: Pick<Project, 'capture' | '
         }
       }
       if (!still) continue
+      const stack = gone >= 0 ? pushOf(gone, box) : null
+      if (stack) {
+        // Pushed: the toast moved to the slot beside and the next one took its slot; neither went. The stack
+        // is covered over every slot it reaches, from the push until its last change, the last toast going:
+        // a change over it keeps it, as toasts arrive, go and close up (a push along its column grows it).
+        // Its changes are never appearances. A toast lives 30 s at most, so a stack with no change for
+        // longer has gone with its last change; one the recording ends within 30 s of its last change is
+        // covered to the end.
+        let box2 = stack
+        let lastEvent = gone
+        let k = gone
+        let quiet = false
+        for (; k < n; k++) {
+          if (frames[k].t - frames[lastEvent].t > LIFE[1]) {
+            quiet = true
+            break
+          }
+          const over = touching(k, box2)
+          if (!over.length) continue
+          lastEvent = k
+          for (const g of over) {
+            used.add(`${k}:${g.c0}:${g.r0}`)
+            if (alongStack(g, box2)) box2 = joined(box2, g)
+          }
+        }
+        const until = quiet && lastEvent + 1 < n ? frames[lastEvent + 1].t : end
+        if (until - frames[i].t < LIFE[0]) continue
+        for (let k2 = i; k2 < j; k2++) used.add(`${k2}:${box.c0}:${box.r0}`)
+        for (const s of slid) used.add(s)
+        found.push({ start: firstShown(i), end: firstShown(gone), box: px, stacked: false })
+        found.push({ start: firstShown(gone), end: until, box: boxOf(box2), stacked: false })
+        continue
+      }
       // Sliding out: the frames of half a second after it starts going. Its going is never an appearance.
       let last = gone
       if (gone >= 0) for (let k = gone + 1; k < n && frames[k].t - frames[gone].t <= SLIDE_S && ownCount(k, box) > 0; k++) last = k
-      if (gone >= 0) for (let k = gone; k <= last; k++) for (const g of regionsAt(look, k).map(toTiles)) if (g.c0 <= box.c1 && box.c0 <= g.c1 && g.r0 <= box.r1 && box.r0 <= g.r1) used.add(`${k}:${g.c0}:${g.r0}`)
+      if (gone >= 0) for (let k = gone; k <= last; k++) for (const g of touching(k, box)) used.add(`${k}:${g.c0}:${g.r0}`)
       const until = gone < 0 ? end : last + 1 < n ? frames[last + 1].t : end
       const life = (gone < 0 ? end : frames[gone].t) - frames[i].t
       if (life < LIFE[0] || life > LIFE[1]) continue
       for (let k = i; k < j; k++) used.add(`${k}:${box.c0}:${box.r0}`)
       for (const s of slid) used.add(s)
-      found.push({ start: frames[i].t, end: until, box: px, stacked: false })
+      found.push({ start: firstShown(i), end: until, box: px, stacked: false })
     }
   }
   found.sort((a, b) => a.start - b.start)

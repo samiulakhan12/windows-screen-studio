@@ -112,6 +112,75 @@ describe('auto-blur P4: notices and found covers', () => {
     expect(union.map((x) => x.box)).toEqual([[W - 384, 0, 384, 160]])
   })
 
+  it('A toast pushed up a slot by the next one, as Windows stacks them, is covered at its new slot and the new one in the old slot, each in every source frame, until the last of them goes; the toasts going are no new notices (found by review: the push was taken for the first toast going, its regions never tried as an appearance, and each going became a cover to the end)', () => {
+    // Windows' toasts at 1080p60: 364×104, 12 px from the right edge, the bottom slot 12 px above a 48 px
+    // taskbar, the slot above 8 px higher; each slides in from the right over 0.3 s and out the same way.
+    const W = 364
+    const H = 104
+    const X = 1920 - 12 - W
+    const LOW = 1080 - 48 - 12 - H
+    const HIGH = LOW - 8 - H
+    const ease = (u: number): number => Math.max(0, Math.min(1, u))
+    /** A toast sliding in at `from`, at `y0` until `push` (then moving to `y1` over `move` s), sliding out at `to`. */
+    const toast = (from: number, to: number, y0: number, push: number | null = null, y1 = y0, move = 0.25) => (t: number): Box | null => {
+      if (t < from - 1e-6 || t >= to + 0.3 - 1e-6) return null
+      const x = Math.max(X + (1 - ease((t - from) / 0.3)) * (W + 12), t >= to ? X + ease((t - to) / 0.3) * (W + 12) : X)
+      if (x >= 1920) return null
+      const y = push !== null && t >= push - 1e-6 ? y0 + (y1 - y0) * (move > 0 ? ease((t - push) / move) : 1) : y0
+      return [x, y, Math.min(W, 1920 - x), H]
+    }
+    /** Look data at 60 fps: each analysed frame's changed tiles are where a toast was or is when it moved since the last one. */
+    const lookFor = (toasts: ((t: number) => Box | null)[], seconds: number) =>
+      lookOf(HD, 60, seconds, (_i, t) => {
+        const changed: Box[] = []
+        for (const at of toasts) {
+          const now = at(t)
+          const before = at(t - 2 / 60)
+          if (now && before && now.every((v, k) => Math.abs(v - before[k]) < 0.5)) continue
+          if (now) changed.push(now)
+          if (before) changed.push(before)
+        }
+        return { changed }
+      })
+    /** Source frames where a toast shows and no notice holds its box; notices over no toast at all. */
+    const check = (toasts: ((t: number) => Box | null)[], seconds: number) => {
+      const found = findNotices(lookFor(toasts, seconds), { capture: { ...screen.capture, fps: 60 } })
+      const holds = (t: number, b: Box): boolean => found.some((n) => t >= n.start - 1e-9 && t < n.end && inside({ x: b[0], y: b[1], w: b[2], h: b[3] }, { x: n.box[0] - 0.5, y: n.box[1] - 0.5, w: n.box[2] + 1, h: n.box[3] + 1 }))
+      const bad: string[] = []
+      for (let k = 0; k < seconds * 60; k++) {
+        const t = Math.round((k / 60) * 1e6) / 1e6
+        toasts.forEach((at, i) => {
+          const b = at(t)
+          if (b && !holds(t, b)) bad.push(`${'ABC'[i]} ${t.toFixed(3)}`)
+        })
+      }
+      const overNothing = found.filter((n) => {
+        for (let t = n.start; t < Math.min(n.end, seconds); t += 1 / 60) if (toasts.some((at) => { const b = at(t); return !!b && b[0] < n.box[0] + n.box[2] && n.box[0] < b[0] + b[2] && b[1] < n.box[1] + n.box[3] && n.box[1] < b[1] + b[3] })) return false
+        return true
+      })
+      return { found, bad, overNothing }
+    }
+    // A from 10 s; B arrives at 12 s into the bottom slot and pushes A up (over 0.25 s, or at once); A goes at 16 s, B at 18 s.
+    for (const move of [0.25, 0]) {
+      for (const seconds of [25, 60]) {
+        const r = check([toast(10, 16, LOW, 12, HIGH, move), toast(12, 18, LOW)], seconds)
+        expect(r.bad, `push over ${move} s, ${seconds} s recording`).toEqual([])
+        expect(r.overNothing, `push over ${move} s, ${seconds} s recording`).toEqual([])
+        // More than 30 s after the last toast went, the stack's cover ends where it went (a toast lives 30 s at most).
+        if (seconds === 60) expect(Math.max(...r.found.map((n) => n.end))).toBeLessThan(18.3 + 0.6)
+      }
+    }
+    // Three: C arrives at 13 s and pushes both; B is dismissed at 15 s and A moves down; A goes at 20 s, C at 22 s.
+    const three = check([toast(10, 20, LOW, 12, HIGH), toast(12, 15, LOW, 13, HIGH), toast(13, 22, LOW)], 60)
+    expect(three.bad).toEqual([])
+    // Without a push the toasts are found as before, every source frame of them covered from the first that shows one.
+    for (const toasts of [[toast(10, 13, LOW), toast(15, 18, LOW)], [toast(10, 16, LOW), toast(12, 18, HIGH)]]) {
+      const r = check(toasts, 25)
+      expect(r.bad).toEqual([])
+      expect(r.overNothing).toEqual([])
+    }
+  })
+
   it('150. foundCovers: groups by group key, scores to tiers, colours from rings', () => {
     const a = key(1, 0.1, 0.1, 0.2, 0.05)
     const covers = foundCovers(

@@ -2665,7 +2665,20 @@ inside its box. A toast stacking under another shares a row of tiles with it (ea
 reaches into the other's), and its sliding in or out there is the other's neighbour, not a change of
 it: counted, it made the first toast never still, and neither of A16's two stacked toasts was found.
 The regions a notice slides in through are never an appearance of their own (each was found again,
-starting a frame later). Decision 8
+starting a frame later). **New: a push.** Windows puts a new toast in the bottom slot and pushes the
+ones showing up a slot (and closes the stack up when one goes). A notice's going is a push when its
+own change reaches beyond its box, along its column (within two tiles of it), within 0.17 s of its
+going, by half its height or more within the slide's 0.5 s: the toast moved and the next one took its
+slot, and neither went. The notice then ends at the push, and its **stack** is covered from the push
+over every slot it reaches (a change along its column grows it, up to 60% of the frame's height) until
+its last change, the last toast going: every change over the stack keeps it, and none is an
+appearance of its own. A toast lives 30 s at most, so a stack with no change for longer went with its
+last change; one the recording ends within 30 s of its last change is covered to the end. Found by
+review: the push was taken for the first toast's going and its regions were never tried as an
+appearance, so the first toast at its new slot and the new one were never covered (582 of 754 toast
+frames at 1080p60), and each toast's going became a notice to the recording's end. A notice now
+starts at the first source frame after the analysed frame before the one it is seen in, where its
+first strip can show (at 60 fps one source frame earlier). Decision 8
 requires at most one false hit per 10 minutes on real recordings; above that, the default turns off.
 
 ### 6.14 Libraries and data (licences and sizes)
