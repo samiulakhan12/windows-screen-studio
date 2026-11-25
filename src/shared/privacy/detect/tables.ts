@@ -182,8 +182,13 @@ export const LABELS_ALL: Readonly<Record<keyof typeof LABEL_WORDS, RegExp>> = Ob
 /** A PIN label as written ("Pin to taskbar" is the verb). */
 export const PIN_AS_WRITTEN = /^(?:PIN|পিন|पिन|NIP)$/u
 
-/** After a label: quotes, a separator (`: = ： #`, `no.`) or `is` and its translations, quotes. */
-export const LABEL_SEPARATOR = /^["'`]?\s{0,3}(?:([:=：#]|no\.?)|(is|es|হলো|হচ্ছে|है|was)(?![\p{L}\p{N}\p{M}]))?\s{0,3}(?:[:=]\s{0,3})?["'`]?/iu
+/**
+ * After a label: quotes, a separator (`: = ： #`, `no.`) or `is` and its translations, quotes. A hint
+ * in brackets or parentheses (up to 40 characters) may stand between the label and a `:`, `=` or `：`,
+ * as part of the label: `aws configure` asks "AWS Secret Access Key [None]: " and, set already,
+ * "[****************ABCD]: ", and forms write "API key (optional): ".
+ */
+export const LABEL_SEPARATOR = /^["'`]?\s{0,3}(?:[[(][^\])\n]{0,40}[\])]\s{0,3}(?=[:=：]))?(?:([:=：#]|no\.?)|(is|es|হলো|হচ্ছে|है|was)(?![\p{L}\p{N}\p{M}]))?\s{0,3}(?:[:=]\s{0,3})?["'`]?/iu
 /** "PIN for the shared phone is 2580": up to five words between the label and `is`. */
 export const LABEL_FAR_IS = /^(?:\s{1,3}[\p{L}\p{N}'’-]{1,30}){1,5}?\s{1,3}(is|was|es|হলো|হচ্ছে|है)(?![\p{L}\p{N}\p{M}])\s{0,3}["'`]?/iu
 /** Separators an ID value may follow. */

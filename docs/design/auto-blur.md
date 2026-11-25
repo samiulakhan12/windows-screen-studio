@@ -2449,6 +2449,15 @@ entropy 3 or more), and `-p` only on a `mysql`, `psql`, `login`, `redis-cli`, �
 - **UI labels**: *API key*, *Secret key*, *Client secret*, *Access token*, *Personal access token*,
   *Signing secret*, *Webhook secret*, … (en, bn, es, hi), with a value of 12 or more characters
   holding a letter and a digit, beside the label, after it or under a short label line (§6.10).
+  **New**: a hint in brackets or parentheses of up to 40 characters between any label and its `:`,
+  `=` or `：` is part of the label (`LABEL_SEPARATOR`, for every kind here and in §6.7 that follows a
+  label): `aws configure` asks "AWS Secret Access Key [None]: " and, once set, "[****************ABCD]:
+  ", and forms write "API key (optional): ". Without it the separator took only the space before the
+  bracket, a key label needs a separator, and the secret after it was never found though the reader
+  read the whole line (found end to end: only the AKIA id beside it was covered). Measured with it:
+  tests 102 and 103 unchanged (231, 233 and 233 of 233 covered; 1, 1 and 2 visible items touched),
+  Flown's UI catalogue 0 hits and the other docs 5 in 35,941 lines (test 134); the speech rules do not
+  use it.
 - **Authenticator setup keys** (base32, `XXXX XXXX XXXX XXXX` or 16+ characters) under or beside such
   a label: 0.95.
 

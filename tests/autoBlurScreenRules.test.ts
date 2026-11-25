@@ -284,6 +284,16 @@ describe('auto-blur P3: the screen rules', () => {
     expect(hitsOn('JBSWY3DPEHPK3PXPJBSW', { left: ['Secret key'] })[0]).toMatchObject({ rule: 'otp-secret', score: 0.95 })
   })
 
+  it('A hint in brackets or parentheses between a label and its colon is part of the label: `aws configure`\'s "AWS Secret Access Key [None]: " names the secret after it (found end to end: the whole line was read and the secret never covered, only the AKIA id beside it)', () => {
+    const secret = token('«S40»', 14)
+    for (const label of ['AWS Secret Access Key [None]', 'AWS Secret Access Key [****************TsV1]', 'API key [default]', 'API key (optional)', 'Enter your API key (from the dashboard)', 'Client secret [none]'])
+      expect(texts(`${label}: ${secret}`), label).toEqual([`key:check:${secret}`])
+    expect(texts('Verification code (sent to your phone): 482913')).toEqual(['code:auto:482913'])
+    // Still only before a colon or an equals sign, and a placeholder or dots after it are no value.
+    for (const t of [`API key (optional) ${secret}`, 'API key [default]: None', 'Access token (optional): <your-token-here>', 'Secret key [hidden]: ********'])
+      expect(texts(t), t).toEqual([])
+  })
+
   it('116. passwords: separators, quotes, "PIN for the shared phone is 2580", pass rules, the not-a-password words', () => {
     expect(texts('Password: Vq7#pL2m!xR9')).toEqual(['password:auto:Vq7#pL2m!xR9'])
     expect(texts('password=Vq7pL2mxR9')).toEqual(['password:auto:Vq7pL2mxR9'])
