@@ -3245,8 +3245,11 @@ refused) (§5.9).
   each disabled action has its reason as `aria-describedby` text (`oneForBox`, `oneForFollow`,
   `oneForEverywhere`, `privacy.cover.outside`), never a tooltip alone.
 - **Live regions**: Find's progress is a polite status, announced at most every 10% and at each phase
-  change; its result is announced once. Following announces `privacy.cover.followDone` or
-  `followNone`. *Uncover* announces `privacy.cover.uncovered`.
+  change; its result is announced once. The list that *What Find does not see* opens from the result
+  line is placed after that status, never inside it, so opening it announces nothing: inside, its
+  twelve sentences were added to the live region and said as a change of the result (second review,
+  finding [25]). Following announces `privacy.cover.followDone` or `followNone`. *Uncover* announces
+  `privacy.cover.uncovered`.
 - **Focus**:
   - Opening *Find private info…* moves focus to the dialog's first checkbox; closing it returns focus
     to the control that opened it; *Find* returns focus to the section's progress line (finding 31).

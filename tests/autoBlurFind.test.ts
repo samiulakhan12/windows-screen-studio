@@ -8,7 +8,7 @@ import { PALETTE_COMMANDS, WAITING_COMMANDS, commandInfo } from '../src/shared/e
 import { captionsSig, outcomeOf } from '../src/shared/privacy/findState'
 import { isPrivateBleep } from '../src/shared/privacy/coverData'
 import type { Project, Transcript } from '../src/shared/types'
-import { allByTestId, byTestId, contexts, focused, mockReact, render, settle, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
+import { allByTestId, byTestId, contexts, descendants, focused, mockReact, render, settle, textOf, unmountAll, useEditorContexts, type El } from './studioHarness'
 import { base, words } from './autoBlurFixtures'
 
 /*
@@ -583,6 +583,27 @@ describe('auto-blur P5: Find', () => {
     runs.beginRun({ projectId: 'rl', requestId: 'rf', by: 'find', stop: async () => undefined })
     runs.endRun('rf', { ok: false, reason: 'tooLarge' })
     expect(allByTestId(view(), 'find-sentence').map((s) => textOf(s).trim())).toEqual(['This recording is too large for Find to read: more than 7680 × 4320 pixels.'])
+  })
+
+  it('What Find does not see, opened from the result line, is a list after its live region, never inside it: Find’s result is said once, and opening the list says nothing (second review, finding [25])', () => {
+    const view = (): El[] => render({ type: FindResultLine, props: { projectId: 'ns' } })
+    runs.beginRun({ projectId: 'ns', requestId: 'ns1', by: 'find', stop: async () => undefined })
+    runs.endRun('ns1', { ok: true, found: 0, check: 0, said: 0, failedReads: 0, thinned: null, suppressed: 0, saidFull: false, stopped: false, crashed: false })
+    let els = view()
+    const live = (): El => els.find((e) => e.props.role === 'status' && e.props['aria-live'] === 'polite')!
+    expect(live().props['data-testid']).toBe('find-result')
+    const link = byTestId(els, 'find-not-see')!
+    press(link)
+    els = view()
+    const list = byTestId(els, 'find-not-see-list')!
+    expect(descendants(list).filter((e) => e.type === 'li')).toHaveLength(12)
+    expect(link.props['aria-controls']).toBe(list.props.id)
+    // The live region holds the result's sentence and its link, not the list.
+    expect(descendants(live()).includes(list)).toBe(false)
+    expect(textOf(live())).toBe('Find private info found nothing private. What Find does not see')
+    expect(els.filter((e) => e.props.role === 'status')).toHaveLength(1)
+    runs.resetRuns()
+    unmountAll()
   })
 
   it('Find’s progress and result lines show in one place at a time, the one in front: Review’s header over the Private info section it covers, Cover this text everywhere’s dialog over both, so each live region is said once (§2.6, §11)', () => {
