@@ -1091,8 +1091,8 @@ describe('auto-blur P1: the Covers row', () => {
       setUp(long())
       unmountAll()
       player.time = 181
-      let selected: { kind: string; id: string } | null = null
-      const root = { type: () => ({ type: track.CoverTrack, props: { px: 20, win, duration: 600, selection: selected, onSelect: (s: typeof selected) => void (selected = s), scrub: () => undefined, snap } }), props: {} }
+      const selected: { current: { kind: string; id: string } | null } = { current: null }
+      const root = { type: () => ({ type: track.CoverTrack, props: { px: 20, win, duration: 600, selection: selected.current, onSelect: (s: typeof selected.current) => void (selected.current = s), scrub: () => undefined, snap } }), props: {} }
       let els = render(root)
       // As the browser does: focus() runs the element's onFocus at once.
       const settleFocus = (before: number): void => {
@@ -1112,7 +1112,7 @@ describe('auto-blur P1: the Covers row', () => {
       return {
         focus: focused.at(-1)?.props['data-cover'],
         tabStop: bars(els).find((b) => b.props.tabIndex === 0)?.props['data-cover'],
-        selected: selected?.id,
+        selected: selected.current?.id,
         left: store.state.covers!.map((c) => c.id)
       }
     }
