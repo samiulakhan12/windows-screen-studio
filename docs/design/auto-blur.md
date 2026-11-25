@@ -1864,8 +1864,13 @@ plans (about 1.1 s), because tract's state inside a panicked run is not trusted.
 dies (a stack overflow or an allocation failure is not caught by `catch_unwind`), every read in
 flight is marked failed (a lost area each), main starts the helper again once per Find, opens the
 models again and goes on from the **next** planned read, so a frame that kills the helper is never
-read twice. A second death ends Find with what it has, as *Stop* does, with
-`privacy.run.failed.crashed` (§2.6).
+read twice. In the follow phase it goes on from the **next** span in the same way: the span the
+helper died in (or went silent in, and was ended) is a walk that failed (§2.6), and every span after
+it waits for the new helper. Found by review: the spans after a death went to the dead helper, each
+failed at once, and every item found was covered to the end. A new helper that is ready only after
+Find has let go of the old one is stopped at once, or it would stay open with its models until Flown
+quits. A second death ends Find with what it has, as *Stop* does, with `privacy.run.failed.crashed`
+(§2.6).
 
 ### 5.7 From lines to suggestions (main, `scan.ts`, P4; the rules are P3's)
 

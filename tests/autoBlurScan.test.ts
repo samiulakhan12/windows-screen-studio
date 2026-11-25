@@ -238,6 +238,100 @@ describe('auto-blur P4: the scan', () => {
     expect(stopped.ok && stopped.notFollowed).toBeUndefined()
   })
 
+  it('A helper that dies while Find follows is started again once, and the spans after the one it died in are followed on the new helper; a helper started again after the run let go of it is stopped (found by review: every later span went to the dead helper and failed at once, all found items were covered to the end, and the new helper stayed open with its models until Flown quit)', async () => {
+    const { HelperError } = await import('../src/main/privacy/helperUse')
+    const emails = ['priya.raman@example.com', 'omar.haddad@example.org', 'lena.fischer@example.net', 'kwame.mensah@example.com']
+    const from = [10, 80, 150, 220]
+    const boxAt = (i: number): Box => [400, 200 + 100 * i, 460, 30]
+    const near = (t: number, x: number): boolean => Math.abs(t - x) < 1e-6
+    /**
+     * Find over 240 s showing the emails `shown`, each 10 s in its own minute. Helper 1 dies at its first
+     * follow session ('crash'), or goes silent at its first match and ends 50 ms later ('silent': main kills
+     * it, and a command sent meanwhile is answered only by its end); the next helper is ready 300 ms after
+     * it is asked for.
+     */
+    const run = async (shown: number[], how: 'crash' | 'silent' = 'crash') => {
+      const dir = mkdtempSync(path.join(tmpdir(), 'flown-scan-'))
+      roots.push(dir)
+      writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
+      const planted: Planted[] = shown.map((i) => ({ key: `e${i}`, text: emails[i], at: (t) => (t >= from[i] && t < from[i] + 10 ? boxAt(i) : null) }))
+      const look = lookOf(HD, 30, 240, (_i, t) => ({ changed: shown.flatMap((i) => (near(t, from[i]) || near(t, from[i] + 10) ? [[384, 192 + 100 * i, 512, 64] as Box] : [])) }))
+      const events: string[] = []
+      const helpers: FakeHelper[] = []
+      const deps: ScanDeps = {
+        helper: async () => {
+          const n = helpers.length + 1
+          if (n > 1) await new Promise((resolve) => setTimeout(resolve, 300))
+          const h = new FakeHelper({ look, planted }, [])
+          helpers.push(h)
+          let dead = false
+          // As OcrHelper does once its process has ended or is being killed: every command rejects with crashed when it has ended.
+          const read = h.read.bind(h)
+          h.read = async (req, signal) => (dead ? h.exited.then(() => Promise.reject(new HelperError('crashed'))) : read(req, signal))
+          const open = h.followOpen.bind(h)
+          h.followOpen = async (req) => {
+            if (dead) {
+              events.push(`helper ${n} followOpen refused`)
+              await h.exited
+              throw new HelperError('crashed')
+            }
+            if (n === 1 && how === 'crash') {
+              dead = true
+              events.push('helper 1 dies')
+              h.crash()
+              throw new HelperError('crashed')
+            }
+            events.push(`helper ${n} followOpen ${req.dir}`)
+            const session = await open(req)
+            if (n > 1 || how !== 'silent') return session
+            return {
+              ...session,
+              match: async () => {
+                dead = true
+                events.push('helper 1 silent')
+                setTimeout(() => h.crash(), 50)
+                throw new HelperError('silent')
+              }
+            }
+          }
+          return h as unknown as ScanHelper
+        },
+        readProject: async () => base('rec-1', 240, { fps: 30 }),
+        projectDir: () => dir,
+        readCursor: async () => null,
+        log: (l) => events.push(`log: ${l}`)
+      }
+      const r = await runFind(request({ requestId: `r-death-${shown.length}`, kinds: ['email'] }), noProgress, never, deps)
+      // A restart may finish after the run.
+      await new Promise((resolve) => setTimeout(resolve, 600))
+      return { r, events, helpers }
+    }
+    // Four spans; the helper dies in the first, or goes silent in it and is ended.
+    for (const how of ['crash', 'silent'] as const) {
+      const four = await run([0, 1, 2, 3], how)
+      const r = four.r
+      expect(r.ok, how).toBe(true)
+      if (!r.ok) return
+      expect(four.helpers, how).toHaveLength(2)
+      expect(r.crashed, how).toBeUndefined()
+      expect(r.notFollowed, how).toBe(1)
+      expect(four.events.filter((e) => e.startsWith('helper 1 followOpen refused')), how).toEqual([])
+      expect(four.events.filter((e) => e.startsWith('helper 2 followOpen')).length, how).toBe(6)
+      expect(four.events.filter((e) => /following \d+ found places? failed/.test(e)), how).toEqual([`log: privacy: following 1 found place failed (${how === 'crash' ? 'crashed' : 'silent'}); covered to the end`])
+      // The first email is covered to the end; the others are followed, their covers ending when they go.
+      const ends = [0, 1, 2, 3].map((i) => Math.max(...r.found.filter((f) => f.kind === 'email' && f.start <= from[i] + 5 && f.end > from[i] + 5 && inside(boxAt(i), boxOf(f, from[i] + 5))).map((f) => f.end)))
+      expect(ends[0], how).toBe(240)
+      for (const i of [1, 2, 3]) expect(ends[i], `${how}: email ${i}`).toBeLessThan(from[i] + 11)
+      // The run let go of the new helper: stopped.
+      expect(four.helpers[1].log, how).toContain('stop')
+    }
+    // One span, the one the helper dies in: the new helper is ready only after the run ended, and is stopped then.
+    const one = await run([3])
+    expect(one.r.ok && one.r.notFollowed).toBe(1)
+    expect(one.helpers).toHaveLength(2)
+    expect(one.helpers[1].log).toEqual(['stop'])
+  })
+
   it('154. runFind and a failed read: a lost area from the last good read of its areas until the next good read of them; failedReads counted (finding 23)', async () => {
     const s = scene({ read: (t) => (Math.abs(t - 2.3) < 0.01 ? 'fail' : undefined) })
     const r = await runFind(request(), noProgress, never, s.deps)

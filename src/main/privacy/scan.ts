@@ -31,7 +31,7 @@ import { READER_ID } from '../../shared/privacy/readerCatalog'
 import type { CursorTrack, Project } from '../../shared/types'
 import { ffmpegPath } from '../ffmpeg'
 import * as projects from '../projects'
-import { failureKind, pauseWhileRecording, withCareful } from './helperUse'
+import { failureKind, HelperError, pauseWhileRecording, withCareful } from './helperUse'
 import { lookKeyOf, readLookCache, writeLookCache } from './lookCache'
 import { RulesHost } from './rulesHost'
 
@@ -520,9 +520,14 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
         }
         restarting = d.helper(true).then(
           (fresh) => {
+            restarting = null
+            // Ready after the run let go of the helper, and no one else holds it: no release would stop this one.
+            if (finished && s.users === 0) {
+              void fresh.stop().catch(() => fresh.kill())
+              return
+            }
             s.helper = fresh
             watch(fresh)
-            restarting = null
           },
           () => {
             crashed = true
@@ -659,12 +664,19 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     for (const span of spans) {
       const todo = span.filter((h) => !consumed.has(h.id))
       if (!todo.length) continue
+      // A helper started again after a death: the spans after the one it died in go on with it (§5.6).
+      if (restarting) await restarting
       if (stopped()) break
       progress('follow', spanDone, spans.length, null)
+      const helper = s.helper
       let tracks: Track[]
       try {
         tracks = await followAll(todo.map(toPlaced), look, index, open, hints, size, { duration, stopped })
       } catch (err) {
+        // The helper ended, or was ended, while it followed this span: once its exit is seen, it is
+        // being started again (or it was the second death, which ends Find). This span is not
+        // followed again, as a frame that killed the helper is never read again.
+        if (err instanceof HelperError && (err.kind === 'crashed' || err.kind === 'silent')) await helper.exited
         // Never silently: its items are covered from the last read without them to the end (below),
         // the log names the error's kind (never what was read), and the result counts them. A Stop
         // meanwhile is no failure: the stopped result says that.
