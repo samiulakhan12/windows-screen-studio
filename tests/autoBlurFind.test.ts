@@ -256,6 +256,12 @@ describe('auto-blur P5: Find', () => {
     expect(resolveUiLanguage({ language: 'bn' }, ['bn-BD'], 'en-GB', BN, [])).toMatchObject({ language: 'bn', formatLocale: 'bn', region: 'GB' })
     expect(resolveUiLanguage({}, ['en-US'], 'en-US', [], [])).toMatchObject({ region: 'US' })
     expect(resolveUiLanguage({}, [], 'not a locale', [], [])).not.toHaveProperty('region')
+    // A system locale with a POSIX code set or modifier (Electron gives 'en-US@posix' on a Linux PC without LANG) still
+    // names its region; the format locale reads it as before.
+    expect(resolveUiLanguage({}, [], 'en-US@posix', [], [])).toMatchObject({ formatLocale: 'en-US', region: 'US' })
+    expect(resolveUiLanguage({}, [], 'en_GB.UTF-8', [], [])).toMatchObject({ formatLocale: 'en-US', region: 'GB' })
+    expect(resolveUiLanguage({ language: 'bn' }, [], 'bn_BD.UTF-8@latn', BN, [])).toMatchObject({ formatLocale: 'bn', region: 'BD' })
+    expect(resolveUiLanguage({ language: 'es' }, [], 'es-419', [{ language: 'es', preview: false }], [])).not.toHaveProperty('region')
     // The window boots with that ui:info: an English UI on a PC in Great Britain.
     const boot = await load<{ bootLanguage(view: string): Promise<{ formatLocale: string }> }>('i18n/boot')
     const winApi = (globalThis as unknown as { window: { api: Record<string, unknown> } }).window.api

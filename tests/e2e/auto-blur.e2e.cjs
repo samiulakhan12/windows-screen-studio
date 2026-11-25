@@ -89,9 +89,10 @@ async function goHome(win) {
 
 /**
  * The phone regions the evaluation set's truth counts as found (§17.1 test 198 and the scorers: US,
- * GB and BD): an English UI always has the United States; the others are added in the Find dialog,
- * as a user with numbers from there would. Without Bangladesh, crm-1's 01712-345680, written as it is
- * at home, is no phone number, and A1 counted it uncovered in every frame of its page.
+ * GB and BD): the PC's region is always on, and this test machine's is the United States (Electron
+ * gives 'en-US@posix' as its system locale); the others are added in the Find dialog, as a user with
+ * numbers from there would. Without Bangladesh, crm-1's 01712-345680, written as it is at home, is
+ * no phone number, and A1 counted it uncovered in every frame of its page.
  */
 const EVAL_REGIONS = ['GB', 'BD']
 

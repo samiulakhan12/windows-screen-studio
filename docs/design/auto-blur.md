@@ -596,7 +596,9 @@ select on the kind's id (§12.1).
   system locale's region only when that locale is in the same language) and the UI language's region
   (`bn` → BD, `hi` → IN, `es` → ES, `en` → none) are always on; the user adds up to 5 in a list of
   every region the phone metadata knows, by country name. An English UI on a PC in Great Britain finds
-  British numbers, a Bangla UI there British and Bangladeshi ones.
+  British numbers, a Bangla UI there British and Bangladeshi ones. A POSIX code set or modifier on
+  the locale is read past (`en_GB.UTF-8`, and `en-US@posix`, which Electron gives on a Linux PC
+  without a language set); the format locale reads the locale as before.
 - The estimate is §5.11's first estimate. It is replaced by a second one after the look pass (§2.6).
 - *Listen* is unchecked and disabled with `privacy.find.listenNone` when the project has no
   captions.
