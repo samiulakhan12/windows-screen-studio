@@ -739,7 +739,7 @@ async function a2Case(ctx, { name, extra = {}, routes, env = {}, lossy = [], pre
 
 /* ---------- A16: the rendered tracking set ---------- */
 
-const TRACK_CASES = ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag', 'toasts', 'tooltip', 'type-email', 'type-key', 'type-key-enter']
+const TRACK_CASES = ['list-scroll', 'flick-scroll', 'browser-zoom', 'select-text', 'sticky-header', 'window-drag', 'toasts', 'tooltip', 'type-email', 'type-key', 'type-key-enter', 'paste-after-label']
 
 /**
  * The tracking set's cache key: its generator and the evaluation set's helpers it plants with, so a

@@ -4834,7 +4834,11 @@ pixels under the covers (two different secrets, same everything else), and the t
   into a terminal (and deleted again), a key typed on a full terminal's last line and Enter scrolling
   the terminal up three lines (`type-key-enter`, the keystrokes recorded: its typing burst ends at
   Enter, so the key is first read on the line it scrolled to, §5.8's typing rule in place only; a case
-  may give the keystrokes `cursor.json` would hold, and A16 seeds them), the evaluation frames at 150% and 200% display scale, and the
+  may give the keystrokes `cursor.json` would hold, and A16 seeds them), a token pasted after a
+  prompt printed 5.5 s before, "Personal access token (from the dashboard): " (`paste-after-label`:
+  only the token's tiles change, so its reads must reach to the left for the label, §5.4 point 2, whose
+  hint in parentheses is part of it, §6.6; what Enter prints after it is short, so no other read takes
+  in the line whole), the evaluation frames at 150% and 200% display scale, and the
   new-seed held-out frames (each frame held 6 s at 30 fps, 144 s a set: they test reading at display
   scale and on unseen frames, not flashing pages; held 0.5 s, every page was on screen under the
   second §2.9 and §5.4 point 6 say Find may miss, and a plan over its budget, as every whole-page read

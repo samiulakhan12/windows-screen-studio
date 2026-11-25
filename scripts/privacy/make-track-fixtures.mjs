@@ -2,7 +2,8 @@
 // Renders the tracking set of docs/design/auto-blur.md A16 (§17.3, §16.0 item 13): lossless 60 fps
 // videos of screens that move (a scrolling list, a fast flick, browser zoom, a selection, a sticky
 // header, a window dragged diagonally, toasts sliding in and out, a tooltip passing over text, an
-// email typed into a field, a key typed into a terminal and deleted), each with a truth file holding
+// email typed into a field, a key typed into a terminal and deleted, a key typed on a terminal's last
+// line before Enter scrolls it, a token pasted after its prompt), each with a truth file holding
 // every planted item's box in every frame, read back from the page as make-eval-set.mjs reads its
 // truth. Every frame is set by the page itself (window.setFrame(n)), never by a clock, so the same
 // case draws the same frames on every run.
@@ -167,6 +168,20 @@ export const CASES = {
     html: `<div class="term">${Array.from({ length: 40 }, (_v, i) => `<div>${O(`Compiling module ${i + 1} of 40 (${((i * 37) % 90) + 10} ms)`)}</div>`).join('')}<div>${O('$ export GITHUB_TOKEN=')}<span data-k="key" data-t="" id="f"></span></div>${['Token saved for github.com.', 'Done in 0.4 s.', '$'].map((t, i) => `<div id="o${i}" style="display:none">${O(t)}</div>`).join('')}</div>`,
     script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.token)};const k=n<4?0:Math.min(s.length,Math.floor((n-4)/2)+1);const f=document.getElementById("f");f.textContent=s.slice(0,k);f.dataset.t=s.slice(0,k);for(let i=0;i<3;i++)document.getElementById("o"+i).style.display=n>=90?"block":"none"}`,
     cursor: { typing: [[4, 90]], keys: [[90, 'Enter']] }
+  }),
+  'paste-after-label': (v) => ({
+    // A script in a terminal asks for a token: its prompt, "Personal access token (from the dashboard): ",
+    // is printed at 1 s; the token is pasted (Ctrl+V) after it at 6.5 s, and Enter at 8 s prints "OK" and
+    // a new prompt. Only the token's own tiles change when it is pasted, the label on screen already: its
+    // reads reach to the left for the label that names it (§5.4 point 2), whose hint in parentheses is part
+    // of the label (§6.6). The prompt is read alone 5.5 s before, too far to be read with the token even by
+    // a plan over its budget, and what Enter prints is short, so no other read takes in the token's line
+    // whole. Keystrokes were recorded: the paste, and Enter (a typing burst of its own).
+    seconds: 12,
+    css: '.term{position:absolute;inset:0;background:#0c0c0c;color:#ddd;font:16px/22px monospace;padding:12px;white-space:nowrap}.term div{height:22px}',
+    html: `<div class="term"><div>${O('$ ./deploy.sh production')}</div><div>${O('Deploying build 2.4.1 to production.')}</div><div id="l1" style="visibility:hidden">${O('Personal access token (from the dashboard): ')}<span data-k="key" data-t="" id="k1"></span></div><div id="l2" style="visibility:hidden">${O('OK')}</div><div id="l3" style="visibility:hidden">${O('$')}</div></div>`,
+    script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.secret)};const show=(id,on)=>{document.getElementById(id).style.visibility=on?"visible":"hidden"};const f=document.getElementById("k1");const k=n>=390?s:"";f.textContent=k;f.dataset.t=k;show("l1",n>=60);show("l2",n>=483);show("l3",n>=486)}`,
+    cursor: { typing: [[480, 480]], keys: [[390, 'Ctrl + V'], [480, 'Enter']] }
   })
 }
 
