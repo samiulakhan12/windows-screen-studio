@@ -3,9 +3,9 @@
 // videos of screens that move (a scrolling list, a fast flick, browser zoom, a selection, a sticky
 // header, a window dragged diagonally, toasts sliding in and out, a tooltip passing over text, an
 // email typed into a field, a key typed into a terminal and deleted, a key typed on a terminal's last
-// line before Enter scrolls it, a token pasted after its prompt), each with a truth file holding
-// every planted item's box in every frame, read back from the page as make-eval-set.mjs reads its
-// truth. Every frame is set by the page itself (window.setFrame(n)), never by a clock, so the same
+// line before Enter scrolls it, a token pasted after its prompt, a toast pushed up a slot by the next),
+// each with a truth file holding every planted item's box in every frame, read back from the page as
+// make-eval-set.mjs reads its truth. Every frame is set by the page itself (window.setFrame(n)), never by a clock, so the same
 // case draws the same frames on every run.
 //
 //   node scripts/privacy/make-track-fixtures.mjs <out_dir> [--case <id>] [--seconds <s>] [--size <w>x<h>] [--seed <n>]
@@ -182,6 +182,17 @@ export const CASES = {
     html: `<div class="term"><div>${O('$ ./deploy.sh production')}</div><div>${O('Deploying build 2.4.1 to production.')}</div><div id="l1" style="visibility:hidden">${O('Personal access token (from the dashboard): ')}<span data-k="key" data-t="" id="k1"></span></div><div id="l2" style="visibility:hidden">${O('OK')}</div><div id="l3" style="visibility:hidden">${O('$')}</div></div>`,
     script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.secret)};const show=(id,on)=>{document.getElementById(id).style.visibility=on?"visible":"hidden"};const f=document.getElementById("k1");const k=n>=390?s:"";f.textContent=k;f.dataset.t=k;show("l1",n>=60);show("l2",n>=483);show("l3",n>=486)}`,
     cursor: { typing: [[480, 480]], keys: [[390, 'Ctrl + V'], [480, 'Enter']] }
+  }),
+  'toast-push': (v) => ({
+    // Notifications as Windows stacks them, above a taskbar: the newest slides in from the right into the
+    // bottom slot and pushes the one showing up a slot (§6.13). A slides in at frame 10 (over 15 frames);
+    // B slides into the bottom slot from frame 60 while A moves up a slot over the same 15 frames; A slides
+    // out at frame 150 and B at 190, each over 15 frames. A shows a sign-in code, B a login email.
+    seconds: 3.5,
+    css: '.page{padding:16px}.row{line-height:28px}.bar{position:absolute;left:0;right:0;bottom:0;height:40px;background:#1f1f1f}.toast{position:absolute;right:auto;bottom:auto;width:300px;height:80px;box-sizing:border-box;padding:12px 14px;background:#2b2f36;color:#fff;border-radius:6px;white-space:nowrap;line-height:24px}',
+    html: `<div class="page">${listRows(v, 6)}</div><div class="bar"></div><div class="toast" id="a"><div>${O('Sign-in request')}</div><div>${O('Your code')} ${P('code', v.code)}</div></div><div class="toast" id="b"><div>${O('New login')}</div><div>${P('email', v.email)}</div></div>`,
+    script:
+      'window.setFrame=(n)=>{const W=innerWidth,H=innerHeight,R=W-12-300,low=H-40-12-80,high=low-8-80;const e=(f)=>Math.max(0,Math.min(1,f/15));const x=(from,out)=>(n<from?W:n<out?R+(W-R)*(1-e(n-from)):R+(W-R)*e(n-out));const a=document.getElementById("a"),b=document.getElementById("b");a.style.left=x(10,150)+"px";a.style.top=(low+(high-low)*e(n-60))+"px";b.style.left=x(60,190)+"px";b.style.top=low+"px"}'
   })
 }
 
