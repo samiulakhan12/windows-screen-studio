@@ -20,6 +20,11 @@ pub fn pause(on: bool) {
     }
 }
 
+/// Whether the helper is paused now (an ffmpeg's time limit counts only the time it is not).
+pub fn is_paused() -> bool {
+    *PAUSED.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// Blocks while paused.
 pub fn wait_if_paused() {
     let mut p = PAUSED.lock().unwrap_or_else(|e| e.into_inner());

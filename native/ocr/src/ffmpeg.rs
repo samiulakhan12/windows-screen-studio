@@ -191,10 +191,19 @@ impl Run {
         let done = Arc::new(AtomicBool::new(false));
         let (d2, pid) = (done.clone(), child.id());
         std::thread::spawn(move || {
-            let start = Instant::now();
+            // Only time the helper is not paused counts: while Flown records, the helper reads none of
+            // ffmpeg's output and ffmpeg waits on its full pipe by design, and the run goes on when it
+            // resumes (§5.11). Each tick's time goes to the state the tick ends in.
+            let mut used = Duration::ZERO;
+            let mut last = Instant::now();
             while !d2.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_millis(200));
-                if start.elapsed() > limit && !d2.load(Ordering::SeqCst) {
+                let now = Instant::now();
+                if !control::is_paused() {
+                    used += now - last;
+                }
+                last = now;
+                if used > limit && !d2.load(Ordering::SeqCst) {
                     kill_pid(pid);
                     break;
                 }
@@ -261,5 +270,47 @@ mod tests {
         let line = "[Parsed_showinfo_0 @ 0x1] n: 5 pts: 17515520 pts_time:1140.33 duration: 512 duration_time:0.0333333 fmt:yuv420p cl:left sar:1/1 s:320x180 i:P iskey:0 type:P";
         let t = parse_info(line, Some(1.0 / 15360.0)).unwrap().t;
         assert!((t - 1140.0 - 1.0 / 3.0).abs() < 1e-9, "{t}");
+    }
+
+    /// A stand-in for ffmpeg that writes `aaaa` at once, `bbbb` 0.8 s later, then nothing for 30 s.
+    #[cfg(unix)]
+    fn slow_ffmpeg() -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("ssw-ocr-limit-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("slow-ffmpeg");
+        // The last sleep is the process itself (exec), so ending it closes the pipe as ending ffmpeg does.
+        std::fs::write(&script, "#!/bin/sh\nprintf aaaa\nsleep 0.8\nprintf bbbb\nexec sleep 30\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        script
+    }
+
+    /// While Flown records the helper is paused (§5.11): it reads none of ffmpeg's output, so ffmpeg
+    /// waits on its full pipe by design, and Find goes on when it resumes. Time paused does not count
+    /// against the run's limit (found by review: a read, a follow piece or the look pass paused past its
+    /// limit was killed, and answered `video` once resumed); time running still does.
+    #[cfg(unix)]
+    #[test]
+    fn time_paused_does_not_count_against_the_limit() {
+        let script = slow_ffmpeg();
+        let mut run = Run::spawn(script.to_str().unwrap(), &[], 1, Duration::from_millis(500)).unwrap();
+        let mut frame = [0u8; 4];
+        run.read_frame(&mut frame).unwrap();
+        assert_eq!(&frame, b"aaaa");
+        // Paused for 2 s, four times the limit; the second frame comes meanwhile.
+        control::pause(true);
+        let resume = std::thread::spawn(|| {
+            std::thread::sleep(Duration::from_millis(2000));
+            control::pause(false);
+        });
+        assert!(run.read_frame(&mut frame).is_ok(), "a run paused past its limit was ended");
+        assert_eq!(&frame, b"bbbb");
+        resume.join().unwrap();
+        // Running again, its limit still holds: nothing more comes, and the run is ended within it.
+        let t0 = Instant::now();
+        assert!(run.read_frame(&mut frame).is_err());
+        assert!(t0.elapsed() < Duration::from_secs(5), "{:?}", t0.elapsed());
+        drop(run);
+        let _ = std::fs::remove_dir_all(script.parent().unwrap());
     }
 }

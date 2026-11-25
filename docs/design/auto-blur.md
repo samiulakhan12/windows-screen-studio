@@ -2352,9 +2352,14 @@ app 108 s, against 128 s before); the 200% set's searches take 199 s of its 439 
   recording starts during Find, main sends `pause`: the helper stops reading its ffmpeg's output (the
   pipe fills and ffmpeg blocks), and its workers stop at the next tile or frame, at most one
   1920×1088 detector run later (0.87-0.91 s *measured*). `resume` continues. Windows has no call to
-  suspend a job object, so this is the mechanism. Main reads the state with `isToolbarVisible()`
+  suspend a job object, so this is the mechanism. Each ffmpeg's time limit (§10.3) counts only the
+  time the helper is not paused: counted from its start, a read, a follow piece or the look pass
+  paused past its limit was killed and answered `video` once resumed (found by review; a failed read,
+  a walk that failed, or Find failing). Main reads the state with `isToolbarVisible()`
   (`src/main/recording/toolbarWindow.ts:89`, imported as `busyReason` does at
-  `src/main/updates/updatesIpc.ts:14, 33`, never edited), every 2 s while Find runs.
+  `src/main/updates/updatesIpc.ts:14, 33`, never edited), every 2 s while Find runs. In this build no
+  user reaches the pause: a recording starts only from Home, Home opens no project while one runs,
+  and leaving the editor asks and stops its Find (§2.6).
 - **Other work**: Find registers as an `analysis` job, so *Restart now* and the language relaunch wait
   for it (`busyReason`, `updatesIpc.ts:30-42`).
 
@@ -3193,7 +3198,8 @@ applies with no change of its own. Line numbers are at `37f9355`.
   did not finish; main reads them as extra reads, and whatever still cannot be read becomes a lost
   area counted in `failedReads` (§5.5, finding 23). A malformed or truncated video ends the read with
   an error; ffmpeg runs with `-xerror` off and a time limit of 60 s plus the recording's length, as the
-  scene scan (`sceneScan.ts`).
+  scene scan (`sceneScan.ts`). The limit counts only the time the helper is not paused (§5.11):
+  paused, it reads none of ffmpeg's output and ffmpeg waits on its full pipe by design.
 
 ### 10.4 The helper process
 
