@@ -108,8 +108,8 @@ describe('auto-blur P4: look and plan', () => {
       expect(box[2]).toBe(640 * scale)
       expect(box[3]).toBe(200 * scale)
       const s = planReads(typing, hintsOf(cursor({ valid: true, scale })), HD, 30, 1e9).reads.find((r) => r.why === 'settle')!.areas[0]
-      // Padded by 64 × scale, reaching 480 × scale to the left but no wider than the 960 px bucket its padded area fits.
-      const x0 = 896 - 64 * scale - Math.min(480 * scale, 960 - (224 + 2 * 64 * scale))
+      // Padded by 64 × scale, reaching 480 × scale to the left (at 200% to the frame's edge).
+      const x0 = Math.max(0, 896 - 64 * scale - 480 * scale)
       expect(s).toEqual([x0, 480 - 64 * scale, 896 + 224 + 64 * scale - x0, 64 + 2 * 64 * scale])
     }
 
@@ -336,31 +336,46 @@ describe('auto-blur P4: look and plan', () => {
     const typing = planReads(typed, hintsOf(cursor({ valid: false, typing: [{ t: 4, end: typedAt(31) }] })), HD, 30, 1e9, 25).reads.filter((r) => r.why === 'typing')
     expect(typing).toHaveLength(1)
     expect(covers(typing[0].areas, line)).toBe(true)
-    // At 200% the reach is twice as long: "AWS Secret Access Key [None]: " at 19 px a character (570 px), then its
-    // 40-character secret pasted (760 px), is read whole.
-    const wide = lookOf(HD, 30, 25, (_i, t) => (Math.abs(t - 0.6) < 1e-6 ? { changed: [[8, 4, 570, 44]] } : Math.abs(t - 4) < 1e-6 ? { changed: [[578, 4, 760, 44]] } : {}))
-    expect(planReads(wide, hintsOf(cursor({ scale: 2 })), HD, 30, 1e9, 25).reads.some((r) => r.t >= 4 && covers(r.areas, [8, 4, 1330, 44]))).toBe(true)
-    // The reach never takes a read into the 1920×1088 bucket its own area does not need: a chat's typed line 600 px
-    // long from x 320 is read in the 960×544 bucket, as before (reaching the whole 480 px, it cost five times the units).
+    // At display scale 1.25-2 the label and its value are as much wider, and the reach with them, up to 960 screen
+    // pixels (960 × the scale video pixels): a label printed at 0.6 s from x 8 and its value pasted after it at 4 s,
+    // read whole. "AWS Secret Access Key [None]: " (30 characters) and its 40-character key, and "Personal access
+    // token: " (23) and a 40-character token, at 150% (14.4 px a character); "API secret: " (12) and a 64-character
+    // secret at 125% (12 px); the AWS key at 200% (19 px). A read stopped where the area was 960 video pixels wide
+    // cut each label at 125% and 150% (at 150% it reached 280 px of the AWS label's 432).
+    for (const [scale, cw, labelChars, valueChars] of [[1.5, 14.4, 30, 40], [1.5, 14.4, 23, 40], [1.25, 12, 12, 64], [2, 19, 30, 40]]) {
+      const h = Math.round(22 * scale)
+      const labelBox: Box = [8, 4, Math.round(labelChars * cw), h]
+      const value: Box = [8 + labelBox[2], 4, Math.round(valueChars * cw), h]
+      const pasted = lookOf(HD, 30, 25, (_i, t) => (Math.abs(t - 0.6) < 1e-6 ? { changed: [labelBox] } : Math.abs(t - 4) < 1e-6 ? { changed: [value] } : Math.abs(t - 15) < 1e-6 ? { changed: [[0, 0, 1920, 1080]] } : {}))
+      const whole: Box = [8, 4, labelBox[2] + value[2], h]
+      for (const hints of [hintsOf(cursor({ scale, keys: [{ t: 4, label: 'Ctrl + V' }] })), hintsOf(cursor({ scale }))])
+        expect(planReads(pasted, hints, HD, 30, readBudget(25, HD), 25).reads.some((r) => r.t >= 4 && r.t < 15 && covers(r.areas, whole)), `${labelChars} + ${valueChars} characters at ${scale * 100}%, ${hints.pastes.length ? 'with' : 'without'} the paste key`).toBe(true)
+    }
+    // At 100% the reach never takes a read into the 1920×1088 bucket its own area does not need: a chat's typed line
+    // 600 px long from x 320 is read in the 960×544 bucket, as before (reaching the whole 480 px, it cost five times
+    // the units). Its tiles [320, 480, 608, 64] padded to [256, 416, 736, 192], reaching 224 px: as far as 960 px goes.
     const chat = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 1) < 1e-6 ? { changed: [[320, 500, 600, 22]] } : {}))
     const chatRead = planReads(chat, NO_HINTS, HD, 30, 1e9, 6).reads.filter((r) => r.why === 'settle')
     expect(chatRead.map((r) => r.units)).toEqual([0.2])
-    // Its tiles [320, 480, 608, 64] padded to [256, 416, 736, 192], reaching 224 px: as far as the 960 px bucket goes.
     expect(chatRead[0].areas).toEqual([[256 - 224, 416, 960, 192]])
 
     // A caret blinking at x 1200 (one tile) or across two tiles (x 1215) for a minute, as Windows blinks it
-    // (0.53 s): each settle read is its tiles padded by 64 px, as before, and the plan fits its budget unthinned.
-    for (const x of [1200, 1215]) {
-      const caret: Box = [x, 300, 2, 22]
-      const blink = lookOf(HD, 30, 60, (_i, t) => (Math.abs(t - Math.floor(t / 0.53 + 1e-6) * 0.53) < 1 / 60 ? { changed: [caret] } : {}))
-      const plan = planReads(blink, NO_HINTS, HD, 30, readBudget(60, HD), 60)
-      const settle = plan.reads.filter((r) => r.why === 'settle')
-      expect(settle.length).toBeGreaterThan(20)
-      // Its tiles: one or two columns, rows 9-10 (y 288-352).
-      const tiles: Box = [Math.floor(x / 32) * 32, 288, (Math.ceil((x + 2) / 32) - Math.floor(x / 32)) * 32, 64]
-      for (const r of settle) expect(r.areas, `caret at ${x}, read at ${r.t}`).toEqual([[tiles[0] - 64, tiles[1] - 64, tiles[2] + 128, tiles[3] + 128]])
-      expect(settle.every((r) => r.units === 0.1)).toBe(true)
-      expect(plan.thinned).toBe(0)
-    }
+    // (0.53 s), at 100% and at 200%: each settle read is its tiles padded by 64 px (times the scale), as before,
+    // and the plan fits its budget unthinned (at 200%, reaching 960 px to its left, each read would run the
+    // 1920×1088 bucket).
+    for (const scale of [1, 2])
+      for (const x of [1200, 1215]) {
+        const caret: Box = [x, 300, 2, 22]
+        const blink = lookOf(HD, 30, 60, (_i, t) => (Math.abs(t - Math.floor(t / 0.53 + 1e-6) * 0.53) < 1 / 60 ? { changed: [caret] } : {}))
+        const plan = planReads(blink, { ...NO_HINTS, scale }, HD, 30, readBudget(60, HD), 60)
+        const settle = plan.reads.filter((r) => r.why === 'settle')
+        expect(settle.length).toBeGreaterThan(20)
+        // Its tiles: one or two columns, rows 9-10 (y 288-352).
+        const tiles: Box = [Math.floor(x / 32) * 32, 288, (Math.ceil((x + 2) / 32) - Math.floor(x / 32)) * 32, 64]
+        const p = 64 * scale
+        for (const r of settle) expect(r.areas, `caret at ${x} at ${scale * 100}%, read at ${r.t}`).toEqual([[tiles[0] - p, tiles[1] - p, tiles[2] + 2 * p, tiles[3] + 2 * p]])
+        expect(settle.every((r) => r.units === 0.1)).toBe(true)
+        expect(plan.thinned).toBe(0)
+      }
   })
 })

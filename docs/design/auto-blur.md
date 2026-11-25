@@ -1655,14 +1655,21 @@ gap between them, no area cut). A unit with its lines and careful re-reads costs
    began 64-95 px left of it and cut the label to "ken:" ("[ key:"), the reads after it cut the line
    on its other side, and the key was never covered (found end to end, with and without the paste
    key in `cursor.json`). A caret blinking is one or two tile columns and keeps its padded area
-   alone. The reach never takes a read into the 1920×1088 bucket that its padded area does not need:
-   it stops where the area is 960 px wide, so it costs at most 0.1 unit a read (a chat's typed lines,
-   600 px long from x 320, cost three times the units reaching the whole 480 px; the area of a key of
-   40 characters at 12.6 px a character still reaches at least 352 px to its left with its padding,
-   more than the 328 px of "Secret Access Key [None]: ", whose words name it, §6.6).
-   Measured on the look data of A1, A16's cases and the evaluation sets: every plan's units the same
-   but `type-key`'s (1.3 to 1.4); a 10-minute chat typed a line every 12 s from 15 to 20 units for
-   300 px lines and the same 20 for 600 px lines.
+   alone (at 200%, reaching 960 px, each of its reads would run the 1920×1088 bucket). The reach
+   stops where the area is 960 screen px wide (960 × `scale` video px), unless its padded area alone
+   is wider than 960 video px: a line read with its label fits that width, and at 100% the reach then
+   never takes a read into the 1920×1088 bucket its padded area does not need (reaching the whole
+   480 px, a line 544 px wide appearing at x 544 ran that bucket, and on a 20 s recording two such
+   lines took its budget of 3 units, so thinning merged away the read of a text shown for 4 s). The
+   first fix stopped it at 960 video px at any scale, which cut "AWS Secret Access Key [None]: "
+   before its pasted 40-character key at 150% (it reached 280 px of the label's 432) and "API
+   secret: " before a 64-character secret at 125%: at 125-200% the reach goes into the larger
+   bucket, as the label and its value are 1.25-2 times as wide. Measured on the look data of A1,
+   A16's cases and the evaluation sets: every plan's units the same but `type-key`'s (1.3 to 1.4). A
+   10-minute recording of lines typed at x 320, nothing else changing, a line every 12 s: from 15 to
+   20 units at 100% for lines 300 px long, the same 20 for lines 600 px long; at 150%, 60 units for
+   lines 600 px long (their reads run the 1920×1088 bucket), within its budget of 75. With the
+   message list changing as each line is sent, 51 units with the reach or without.
    **In-place reads.** A burst on one line (its changed tiles in at most three rows of tiles: a line
    of text lies in one, two where it straddles them) that, after its changed tiles last grew, changes
    a tile older than those it last grew by (the text in it deleted or changed in place, not typed on)

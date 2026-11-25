@@ -303,12 +303,16 @@ const VALUE_COLS = 3
 
 /**
  * `a` (a padded area) reaching LABEL_REACH × `scale` further to the left, where a label stands, but never
- * into the 1920×1088 bucket when its own area fits the 960×544 one: the reach costs at most 0.1 unit a
- * read (reaching the whole 480 px, a chat's typed lines, 600 px long from x 320, cost three times the units).
+ * wider than the 960×544 bucket's width in screen pixels (960 × `scale` video pixels) when its own area fits
+ * that bucket: a line with its label is read whole within 960 screen pixels, and at 100% the reach then costs
+ * at most 0.1 unit a read (reaching the whole 480 px, a line 544 px wide appearing at x 544 runs the 1920×1088
+ * bucket, and on a 20 s recording two such lines took the budget, so thinning merged away the read of a text
+ * shown 4 s). Counted in video pixels at any scale, the stop cut "AWS Secret Access Key [None]: " before its
+ * 40-character key at 150% (it reached 280 px of the label's 432).
  */
 const reachLeft = (a: Box, scale: number): Box => {
   const mid = BUCKETS[1].w
-  const room = a[2] > mid ? Infinity : mid - a[2]
+  const room = a[2] > mid ? Infinity : Math.max(0, mid * scale - a[2])
   const x0 = Math.max(0, a[0] - Math.min(LABEL_REACH * scale, room))
   return [x0, a[1], right(a) - x0, a[3]]
 }
