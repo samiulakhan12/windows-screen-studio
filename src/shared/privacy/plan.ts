@@ -292,6 +292,29 @@ interface Burst {
 const REAL_MOVE = 0.5
 /** A line of text lies in one or two rows of look tiles (8 look pixels; a line is about 5 at any size and display scale): at most this many is a line. */
 const LINE_ROWS = 3
+/**
+ * How far to the left of a burst on one line its settle and typing areas reach, in screen pixels (times
+ * the display scale): the label of a value typed or pasted after it stands there, on screen already, so
+ * it never changed with the value ("AWS Secret Access Key [None]: " is 260-400 px in a terminal).
+ */
+const LABEL_REACH = 480
+/** A burst this many tile columns wide or more can be a value after a label; a caret blinking is one or two. */
+const VALUE_COLS = 3
+
+/**
+ * `a` (a padded area) reaching LABEL_REACH × `scale` further to the left, where a label stands, but never
+ * into the 1920×1088 bucket when its own area fits the 960×544 one: the reach costs at most 0.1 unit a
+ * read (reaching the whole 480 px, a chat's typed lines, 600 px long from x 320, cost three times the units).
+ */
+const reachLeft = (a: Box, scale: number): Box => {
+  const mid = BUCKETS[1].w
+  const room = a[2] > mid ? Infinity : mid - a[2]
+  const x0 = Math.max(0, a[0] - Math.min(LABEL_REACH * scale, room))
+  return [x0, a[1], right(a) - x0, a[3]]
+}
+
+/** Whether a box of changed tiles is a line of text a value may stand on after its label: at most LINE_ROWS rows of tiles, at least VALUE_COLS columns. */
+const valueLine = (b: Box, tile: number): boolean => b[3] <= LINE_ROWS * tile + 1e-6 && b[2] >= VALUE_COLS * tile - 1e-6
 
 /**
  * Settle reads (§5.4 point 2): one after each burst of changes in a region. A burst the recording ends
@@ -319,10 +342,14 @@ function settleReads(data: LookData, scale: number, end?: number): { settle: Pla
     // frame just before the next burst when that burst comes sooner.
     let i = Math.min(frameAtOrAfter(data, b.last + SETTLE_S), frames.length - 1)
     if (i > b.lastIndex && changedUnder(frames[i], data, b.box) > 0) i -= 1
-    const areas = tileBoxes(b.tiles, data).map((a) => pad(a, SETTLE_PAD * scale, data.size))
+    const boxes = tileBoxes(b.tiles, data)
+    const areas = boxes.map((a) => pad(a, SETTLE_PAD * scale, data.size))
     const at = frames[Math.max(i, b.lastIndex)].t
     const ending = b.lastIndex === frames.length - 1 && end !== undefined && end > at
-    out.push(read(ending ? end : at, joinAreas(areas), 'settle'))
+    // A burst on one line (a value typed or pasted, or printed after its label): its area reaches to the
+    // left, where the label already on screen stands; a caret blinking is too narrow to be a value.
+    const line = !b.moved && rowsOf(b.tiles) <= LINE_ROWS
+    out.push(read(ending ? end : at, joinAreas(areas.map((a, k) => (line && valueLine(boxes[k], tile) ? reachLeft(a, scale) : a))), 'settle'))
     if (b.moved || b.peak === null || b.last - frames[b.peak].t < SETTLE_S - 1e-9 || rowsOf(b.tiles) > LINE_ROWS) return
     inPlace.push(read(frames[b.peak].t, joinAreas(areas.map((a): Box => [0, a[1], right(a), a[3]])), 'inPlace'))
   }
@@ -462,7 +489,7 @@ function revealReads(data: LookData, every: number, scale: number): PlannedRead[
 function typingReads(data: LookData, hints: ReadHints): PlannedRead[] {
   const out: PlannedRead[] = []
   const events = [...hints.typing.map((b) => ({ from: b.t, at: b.end + SETTLE_S })), ...hints.pastes.map((p) => ({ from: p, at: p + SETTLE_S }))]
-  const { cols, rows } = tileGrid(data)
+  const { cols, rows, tile } = tileGrid(data)
   for (const e of events) {
     const i = frameAtOrAfter(data, e.at)
     if (i >= data.frames.length) continue
@@ -477,7 +504,13 @@ function typingReads(data: LookData, hints: ReadHints): PlannedRead[] {
     } else {
       const tiles = new Uint8Array(cols * rows)
       for (let j = frameAtOrAfter(data, e.from); j <= i; j++) markChanged(tiles, data, j, null)
-      areas = joinAreas(tileBoxes(tiles, data).map((a) => pad(a, SETTLE_PAD * hints.scale, data.size)))
+      // What changed on one line reaches to its left, where the label of the value typed or pasted stands (settleReads).
+      areas = joinAreas(
+        tileBoxes(tiles, data).map((a) => {
+          const p = pad(a, SETTLE_PAD * hints.scale, data.size)
+          return valueLine(a, tile) ? reachLeft(p, hints.scale) : p
+        })
+      )
     }
     if (areas.length) out.push(read(data.frames[i].t, areas, 'typing'))
   }

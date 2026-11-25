@@ -90,25 +90,27 @@ describe('auto-blur P4: look and plan', () => {
     expect(byClick.map((r) => r.t)).toEqual([expect.closeTo(4.3, 1), expect.closeTo(6.3, 1)])
     expect(byClick[0].areas).toEqual([[640, 440, 640, 200]])
     // Without positions: the regions that changed since the burst started (padded), and nothing for a paste that changed nothing.
+    // The typed line's tiles [896, 480, 224, 64] padded by 64 px, reaching 480 px to their left where a label stands.
     const typing = lookOf(HD, 30, 8, (_i, t) => ({ changed: t >= 3 && t <= 4 ? [typed] : [] }))
     const byChanges = planReads(typing, hints(false), HD, 30, 1e9).reads.filter((r) => r.why === 'typing')
     expect(byChanges.map((r) => r.t)).toEqual([expect.closeTo(4.3, 1)])
     expect(byChanges[0].areas).toHaveLength(1)
     expect(covers(byChanges[0].areas, typed)).toBe(true)
-    expect(byChanges[0].areas[0][2]).toBeLessThan(640)
+    expect(byChanges[0].areas).toEqual([[896 - 64 - 480, 480 - 64, 224 + 128 + 480, 64 + 128]])
     // With positions, the typing read and the burst's settle read are one read over both areas.
     const both = planReads(typing, hints(true), HD, 30, 1e9).reads.filter((r) => r.t > 4 && r.t < 5)
     expect(both).toHaveLength(1)
     expect(covers(both[0].areas, [640, 440, 640, 200]) && covers(both[0].areas, typed)).toBe(true)
 
-    // Display scale 1.5 and 2: the typing box and the settle padding grow by it (finding 6).
+    // Display scale 1.5 and 2: the typing box and the settle padding grow by it (finding 6), and so does the reach to the left of a line.
     for (const scale of [1.5, 2]) {
       const box = planReads(quiet, hints(true, scale), HD, 30, 1e9).reads.find((r) => r.why === 'typing')!.areas[0]
       expect(box[2]).toBe(640 * scale)
       expect(box[3]).toBe(200 * scale)
       const s = planReads(typing, hintsOf(cursor({ valid: true, scale })), HD, 30, 1e9).reads.find((r) => r.why === 'settle')!.areas[0]
-      expect(s[0]).toBe(896 - 64 * scale)
-      expect(s[2]).toBe(224 + 2 * 64 * scale)
+      // Padded by 64 × scale, reaching 480 × scale to the left but no wider than the 960 px bucket its padded area fits.
+      const x0 = 896 - 64 * scale - Math.min(480 * scale, 960 - (224 + 2 * 64 * scale))
+      expect(s).toEqual([x0, 480 - 64 * scale, 896 + 224 + 64 * scale - x0, 64 + 2 * 64 * scale])
     }
 
     // Periodic: a still 3-minute recording gets a whole frame in each minute no read covered half of.
@@ -236,7 +238,11 @@ describe('auto-blur P4: look and plan', () => {
     expect(plan.units).toBeCloseTo(plan.reads.reduce((s, r) => s + r.units, 0), 6)
     const settle = plan.reads.filter((r) => r.why === 'settle')
     // Each small area is its own burst, read alone in the smallest bucket; the large one is padded to 1200×500, one unit.
-    expect(settle.map((r) => r.units)).toEqual([0.1, 0.1, 0.1, 1])
+    // The one at (1500, 900) lies on one line of tiles (rows 28-30), so its area also reaches 480 px to its left,
+    // where a label stands, and runs the 960×544 bucket; the one at (10, 10) reaches the frame's edge already, and
+    // the one at (900, 500) spans four rows of tiles, no line.
+    expect(settle.map((r) => r.units)).toEqual([0.2, 0.1, 0.1, 1])
+    expect(settle[0].areas).toEqual([[1408 - 480, 832, 480 + 480, 224]])
   })
 
   it('A burst the recording ends in is read at the recording\'s last source frame, not the last analysed one: at 60 fps that is one frame later and shows more of what a scroll brings in (found end to end: a phone number coming in at the bottom edge was misread there, cut, and never covered)', () => {
@@ -278,10 +284,11 @@ describe('auto-blur P4: look and plan', () => {
     expect(inPlace[0].areas).toEqual([[0, 0, 640 + 64, 32 + 64]])
     expect(inPlace[0].units).toBe(0.2)
     expect(plan.units).toBeCloseTo(plan.reads.reduce((s, r) => s + r.units, 0), 6)
-    // The burst's settle read stays where it was, after the deletion, over its padded tiles.
+    // The burst's settle read stays where it was, after the deletion, over its padded tiles reaching 480 px to their
+    // left, as the settle read of any value on one line does (here to the frame's edge).
     const settle = plan.reads.filter((r) => r.why === 'settle')
     expect(settle.map((r) => r.t)).toEqual([end])
-    expect(settle[0].areas).toEqual([[256 - 64, 0, 384 + 128, 32 + 64]])
+    expect(settle[0].areas).toEqual([[0, 0, 256 + 384 + 64, 32 + 64]])
     // Over the budget the plan thins, but an in-place read is never merged into the settle read after it.
     const thin = planReads(terminal(deleted), NO_HINTS, size, 60, 0.1, end)
     expect(thin.reads.filter((r) => r.why === 'inPlace').map((r) => r.t)).toEqual([expect.closeTo(80 / 60, 5)])
@@ -299,5 +306,61 @@ describe('auto-blur P4: look and plan', () => {
     expect(planReads(scrolled, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
     const zoom = lookOf(size, 60, 2, (i) => ({ changed: i >= 1 && i % 6 === 0 ? [[0, 0, i < 24 ? 300 + 10 * i : 400, i < 24 ? 400 + 10 * i : 500]] : [] }))
     expect(planReads(zoom, NO_HINTS, size, 60, 1e9).reads.filter((r) => r.why === 'inPlace')).toEqual([])
+  })
+
+  it('A value pasted or typed on a line after a label already on screen is read with its label: the settle and typing areas of a burst on one line reach 480 px (times the display scale) to its left, and a caret blinking costs no more (found end to end: a token pasted after "Enter your API key: " was read through an area that cut the label to "[ key:", and never covered)', () => {
+    // A terminal at 1080p30: the label printed at 0.6 s (x 8-260), a 32-character key pasted after it at 4.0 s
+    // (x 260-663, 12.6 px a character), Enter at 5.0 s ("OK" and a new prompt under it), another window at 15 s.
+    const label: Box = [8, 4, 252, 22]
+    const key: Box = [260, 4, 403, 22]
+    const terminal = lookOf(HD, 30, 25, (_i, t) => {
+      const at = (x: number): boolean => Math.abs(t - x) < 1e-6
+      if (at(0.6)) return { changed: [label] }
+      if (at(4)) return { changed: [key] }
+      if (at(5)) return { changed: [[8, 30, 24, 22], [8, 56, 24, 22]] }
+      if (at(15)) return { changed: [[0, 0, 1920, 1080]] }
+      return {}
+    })
+    const line: Box = [label[0], label[1], key[0] + key[2] - label[0], label[3]]
+    const readsLine = (hints: ReadHints, scale = 1): boolean => planReads(terminal, { ...hints, scale }, HD, 30, readBudget(25, HD), 25).reads.some((r) => r.t >= 4 && r.t < 15 && covers(r.areas, line))
+    // With the paste key (keystrokes on), and without any cursor data.
+    expect(readsLine(hintsOf(cursor({ keys: [{ t: 4, label: 'Ctrl + V' }] })))).toBe(true)
+    expect(readsLine(NO_HINTS)).toBe(true)
+    // A typing read with no click reaches to the left too: typed one character a frame, keystrokes on.
+    const typedAt = (c: number): number => Math.round((4 + c / 30) * 30) / 30
+    const typed = lookOf(HD, 30, 25, (_i, t) => {
+      if (Math.abs(t - 0.6) < 1e-6) return { changed: [label] }
+      for (let c = 0; c < 32; c++) if (Math.abs(t - typedAt(c)) < 1e-6) return { changed: [[260 + 12.6 * c, 4, 12.6, 22]] }
+      return {}
+    })
+    const typing = planReads(typed, hintsOf(cursor({ valid: false, typing: [{ t: 4, end: typedAt(31) }] })), HD, 30, 1e9, 25).reads.filter((r) => r.why === 'typing')
+    expect(typing).toHaveLength(1)
+    expect(covers(typing[0].areas, line)).toBe(true)
+    // At 200% the reach is twice as long: "AWS Secret Access Key [None]: " at 19 px a character (570 px), then its
+    // 40-character secret pasted (760 px), is read whole.
+    const wide = lookOf(HD, 30, 25, (_i, t) => (Math.abs(t - 0.6) < 1e-6 ? { changed: [[8, 4, 570, 44]] } : Math.abs(t - 4) < 1e-6 ? { changed: [[578, 4, 760, 44]] } : {}))
+    expect(planReads(wide, hintsOf(cursor({ scale: 2 })), HD, 30, 1e9, 25).reads.some((r) => r.t >= 4 && covers(r.areas, [8, 4, 1330, 44]))).toBe(true)
+    // The reach never takes a read into the 1920×1088 bucket its own area does not need: a chat's typed line 600 px
+    // long from x 320 is read in the 960×544 bucket, as before (reaching the whole 480 px, it cost five times the units).
+    const chat = lookOf(HD, 30, 6, (_i, t) => (Math.abs(t - 1) < 1e-6 ? { changed: [[320, 500, 600, 22]] } : {}))
+    const chatRead = planReads(chat, NO_HINTS, HD, 30, 1e9, 6).reads.filter((r) => r.why === 'settle')
+    expect(chatRead.map((r) => r.units)).toEqual([0.2])
+    // Its tiles [320, 480, 608, 64] padded to [256, 416, 736, 192], reaching 224 px: as far as the 960 px bucket goes.
+    expect(chatRead[0].areas).toEqual([[256 - 224, 416, 960, 192]])
+
+    // A caret blinking at x 1200 (one tile) or across two tiles (x 1215) for a minute, as Windows blinks it
+    // (0.53 s): each settle read is its tiles padded by 64 px, as before, and the plan fits its budget unthinned.
+    for (const x of [1200, 1215]) {
+      const caret: Box = [x, 300, 2, 22]
+      const blink = lookOf(HD, 30, 60, (_i, t) => (Math.abs(t - Math.floor(t / 0.53 + 1e-6) * 0.53) < 1 / 60 ? { changed: [caret] } : {}))
+      const plan = planReads(blink, NO_HINTS, HD, 30, readBudget(60, HD), 60)
+      const settle = plan.reads.filter((r) => r.why === 'settle')
+      expect(settle.length).toBeGreaterThan(20)
+      // Its tiles: one or two columns, rows 9-10 (y 288-352).
+      const tiles: Box = [Math.floor(x / 32) * 32, 288, (Math.ceil((x + 2) / 32) - Math.floor(x / 32)) * 32, 64]
+      for (const r of settle) expect(r.areas, `caret at ${x}, read at ${r.t}`).toEqual([[tiles[0] - 64, tiles[1] - 64, tiles[2] + 128, tiles[3] + 128]])
+      expect(settle.every((r) => r.units === 0.1)).toBe(true)
+      expect(plan.thinned).toBe(0)
+    }
   })
 })

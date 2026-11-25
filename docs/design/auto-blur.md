@@ -1645,6 +1645,22 @@ gap between them, no area cut). A unit with its lines and careful re-reads costs
    analysed frame can be one before it, and a phone number a scroll was bringing in at the bottom
    edge, cut there, was misread ("+1.415.555.4187") and never covered. The area is the union of the
    burst's changed tiles, padded by 64 × `scale` video pixels.
+   **New: a value after its label.** For a burst on one line (at most three rows of tiles, below)
+   with no real move of its region, each of its pieces three tile columns wide or more reaches up to
+   480 × `scale` px further to the left, where the label of a value typed, pasted or printed after
+   it stands on its line, on screen already, so it never changed with the value: a 40-character key
+   pasted after "Personal access token: " (or "Enter your API key: ") was read through an area that
+   began 64-95 px left of it and cut the label to "ken:" ("[ key:"), the reads after it cut the line
+   on its other side, and the key was never covered (found end to end, with and without the paste
+   key in `cursor.json`). A caret blinking is one or two tile columns and keeps its padded area
+   alone. The reach never takes a read into the 1920×1088 bucket that its padded area does not need:
+   it stops where the area is 960 px wide, so it costs at most 0.1 unit a read (a chat's typed lines,
+   600 px long from x 320, cost three times the units reaching the whole 480 px; the area of a key of
+   40 characters at 12.6 px a character still reaches at least 352 px to its left with its padding,
+   more than the 328 px of "Secret Access Key [None]: ", whose words name it, §6.6).
+   Measured on the look data of A1, A16's cases and the evaluation sets: every plan's units the same
+   but `type-key`'s (1.3 to 1.4); a 10-minute chat typed a line every 12 s from 15 to 20 units for
+   300 px lines and the same 20 for 600 px lines.
    **In-place reads.** A burst on one line (its changed tiles in at most three rows of tiles: a line
    of text lies in one, two where it straddles them) that, after its changed tiles last grew, changes
    a tile older than those it last grew by (the text in it deleted or changed in place, not typed on)
@@ -1658,7 +1674,8 @@ gap between them, no area cut). A unit with its lines and careful re-reads costs
    region since the last read of it.
 4. **Typing reads**: 0.3 s after each typing burst ends and after each paste: a (640 × 200) ×
    `scale` px box around the click before the burst when positions are valid, else the changed
-   regions since the burst started.
+   regions since the burst started, padded as settle areas are, each on one line and three tile
+   columns wide or more reaching to its left as point 2 says.
 5. **Periodic reads**: the whole frame every 60 s in which no read covered half of it.
 6. **Merging, always**: settle and typing areas of overlapping regions less than 1.0 s apart are read
    once, at the later one's frame, over the union of their areas. Text shown for less than about a
