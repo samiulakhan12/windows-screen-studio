@@ -2047,8 +2047,11 @@ inverted (dark mode, a highlight), so one template serves both.
   otherwise); a text found where its own motion puts it is not searched for, as it gives no evidence
   anyway; and a call holds one slice of each walker's search and at most 24,000 candidates in all, so
   many walkers searching one frame never make a command longer than the helper reads. Measured: that
-  search 0.98 s; the 150% set's Find 279 s and the 200% set's 439 s (248 s and 337 s with the
-  incomplete grid), A1's within its band.
+  search 0.98 s; in the app (A16 and A1, each alone on this machine) the 150% set's Find 264 s and the
+  200% set's 452 s, against 248 s and 337 s with the incomplete grid, the held-out set's 108 s against
+  128 s, and A1's 28 s, within its band (§5.11). The 200% set's searches cost the most: its parts hold
+  four times the pixels of the held-out set's, and a page is searched for each item lost at its cut
+  (headless, 199 s of its 439 s in 244 searches of 6.9 million candidates in all).
 
 "Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
 §5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any
@@ -2309,7 +2312,11 @@ because its frames are decoded after the reads rather than beside them. On recor
 page, the follow phase is the template searches at each cut, not decoding: on the held-out set
 (headless, 129 s) it took 64 s, 52 s of it in the 62 matches over 0.2 s, each walker lost at a cut
 trying the zoom grid and the region's other places (§5.8 steps 4 and 6) at about 2 µs a placement of
-a part; the inner product itself is at its scalar speed, so only fewer placements would shorten it.
+a part, the inner product at its scalar speed. **New:** the search reaches every place of its region,
+and the helper skips the windows that cannot hold the text, shares one integral image among a
+search's windows and works out the inner product in vector registers (§5.8): headless, the
+held-out set's Find takes 117 s, 20 s of it in 241 searches of 1.6 million candidates in all (in the
+app 108 s, against 128 s before); the 200% set's searches take 199 s of its 439 s.
 
 | Process | Peak memory |
 |---|---|
