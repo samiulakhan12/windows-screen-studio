@@ -25,6 +25,12 @@ use std::time::{Duration, Instant};
 
 /// Search radius around each candidate's place, in template (half-size) pixels.
 pub const RADIUS: i64 = 4;
+/// A window of places, or a place, whose pixels hold less gradient variation than this share of a part's
+/// own is not scored (`Window::around`, `Template::score_in`): a blank stretch of a page, or a recording's
+/// noise on it.
+const FLAT: f64 = 0.02;
+/// A match asking for this many candidates or more (a search) takes its windows' sums from one integral image.
+const SHARED_SUMS: usize = 64;
 /// A backward piece reaches at least this far below its end: from the key frame at or before it.
 const PIECE_S: f64 = 0.5;
 /// A backward piece keeps at most this much (a key-frame interval of up to a second, and PIECE_S).
@@ -107,6 +113,36 @@ impl Template {
         Template::new(self.x, self.y, w, h, raw)
     }
 
+    /// The least gradient variation (sum of squared deviations from the mean) pixels under a place must
+    /// hold for the place to be scored: FLAT of the part's own. The part itself, at a seventh of its
+    /// contrast or more, holds more (§5.8, the template search).
+    fn least(&self) -> f64 {
+        FLAT * (self.norm as f64) * (self.norm as f64)
+    }
+
+    /// NCC at top-left (x, y) of `g` from a window's sums: None outside the frame or the window, and
+    /// None where the pixels under the place hold less variation than `least` (no place of the part).
+    /// The same score as `score`, the pixels' sums taken from the window's integral image and the
+    /// cross term from `dot`.
+    fn score_in(&self, g: &Grad, win: &Window, x: i64, y: i64) -> Option<f32> {
+        if x < win.x0 as i64 || y < win.y0 as i64 || x as usize + self.w > win.x1 || y as usize + self.h > win.y1 {
+            return None;
+        }
+        let (x, y) = (x as usize, y as usize);
+        let (sum, sum2) = win.sums(x, y, self.w, self.h);
+        let var = sum2 - sum * sum / (self.w * self.h) as f64;
+        if var < self.least() || var <= 1e-3 {
+            return None;
+        }
+        stats::add(&stats::MATCHES, 1);
+        let mut cross = 0f32;
+        for r in 0..self.h {
+            cross += dot(&g.grad[(y + r) * g.w + x..(y + r) * g.w + x + self.w], &self.data[r * self.w..(r + 1) * self.w]);
+        }
+        // Σ t·(v − mean v) = Σ t·v, since t has zero mean.
+        Some(cross / (self.norm * (var as f32).sqrt()))
+    }
+
     /// NCC at top-left (x, y) of `g`; None outside the frame.
     fn score(&self, g: &Grad, x: i64, y: i64) -> Option<f32> {
         if x < 0 || y < 0 || x as usize + self.w > g.w || y as usize + self.h > g.h {
@@ -133,6 +169,187 @@ impl Template {
         // Σ t·(v − mean v) = Σ t·v, since t has zero mean.
         Some(cross / (self.norm * var.sqrt()))
     }
+}
+
+/// Integral images of a frame's gradient and of its square over a rectangle [x0, x1) x [y0, y1) of the
+/// frame: the sums over any part of it in O(1).
+struct Integral {
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    /// (x1 - x0 + 1) x (y1 - y0 + 1): the sums over [x0, x) x [y0, y).
+    s1: Vec<f64>,
+    s2: Vec<f64>,
+}
+
+impl Integral {
+    fn of(g: &Grad, x0: usize, y0: usize, x1: usize, y1: usize) -> Integral {
+        let (cw, ch) = (x1 - x0 + 1, y1 - y0 + 1);
+        let mut s1 = vec![0f64; cw * ch];
+        let mut s2 = vec![0f64; cw * ch];
+        for r in 0..y1 - y0 {
+            let (mut a, mut b) = (0f64, 0f64);
+            let row = &g.grad[(y0 + r) * g.w + x0..(y0 + r) * g.w + x1];
+            for (c, &v) in row.iter().enumerate() {
+                let v = v as f64;
+                a += v;
+                b += v * v;
+                s1[(r + 1) * cw + c + 1] = s1[r * cw + c + 1] + a;
+                s2[(r + 1) * cw + c + 1] = s2[r * cw + c + 1] + b;
+            }
+        }
+        Integral { x0, y0, x1, y1, s1, s2 }
+    }
+
+    /// The sum of the gradient and of its square over [x, x + w) x [y, y + h), frame pixels inside the rectangle.
+    fn sums(&self, x: usize, y: usize, w: usize, h: usize) -> (f64, f64) {
+        let cw = self.x1 - self.x0 + 1;
+        let (a, b) = (x - self.x0, y - self.y0);
+        let at = |v: &Vec<f64>, xx: usize, yy: usize| v[yy * cw + xx];
+        let s = |v: &Vec<f64>| at(v, a + w, b + h) - at(v, a, b + h) - at(v, a + w, b) + at(v, a, b);
+        (s(&self.s1), s(&self.s2))
+    }
+
+    fn holds(&self, x0: usize, y0: usize, x1: usize, y1: usize) -> bool {
+        x0 >= self.x0 && y0 >= self.y0 && x1 <= self.x1 && y1 <= self.y1
+    }
+}
+
+/// The pixels of a frame's gradient under every place of one candidate's window (its places ±RADIUS
+/// about top-left (x, y), a part of w x h at each), clipped to the frame, with the sums there: from the
+/// integral image a search shares over all its windows, else from the window's own.
+struct Window<'a> {
+    x0: usize,
+    y0: usize,
+    x1: usize,
+    y1: usize,
+    sums: Sums<'a>,
+}
+
+enum Sums<'a> {
+    Shared(&'a Integral),
+    Own(Integral),
+}
+
+impl<'a> Window<'a> {
+    /// The window about (x, y) for a part of `w` x `h`, or None when it holds no place inside the frame
+    /// or its pixels hold less gradient variation than `least`: no place of it, a subset of its pixels,
+    /// holds more. A blank stretch of a page, or a recording's noise on it, is never searched.
+    fn around(g: &Grad, x: i64, y: i64, w: usize, h: usize, least: f64, shared: Option<&'a Integral>) -> Option<Window<'a>> {
+        let x0 = (x - RADIUS).max(0) as usize;
+        let y0 = (y - RADIUS).max(0) as usize;
+        let x1 = ((x + RADIUS + w as i64).max(0) as usize).min(g.w);
+        let y1 = ((y + RADIUS + h as i64).max(0) as usize).min(g.h);
+        if x1 < x0 + w || y1 < y0 + h {
+            return None;
+        }
+        let sums = match shared.filter(|s| s.holds(x0, y0, x1, y1)) {
+            Some(s) => Sums::Shared(s),
+            None => Sums::Own(Integral::of(g, x0, y0, x1, y1)),
+        };
+        let win = Window { x0, y0, x1, y1, sums };
+        let (all1, all2) = win.sums(x0, y0, x1 - x0, y1 - y0);
+        let n = ((x1 - x0) * (y1 - y0)) as f64;
+        (all2 - all1 * all1 / n >= least).then_some(win)
+    }
+
+    /// The sum of the gradient and of its square over [x, x + w) x [y, y + h), frame pixels inside the window.
+    fn sums(&self, x: usize, y: usize, w: usize, h: usize) -> (f64, f64) {
+        match &self.sums {
+            Sums::Shared(s) => s.sums(x, y, w, h),
+            Sums::Own(s) => s.sums(x, y, w, h),
+        }
+    }
+}
+
+/// Σ a·b over the shorter of the two in vector registers: sixteen products at a time with AVX2 and FMA
+/// where the CPU has them, else eight at a time in two SSE registers (SSE2 is part of every x86-64).
+/// The crate is built for size, where the compiler keeps a plain loop scalar.
+#[cfg(target_arch = "x86_64")]
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    if std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma") {
+        // SAFETY: the CPU has AVX2 and FMA, checked just above.
+        return unsafe { dot_avx2(a, b) };
+    }
+    dot_sse(a, b)
+}
+
+/// `dot` with AVX2 and FMA: sixteen products at a time in two registers, then eight, then one by one.
+///
+/// # Safety
+/// The CPU must have AVX2 and FMA.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn dot_avx2(a: &[f32], b: &[f32]) -> f32 {
+    use std::arch::x86_64::{_mm256_add_ps, _mm256_fmadd_ps, _mm256_loadu_ps, _mm256_setzero_ps, _mm256_storeu_ps};
+    let n = a.len().min(b.len());
+    let (pa, pb) = (a.as_ptr(), b.as_ptr());
+    let mut lanes = [0f32; 8];
+    let mut k = 0;
+    // SAFETY: every load reads eight floats at offsets below n, inside both slices.
+    unsafe {
+        let (mut s0, mut s1) = (_mm256_setzero_ps(), _mm256_setzero_ps());
+        while k + 16 <= n {
+            s0 = _mm256_fmadd_ps(_mm256_loadu_ps(pa.add(k)), _mm256_loadu_ps(pb.add(k)), s0);
+            s1 = _mm256_fmadd_ps(_mm256_loadu_ps(pa.add(k + 8)), _mm256_loadu_ps(pb.add(k + 8)), s1);
+            k += 16;
+        }
+        if k + 8 <= n {
+            s0 = _mm256_fmadd_ps(_mm256_loadu_ps(pa.add(k)), _mm256_loadu_ps(pb.add(k)), s0);
+            k += 8;
+        }
+        _mm256_storeu_ps(lanes.as_mut_ptr(), _mm256_add_ps(s0, s1));
+    }
+    let mut s: f32 = lanes.iter().sum();
+    for i in k..n {
+        s += a[i] * b[i];
+    }
+    s
+}
+
+/// `dot` with SSE2: eight products at a time in two registers, then one by one.
+#[cfg(target_arch = "x86_64")]
+fn dot_sse(a: &[f32], b: &[f32]) -> f32 {
+    use std::arch::x86_64::{_mm_add_ps, _mm_loadu_ps, _mm_mul_ps, _mm_setzero_ps, _mm_storeu_ps};
+    let n = a.len().min(b.len());
+    let eights = n / 8;
+    let mut lanes = [0f32; 4];
+    // SAFETY: SSE2 is always present on x86-64, and every load reads four floats at offsets below
+    // 8 × eights ≤ n, inside both slices.
+    unsafe {
+        let (pa, pb) = (a.as_ptr(), b.as_ptr());
+        let (mut s0, mut s1) = (_mm_setzero_ps(), _mm_setzero_ps());
+        for i in 0..eights {
+            let k = 8 * i;
+            s0 = _mm_add_ps(s0, _mm_mul_ps(_mm_loadu_ps(pa.add(k)), _mm_loadu_ps(pb.add(k))));
+            s1 = _mm_add_ps(s1, _mm_mul_ps(_mm_loadu_ps(pa.add(k + 4)), _mm_loadu_ps(pb.add(k + 4))));
+        }
+        _mm_storeu_ps(lanes.as_mut_ptr(), _mm_add_ps(s0, s1));
+    }
+    let mut s = lanes[0] + lanes[1] + lanes[2] + lanes[3];
+    for i in 8 * eights..n {
+        s += a[i] * b[i];
+    }
+    s
+}
+
+/// Σ a·b over the shorter of the two, eight products at a time.
+#[cfg(not(target_arch = "x86_64"))]
+fn dot(a: &[f32], b: &[f32]) -> f32 {
+    let mut lanes = [0f32; 8];
+    let (ca, cb) = (a.chunks_exact(8), b.chunks_exact(8));
+    let (ra, rb) = (ca.remainder(), cb.remainder());
+    for (x, y) in ca.zip(cb) {
+        for i in 0..8 {
+            lanes[i] += x[i] * y[i];
+        }
+    }
+    let mut s: f32 = lanes.iter().sum();
+    for (x, y) in ra.iter().zip(rb) {
+        s += x * y;
+    }
+    s
 }
 
 struct Track {
@@ -453,6 +670,27 @@ fn match_track(track: &Track, g: &Grad, ask: &TrackAsk) -> Value {
     let mut results: Vec<Best> = vec![];
     let mut peaks: Vec<(f64, f64, f32)> = vec![];
     let mut scaled: HashMap<(usize, u64), Template> = HashMap::new();
+    // A search asks for many places (§5.8): the sums of their windows come from one integral image over
+    // all of them, made once, not one image a window. Zoomed places outside it make their own.
+    let shared = if ask.candidates.len() >= SHARED_SUMS {
+        let mut b: Option<(i64, i64, i64, i64)> = None;
+        for c in ask.candidates.iter().filter(|c| (c.scale - 1.0).abs() < 1e-6) {
+            for &pi in &parts {
+                let tp = track.parts[pi].as_ref().unwrap();
+                let (px, py) = place(track, tp, c);
+                let (bx, by) = (px.round() as i64, py.round() as i64);
+                let r = (bx - RADIUS, by - RADIUS, bx + RADIUS + tp.w as i64, by + RADIUS + tp.h as i64);
+                b = Some(b.map_or(r, |o| (o.0.min(r.0), o.1.min(r.1), o.2.max(r.2), o.3.max(r.3))));
+            }
+        }
+        b.and_then(|(x0, y0, x1, y1)| {
+            let (x0, y0) = (x0.max(0) as usize, y0.max(0) as usize);
+            let (x1, y1) = ((x1.max(0) as usize).min(g.w), (y1.max(0) as usize).min(g.h));
+            (x1 > x0 && y1 > y0).then(|| Integral::of(g, x0, y0, x1, y1))
+        })
+    } else {
+        None
+    };
     for (ci, c) in ask.candidates.iter().enumerate() {
         let mut best: Option<Best> = None;
         for &pi in &parts {
@@ -473,11 +711,18 @@ fn match_track(track: &Track, g: &Grad, ask: &TrackAsk) -> Value {
             };
             let (px, py) = place(track, tp, c);
             let (bx, by) = (px.round() as i64, py.round() as i64);
+            // A window over a blank stretch holds no place of the part: none of its places is scored, nor any
+            // other place whose own pixels are blank. A search over a whole page (a candidate every 16 video
+            // pixels, §5.8) is mostly such places.
+            let Some(win) = Window::around(g, bx, by, tp.w, tp.h, tp.least(), shared.as_ref()) else {
+                stats::add(&stats::FLAT_WINDOWS, 1);
+                continue;
+            };
             let side = (2 * RADIUS + 1) as usize;
             let mut grid = vec![f32::MIN; side * side];
             for oy in -RADIUS..=RADIUS {
                 for ox in -RADIUS..=RADIUS {
-                    if let Some(v) = tp.score(g, bx + ox, by + oy) {
+                    if let Some(v) = tp.score_in(g, &win, bx + ox, by + oy) {
                         grid[((oy + RADIUS) as usize) * side + (ox + RADIUS) as usize] = v;
                     }
                 }
@@ -575,5 +820,127 @@ mod tests {
         let m = match_track(&track, &b, &ask);
         assert!(m["parts"][0].as_f64().unwrap() > 0.9, "{m}");
         assert_eq!((m["best"]["dx"].as_f64().unwrap(), m["best"]["dy"].as_f64().unwrap()), (6.0, -4.0));
+    }
+
+    /// `text_like`'s strokes in `ink` on `bg`, with a recording's noise of up to ±`noise` levels.
+    fn text_on(w: usize, h: usize, at: (usize, usize), bg: u8, ink: u8, noise: i32) -> Vec<u8> {
+        let mut v = text_like(w, h, at, false);
+        let mut seed = 7u32;
+        for p in v.iter_mut() {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let n = if noise > 0 { (seed >> 16) as i32 % (2 * noise + 1) - noise } else { 0 };
+            *p = ((if *p == 20 { ink } else { bg }) as i32 + n).clamp(0, 255) as u8;
+        }
+        v
+    }
+
+    /// The part of `text_like`'s text cut at (37, 27), 78 x 16 template pixels, from a frame of `w` x `h`.
+    fn text_track(w: usize, h: usize) -> Track {
+        let a = gray(text_like(w, h, (40, 30), false), w, h);
+        let raw: Vec<f32> = (27..43).flat_map(|y| a.grad[y * w + 37..y * w + 37 + 78].to_vec()).collect();
+        Track { cx: 76.0, cy: 35.0, parts: vec![Template::new(37.0, 27.0, 78, 16, raw)] }
+    }
+
+    #[test]
+    fn a_window_over_a_blank_stretch_is_not_searched_and_faint_text_still_is() {
+        let (w, h) = (400, 160);
+        let track = text_track(w, h);
+        let at = |dx: f64, dy: f64| TrackAsk { track: 1, parts: vec![0], candidates: vec![Candidate { dx, dy, scale: 1.0 }] };
+        // The text moved to (240, 100) on a page with a recording's noise (±3 levels): the window at its old
+        // place holds the noise only and is not searched, the one at its new place finds it. Candidates are
+        // video pixels, twice the template's.
+        let b = gray(text_on(w, h, (240, 100), 235, 20, 3), w, h);
+        let old = match_track(&track, &b, &at(0.0, 0.0));
+        assert!(old["best"].is_null(), "{old}");
+        let new = match_track(&track, &b, &at(400.0, 140.0));
+        assert!(new["parts"][0].as_f64().unwrap() > 0.9, "{new}");
+        // At a sixth of its contrast (36 levels against 215), with the noise, the text is still searched and found.
+        let faint = gray(text_on(w, h, (240, 100), 235, 199, 3), w, h);
+        let m = match_track(&track, &faint, &at(400.0, 140.0));
+        assert!(m["parts"][0].as_f64().unwrap() > 0.6, "{m}");
+        // A whole blank page with no noise: nothing is scored (today's scores there were 0).
+        let blank = gray(vec![235u8; w * h], w, h);
+        assert!(match_track(&track, &blank, &at(400.0, 140.0))["best"].is_null());
+    }
+
+    #[test]
+    fn dot_is_the_sum_of_the_products_at_every_length() {
+        let a: Vec<f32> = (0..41).map(|i| ((i * 37) % 23) as f32 - 9.5).collect();
+        let b: Vec<f32> = (0..41).map(|i| ((i * 11) % 17) as f32 * 0.25 - 1.0).collect();
+        for n in 0..=41 {
+            let want: f32 = a[..n].iter().zip(&b[..n]).map(|(x, y)| x * y).sum();
+            assert!((dot(&a[..n], &b[..n]) - want).abs() <= 1e-3 * (1.0 + want.abs()), "length {n}");
+            // Each kernel, the one this CPU uses and the others.
+            #[cfg(target_arch = "x86_64")]
+            {
+                assert!((dot_sse(&a[..n], &b[..n]) - want).abs() <= 1e-3 * (1.0 + want.abs()), "sse, length {n}");
+                if std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma") {
+                    // SAFETY: checked just above.
+                    let v = unsafe { dot_avx2(&a[..n], &b[..n]) };
+                    assert!((v - want).abs() <= 1e-3 * (1.0 + want.abs()), "avx2, length {n}");
+                }
+            }
+        }
+        // The shorter slice bounds it.
+        assert_eq!(dot(&a[..9], &b[..5]), dot(&a[..5], &b[..5]));
+    }
+
+    #[test]
+    fn a_window_scores_each_place_as_the_place_alone_does() {
+        let (w, h) = (400, 160);
+        let track = text_track(w, h);
+        let tp = track.parts[0].as_ref().unwrap();
+        let b = gray(text_on(w, h, (233, 97), 235, 60, 4), w, h);
+        let mut scored = 0;
+        // A search's integral image shared by its windows, and each window's own.
+        let whole = Integral::of(&b, 0, 0, w, h);
+        // Windows over the text, at its edges, cut by the frame's edges, and over the blank page.
+        for shared in [None, Some(&whole)] {
+            for (x, y) in [(230i64, 94i64), (226, 90), (236, 99), (2, 2), (400 - 80, 160 - 18), (60, 120), (300, 10)] {
+                let Some(win) = Window::around(&b, x, y, tp.w, tp.h, tp.least(), shared) else { continue };
+                for oy in -RADIUS..=RADIUS {
+                    for ox in -RADIUS..=RADIUS {
+                        let fast = tp.score_in(&b, &win, x + ox, y + oy);
+                        let one = tp.score(&b, x + ox, y + oy);
+                        match fast {
+                            Some(v) => {
+                                scored += 1;
+                                assert!((v - one.unwrap()).abs() < 1e-3, "({}, {}): {v} against {one:?}", x + ox, y + oy);
+                            }
+                            // Not scored: off the frame, or too little variation there to hold the part.
+                            None => {
+                                if let Some(v) = one {
+                                    let (sum, sum2) = win.sums((x + ox) as usize, (y + oy) as usize, tp.w, tp.h);
+                                    let var = sum2 - sum * sum / ((tp.w * tp.h) as f64);
+                                    assert!(var < tp.least(), "({}, {}) scored {v} alone", x + ox, y + oy);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(scored > 300, "{scored}");
+    }
+
+    #[test]
+    fn a_search_over_a_whole_page_skips_its_blank_windows_and_finds_the_text_between_grid_points() {
+        let (w, h) = (400, 160);
+        let track = text_track(w, h);
+        // The text at (233, 97): between the points of a grid every 8 template pixels (16 video pixels).
+        let b = gray(text_on(w, h, (233, 97), 235, 20, 2), w, h);
+        let mut candidates = vec![];
+        for y in (0..h as i64).step_by(8) {
+            for x in (0..w as i64).step_by(8) {
+                candidates.push(Candidate { dx: 2.0 * (x - 37) as f64, dy: 2.0 * (y - 27) as f64, scale: 1.0 });
+            }
+        }
+        let before = stats::get(&stats::FLAT_WINDOWS);
+        let m = match_track(&track, &b, &TrackAsk { track: 1, parts: vec![0], candidates: candidates.clone() });
+        let skipped = stats::get(&stats::FLAT_WINDOWS) - before;
+        assert!(m["parts"][0].as_f64().unwrap() > 0.9, "{m}");
+        assert_eq!((m["best"]["dx"].as_f64().unwrap(), m["best"]["dy"].as_f64().unwrap()), (2.0 * (233 - 40) as f64, 2.0 * (97 - 30) as f64));
+        // Most of the page's windows are blank (other tests may count theirs meanwhile: at least these).
+        assert!(skipped as usize >= candidates.len() * 3 / 4, "{skipped} of {}", candidates.len());
     }
 }

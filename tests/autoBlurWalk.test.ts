@@ -554,6 +554,47 @@ describe('auto-blur P4: following', () => {
       }
   })
 
+  it('Many walks searching one frame ask the helper in calls of at most 24,000 candidates, one slice of each walk\'s search a call, so no command grows longer than the helper reads (a page of 30 items lost at a cut searches 250,000 places)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    // 30 texts on a page cut at 1.5 s; the read at 2 s holds none of them.
+    const boxes: Box[] = Array.from({ length: 30 }, (_v, i) => [100 + (i % 5) * 340, 100 + Math.floor(i / 5) * 150, 205, 14])
+    const text: Planted = { key: KEY, text: 'priya.raman@example.com', at: (t) => (t < 1.5 - 1e-6 ? boxes[0] : null) }
+    const look = lookOf(HD, 30, 4, (_i, t) => (Math.abs(t - 1.5) < 1e-6 ? { changed: [page] } : {}))
+    const starts = boxes.map((b, i) => ({ ...start(0.5, [b[0] - 6, b[1] - 6, b[2] + 12, b[3] + 12], b, `h${i}`), parts: partsOf(b, b[3]) }))
+    const reads = readIndex([readOf(2, [page], [{ box: [100, 1000, 600, 20], text: 'Another page' }])])
+    const m = matcherOf([text])
+    await walkSpan(starts, 1, look, reads, m, NO_HINTS, HD, { duration: 4 })
+    const searches = m.calls.filter((c) => Math.abs(c.t - 2) < 1e-6 && c.candidates.some((x) => x.length > 100))
+    const total = searches.reduce((s, c) => s + c.candidates.reduce((u, x) => u + x.length, 0), 0)
+    expect(total).toBeGreaterThan(200000)
+    for (const c of searches) {
+      expect(c.candidates.reduce((u, x) => u + x.length, 0)).toBeLessThanOrEqual(24000)
+      expect(new Set(c.tracks).size).toBe(c.tracks.length)
+    }
+  })
+
+  it('A text found where its own motion puts it gives no evidence, and its region is not searched: a complete search over a page costs a second or more with the real helper', async () => {
+    // The page changes from 1 s to 1.5 s with the text hidden under a tooltip (it matches nowhere, and its walk is
+    // lost over the page); the tooltip has gone by 1.6 s; at 2 s a read over the page misses the text's line, and
+    // its own place shows it.
+    const T: Box = [700, 400, 205, 14]
+    const page: Box = [0, 0, 1920, 1080]
+    const text: Planted = { key: KEY, text: 'priya.raman@example.com', at: (t) => (t >= 1 - 1e-6 && t < 1.6 - 1e-6 ? null : T) }
+    const look = lookOf(HD, 30, 4, (_i, t) => (t >= 1 - 1e-6 && t <= 1.5 + 1e-6 ? { changed: [page] } : {}))
+    const cover: Box = [T[0] - 6, T[1] - 6, T[2] + 12, T[3] + 12]
+    const s = { ...start(0.5, cover, T, 'h0'), parts: partsOf(T, T[3]) }
+    const reads = readIndex([readOf(2, [page], [{ box: [100, 100, 600, 20], text: 'Another line' }])])
+    const m = matcherOf([text])
+    const [fwd] = await walkSpan([s], 1, look, reads, m, NO_HINTS, HD, { duration: 4 })
+    // Its own places were asked at the read, and no search over the page.
+    const atRead = m.calls.filter((c) => Math.abs(c.t - 2) < 1e-6)
+    expect(atRead.length).toBeGreaterThan(0)
+    expect(Math.max(...atRead.map((c) => c.candidates[0].length))).toBeLessThan(10)
+    // No evidence: the cover holds over the text to the end.
+    expect(fwd.end).toBe(4)
+    expect(uncovered(fwd, 30, text, 0.5, 4)).toEqual([])
+  })
+
   it('Evidence of absence on a page of other text: the template search finds the text only where it would place it (one clear match, or a part at 0.85), and never on a line the read read (found end to end: a search over a page of text always found a part at 0.5, and the cover blacked out the video to its end)', async () => {
     const T: Box = [400, 300, 200, 30]
     const page: Box = [0, 0, 1920, 1080]

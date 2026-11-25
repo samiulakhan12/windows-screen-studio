@@ -95,7 +95,11 @@ caught panic the plans are built again from the parsed models (R9).
   goes to C + scale·(p − C) + (dx, dy), C the centre of its parts then. A match searches ±4 template
   pixels around each candidate's place and answers the best candidate refined, every asked part's
   score at that one placement, and `second`, the best score of any other place more than 2 video
-  pixels away, so main can refuse a match that is not clearly the best (R14).
+  pixels away, so main can refuse a match that is not clearly the best (R14). It scores no place
+  whose pixels hold less gradient variation than 2% of the part's own (a blank stretch, a recording's
+  noise; `FLAT`), takes the sums of a search's windows (64 candidates or more) from one integral
+  image, and works out the cross term with AVX2 and FMA where the CPU has them, else SSE2 (main's
+  complete template search over a page, §5.8).
 - **Crashes** (§10.4, §10.5): each read runs inside `catch_unwind` and answers `panic`; the panic
   hook prints `ssw-ocr: panic at <file>:<line>` and nothing of the payload (R19). On Windows the
   helper calls `SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX)`,
@@ -152,6 +156,8 @@ build (`SSW_OCR_HELPER_TEST`, or native/bin/ssw-ocr) with the models in `SSW_OCR
   worst case: one region the size of the frame); a still frame costs the tile difference only.
 - **R22**: 20 tracks of one part each over 300 frames: each frame decoded once, matching 0.008 ms a
   part a frame.
+- **A complete template search** of a 2880×1620 evaluation page (18,462 candidates, three parts 200
+  video pixels wide, the release profile): 0.98 s, against 9.4 s scoring every place of every window.
 - **Open**: 1.4 s with every plan built. A whole 1080p frame reads in 1.2-1.9 s with the tiny
   recogniser, and its careful re-reads add about 0.15 s a line.
 

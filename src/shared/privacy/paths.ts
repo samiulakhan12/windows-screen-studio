@@ -139,6 +139,8 @@ const PART_LINES = 6
 const MAX_PARTS = 3
 /** Most candidates of one track in one call of a template search (a search asks as many calls as its grid needs). */
 const MAX_SEARCH = 1200
+/** Most candidates of one call of template searches, all its tracks together (about 1 MB of command). */
+const MAX_CALL = 24000
 /** A read covers a box when this share of it lies in the read's areas. */
 const COVERED = 0.95
 /** A move scoring this is its region's move; a weaker one only when a move of this score in the same frame agrees with it within a look pixel. */
@@ -639,21 +641,34 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
   const clear = (r: TrackMatch | undefined): boolean => !!r && !!r.best && maxPart(r) >= PLACE_SCORE && maxPart(r) - r.second >= CLEAR_BY
 
   /**
-   * Every track's candidates asked of the helper in calls of at most MAX_SEARCH candidates a track, and the
-   * answers of each track joined as one answer of all its candidates: the best place, and as the second the
-   * best score of any other place more than 2 px from it (the helper's own rule within one call).
+   * Every track's candidates asked of the helper in slices of at most MAX_SEARCH candidates, each call holding
+   * one slice a track and at most MAX_CALL candidates in all (so many walkers searching one frame never make
+   * a command longer than the helper reads), and the answers of each track joined as one answer of all its
+   * candidates: the best place, and as the second the best score of any other place more than 2 px from it
+   * (the helper's own rule within one call).
    */
   const matchAll = async (t: number, asks: readonly { w: Walker; candidates: Xf[] }[]): Promise<Map<Walker, TrackMatch | undefined>> => {
     const got = new Map<Walker, TrackMatch[]>()
-    const rounds = Math.max(1, ...asks.map((a) => Math.ceil(a.candidates.length / MAX_SEARCH)))
-    for (let k = 0; k < rounds; k++) {
-      const now = asks.filter((a) => k === 0 || a.candidates.length > k * MAX_SEARCH)
-      const res = await m.match(t, now.map((a) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: a.candidates.slice(k * MAX_SEARCH, (k + 1) * MAX_SEARCH) })))
-      for (const a of now) {
+    // The slices, every track's first ones before any track's second.
+    const slices = asks.flatMap((a) => Array.from({ length: Math.max(1, Math.ceil(a.candidates.length / MAX_SEARCH)) }, (_v, k) => ({ a, k }))).sort((x, y) => x.k - y.k)
+    let call: typeof slices = []
+    let size = 0
+    const send = async (): Promise<void> => {
+      const res = await m.match(t, call.map(({ a, k }) => ({ track: a.w.index, parts: a.w.tpl.parts.map((_p, i) => i), candidates: a.candidates.slice(k * MAX_SEARCH, (k + 1) * MAX_SEARCH) })))
+      for (const { a } of call) {
         const r = res.find((x) => x.track === a.w.index)
         if (r) got.set(a.w, [...(got.get(a.w) ?? []), r])
       }
+      call = []
+      size = 0
     }
+    for (const s of slices) {
+      const n = Math.min(MAX_SEARCH, Math.max(0, s.a.candidates.length - s.k * MAX_SEARCH))
+      if (call.length && (size + n > MAX_CALL || call.some((c) => c.a === s.a))) await send()
+      call.push(s)
+      size += n
+    }
+    if (call.length) await send()
     const out = new Map<Walker, TrackMatch | undefined>()
     for (const a of asks) {
       const list = got.get(a.w) ?? []
@@ -1192,17 +1207,18 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
         t,
         searches.map((w) => ({ track: w.index, parts: w.tpl.parts.map((_p, i) => i), candidates: w.paged ? unexplained(w, ownPlaces(w, f), explainedBy.get(w) ?? []) : ownPlaces(w, f) }))
       )
-      const res = await matchAll(
-        t,
-        searches.map((w) => ({ w, candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))
-      )
-      for (const w of searches) {
-        const r = res.get(w)
-        // Lost at a page change, its own places hold the new page: they are judged as the region's
-        // other places are (one clear match, or a part at 0.85), never by the 0.5 of a text partly under
-        // a tooltip, which the new page's content there reaches unread (0.53 on the held-out pages).
+      // Lost at a page change, its own places hold the new page: they are judged as the region's
+      // other places are (one clear match, or a part at 0.85), never by the 0.5 of a text partly under
+      // a tooltip, which the new page's content there reaches unread (0.53 on the held-out pages). A text
+      // found at its own places gives no evidence here, and its region is not searched.
+      const atOwn = (w: Walker): boolean => {
         const at = own.find((x) => x.track === w.index)
-        if (found(r) || (w.paged ? found(at) : maxPart(at) >= ABSENT_SCORE)) continue
+        return w.paged ? found(at) : maxPart(at) >= ABSENT_SCORE
+      }
+      const searched = searches.filter((w) => !atOwn(w))
+      const res = searched.length ? await matchAll(t, searched.map((w) => ({ w, candidates: searchCandidates(w, w.box, explainedBy.get(w)) }))) : new Map<Walker, TrackMatch | undefined>()
+      for (const w of searched) {
+        if (found(res.get(w))) continue
         // The first evidence holds (the frame nearest the text); later evidence only waits behind it.
         if (!reads.templateOnly) w.pending ??= f
         else if (dir === 1) endForward(w, f)

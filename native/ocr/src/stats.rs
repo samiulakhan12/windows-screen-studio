@@ -23,6 +23,9 @@ pub static FOLLOW_GRADIENTS: AtomicU64 = AtomicU64::new(0);
 pub static FOLLOW_KEPT_MAX: AtomicU64 = AtomicU64::new(0);
 /// Template matches made (one part at one candidate in one frame).
 pub static MATCHES: AtomicU64 = AtomicU64::new(0);
+/// Windows of places not searched: too little gradient variation to hold the part (follow.rs FLAT), or
+/// no place inside the frame.
+pub static FLAT_WINDOWS: AtomicU64 = AtomicU64::new(0);
 /// Nanoseconds spent matching.
 pub static MATCH_NS: AtomicU64 = AtomicU64::new(0);
 /// Nanoseconds spent analysing look frames, and how many.
@@ -63,6 +66,7 @@ pub fn json() -> serde_json::Value {
         "followGradients": get(&FOLLOW_GRADIENTS),
         "followKeptMax": get(&FOLLOW_KEPT_MAX),
         "matches": get(&MATCHES),
+        "flatWindows": get(&FLAT_WINDOWS),
         "matchNs": get(&MATCH_NS),
         "lookNs": get(&LOOK_NS),
         "lookFrames": get(&LOOK_FRAMES),

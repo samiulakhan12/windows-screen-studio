@@ -2037,6 +2037,18 @@ inverted (dark mode, a highlight), so one template serves both.
   over a 1080p page), so a text a page laid out again had moved between its points was taken for gone,
   and without the reader its cover ended while it showed (in 8 of 16 landing places over a page and 1
   of 16 in a panel at 200% with the real helper).
+  **New: what the complete search costs.** Asked naively it cost too much: a search over a 2880×1620
+  page (18,462 candidates, three parts) took 9.4 s with the real helper, and the 150% evaluation set's
+  Find took 1,506 s against 248 s. So the helper scores no place of a window whose pixels hold less
+  gradient variation than 2% of the part's own (a blank stretch of a page, or a recording's noise on
+  it: the part itself, at a seventh of its contrast or more, holds more, so no place of the text is
+  skipped), takes the sums of a search's windows (a match of 64 candidates or more) from one integral
+  image, and works out the cross term in vector registers (AVX2 and FMA where the CPU has them, SSE2
+  otherwise); a text found where its own motion puts it is not searched for, as it gives no evidence
+  anyway; and a call holds one slice of each walker's search and at most 24,000 candidates in all, so
+  many walkers searching one frame never make a command longer than the helper reads. Measured: that
+  search 0.98 s; the 150% set's Find 279 s and the 200% set's 439 s (248 s and 337 s with the
+  incomplete grid), A1's within its band.
 
 "Holding the text" is generous, because reading is not exact (folded exact text is 94.6-97.5%,
 §5.6): a line holds it when it has the folded own text; or for a text of 12 characters or more, any
@@ -2301,7 +2313,7 @@ a part; the inner product itself is at its scalar speed, so only fewer placement
 
 | Process | Peak memory |
 |---|---|
-| `ssw-ocr.exe` | ≤ 600 MB at 1080p and 4K, ≤ 750 MB at 7680×2160: detector plans for the three buckets 259 MB (*measured*, with their input and activations), small recogniser plans 188 MB and tiny 58 MB (*measured*, each with its own process's base; all built once at open and kept, §5.5), a careful re-read running beside a read (§5.5), at most 3 RGB frames in flight (6.3 MB each at 1080p, 25 MB at 4K, 50 MB at 7680×2160), line crops ≤ 20 MB, a follow session's frames at half size in grey (backward the piece it is in and the 0.1 s above the frame asked: at most about 0.85 s of frames with the proxy's key frame every 15 frames, 26 MB at 1080p60 and 105 MB at 4K; forward 8 frames) and the gradients of the last two frames asked (4 MB at 1080p, 17 MB at 4K), the look worker ≤ 10 MB; *measured* peak 442 MB at 1080p (A1) and 502 MB at 3840×2160 |
+| `ssw-ocr.exe` | ≤ 600 MB at 1080p and 4K, ≤ 750 MB at 7680×2160: detector plans for the three buckets 259 MB (*measured*, with their input and activations), small recogniser plans 188 MB and tiny 58 MB (*measured*, each with its own process's base; all built once at open and kept, §5.5), a careful re-read running beside a read (§5.5), at most 3 RGB frames in flight (6.3 MB each at 1080p, 25 MB at 4K, 50 MB at 7680×2160), line crops ≤ 20 MB, a follow session's frames at half size in grey (backward the piece it is in and the 0.1 s above the frame asked: at most about 0.85 s of frames with the proxy's key frame every 15 frames, 26 MB at 1080p60 and 105 MB at 4K; forward 8 frames) and the gradients of the last two frames asked (4 MB at 1080p, 17 MB at 4K), while a template search's call runs the integral images of its windows (at most a half-size frame's: 8 MB at 1080p, 33 MB at 4K, §5.8), the look worker ≤ 10 MB; *measured* peak 442 MB at 1080p (A1) and 502 MB at 3840×2160 |
 | `ffmpeg.exe` | 76-124 MB each (*measured* peak: look 76 MB, a read's seek 93 MB, full-size RGB 124 MB); at most one at a time in each phase |
 | main (scan state) | ≤ 60 MB: look data 11 MB, the run's folded texts and boxes, the paths |
 | renderer | the covers only: under 5 MB for 2,000 covers |
