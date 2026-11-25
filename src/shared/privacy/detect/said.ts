@@ -53,7 +53,7 @@ const MERGE_GAP = 1.0
  * A run said as a code: one 4-8 digit number, single digits (4 or more), groups of 3-4, or two or
  * three pairs said in one go ("forty eight twenty nine", "25 48 91"); never a year or a version, nor
  * pairs that say a year ("twenty twenty-four") or that a sentence or clause end parts ("chapter
- * twelve. Thirty four tests").
+ * twelve. Thirty four tests", "lines 12, 34").
  */
 function codeShaped(r: Pick<DigitRun, 'tokens' | 'breaks'>): boolean {
   const t = r.tokens
@@ -82,10 +82,20 @@ export function transcriptWords(transcript: Pick<Transcript, 'segments'> | null 
   return wordsInOrder(transcript).words
 }
 
-/** Tokens a..b of run `r` as a run of their own. */
+/** Tokens a..b of run `r` as a run of their own, with the breaks inside it (so pairs a comma parts stay no code). */
 function partOf(r: DigitRun, a: number, b: number): DigitRun {
   const tokens = r.tokens.slice(a, b + 1)
-  return { digits: tokens.join(''), first: r.spans[a][0], last: r.spans[b][1], tokens, spans: r.spans.slice(a, b + 1), breaks: [], stops: [] }
+  const inside = (k: number): boolean => k > a && k <= b
+  return {
+    digits: tokens.join(''),
+    first: r.spans[a][0],
+    last: r.spans[b][1],
+    tokens,
+    spans: r.spans.slice(a, b + 1),
+    spelled: r.spelled.slice(a, b + 1),
+    breaks: r.breaks.filter(inside).map((k) => k - a),
+    stops: r.stops.filter(inside).map((k) => k - a)
+  }
 }
 
 /** The longest number any rule reads (an ID, 20 digits): no longer part of a run is tried. */
@@ -141,24 +151,42 @@ export function detectSaid(transcript: Pick<Transcript, 'segments'> | null | und
       continue
     }
     // A run across a sentence or clause end or a new caption may say more than one number ("… 8904. One
-    // second", "Step two. 482913"): the whole run and each stretch between its breaks are tried, and the
-    // best are kept, never two over one token: the higher score first, then the one across fewer
-    // sentence ends (a number said, then a number word starting the next sentence), then the longer (a
-    // code said in two groups with a comma). Finding 10's card split by a full stop is only valid
-    // whole, so it stays whole.
-    const edges = [0, ...r.breaks, r.tokens.length]
-    const stopsIn = (a: number, b: number): number => r.stops.filter((s) => s > a && s <= b).length
-    const tried: { a: number; b: number; run: DigitRun; kind: PrivateKind; score: number; stops: number }[] = whole ? [{ a: 0, b: r.tokens.length - 1, run: r, ...whole, stops: r.stops.length }] : []
+    // second", "Step two: 482913", "4829, then two factor"): the whole run and each stretch between its
+    // breaks are tried, and the best are kept, never two over one token: the higher score first, then
+    // the one across fewer strong breaks, then the longer (a code said in two groups with a comma).
+    // A strong break is a sentence end, a new caption, or a clause end between a number written in
+    // digits and one said in words ("4 8 2 9 1 3, two more steps"). A number word alone beyond a strong
+    // break is the next sentence's or clause's word, or the last one's, never a digit of the number
+    // ("482913. Two more steps"). A clause end between numbers said in words is a pause inside one
+    // ("চার আট দুই নয়, এক তিন"). One between numbers written in digits is a grouping pause ("4829,
+    // 1234") or parts a list ("rgb 100, 200, 15"): a stretch that holds one is never cut out of the run
+    // there, as no part of a list is a number of its own. Finding 10's card split by a full stop is only
+    // valid whole, so it stays whole.
+    const strong = r.breaks.filter((k) => r.stops.includes(k) || r.spelled[k - 1] !== r.spelled[k])
+    const listed = r.breaks.filter((k) => !strong.includes(k) && !r.spelled[k - 1] && !r.spelled[k])
+    const strongIn = (a: number, b: number): number[] => strong.filter((k) => k > a && k <= b)
+    /** Tokens a..b may be one number: no lone number word beyond a strong break, and not cut out of a list. */
+    const may = (a: number, b: number): boolean => {
+      const inside = strongIn(a, b)
+      if (inside.length && ((inside[0] === a + 1 && r.spelled[a]) || (inside[inside.length - 1] === b && r.spelled[b]))) return false
+      return !(listed.some((k) => k > a && k <= b) && (listed.includes(a) || listed.includes(b + 1)))
+    }
+    const n = r.tokens.length
+    const tried: { a: number; b: number; run: DigitRun; kind: PrivateKind; score: number; strong: number }[] = whole && may(0, n - 1) ? [{ a: 0, b: n - 1, run: r, ...whole, strong: strong.length }] : []
+    const edges = [0, ...r.breaks, n]
     for (let i = 0; i + 1 < edges.length; i++) {
       for (let j = i + 1; j < edges.length; j++) {
         if (i === 0 && j === edges.length - 1) continue
-        const part = partOf(r, edges[i], edges[j] - 1)
+        const a = edges[i]
+        const b = edges[j] - 1
+        const part = partOf(r, a, b)
         if (part.digits.length > MAX_RULE_DIGITS) break
+        if (!may(a, b)) continue
         const rule = ruleOf(part)
-        if (rule) tried.push({ a: edges[i], b: edges[j] - 1, run: part, ...rule, stops: stopsIn(edges[i], edges[j] - 1) })
+        if (rule) tried.push({ a, b, run: part, ...rule, strong: strongIn(a, b).length })
       }
     }
-    tried.sort((x, y) => y.score - x.score || x.stops - y.stops || y.run.digits.length - x.run.digits.length || x.a - y.a)
+    tried.sort((x, y) => y.score - x.score || x.strong - y.strong || y.run.digits.length - x.run.digits.length || x.a - y.a)
     const taken: boolean[] = []
     for (const t of tried) {
       if (taken.slice(t.a, t.b + 1).some(Boolean)) continue

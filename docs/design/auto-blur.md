@@ -2709,13 +2709,21 @@ just made (decision 11).
 - **Breaks inside a run**: where a sentence ends (`.`, `!`, `?`, `।`, `…` at a word's end), a clause
   ends (`,`, `;`, `:`) or a new caption starts between two of its numbers, a run may say more than
   one number: "4917 6123 4567 8904. One second" is a card and a word, "My verification code is
-  482913. Oh wait" a code and a word, "That was step two. 4917 6123 4567 8904" a word and a card. The
-  whole run and every stretch of it between breaks (up to 20 digits) are tried with the rules below,
-  and the best are kept, never two over one number: the higher score first, then the one across fewer
-  sentence ends or new captions, then the longer. So finding 10's card split by a full stop, valid
-  only whole, stays whole; a code said in two groups with a comma ("4829, 1234") is one code; and a
-  number word starting the next sentence never joins, or hides, the number before it (second review,
-  finding [4]). Flown's docs read as speech give the same 10 hits as before.
+  482913. Oh wait" a code and a word, "That was step two. 4917 6123 4567 8904" a word and a card,
+  "4829, then two factor" a code and a word. The whole run and every stretch of it between breaks (up
+  to 20 digits) are tried with the rules below, and the best are kept, never two over one number: the
+  higher score first, then the one across fewer strong breaks, then the longer. A strong break is a
+  sentence end, a new caption, or a clause end between a number written in digits and one said in
+  words ("4 8 2 9 1 3, two more steps"). A number word alone beyond a strong break is the next
+  sentence's or clause's word, or the last one's, never part of the number. A clause end between
+  numbers said in words is a pause inside one number ("চার আট দুই নয়, এক তিন", test 131). One between
+  numbers written in digits is a grouping pause ("4829, 1234" is one code) or parts a list: a stretch
+  holding one is never cut out of the run there, so no part of "the colour code is 255, 128, 0" is a
+  code. So finding 10's card split by a full stop, valid only whole, stays whole, and a number word
+  starting the next sentence or clause never joins, or hides, the number before it (second review,
+  finding [4]). Flown's docs read as speech give the same 10 hits as before; read the same way, the
+  README and changelog files of the installed packages (`node_modules`, 514 files, 437,298 words, 25
+  November 2026) give the same 97 hits as the rules before these breaks.
 - **Rules on runs** (the label context is the 12 words or 10 s before the run):
 
   | Kind | Rule |

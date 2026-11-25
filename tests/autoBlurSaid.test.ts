@@ -251,6 +251,35 @@ describe('auto-blur §7.2-7.3: runs across sentence ends, codes in pairs, and th
     for (const none of ['the code shipped in twenty twenty-four', 'the code shipped in twenty twenty four and more', 'the code from nineteen ninety nine', 'we had forty eight twenty nine times', 'The code is in chapter twelve. Thirty four tests cover it.']) expect(kinds(none), none).toEqual([])
   })
 
+  it('a clause end parts a run only beside a number said in words; a stretch is never cut out of a list of numbers said in digits, and pairs a break parts are no code (second review, findings [4] and [16])', () => {
+    // Speech vectors as rule-vectors.json writes them: the words said, and every hit with its own words.
+    const vectors: { words: string; expect: string[] }[] = [
+      // A number word after a comma, beside a number written in digits, is the next clause's word, never the number's last digit.
+      { words: 'the code is 4 8 2 9 1 3, two more steps', expect: ['code: 4 8 2 9 1 3,'] },
+      { words: 'the code is 482913, two more steps', expect: ['code: 482913,'] },
+      { words: 'Your code for step two: 482913', expect: ['code: 482913'] },
+      // Commas between numbers said in words are pauses inside one number (test 131's code); the number is still found before a word.
+      { words: 'four nine one seven, six one two three, four five six seven, eight nine zero four, one more thing', expect: ['card: four nine one seven, six one two three, four five six seven, eight nine zero four,'] },
+      // One number before a comma and a number said in digits after it.
+      { words: 'the code is 4829, 13 tries left', expect: ['code: 4829,'] },
+      { words: 'the PIN is 48 29, 13 more tries left', expect: ['code: 48 29,'] },
+      // A number said in groups with commas between them is one number.
+      { words: 'the code is 4829, 1234', expect: ['code: 4829, 1234'] },
+      { words: 'call me on zero one seven one two, three four five six seven eight', expect: ['phone: zero one seven one two, three four five six seven eight'] },
+      // Negative vectors: a list of numbers said in digits after a code word is no code, whole or in part.
+      { words: 'the code style is rgb 100, 200, 15', expect: [] },
+      { words: 'the colour code is 255, 128, 0', expect: [] },
+      { words: 'the error code was 404, then 500, then 503', expect: [] },
+      // Pairs with a comma between them are no code, whole or in part, nor made one by a number word beyond a sentence or clause end; nor a year in pairs.
+      { words: 'the code is 48, 29, 13', expect: [] },
+      { words: 'the code is 48, 29, 13. Two more tries.', expect: [] },
+      { words: 'Your code, step two: 25, 48, 91', expect: [] },
+      { words: 'the code is in lines 12, 34', expect: [] },
+      { words: 'the code was written in twenty twenty-four. Twenty five pages', expect: [] }
+    ]
+    for (const v of vectors) expect(kinds(v.words), v.words).toEqual(v.expect)
+  })
+
   it('a run the rules find has its digit form, read as they read it: fillers, "oh", "double" and every language\'s number words (second review, finding [18])', () => {
     const support = 'for support call us on two one three um three seven three four two five three'
     expect(kinds(support)).toEqual(['phone: two one three um three seven three four two five three'])

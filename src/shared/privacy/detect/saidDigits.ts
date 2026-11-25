@@ -19,6 +19,8 @@ export interface DigitRun {
   tokens: string[]
   /** Each token's first and last word ("double" goes with the digit after it, "twenty five" is one token). */
   spans: [number, number][]
+  /** Whether each token was said in words ("four", "twenty five", "double five", চার) rather than written in digits ("4829", ৪৮২৯). */
+  spelled: boolean[]
   /**
    * The tokens a sentence or a clause ends before (a word with `.`, `!`, `?`, `।`, `…`, `,`, `;` or `:`
    * at its end, the token's own or a filler's) or a new caption starts at, in order: where the run may
@@ -67,9 +69,12 @@ export function digitRuns(words: readonly CaptionWord[], captionStarts: Readonly
     repeat = 0
     from = -1
   }
-  const open = (i: number): DigitRun => (cur ??= { digits: '', first: i, last: i, tokens: [], spans: [], breaks: [], stops: [] })
-  /** Adds a token said by words a..b to the open run, with a break before it when a sentence, a clause or a caption ended since the last one. */
-  const push = (run: DigitRun, d: string, a: number, b: number): void => {
+  const open = (i: number): DigitRun => (cur ??= { digits: '', first: i, last: i, tokens: [], spans: [], spelled: [], breaks: [], stops: [] })
+  /**
+   * Adds a token said by words a..b to the open run (`spelled`: said in words, not written in digits),
+   * with a break before it when a sentence, a clause or a caption ended since the last one.
+   */
+  const push = (run: DigitRun, d: string, a: number, b: number, spelled: boolean): void => {
     const prev = run.spans[run.spans.length - 1]
     if (prev) {
       let clause = false
@@ -85,6 +90,7 @@ export function digitRuns(words: readonly CaptionWord[], captionStarts: Readonly
     run.digits += d
     run.tokens.push(d)
     run.spans.push([a, b])
+    run.spelled.push(spelled)
     run.last = b
   }
   for (let i = 0; i < words.length; i++) {
@@ -103,7 +109,7 @@ export function digitRuns(words: readonly CaptionWord[], captionStarts: Readonly
       const next = saidWord(words[i + 1].text)
       const ones = Object.hasOwn(SAID_DIGITS, next) ? SAID_DIGITS[next] : ''
       if (ones.length === 1 && ones !== '0' && !ZERO_INSIDE_ONLY.has(next) && /^[a-z]+$/.test(next) && words[i + 1].start - words[i].end <= RUN_PAUSE) {
-        push(open(i), d[0] + ones, from < 0 ? i : from, i + 1)
+        push(open(i), d[0] + ones, from < 0 ? i : from, i + 1, true)
         repeat = 0
         from = -1
         i++
@@ -112,8 +118,10 @@ export function digitRuns(words: readonly CaptionWord[], captionStarts: Readonly
     }
     if (d) {
       const run = open(i)
+      // Said in words: a number word, or digits after "double" or "triple"; written: a digit token in any script.
+      const spelled = from >= 0 || !/^\d/.test(w)
       if (repeat && d.length === 1) d = d.repeat(repeat)
-      push(run, d, from < 0 ? i : from, i)
+      push(run, d, from < 0 ? i : from, i, spelled)
       repeat = 0
       from = -1
     } else if (cur && SAID_FILLERS.has(w)) {
