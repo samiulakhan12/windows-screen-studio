@@ -2701,7 +2701,7 @@ just made (decision 11).
   … नौ. Fillers inside a run: `um`, `uh`, `then`, `dash`, `space`, `comma`, `is`, উম, `y`, `guion`. A run
   ends at a pause over 2.0 s or any other word. `and` ends a run: as a filler it turned "400, 300 and
   1500, 800" into a Luhn-valid card. So "4917 6123 4567 eight nine zero four" across two captions is
-  one run (finding 10). Runs are read in `saidDigits.ts`.
+  one run (finding 10). Runs are read in `saidDigits.ts`, which the spoken forms (§7.3) read too.
 - **Breaks inside a run**: where a sentence ends (`.`, `!`, `?`, `।`, `…` at a word's end), a clause
   ends (`,`, `;`, `:`) or a new caption starts between two of its numbers, a run may say more than
   one number: "4917 6123 4567 8904. One second" is a card and a word, "My verification code is
@@ -2760,7 +2760,10 @@ for each group of private bleeps, **from the hit's own words, never from the pad
   on its own.
 - **A number run is its digit string** with its usual written groupings (4-4-4-4, 3-3-4, 3-2-4,
   spaced and dashed), never its number words: a card said "four nine one seven …" gives
-  `4917…`, not "four" or "nine".
+  `4917…`, not "four" or "nine". The own words are read as the rules read a run (`runDigitsOf`,
+  `saidDigits.ts`: fillers inside it, "oh" and "o" inside it, "double" and "triple", every language's
+  number words), so every number the rules find has its digit form and its typed copies are masked
+  ("two one three, um, three seven three …" gives `2133734253`; second review, finding [18]).
 - For emails said aloud, the address as written (`name@domain.tld`).
 
 `maskPrivate(text, forms): string` replaces every occurrence of a form in `text` with `•` for each of
@@ -3896,7 +3899,7 @@ line only).
 | `detect/names.ts` (new) | `function compileNames(entries: readonly string[], neverHide: readonly string[]): NameMatcher`; `function findNames(line: CleanLine, m: NameMatcher): Hit[]`; `function saidNames(words: readonly CaptionWord[], m: NameMatcher): SaidHit[]`; `function looksLikeName(text: string): boolean` (§5.9: at most 40 characters of letters, spaces, `.`, `'` and `-`, and no rule of §6.4-6.8 hits it) |
 | `detect/qr.ts` (new) | `function classQr(payload: string \| null): { kind: 'qr'; score: number; class: 'secret' \| 'personal' \| 'other' \| 'undecoded' }` |
 | `detect/score.ts`, `detect/detect.ts` (new) | `interface Hit { kind: PrivateKind; rule: string; score: number; spans: { line: number; start: number; end: number }[]; box: Box }`; `interface DetectOptions { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher; frame: { width: number; height: number } }`; `function detectFrame(lines: readonly ReadLine[], qr: ReadResult['qr'], options: DetectOptions): Hit[]` (every variant, union, dedupe, padded cover boxes; the width rounding is `found.ts`'s); `function needsCareful(line: ReadLine, hits: readonly Hit[], index: number): boolean` (careful-long's trigger) |
-| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[], captionStarts?: ReadonlySet<number>): DigitRun[]` (from `detect/saidDigits.ts`); `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
+| `detect/said.ts` (new) | `interface SaidHit { kind: PrivateKind; score: number; start: number; end: number; estimated: boolean; group: string; words: [number, number] }` (the own word span); `function digitRuns(words: readonly CaptionWord[], captionStarts?: ReadonlySet<number>): DigitRun[]` (from `detect/saidDigits.ts`, with `runDigitsOf(texts: readonly string[]): string \| null`, which `spoken.ts` reads own words with, §7.3); `function detectSaid(transcript: Transcript, options: { kinds: readonly PrivateKind[]; regions: readonly string[]; names: NameMatcher }): SaidHit[]`; `function saidBleeps(hits: readonly SaidHit[], existing: readonly Bleep[] \| undefined, random: () => number): { bleeps: Bleep[]; unplaced: number }` (groups in the word, at most `MAX_BLEEPS` in all, §4.4) |
 | `detect/tables.ts` (new) | the label lists (en, bn, es, hi), issuer prefixes, IBAN lengths, gitleaks-derived patterns, allow lists, region names per language code |
 | `src/shared/privacy/vendor/libphonenumber/**`, `vendor/double-metaphone.js` (generated) | vendored, each file with a GENERATED header naming the package, version and SHA-256 |
 | `scripts/vendor-privacy.mjs` (new) | downloads the pinned tarballs, checks SHA-512 integrity and SHA-256, copies the files of §6.14, drops `//# sourceMappingURL` lines; `--check` compares |

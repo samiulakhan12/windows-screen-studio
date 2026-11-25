@@ -6,7 +6,7 @@ import { isPrivateBleep, privateGroupOf, privateKindOf } from '../src/shared/pri
 import { compileNames, NO_NAMES } from '../src/shared/privacy/detect/names'
 import { detectSaid, digitRuns, saidBleeps, saidWord, transcriptWords, type SaidHit } from '../src/shared/privacy/detect/said'
 import { SAID_KINDS } from '../src/shared/privacy/kinds'
-import { maskPrivate, spokenForms, type SpokenForms } from '../src/shared/privacy/spoken'
+import { maskPrivate, privateView, spokenForms, type SpokenForms } from '../src/shared/privacy/spoken'
 import type { Bleep, Project, Transcript } from '../src/shared/types'
 import { base } from './autoBlurFixtures'
 import { ROOT, speechTranscript } from './autoBlurRulesFixtures'
@@ -249,5 +249,23 @@ describe('auto-blur §7.2-7.3: runs across sentence ends, codes in pairs, and th
     expect(formsOf('my PIN is forty eight twenty nine').forms!.digits).toContain('4829')
     // A year said in pairs is never a code, nor are pairs without a code word.
     for (const none of ['the code shipped in twenty twenty-four', 'the code shipped in twenty twenty four and more', 'the code from nineteen ninety nine', 'we had forty eight twenty nine times', 'The code is in chapter twelve. Thirty four tests cover it.']) expect(kinds(none), none).toEqual([])
+  })
+
+  it('a run the rules find has its digit form, read as they read it: fillers, "oh", "double" and every language\'s number words (second review, finding [18])', () => {
+    const support = 'for support call us on two one three um three seven three four two five three'
+    expect(kinds(support)).toEqual(['phone: two one three um three seven three four two five three'])
+    const { project, forms } = formsOf(support)
+    expect(forms!.digits).toContain('2133734253')
+    // Its typed copies leave Flown masked: the name, a chapter and the saved description.
+    const typed: Project = { ...project, name: 'Support 213-373-4253', chapters: [{ id: 'c', t: 0, title: 'Call 213 373 4253' }], publish: { description: 'Call 213-373-4253 any time.' } as Project['publish'] }
+    const view = privateView(typed)
+    expect(view.name).toBe('Support •••-•••-••••')
+    expect(view.chapters![0].title).toBe('Call ••• ••• ••••')
+    expect(view.publish!.description).toBe('Call •••-•••-•••• any time.')
+    // Spanish "doble", Hindi पांच (without the chandrabindu), "o" inside a run, and a dash said.
+    expect(formsOf('mi número es seis uno dos doble tres cuatro cinco seis siete').forms!.digits).toContain('612334567')
+    expect(formsOf('मेरा नंबर है नौ आठ सात छह पांच चार तीन दो एक शून्य').forms!.digits).toContain('9876543210')
+    expect(formsOf('my number is five five five o one three four five six seven').forms!.digits).toContain('5550134567')
+    expect(formsOf('my number is two one three dash three seven three dash four two five three').forms!.digits).toContain('2133734253')
   })
 })
