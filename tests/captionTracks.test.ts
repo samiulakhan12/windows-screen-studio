@@ -164,12 +164,14 @@ describe('caption tracks (test 47)', () => {
 describe('translating into a track with an AI provider (§11.9, §2.10)', () => {
   const answer = (sent: readonly CaptionSegment[], texts: string[]): CaptionSegment[] => sent.map((s, i) => ({ id: s.id, start: s.start, end: s.end, text: texts[i] }))
   const base = { by: 'gemini' as const, model: 'gemini-x', createdAt: '2026-10-31T00:00:00Z' }
+  /** Nothing masked when the request was sent: these projects have no private bleeps. */
+  const NONE: ReadonlyMap<string, string> = new Map()
 
   it('a new track gets every caption, with the hash of the text it was made from; the captions keep their text', () => {
     const p = project()
     const sent = captionsToTranslate(p, 'bn')
     expect(sent.map((s) => s.id)).toEqual(['a', 'b', 'c'])
-    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
+    const next = withTranslation(p, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
     expect(next.transcript).toBe(p.transcript)
     expect(next.captionTracks).toEqual([{ language: 'bn', ...base, segments: [{ id: 'a', text: 'এক', src: textHash('Hello there') }, { id: 'b', text: 'দুই', src: textHash('Second caption') }, { id: 'c', text: 'তিন', src: textHash('Third one') }] }])
     expect(outOfDate(next, 'bn')).toEqual([])
@@ -179,7 +181,7 @@ describe('translating into a track with an AI provider (§11.9, §2.10)', () => 
     const p = project({ captionTracks: [bn] })
     const sent = captionsToTranslate(p, 'bn')
     expect(sent.map((s) => s.id)).toEqual(['b', 'c'])
-    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
+    const next = withTranslation(p, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
     expect(next.captionTracks![0].segments.map((s) => s.text)).toEqual(['নমস্কার', 'দ্বিতীয় নতুন', 'তৃতীয়'])
     expect(outOfDate(next, 'bn')).toEqual([])
   })
@@ -188,7 +190,7 @@ describe('translating into a track with an AI provider (§11.9, §2.10)', () => 
     const p = project({ captionTracks: [bn] })
     const sent = captionsToTranslate(p, 'bn')
     const edited = { ...p, transcript: { ...p.transcript!, segments: p.transcript!.segments.map((s) => (s.id === 'b' ? { ...s, text: 'Edited meanwhile' } : s)) } }
-    const next = withTranslation(edited, { ...base, language: 'bn', sent, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
+    const next = withTranslation(edited, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['দ্বিতীয় নতুন', 'তৃতীয়']) })!
     expect(next.captionTracks![0].segments.find((s) => s.id === 'b')?.text).toBe('দ্বিতীয়')
     expect(outOfDate(next, 'bn')).toEqual(['b'])
   })
@@ -196,15 +198,15 @@ describe('translating into a track with an AI provider (§11.9, §2.10)', () => 
   it('an answer that changed the timing or left captions out is not used; nor is the spoken language', () => {
     const p = project()
     const sent = captionsToTranslate(p, 'bn')
-    expect(withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']).slice(1) })).toBeNull()
-    expect(withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']).map((s) => ({ ...s, start: s.start + 1 })) })).toBeNull()
-    expect(withTranslation(p, { ...base, language: 'EN', sent, answer: answer(sent, ['a', 'b', 'c']) })).toBeNull()
+    expect(withTranslation(p, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['এক', 'দুই', 'তিন']).slice(1) })).toBeNull()
+    expect(withTranslation(p, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['এক', 'দুই', 'তিন']).map((s) => ({ ...s, start: s.start + 1 })) })).toBeNull()
+    expect(withTranslation(p, { ...base, language: 'EN', sent, masked: NONE, answer: answer(sent, ['a', 'b', 'c']) })).toBeNull()
   })
 
   it('reads back unchanged through the project reader', () => {
     const p = project()
     const sent = captionsToTranslate(p, 'bn')
-    const next = withTranslation(p, { ...base, language: 'bn', sent, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
+    const next = withTranslation(p, { ...base, language: 'bn', sent, masked: NONE, answer: answer(sent, ['এক', 'দুই', 'তিন']) })!
     expect(readCaptionTracks(JSON.parse(JSON.stringify(next.captionTracks)), next.transcript)).toEqual(next.captionTracks)
   })
 

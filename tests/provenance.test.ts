@@ -26,7 +26,7 @@ const base = (): Project => ({
   transcript: { language: 'en', segments: [SEG] } as Project['transcript']
 })
 const translate = (by: 'openai' | 'gemini' | 'local', model: string, host?: string): Project =>
-  withTranslation(base(), { language: 'bn', by, model, createdAt: '2026-11-09T10:00:00.000Z', sent: [SEG], answer: [{ ...SEG, text: 'রিপোর্ট খুলুন।' }], ...(host ? { host } : {}) })!
+  withTranslation(base(), { language: 'bn', by, model, createdAt: '2026-11-09T10:00:00.000Z', sent: [SEG], masked: new Map(), answer: [{ ...SEG, text: 'রিপোর্ট খুলুন।' }], ...(host ? { host } : {}) })!
 
 describe('provenance (test 97)', () => {
   it("a translation through a service is OpenAI's with its host, and Languages names the host", () => {

@@ -13,7 +13,7 @@ import { costSentence } from '../../../../shared/ai/cost'
 import { fmt } from '../../../../shared/i18n/fmt'
 import { t } from '../../../../shared/i18n/t'
 import { captionLanguageName, inSentence, trackRowWords } from '../captionWords'
-import { captionsToTranslate, languageName, languagesToAdd, maskedToTranslate, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
+import { captionsToTranslate, languageName, languagesToAdd, maskedToTranslate, maskedWhenSent, trackOf, trackRows, withoutTrack, withShownTrack, withTranslation } from '../../../../shared/captions/captionTracks'
 import { MAX_TRACKS } from '../../../../shared/captions/studioData'
 import type { Project } from '../../../../shared/types'
 import { AI_PROVIDERS_CHANGED_EVENT, OPEN_SETTINGS_EVENT } from '../../settings/SettingsButton'
@@ -227,8 +227,12 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     setError(null)
     setStatus('')
     let result: AiTextResult & { model?: string }
+    // What the request masks over each caption, taken with the project it is masked from: the answer is
+    // stamped with it, never with the private bleeps there when it lands (auto-blur §7.4).
+    const from = store.state
+    const masked = maskedWhenSent(from, sent)
     try {
-      result = await aiTextFor(store.state, provider.id, request, mine.id)
+      result = await aiTextFor(from, provider.id, request, mine.id)
     } catch (err) {
       if (!mine.cancelled && live.current) setError(t('captions.languages.failedError', { reason: ipcMessage(err).replace(/\.?$/, '.') }))
       return
@@ -243,7 +247,7 @@ export function LanguagesSection({ project }: { project: Project }): JSX.Element
     // One undo step; nothing changes when the answer cannot be used.
     store.update((p) => {
       const next =
-        result.task === 'translate' ? withTranslation(p, { language: code, ...maker, createdAt: new Date().toISOString(), sent, answer: result.segments }) : null
+        result.task === 'translate' ? withTranslation(p, { language: code, ...maker, createdAt: new Date().toISOString(), sent, masked, answer: result.segments }) : null
       used = !!next
       return next ?? p
     })

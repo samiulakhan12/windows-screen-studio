@@ -2773,7 +2773,11 @@ project has no private bleeps it is never called.
   unless its `maskedFor` equals the sorted ids of the private bleeps over that caption, joined by
   `,`. `maskedFor` is written by the translate request's result handling when the request was masked
   (§7.6), so a caption translated again after Find shows its translation, which was made from the
-  masked text. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
+  masked text. It is what the request masked when it was sent (`maskedWhenSent`, taken with the
+  project `aiTextFor` masks the request from), never the private bleeps there when the answer lands:
+  a caption whose private bleeps changed while the request was out (Find added one, so the answer was
+  made from the words said, or *Uncover* removed one, so it was made from the masked text) keeps what
+  its track had, as a caption whose text changed meanwhile does, and stays one to translate. Such a caption is one to translate again (`maskedToTranslate`): `captionsToTranslate`
   sends it with those out of date or missing, so the track's *Translate again* (§2.13) makes the
   translation that replaces it, also when the spoken text did not change since the track was made. This applies to `burnedSegments`, the Languages list, the subtitle files (`trackCues`),
   the sidecars (`exportBundleRun.ts:65-73`) and every export.
@@ -2839,7 +2843,7 @@ brings every word back everywhere, in the same undo step, because nothing stored
   itself (the same object) when the project has no private bleeps, so every request of an old project
   is byte for byte what it is today (test 20).
 - **Translate** results: when a translate request was masked, the segments that came back carry
-  `maskedFor` (§7.4).
+  `maskedFor`, the private bleeps it masked over their captions when it was sent (§7.4).
 - **Ordinary bleeps** are not applied to AI requests by this wave: that would change what old projects
   send. Private bleeps and their forms are.
 - **Pictures**: only the guide's *Write titles* with *Also send the screenshots* sends pictures
