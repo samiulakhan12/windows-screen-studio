@@ -357,6 +357,45 @@ describe('auto-blur P4: the scan', () => {
     }
   })
 
+  it('Stop while a span is followed keeps every item it found covered from where it showed to the end: the starts a walk has not reached yet, backward or forward, as well as the walks in progress (found by review: a start the backward walk had not reached was covered only from its read, and one the forward walk had not reached lost its cover after its read)', async () => {
+    /** Source frames (30 fps) where a planted text shows and no found cover holds it. */
+    const uncovered = (found: FoundCover[], planted: readonly Planted[]): string[] => {
+      const bad: string[] = []
+      for (const p of planted)
+        for (let i = 0; i < 20 * 30; i++) {
+          const t = Math.round((i / 30) * 1e6) / 1e6
+          const b = p.at(t)
+          if (b && !found.some((f) => t >= f.start && t < f.end && inside(b, boxOf(f, t), 1))) bad.push(`${p.key} ${t.toFixed(3)}`)
+        }
+      return bad
+    }
+    /** Find stopped at the first `track` of the session walking in `dir`, or as the first session opens (dir 0). */
+    const stoppedIn = async (dir: -1 | 0 | 1) => {
+      const controller = new AbortController()
+      const s = scene({}, 20, (h) => {
+        const open = h.followOpen.bind(h)
+        h.followOpen = async (req) => {
+          if (dir === 0) controller.abort()
+          const session = await open(req)
+          if (req.dir !== dir) return session
+          return { ...session, track: async (track, t, parts) => (controller.abort(), session.track(track, t, parts)) }
+        }
+      })
+      const r = await runFind(request({ requestId: `r-stop-${dir}` }), noProgress, controller.signal, s.deps)
+      expect(r.ok && r.stopped, `stopped in ${dir}`).toBe(true)
+      return { found: r.ok ? r.found : [], planted: s.planted }
+    }
+    for (const dir of [-1, 0, 1] as const) {
+      const { found, planted } = await stoppedIn(dir)
+      // The email shows from 2 s, read at 2.3 s; the name from 5 s, read at 5.3 s.
+      expect(uncovered(found, planted), `stopped in the ${dir === -1 ? 'backward walk' : dir === 1 ? 'forward walk' : 'first session'}`).toEqual([])
+      for (const f of found.filter((x) => x.kind === 'email' || x.kind === 'name')) {
+        expect(f.end, `${f.kind} from ${f.start}`).toBeCloseTo(20, 2)
+        expect(f.lost, `${f.kind} from ${f.start}`).toBe(true)
+      }
+    }
+  })
+
   it('156. followCover returns walked and lostSpans with its path; without the reader, a template-only path marked thin', async () => {
     const s = scene()
     const box = { x: EMAIL[0] / 1920, y: EMAIL[1] / 1080, w: EMAIL[2] / 1920, h: EMAIL[3] / 1080 }

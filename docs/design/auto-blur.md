@@ -2188,7 +2188,15 @@ tooltip over text before its first read, and text typed into a field or a termin
   `Project.privacy.find` and clears `missed` where it applies.
 - **Stop**: what was found so far is applied the same way; covers whose walks were not finished run to
   the end of the recording as lost areas over the union of their last box and the region they were
-  moving with (§2.6); `FindRecord.stopped` and `readTo` say how far the screen was read.
+  moving with (§2.6); `FindRecord.stopped` and `readTo` say how far the screen was read. **New**: that
+  holds for every item of a span being walked, also those the stopped walk had not reached yet (a span
+  is walked back from its latest item and forward from its earliest): one the backward walk had not
+  reached is covered as an item no walk followed (§2.6), from one source frame after the last good read
+  of its place without it, over its box and the regions changed at its frame; one the forward walk had
+  not reached runs to the end over the same. Found by review: Stop during a backward walk covered an
+  earlier item only from its read (an email showing from 2 s, read at 2.3 s, showed uncovered for nine
+  frames), and Stop during a forward walk ended a later item's cover at its read, though it showed for
+  ten more seconds (`unwalkedCover`, shared with the items of spans never walked).
 - **Copies made before Find** (§2.12): `privacy:copies { projectId }` lists the projects whose
   `copyOf.id` is this one (`ProjectSummary.copyOf`); `privacy:coverCopies { projectId, copyIds }`
   reads each copy's `project.json`, adds this project's covers and private bleeps with

@@ -1231,6 +1231,18 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     w.skipTo = startIndex
   }
 
+  /** A start a stopped walk never reached: one lost piece over its box and the regions changed at its frame, to the end or from where an item no walk followed starts (unwalkedCover). */
+  function unreached(w: Walker): void {
+    const u = unwalkedCover(reads.reads, look, w.start, frameS)
+    const [from, to] = dir === 1 ? [w.start.t, duration] : [u.from, w.start.t]
+    w.placements = [{ t: from, box: toNorm(u.box, size) }]
+    w.box = u.box
+    w.lostSpans.push([from, to])
+    w.result = { start: from, end: to }
+    w.unfinished = true
+    w.done = true
+  }
+
   function finish(w: Walker): Track {
     let start = w.result?.start ?? w.start.t
     let end = w.result?.end ?? w.start.t
@@ -1253,7 +1265,16 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
 
   // Walks not finished.
   for (const w of walkers) {
-    if (!w.active || w.done) continue
+    if (w.done) continue
+    if (stoppedAt >= 0 && !w.active) {
+      // Stop before the walk reached this start (a span is walked from its latest start back, from its
+      // earliest on): nothing followed it this way, so it is covered as an item no walk followed (§2.6),
+      // as a lost area: forward to the end, backward from the last read of its place without it. A start
+      // another walk took in is covered by that walk.
+      if (w.joined === undefined) unreached(w)
+      continue
+    }
+    if (!w.active) continue
     if (stoppedAt >= 0) {
       // Stop: the cover runs on as a lost area over its last box and the region it was moving with.
       w.unfinished = true
@@ -1270,6 +1291,20 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     }
   }
   return walkers.map((w) => finish(w))
+}
+
+/**
+ * Where an item no walk followed is covered from (§2.6: Find stopped before a walk got to it, or its walk
+ * failed): one source frame (`frameS`) after the last good read of its place without it, else the
+ * recording's start, over its box and the regions changed at its read's frame.
+ */
+export function unwalkedCover(reads: readonly IndexedRead[], look: LookData, item: Pick<Placed, 't' | 'box' | 'key'>, frameS: number): { from: number; box: Box } {
+  let before: IndexedRead | null = null
+  for (const r of reads) if (r.t < item.t && !r.failed && coverage(r.areas, item.box) >= COVERED && !r.hits.some((x) => x.key === item.key) && (!before || r.t > before.t)) before = r
+  let box = item.box
+  const at = frameNear(look, item.t)
+  if (at >= 0) for (const g of regionsAt(look, at)) if (overlaps(g, box)) box = union(box, g)
+  return { from: before ? floorMs(before.t + frameS) : 0, box }
 }
 
 /** Spans as "start end" pairs joined by ";" (3 decimals, outward). */
@@ -1317,7 +1352,10 @@ export async function followAll(
     }
   }
   const back = await walk(-1, starts, latest, 0)
-  const fwd = options.stopped?.() ? starts.map((s) => ({ placements: [{ t: s.t, box: toNorm(s.box, size) }], start: s.t, end: duration, lost: true, thin: !!reads.templateOnly, lostSpans: `${floorMs(s.t)} ${duration}`, unfinished: true }) as Track) : await walk(1, starts, earliest, duration)
+  // Stopped before the forward walk: each start runs to the end as a start the walk never reached does.
+  const fwd = options.stopped?.()
+    ? starts.map((s) => ({ placements: [{ t: s.t, box: toNorm(unwalkedCover(reads.reads, look, s, 0).box, size) }], start: s.t, end: duration, lost: true, thin: !!reads.templateOnly, lostSpans: `${floorMs(s.t)} ${duration}`, unfinished: true }) as Track)
+    : await walk(1, starts, earliest, duration)
   const tracks = starts.map((s, i) => {
     const b = back[i]
     const f = fwd[i]

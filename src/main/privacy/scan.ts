@@ -22,9 +22,9 @@ import { compileNames, looksLikeName } from '../../shared/privacy/detect/names'
 import { charRanges, meanCharWidth, padOf } from '../../shared/privacy/detect/score'
 import { foundColour, groupExtras, hideLength } from '../../shared/privacy/found'
 import { COVER_DARK } from '../../shared/privacy/kinds'
-import { addLookFrames, clip, emptyLook, frameNear, intersect, keyBefore, lookScale, lookStep, overlaps, regionsAt, union, type LookData, type Size } from '../../shared/privacy/look'
+import { addLookFrames, clip, emptyLook, frameNear, intersect, keyBefore, lookScale, lookStep, overlaps, union, type LookData, type Size } from '../../shared/privacy/look'
 import { findNotices } from '../../shared/privacy/notices'
-import { followAll, partsOf, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../../shared/privacy/paths'
+import { followAll, partsOf, unwalkedCover, type IndexedRead, type Matcher, type Placed, type ReadIndex, type Track } from '../../shared/privacy/paths'
 import { addRead, hintsOf, planReads, readBudget, secondEstimate, spansOf, type PlannedRead, type ReadHints, type ReadPlan } from '../../shared/privacy/plan'
 import type { Box, Candidate, HelperCommand, LookFrame, ModelPin, ReadLine, ReadResult, ReadVariant, TrackMatch } from '../../shared/privacy/protocol'
 import { READER_ID } from '../../shared/privacy/readerCatalog'
@@ -686,11 +686,7 @@ async function scanCore(req: CoreRequest, onProgress: Progress, signal: AbortSig
     // Hits never walked (Find stopped first): covered from the last read of their place without them, to the end, over their region.
     for (const h of starts) {
       if (walked.has(h.id) || consumed.has(h.id)) continue
-      const before = index.reads.filter((r) => r.t < h.t && !r.failed && coverage(r.areas, h.box) >= 0.95 && !r.hits.some((x) => x.key === h.key)).pop()
-      const from = before ? floorMs(before.t + 1 / fps) : 0
-      let box = h.box
-      const at = frameNear(look, h.t)
-      if (at >= 0) for (const g of regionsAt(look, at)) if (overlaps(g, box)) box = union(box, g)
+      const { from, box } = unwalkedCover(index.reads, look, h, 1 / fps)
       found.push({ kind: h.kind, score: h.score, group: groupOf(h.key), start: from, end: ceilMs(duration), path: pathOfBox(from, box, size, fps), color: h.color, lost: true, ...(h.thin ? { thin: true as const } : {}) })
     }
     // 5. A failed read never drops silently: its areas covered from it until the next good read of them.
