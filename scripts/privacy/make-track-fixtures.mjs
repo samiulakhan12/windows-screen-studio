@@ -159,7 +159,7 @@ export const CASES = {
     html: `<div class="term">${O('$ export AWS_SECRET_ACCESS_KEY=')}<span data-k="key" data-t="" id="f"></span></div>`,
     script: `window.setFrame=(n)=>{const s=${JSON.stringify(v.secret)};const up=Math.min(s.length,Math.floor(n/2));const k=n<80?up:Math.max(0,up-(n-80));const f=document.getElementById("f");f.textContent=s.slice(0,k);f.dataset.t=s.slice(0,k)}`
   }),
-  'type-key-enter': (v) => ({
+  'key-then-enter': (v) => ({
     // A key typed on a full terminal's last line, a character every two frames from frame 4, then Enter
     // at frame 90: two lines of output and a new prompt scroll the terminal up three lines. Keystrokes
     // were recorded: one typing burst, ending at Enter. The key is read only after the scroll, and was

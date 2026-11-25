@@ -4832,7 +4832,7 @@ pixels under the covers (two different secrets, same everything else), and the t
   tall, the evaluation set's own toast style pinning their bottom, and lived 1.15 s, still 0.85 s),
   a toast and a tooltip passing over text before its first read, an email typed into a form field and a key typed
   into a terminal (and deleted again), a key typed on a full terminal's last line and Enter scrolling
-  the terminal up three lines (`type-key-enter`, the keystrokes recorded: its typing burst ends at
+  the terminal up three lines (`key-then-enter`, the keystrokes recorded: its typing burst ends at
   Enter, so the key is first read on the line it scrolled to, §5.8's typing rule in place only; a case
   may give the keystrokes `cursor.json` would hold, and A16 seeds them), a token pasted after a
   prompt printed 5.5 s before, "Personal access token (from the dashboard): " (`paste-after-label`:
