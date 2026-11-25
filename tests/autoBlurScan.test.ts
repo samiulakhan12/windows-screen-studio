@@ -14,10 +14,12 @@ const { projectFileText } = await import('../src/main/projectFile')
 const { coverSlack, drawnBox, parsePath, pathKeys, writePath } = await import('../src/shared/privacy/coverPath')
 const { privateBleepWord, LEGACY_PREFIX } = await import('../src/shared/privacy/coverData')
 const { addRead, planReads, hintsOf } = await import('../src/shared/privacy/plan')
+const { addLookFrames, emptyLook, lookScale, lookStep } = await import('../src/shared/privacy/look')
+const { MAX_LINE } = await import('../src/shared/privacy/protocol')
 const { migrateProject } = await import('../src/shared/engine/project')
 import type { FindProgress, FindRequest, FindResult, FoundCover } from '../src/shared/api/privacy'
 import type { ScanDeps, ScanHelper } from '../src/main/privacy/scan'
-import type { Box, ReadResult } from '../src/shared/privacy/protocol'
+import type { Box, LookFrame, ReadResult } from '../src/shared/privacy/protocol'
 import type { Bleep, Cover, CursorTrack, Project, ProjectSummary } from '../src/shared/types'
 import { base, key, rng } from './autoBlurFixtures'
 import { FakeHelper, HD, inside, lookOf, move, plantedLines, type FakeScript, type Planted } from './autoBlurScanFixtures'
@@ -483,6 +485,49 @@ describe('auto-blur P4: the scan', () => {
     writeFileSync(path.join(s.dir, '.cache', 'look.bin'), 'damaged')
     expect(await readLookCache(s.dir, keyNow)).toBeNull()
   })
+
+  it('The look cache of a recording longer than 24 minutes reads back, each frame read as strictly as the helper\'s, and Follow on it sends no look (found by review: the cache was read back as one helper line, which the protocol refuses over 16 MiB, so Find again, Follow and Cover this text everywhere decoded the whole recording every time)', async () => {
+    // 30 minutes at 1080p60: 54,000 analysed frames, every tile bit packed as the helper packs them (255 bytes), a scroll on one frame in ten.
+    const dir = mkdtempSync(path.join(tmpdir(), 'flown-scan-'))
+    roots.push(dir)
+    writeFileSync(path.join(dir, 'screen.mp4'), 'not a video')
+    const fps = 60
+    const step = lookStep(fps)
+    const bits = Buffer.alloc(255)
+    const frames: LookFrame[] = []
+    for (let i = 0; i < (30 * 60 * fps) / step; i++) {
+      bits.fill(0)
+      if (i % 10 === 0) bits.fill(0xff, 40, 200)
+      frames.push({ t: Math.round(((i * step) / fps) * 1e6) / 1e6, key: i % 30 === 0, tiles: bits.toString('base64'), moves: i % 10 === 0 ? [move([0, 160, 1920, 800], 0, -12, 0.93, [[0, -44, 0.41]])] : [] })
+    }
+    const look = emptyLook(HD, fps)
+    addLookFrames(look, frames)
+    expect(look.frames).toHaveLength(54_000)
+    // As one helper line, longer than the protocol takes.
+    expect(JSON.stringify({ id: 0, look: look.frames, done: true }).length).toBeGreaterThan(MAX_LINE)
+    const keyNow = (await lookKeyOf(dir, lookScale(HD.width, HD.height), step))!
+    await writeLookCache(dir, keyNow, look)
+    const back = await readLookCache(dir, keyNow)
+    expect(back?.frames.length).toBe(54_000)
+    expect(back?.frames).toEqual(look.frames)
+    expect(back?.keys).toEqual(look.keys)
+    // Follow on it: the cache is the look data, so the helper is never asked for a look pass.
+    const log: string[] = []
+    const deps: ScanDeps = { helper: async () => new FakeHelper({ look, planted: [] }, log) as unknown as ScanHelper, readProject: async () => base('rec-1', 30 * 60, { fps }), projectDir: () => dir, readCursor: async () => null, log: () => undefined }
+    const box = { x: 0.3, y: 0.3, w: 0.2, h: 0.03 }
+    await followCover({ projectId: 'rec-1', requestId: 'f-long', t: 100, box, start: 99, end: 101, path: writePath([{ t: 99, ...box }]) }, never, deps)
+    expect(log.some((l) => l.startsWith('followOpen'))).toBe(true)
+    expect(log).not.toContain('look')
+    // Still read strictly, every frame: one frame unlike the helper's, far into the cache, and the whole cache is ignored.
+    const damaged = emptyLook(HD, fps)
+    addLookFrames(damaged, frames)
+    damaged.frames[40_000] = { ...damaged.frames[40_000], tiles: 7 as unknown as string }
+    await writeLookCache(dir, keyNow, damaged)
+    expect(await readLookCache(dir, keyNow)).toBeNull()
+    damaged.frames[40_000] = { ...damaged.frames[40_000], tiles: frames[40_000].tiles, extra: 1 } as LookFrame
+    await writeLookCache(dir, keyNow, damaged)
+    expect(await readLookCache(dir, keyNow)).toBeNull()
+  }, 60_000)
 
   it('237. Partial and check reads count: extra reads for a partial answer and check reads are in the plan’s units and its report', async () => {
     const look = lookOf(HD, 30, 10)

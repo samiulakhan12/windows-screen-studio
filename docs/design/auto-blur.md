@@ -1594,8 +1594,11 @@ tiles changed and how each changed region moved. It holds no pixels and no text 
   gives 36,000 analysed frames and about 11 MB of look data in main.
 - **Cache**: main keeps the look data in `<project>/.cache/look.bin` (P4 `lookCache.ts`), keyed by
   `screen.mp4`'s size and mtime, `k` and `step`, like `.cache/scenes.json`
-  (`sceneScan.ts:133-136`). Find again and *Cover this text everywhere* reuse it. It holds no pixels
-  and no text.
+  (`sceneScan.ts:133-136`). Find again, *Follow what is under it* and *Cover this text everywhere*
+  reuse it. It holds no pixels and no text. Its frames are read back as strictly as the helper's
+  look events, frame by frame (`parseLookFrames`), never as one helper line: a 1080p60 recording over
+  about 24 minutes has more frames than a line may hold (16 MiB), and its cache was ignored, so every
+  later Follow, Find again and *Cover this text everywhere* decoded the whole recording again.
 - **Black and still frames**: the first non-black analysed frame is the read plan's first frame.
 
 ### 5.3 Hints from `cursor.json`
@@ -3789,6 +3792,7 @@ export type HelperEvent =
   | { id: number; done: true }
   | { id: number; error: 'model' | 'read' | 'video' | 'tooLarge' | 'stopped' | 'cancelled' | 'panic' | 'bad-command' }
 export function parseHelperEvent(line: string): HelperEvent | null           // strict; unknown or malformed → null, never throws
+export function parseLookFrames(v: unknown): LookFrame[] | null              // the look cache's frames, each as strictly as in a look event, with no line limit
 export function commandLine(c: HelperCommand): string
 
 // src/shared/api/privacy.ts

@@ -3,14 +3,16 @@
  * keyed by screen.mp4's size and modified time, the look scale and the step, like the scene scan's
  * scenes.json. Find again, Follow and Cover this text everywhere read it instead of decoding the
  * recording again. It holds tile bits and moves: no pixels, no text. Read strictly: anything that does
- * not parse as the helper's look frames, or belongs to another file, is ignored.
+ * not parse as the helper's look frames, or belongs to another file, is ignored. The frames are read
+ * frame by frame, not as one helper line: a recording over about 24 minutes has more of them than a
+ * line may hold.
  */
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { gunzip, gzip } from 'node:zlib'
 import { addLookFrames, emptyLook, type LookData } from '../../shared/privacy/look'
-import { parseHelperEvent } from '../../shared/privacy/protocol'
+import { parseLookFrames } from '../../shared/privacy/protocol'
 
 export interface LookKey {
   /** screen.mp4's size in bytes and modified time (whole milliseconds). */
@@ -42,12 +44,12 @@ export async function readLookCache(projectDir: string, key: LookKey): Promise<L
     const width = raw.width
     const height = raw.height
     if (typeof fps !== 'number' || !(fps > 0) || typeof width !== 'number' || typeof height !== 'number' || !(width > 0 && height > 0)) return null
-    // The frames as the helper sends them, read by the protocol's strict reader.
-    const event = parseHelperEvent(JSON.stringify({ id: 0, look: raw.frames, done: true }))
-    if (!event || !('look' in event)) return null
+    // The frames as the helper sends them, each read by the protocol's strict reader.
+    const frames = parseLookFrames(raw.frames)
+    if (!frames) return null
     const data = emptyLook({ width, height }, fps)
     if (data.k !== key.k || data.step !== key.step) return null
-    addLookFrames(data, event.look)
+    addLookFrames(data, frames)
     return data
   } catch {
     return null

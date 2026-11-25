@@ -167,6 +167,15 @@ export function parseHelperEvent(line: string): HelperEvent | null {
   return null
 }
 
+/**
+ * Look frames kept from the helper's look events (the look cache, §5.2), each read as strictly as in a
+ * look event; null for anything else (never throws). Checked frame by frame, never as one line: a
+ * recording over about 24 minutes has more frames than one line may hold (MAX_LINE).
+ */
+export function parseLookFrames(v: unknown): LookFrame[] | null {
+  return arrayOf(v, isLookFrame) ? v : null
+}
+
 const isPin = (v: unknown): v is ModelPin => isObj(v) && keysAre(v, ['file', 'path', 'bytes', 'sha256']) && typeof v.file === 'string' && typeof v.path === 'string' && int(v.bytes) && typeof v.sha256 === 'string' && /^[0-9a-f]{64}$/.test(v.sha256)
 const isTrackAsk = (v: unknown): v is { track: number; parts: number[]; candidates: Candidate[] } =>
   isObj(v) && keysAre(v, ['track', 'parts', 'candidates']) && int(v.track) && arrayOf(v.parts, int) && arrayOf(v.candidates, isCandidate)
