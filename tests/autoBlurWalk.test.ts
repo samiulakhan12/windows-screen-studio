@@ -214,6 +214,34 @@ describe('auto-blur P4: following', () => {
     expect(uncovered(track, 30, text, 0.5, leaves, page)).toEqual([])
   })
 
+  it('Forward, a text a scroll carries out at the top over a plain background is no text deleted in place: the walk follows it out and its cover ends there, though only its own line\'s tiles change near it, with the look pass seeing the page\'s move or not (found end to end with A1\'s pages: cut at the top for frames, the line band where the text was then changed alone, the hold for text deleted in place began, and the cover held a band across the top of the frame for the next page)', async () => {
+    const page: Box = [0, 0, 1920, 1080]
+    // From 1 s the page scrolls up 8 px an analysed frame (30 fps), so the 23 px line is cut at the top for
+    // three analysed frames; above it the page is plain, so near the top only the tiles it passes through
+    // change. A second line of the page, 200 px lower, scrolls through the top row after it.
+    const yAt = (t: number, y0: number): number => y0 - 8 * Math.max(0, Math.min(80, Math.round((t - 1) * 30)))
+    const boxAt = (t: number, y0: number): Box | null => (yAt(t, y0) + 23 > 0 ? [456, yAt(t, y0), 1062, 23] : null)
+    // What shows (cut at the frame's edge), and what the follow session matches (only the whole line).
+    const shown: Planted = { key: KEY, text: 'x', at: (t) => boxAt(t, 300) }
+    const whole: Planted = { key: KEY, text: 'x', at: (t) => { const b = boxAt(t, 300); return b && b[1] >= 0 ? b : null } }
+    const leaves = sourceFrames(30, 0.5, 6).find((t) => shown.at(t) === null)!
+    for (const seen of [true, false]) {
+      const look = lookOf(HD, 30, 6, (_i, t) => {
+        const k = Math.round((t - 1) * 30)
+        if (k < 1 || k > 80) return {}
+        const changed: Box[] = []
+        for (const y0 of [300, 500]) for (const b of [boxAt(t, y0), boxAt(t - 1 / 30, y0)]) if (b) changed.push([b[0], Math.max(0, b[1]), b[2], b[1] + b[3] - Math.max(0, b[1])] as Box)
+        // Far below, the page's lower half moves too; the look pass finds that move, and the upper half's only when `seen`.
+        changed.push([0, 700, 1920, 380])
+        return { changed: changed.filter((b) => b[3] > 0), moves: seen ? [move(page, 0, -8)] : [move([0, 700, 1920, 380], 0, -8)] }
+      })
+      const line: Box = [351, 300, 1167, 23]
+      const [track] = await walkSpan([start(0.5, [456, 300, 1062, 23], line)], 1, look, readIndex(), matcherOf([whole]), NO_HINTS, HD)
+      expect(track.end, seen ? 'the move seen' : 'the move not seen').toBeLessThanOrEqual(leaves + 2 / 30 + 1e-9)
+      expect(uncovered(track, 30, shown, 0.5, leaves, page), seen ? 'the move seen' : 'the move not seen').toEqual([])
+    }
+  })
+
   it('Forward, text cut at the frame edge by a scroll is not a fading glyph: the frame it stops matching at stays covered (found end to end)', async () => {
     const page: Box = [0, 0, 1920, 1080]
     const yAt = (t: number): number => 300 - 40 * Math.max(0, Math.round((t - 1) * 30))

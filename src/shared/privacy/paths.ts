@@ -777,6 +777,15 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     const xf = guide(w, f)
     return { box: xfBox(w, w.tpl.box, xf), xf }
   }
+  /**
+   * Whether the walker's own motion (motionOf) moves its text at f: its region's real move, or the speed
+   * guide of a text that was moving when it was placed at the step before. Text moved so is carried, not
+   * typed or deleted in place, whatever changes about its line band (§5.8).
+   */
+  const carried = (w: Walker, f: number, best: Candidate | null): boolean => {
+    if (best) return Math.abs(best.dx) > 0.25 || Math.abs(best.dy) > 0.25
+    return !!motionOf(w, f, null) && (Math.abs(w.v.dx) > 0.25 || Math.abs(w.v.dy) > 0.25)
+  }
   const outOfFrame = (b: Box): boolean => right(b) <= 0 || bottom(b) <= 0 || b[0] >= size.width || b[1] >= size.height
   const frameBox: Box = [0, 0, size.width, size.height]
   /**
@@ -848,7 +857,11 @@ export async function walkSpan(starts: readonly Placed[], dir: 1 | -1, look: Loo
     // band is still for 1 s. Found end to end: a key typed into a terminal and deleted again one key a
     // frame, with no cursor data, was taken for gone once its last characters matched no part: the read
     // after the deletion lacked it, the cover ended, and its first character showed in the last frame.
-    if (dir === 1 && (w.hold || (inTyping(t) ? bandOnly(w, cf) : bandBurst(w, cf)))) {
+    // In place only: a text its own motion carries (a scroll taking it out at the frame's top over a
+    // plain background, where only its own line's tiles change near it) is followed out by the rules
+    // below. Found end to end with A1's pages: the band, which follows the text, changed alone there,
+    // the hold began, and the cover held a band across the top of the frame for the next page.
+    if (dir === 1 && (w.hold || (!carried(w, f, best) && (inTyping(t) ? bandOnly(w, cf) : bandBurst(w, cf))))) {
       const typing = inTyping(t)
       const until = Math.max(w.hold?.until ?? -Infinity, typing?.until ?? t)
       becomeLost(w, f)

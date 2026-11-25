@@ -2120,6 +2120,13 @@ most of a part is there, so the rules above would leave its first characters unc
   and deleted again one key a frame, with no cursor data, was taken for gone once its last characters
   matched no part: the read after the deletion lacked it, and its first character showed in the last
   frame. Text cleared in one change is gone, and the evidence applies as before.
+  **New: in place only**, as going back: not while the walker's own motion (step 7: its region's real
+  move, or the speed guide of a text moving when it was placed at the step before) carries the text;
+  the rules for a text cut at the frame's edge and carried out of it apply. Since the band follows the
+  text, a line a scroll was taking out at the frame's top over a plain background had only its own
+  line's tiles changing near it (the zone around the band is cut at the frame's edge), so the hold
+  began there: on A1's pages the cover held a band across the top of the frame while the next page
+  scrolled through it, 9.6% of a frame covered on average against 8.6%.
 - The read that finds such text is §5.4 point 2's in-place read, where its line showed the most of it.
 
 **What this handles** (each is a case of A16, §17.3): scrolling lists and pages (vertical moves), a
